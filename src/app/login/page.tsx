@@ -432,33 +432,37 @@ export default function AuthPage() {
 
   // ── Register ───────────────────────────────────────────────────────────────
   async function handleRegister(e: React.FormEvent) {
-    e.preventDefault()
-    const errs: Record<string, string> = {}
-    const fn = rules.name(rFirst);              if (fn) errs.first   = fn
-    const ln = rules.name(rLast);              if (ln) errs.last    = ln
-    const em = rules.email(rEmail);            if (em) errs.email   = em
-    const ps = rules.strong(rPass);            if (ps) errs.pass    = ps
-    const co = rules.confirm(rConfirm, rPass); if (co) errs.confirm = co
-    if (Object.keys(errs).length) { setRErr(errs); setGmsg({ text: 'Veuillez corriger les erreurs ci-dessus', type: 'err' }); return }
-    setLoading(true)
-    try {
-      const res = await api.post('/api/auth/register', {
-        firstName: rFirst, lastName: rLast, email: rEmail, password: rPass,
-      })
-      if (res.data?.success) {
-        await api.post('/api/auth/send-verification', { email: rEmail })
-        setOtpEmail(rEmail)
-        setPendingPass(rPass)
-        setShowOtp(true)
-        setGmsg(null)
-      }
-    } catch (err: any) {
-      const msg = err.response?.data?.error || 'Erreur serveur, réessayez'
-      if (msg.toLowerCase().includes('email')) setRErr({ email: 'Cet email est déjà utilisé' })
-      setGmsg({ text: msg, type: 'err' })
-    }
-    setLoading(false)
+  e.preventDefault()
+  const errs: Record<string, string> = {}
+  const fn = rules.name(rFirst);              if (fn) errs.first   = fn
+  const ln = rules.name(rLast);               if (ln) errs.last    = ln
+  const em = rules.email(rEmail);             if (em) errs.email   = em
+  const ps = rules.strong(rPass);             if (ps) errs.pass    = ps
+  const co = rules.confirm(rConfirm, rPass);  if (co) errs.confirm = co
+  if (Object.keys(errs).length) {
+    setRErr(errs)
+    setGmsg({ text: 'Veuillez corriger les erreurs ci-dessus', type: 'err' })
+    return
   }
+  setLoading(true)
+  try {
+    const res = await api.post('/api/auth/register', {
+      firstName: rFirst, lastName: rLast, email: rEmail, password: rPass,
+    })
+    if (res.data?.success) {
+      // ✅ PAS de send-verification ici — register envoie déjà le mail
+      setOtpEmail(rEmail)
+      setPendingPass(rPass)
+      setShowOtp(true)
+      setGmsg(null)
+    }
+  } catch (err: any) {
+    const msg = err.response?.data?.error || 'Erreur serveur, réessayez'
+    if (msg.toLowerCase().includes('email')) setRErr({ email: 'Cet email est déjà utilisé' })
+    setGmsg({ text: msg, type: 'err' })
+  }
+  setLoading(false)
+}
 
   // ── Après vérification OTP ─────────────────────────────────────────────────
   async function handleOtpVerified() {

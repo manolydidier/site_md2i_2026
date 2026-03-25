@@ -229,6 +229,7 @@ function RoleDrawer({ roleId, onClose, onEdit, onDelete }: {
   const t = useTokens()
   const [role,    setRole]    = useState<RoleDetail | null>(null)
   const [loading, setLoading] = useState(true)
+    const [error,   setError]   = useState<403 | 401 | 500 | null>(null) 
   const [tab,     setTab]     = useState<'permissions' | 'users'>('permissions')
 
   useEffect(() => {
@@ -294,15 +295,26 @@ function RoleDrawer({ roleId, onClose, onEdit, onDelete }: {
         </div>
 
         {/* Contenu */}
-        <div style={{ flex: 1, padding: '1.25rem 1.5rem', overflowY: 'auto' }}>
-          {loading ? (
-            <Spinner track={t.SPIN_TRACK} />
-          ) : tab === 'permissions' ? (
-            <PermissionsTab role={role!} t={t} />
-          ) : (
-            <UsersTab role={role!} t={t} />
-          )}
-        </div>
+        {/* Contenu */}
+<div style={{ flex: 1, padding: '1.25rem 1.5rem', overflowY: 'auto' }}>
+  {loading ? (
+    <Spinner track={t.SPIN_TRACK} />
+  ) : error === 403 ? (
+    <div style={{ textAlign: 'center', padding: '2rem 0' }}>
+      <div style={{ fontSize: 36, marginBottom: 12 }}>🔒</div>
+      <p style={{ fontSize: 14, fontWeight: 600, color: t.TEXT_MAIN, margin: '0 0 6px' }}>Accès refusé</p>
+      <p style={{ fontSize: 12.5, color: t.TEXT_MUTED, margin: 0 }}>Permission insuffisante.</p>
+    </div>
+  ) : error ? (
+    <div style={{ textAlign: 'center', padding: '2rem 0', color: t.TEXT_DIM }}>
+      <p style={{ fontSize: 13 }}>Erreur lors du chargement</p>
+    </div>
+  ) : tab === 'permissions' ? (
+    <PermissionsTab role={role!} t={t} />
+  ) : (
+    <UsersTab role={role!} t={t} />
+  )}
+</div>
 
         {/* Actions */}
         {!loading && role && !role.isSystem && (
@@ -415,25 +427,35 @@ export default function RolesPage() {
   const [editRole,    setEditRole]    = useState<Role | null | 'new'>('new' as any)
   const [showModal,   setShowModal]   = useState(false)
   const [confirm,     setConfirm]     = useState<{ title?: string; message: string; danger?: boolean; confirmLabel?: string; onConfirm: () => void } | null>(null)
-
+const [accessDenied, setAccessDenied] = useState(false)
   // init editRole to null (not 'new')
   useEffect(() => { setEditRole(null) }, [])
 
   // ── Charger rôles ─────────────────────────────────────────────────────────
   const fetchRoles = useCallback(async () => {
-    setLoading(true)
-    try {
-      const p = new URLSearchParams({
-        page: String(page), limit: String(limit), sortBy, sortDir,
-        ...(search && { search }),
-      })
-      const res = await api.get(`/api/roles?${p}`)
-      setRoles(res.data.data)
-      setPagination(res.data.pagination)
-      setSelected(new Set())
-    } catch { showToast('Erreur lors du chargement', 'err') }
-    setLoading(false)
-  }, [page, limit, search, sortBy, sortDir])
+  setLoading(true)
+  setAccessDenied(false)
+  try {
+    const p = new URLSearchParams({
+      page: String(page), limit: String(limit), sortBy, sortDir,
+      ...(search && { search }),
+    })
+    const res = await api.get(`/api/roles?${p}`)
+    setRoles(res.data.data)
+    setPagination(res.data.pagination)
+    setSelected(new Set())
+  } catch (e: any) {
+    if (e?.response?.status === 403) {
+      setAccessDenied(true)
+      showToast('Accès refusé', 'err')
+    } else if (e?.response?.status === 401) {
+      showToast('Session expirée — veuillez vous reconnecter', 'warn')
+    } else {
+      showToast('Erreur lors du chargement', 'err')
+    }
+  }
+  setLoading(false)
+}, [page, limit, search, sortBy, sortDir])
 
   useEffect(() => { fetchRoles() }, [fetchRoles])
   useEffect(() => { setPage(1) }, [search, limit, sortBy, sortDir])
@@ -559,18 +581,21 @@ export default function RolesPage() {
         )}
 
         {/* ── Header ── */}
-        <div style={{ marginBottom: '1.5rem', display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}>
-          <div>
-            <h1 style={{ fontFamily: "'Syne', sans-serif", fontSize: 26, fontWeight: 800, margin: 0, letterSpacing: '-.03em', color: t.TEXT_MAIN }}>Rôles</h1>
-            <p style={{ color: t.HEADER_SUB, fontSize: 13, margin: '4px 0 0', fontWeight: 300 }}>
-              {loading ? '…' : `${pagination.total} rôle${pagination.total !== 1 ? 's' : ''} au total`}
-            </p>
-          </div>
-          <button onClick={() => { setEditRole(null); setShowModal(true) }} style={{ ...btn(), boxShadow: `0 4px 14px rgba(239,159,39,.3)` }}>
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-            Nouveau rôle
-          </button>
-        </div>
+       {/* ── Header ── */}
+<div style={{ marginBottom: '1.5rem', display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}>
+  <div>
+    <h1 style={{ fontFamily: "'Syne', sans-serif", fontSize: 26, fontWeight: 800, margin: 0, letterSpacing: '-.03em', color: t.TEXT_MAIN }}>Rôles</h1>
+    <p style={{ color: t.HEADER_SUB, fontSize: 13, margin: '4px 0 0', fontWeight: 300 }}>
+      {loading ? '…' : accessDenied ? 'Accès restreint' : `${pagination.total} rôle${pagination.total !== 1 ? 's' : ''} au total`}
+    </p>
+  </div>
+  {!accessDenied && (
+    <button onClick={() => { setEditRole(null); setShowModal(true) }} style={{ ...btn(), boxShadow: `0 4px 14px rgba(239,159,39,.3)` }}>
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+      Nouveau rôle
+    </button>
+  )}
+</div>
 
         {/* ── Filtres ── */}
         <div style={{ ...card, padding: '1rem 1.25rem', marginBottom: '1rem' }}>
@@ -615,155 +640,167 @@ export default function RolesPage() {
         </div>
 
         {/* ── Table ── */}
-        <div style={card}>
-          {loading ? (
-            <div style={{ padding: '4rem', textAlign: 'center', color: t.TEXT_DIM }}>
-              <Spinner track={t.SPIN_TRACK} />
-              <p style={{ marginTop: 14, fontSize: 13 }}>Chargement…</p>
-            </div>
-          ) : roles.length === 0 ? (
-            <div style={{ padding: '4rem', textAlign: 'center', color: t.TEXT_DIM }}>
-              <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.3" style={{ display: 'block', margin: '0 auto 14px', opacity: .3 }}><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
-              <p style={{ fontSize: 14, margin: 0 }}>Aucun rôle trouvé</p>
-              {search && <button onClick={() => setSearch('')} style={{ marginTop: 12, ...btn(t.BG_BTN, t.TEXT_MUTED), border: `1px solid ${t.BORDER}`, margin: '12px auto 0' }}>Réinitialiser</button>}
-            </div>
-          ) : (
-            <div style={{ overflowX: 'auto' }}>
-              <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                <thead>
-                  <tr style={{ borderBottom: `1px solid ${t.BORDER}` }}>
-                    <th style={{ ...th, width: 44, paddingRight: 0 }}>
-                      <input type="checkbox" checked={allSelected} onChange={toggleAll} />
-                    </th>
-                    <th style={{ ...th, cursor: 'pointer' }} className="th-sort" onClick={() => toggleSort('name')}>
-                      <span style={{ display: 'flex', alignItems: 'center', gap: 5 }}>Nom <SortIcon field="name" /></span>
-                    </th>
-                    <th style={{ ...th, cursor: 'pointer' }} className="th-sort" onClick={() => toggleSort('code')}>
-                      <span style={{ display: 'flex', alignItems: 'center', gap: 5 }}>Code <SortIcon field="code" /></span>
-                    </th>
-                    <th style={th}>Description</th>
-                    <th style={th}>Permissions</th>
-                    <th style={th}>Utilisateurs</th>
-                    <th style={{ ...th, cursor: 'pointer' }} className="th-sort" onClick={() => toggleSort('createdAt')}>
-                      <span style={{ display: 'flex', alignItems: 'center', gap: 5 }}>Créé le <SortIcon field="createdAt" /></span>
-                    </th>
-                    <th style={{ ...th, textAlign: 'right' }}>Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {roles.map(role => {
-                    const isSel = selected.has(role.id)
-                    return (
-                      <tr key={role.id} className={`rrow${isSel ? ' sel' : ''}`} style={{ borderBottom: `1px solid ${t.DIVIDER}`, transition: 'background .13s', cursor: 'pointer' }}>
-                        <td style={{ padding: '13px 8px 13px 14px' }} onClick={e => e.stopPropagation()}>
-                          <input type="checkbox" checked={isSel} onChange={() => toggleSelect(role.id)} />
-                        </td>
+        {/* ── Table ── */}
+<div style={card}>
+  {loading ? (
+    <div style={{ padding: '4rem', textAlign: 'center', color: t.TEXT_DIM }}>
+      <Spinner track={t.SPIN_TRACK} />
+      <p style={{ marginTop: 14, fontSize: 13 }}>Chargement…</p>
+    </div>
+  ) : accessDenied ? (
+    <div style={{ padding: '4rem', textAlign: 'center' }}>
+      <div style={{ fontSize: 42, marginBottom: 14 }}>🔒</div>
+      <p style={{ fontSize: 15, fontWeight: 600, color: t.TEXT_MAIN, margin: '0 0 8px' }}>
+        Accès refusé
+      </p>
+      <p style={{ fontSize: 13, color: t.TEXT_MUTED, margin: 0 }}>
+        Vous n'avez pas la permission de consulter les rôles.<br />
+        Contactez un administrateur.
+      </p>
+    </div>
+  ) : roles.length === 0 ? (
+    <div style={{ padding: '4rem', textAlign: 'center', color: t.TEXT_DIM }}>
+      <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.3" style={{ display: 'block', margin: '0 auto 14px', opacity: .3 }}><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+      <p style={{ fontSize: 14, margin: 0 }}>Aucun rôle trouvé</p>
+      {search && <button onClick={() => setSearch('')} style={{ marginTop: 12, ...btn(t.BG_BTN, t.TEXT_MUTED), border: `1px solid ${t.BORDER}`, margin: '12px auto 0' }}>Réinitialiser</button>}
+    </div>
+  ) : (
+    <div style={{ overflowX: 'auto' }}>
+      <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+        <thead>
+          <tr style={{ borderBottom: `1px solid ${t.BORDER}` }}>
+            <th style={{ ...th, width: 44, paddingRight: 0 }}>
+              <input type="checkbox" checked={allSelected} onChange={toggleAll} />
+            </th>
+            <th style={{ ...th, cursor: 'pointer' }} className="th-sort" onClick={() => toggleSort('name')}>
+              <span style={{ display: 'flex', alignItems: 'center', gap: 5 }}>Nom <SortIcon field="name" /></span>
+            </th>
+            <th style={{ ...th, cursor: 'pointer' }} className="th-sort" onClick={() => toggleSort('code')}>
+              <span style={{ display: 'flex', alignItems: 'center', gap: 5 }}>Code <SortIcon field="code" /></span>
+            </th>
+            <th style={th}>Description</th>
+            <th style={th}>Permissions</th>
+            <th style={th}>Utilisateurs</th>
+            <th style={{ ...th, cursor: 'pointer' }} className="th-sort" onClick={() => toggleSort('createdAt')}>
+              <span style={{ display: 'flex', alignItems: 'center', gap: 5 }}>Créé le <SortIcon field="createdAt" /></span>
+            </th>
+            <th style={{ ...th, textAlign: 'right' }}>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {roles.map(role => {
+            const isSel = selected.has(role.id)
+            return (
+              <tr key={role.id} className={`rrow${isSel ? ' sel' : ''}`} style={{ borderBottom: `1px solid ${t.DIVIDER}`, transition: 'background .13s', cursor: 'pointer' }}>
+                <td style={{ padding: '13px 8px 13px 14px' }} onClick={e => e.stopPropagation()}>
+                  <input type="checkbox" checked={isSel} onChange={() => toggleSelect(role.id)} />
+                </td>
 
-                        {/* Nom */}
-                        <td style={{ padding: '13px 14px' }} onClick={() => setDrawerRoleId(role.id)}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                            <div style={{ width: 34, height: 34, borderRadius: 10, background: `linear-gradient(135deg,${ORANGE},${ORANGE_DARK})`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
-                            </div>
-                            <div>
-                              <div style={{ fontSize: 14, fontWeight: 600, color: t.TEXT_MAIN, whiteSpace: 'nowrap' }}>{role.name}</div>
-                              {role.isSystem && (
-                                <span style={{ fontSize: 9, color: t.SYS_CLR, fontWeight: 700, letterSpacing: '.5px', background: t.SYS_BG, padding: '1px 6px', borderRadius: 4 }}>SYSTÈME</span>
-                              )}
-                            </div>
-                          </div>
-                        </td>
+                {/* Nom */}
+                <td style={{ padding: '13px 14px' }} onClick={() => setDrawerRoleId(role.id)}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <div style={{ width: 34, height: 34, borderRadius: 10, background: `linear-gradient(135deg,${ORANGE},${ORANGE_DARK})`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+                    </div>
+                    <div>
+                      <div style={{ fontSize: 14, fontWeight: 600, color: t.TEXT_MAIN, whiteSpace: 'nowrap' }}>{role.name}</div>
+                      {role.isSystem && (
+                        <span style={{ fontSize: 9, color: t.SYS_CLR, fontWeight: 700, letterSpacing: '.5px', background: t.SYS_BG, padding: '1px 6px', borderRadius: 4 }}>SYSTÈME</span>
+                      )}
+                    </div>
+                  </div>
+                </td>
 
-                        {/* Code */}
-                        <td style={{ padding: '13px 14px' }} onClick={() => setDrawerRoleId(role.id)}>
-                          <code style={{ fontSize: 12, color: ORANGE, background: 'rgba(239,159,39,.1)', padding: '3px 8px', borderRadius: 6, whiteSpace: 'nowrap' }}>{role.code}</code>
-                        </td>
+                {/* Code */}
+                <td style={{ padding: '13px 14px' }} onClick={() => setDrawerRoleId(role.id)}>
+                  <code style={{ fontSize: 12, color: ORANGE, background: 'rgba(239,159,39,.1)', padding: '3px 8px', borderRadius: 6, whiteSpace: 'nowrap' }}>{role.code}</code>
+                </td>
 
-                        {/* Description */}
-                        <td style={{ padding: '13px 14px', fontSize: 13, color: t.TEXT_MUTED, maxWidth: 220 }} onClick={() => setDrawerRoleId(role.id)}>
-                          <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                            {role.description ?? <span style={{ color: t.TEXT_DIM }}>—</span>}
-                          </div>
-                        </td>
+                {/* Description */}
+                <td style={{ padding: '13px 14px', fontSize: 13, color: t.TEXT_MUTED, maxWidth: 220 }} onClick={() => setDrawerRoleId(role.id)}>
+                  <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {role.description ?? <span style={{ color: t.TEXT_DIM }}>—</span>}
+                  </div>
+                </td>
 
-                        {/* Permissions */}
-                        <td style={{ padding: '13px 14px' }} onClick={() => setDrawerRoleId(role.id)}>
-                          <span style={{ fontSize: 12.5, fontWeight: 600, color: role.rolePermissions.length ? t.TEXT_MAIN : t.TEXT_DIM }}>
-                            {role.rolePermissions.length > 0 ? `${role.rolePermissions.length} ressource${role.rolePermissions.length > 1 ? 's' : ''}` : '—'}
-                          </span>
-                        </td>
+                {/* Permissions */}
+                <td style={{ padding: '13px 14px' }} onClick={() => setDrawerRoleId(role.id)}>
+                  <span style={{ fontSize: 12.5, fontWeight: 600, color: role.rolePermissions.length ? t.TEXT_MAIN : t.TEXT_DIM }}>
+                    {role.rolePermissions.length > 0 ? `${role.rolePermissions.length} ressource${role.rolePermissions.length > 1 ? 's' : ''}` : '—'}
+                  </span>
+                </td>
 
-                        {/* Utilisateurs */}
-                        <td style={{ padding: '13px 14px' }} onClick={() => setDrawerRoleId(role.id)}>
-                          <span style={{ fontSize: 12.5, padding: '3px 10px', borderRadius: 20, background: role._count.userRoles > 0 ? 'rgba(29,158,117,.1)' : t.BG_BTN, color: role._count.userRoles > 0 ? '#1D9E75' : t.TEXT_DIM, fontWeight: 600, border: `1px solid ${role._count.userRoles > 0 ? 'rgba(29,158,117,.2)' : t.BORDER}` }}>
-                            {role._count.userRoles}
-                          </span>
-                        </td>
+                {/* Utilisateurs */}
+                <td style={{ padding: '13px 14px' }} onClick={() => setDrawerRoleId(role.id)}>
+                  <span style={{ fontSize: 12.5, padding: '3px 10px', borderRadius: 20, background: role._count.userRoles > 0 ? 'rgba(29,158,117,.1)' : t.BG_BTN, color: role._count.userRoles > 0 ? '#1D9E75' : t.TEXT_DIM, fontWeight: 600, border: `1px solid ${role._count.userRoles > 0 ? 'rgba(29,158,117,.2)' : t.BORDER}` }}>
+                    {role._count.userRoles}
+                  </span>
+                </td>
 
-                        {/* Date */}
-                        <td style={{ padding: '13px 14px', fontSize: 12.5, color: t.TEXT_DIM, whiteSpace: 'nowrap' }} onClick={() => setDrawerRoleId(role.id)}>
-                          {fmtDate(role.createdAt)}
-                        </td>
+                {/* Date */}
+                <td style={{ padding: '13px 14px', fontSize: 12.5, color: t.TEXT_DIM, whiteSpace: 'nowrap' }} onClick={() => setDrawerRoleId(role.id)}>
+                  {fmtDate(role.createdAt)}
+                </td>
 
-                        {/* Actions */}
-                        <td style={{ padding: '13px 14px' }} onClick={e => e.stopPropagation()}>
-                          <div style={{ display: 'flex', gap: 5, justifyContent: 'flex-end' }}>
-                            <button className="abtn" onClick={() => setDrawerRoleId(role.id)} title="Voir les détails"
-                              style={{ ...btn(t.BG_BTN, t.BTN_TEXT), border: `1px solid ${t.BTN_BORDER}`, padding: '6px 9px' }}>
-                              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
-                            </button>
-                            {!role.isSystem && (
-                              <>
-                                <button className="abtn" onClick={() => { setEditRole(role); setShowModal(true) }} title="Modifier"
-                                  style={{ ...btn(t.BG_BTN, t.BTN_TEXT), border: `1px solid ${t.BTN_BORDER}`, padding: '6px 9px' }}>
-                                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-                                </button>
-                                <button className="abtn" onClick={() => handleDelete(role)} title="Supprimer"
-                                  style={{ ...btn('rgba(226,75,74,.08)', '#e24b4a'), border: '1px solid rgba(226,75,74,.2)', padding: '6px 9px' }}>
-                                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg>
-                                </button>
-                              </>
-                            )}
-                          </div>
-                        </td>
-                      </tr>
-                    )
-                  })}
-                </tbody>
-              </table>
-            </div>
-          )}
-
-          {/* ── Pagination ── */}
-          {!loading && pagination.totalPages > 0 && (
-            <div style={{ padding: '12px 16px', borderTop: `1px solid ${t.BORDER}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 10 }}>
-              <span style={{ fontSize: 12.5, color: t.TEXT_DIM }}>
-                Page {page} / {pagination.totalPages} — {pagination.total} résultat{pagination.total !== 1 ? 's' : ''}
-              </span>
-              <div style={{ display: 'flex', gap: 4 }}>
-                <button disabled={page <= 1} onClick={() => setPage(1)}
-                  style={{ ...btn(t.BG_BTN, page <= 1 ? t.TEXT_DIM : t.TEXT_MAIN), border: `1px solid ${t.BORDER}`, cursor: page <= 1 ? 'not-allowed' : 'pointer', padding: '7px 10px' }}>«</button>
-                <button disabled={page <= 1} onClick={() => setPage(p => p - 1)}
-                  style={{ ...btn(t.BG_BTN, page <= 1 ? t.TEXT_DIM : t.TEXT_MAIN), border: `1px solid ${t.BORDER}`, cursor: page <= 1 ? 'not-allowed' : 'pointer', padding: '7px 11px' }}>‹</button>
-                {Array.from({ length: Math.min(7, pagination.totalPages) }, (_, i) => {
-                  const start = Math.max(1, Math.min(page - 3, pagination.totalPages - 6))
-                  const p = start + i
-                  if (p > pagination.totalPages) return null
-                  return (
-                    <button key={p} onClick={() => setPage(p)}
-                      style={{ ...btn(p === page ? ORANGE : t.BG_BTN, p === page ? '#fff' : t.TEXT_MAIN), border: `1.5px solid ${p === page ? 'transparent' : t.BORDER}`, minWidth: 34, padding: '7px 4px', justifyContent: 'center', fontWeight: p === page ? 700 : 500 }}>
-                      {p}
+                {/* Actions */}
+                <td style={{ padding: '13px 14px' }} onClick={e => e.stopPropagation()}>
+                  <div style={{ display: 'flex', gap: 5, justifyContent: 'flex-end' }}>
+                    <button className="abtn" onClick={() => setDrawerRoleId(role.id)} title="Voir les détails"
+                      style={{ ...btn(t.BG_BTN, t.BTN_TEXT), border: `1px solid ${t.BTN_BORDER}`, padding: '6px 9px' }}>
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
                     </button>
-                  )
-                })}
-                <button disabled={page >= pagination.totalPages} onClick={() => setPage(p => p + 1)}
-                  style={{ ...btn(t.BG_BTN, page >= pagination.totalPages ? t.TEXT_DIM : t.TEXT_MAIN), border: `1px solid ${t.BORDER}`, cursor: page >= pagination.totalPages ? 'not-allowed' : 'pointer', padding: '7px 11px' }}>›</button>
-                <button disabled={page >= pagination.totalPages} onClick={() => setPage(pagination.totalPages)}
-                  style={{ ...btn(t.BG_BTN, page >= pagination.totalPages ? t.TEXT_DIM : t.TEXT_MAIN), border: `1px solid ${t.BORDER}`, cursor: page >= pagination.totalPages ? 'not-allowed' : 'pointer', padding: '7px 10px' }}>»</button>
-              </div>
-            </div>
-          )}
-        </div>
+                    {!role.isSystem && (
+                      <>
+                        <button className="abtn" onClick={() => { setEditRole(role); setShowModal(true) }} title="Modifier"
+                          style={{ ...btn(t.BG_BTN, t.BTN_TEXT), border: `1px solid ${t.BTN_BORDER}`, padding: '6px 9px' }}>
+                          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                        </button>
+                        <button className="abtn" onClick={() => handleDelete(role)} title="Supprimer"
+                          style={{ ...btn('rgba(226,75,74,.08)', '#e24b4a'), border: '1px solid rgba(226,75,74,.2)', padding: '6px 9px' }}>
+                          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg>
+                        </button>
+                      </>
+                    )}
+                  </div>
+                </td>
+              </tr>
+            )
+          })}
+        </tbody>
+      </table>
+    </div>
+  )}
+
+  {/* ── Pagination ── */}
+  {!loading && !accessDenied && pagination.totalPages > 0 && (
+    <div style={{ padding: '12px 16px', borderTop: `1px solid ${t.BORDER}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 10 }}>
+      <span style={{ fontSize: 12.5, color: t.TEXT_DIM }}>
+        Page {page} / {pagination.totalPages} — {pagination.total} résultat{pagination.total !== 1 ? 's' : ''}
+      </span>
+      <div style={{ display: 'flex', gap: 4 }}>
+        <button disabled={page <= 1} onClick={() => setPage(1)}
+          style={{ ...btn(t.BG_BTN, page <= 1 ? t.TEXT_DIM : t.TEXT_MAIN), border: `1px solid ${t.BORDER}`, cursor: page <= 1 ? 'not-allowed' : 'pointer', padding: '7px 10px' }}>«</button>
+        <button disabled={page <= 1} onClick={() => setPage(p => p - 1)}
+          style={{ ...btn(t.BG_BTN, page <= 1 ? t.TEXT_DIM : t.TEXT_MAIN), border: `1px solid ${t.BORDER}`, cursor: page <= 1 ? 'not-allowed' : 'pointer', padding: '7px 11px' }}>‹</button>
+        {Array.from({ length: Math.min(7, pagination.totalPages) }, (_, i) => {
+          const start = Math.max(1, Math.min(page - 3, pagination.totalPages - 6))
+          const p = start + i
+          if (p > pagination.totalPages) return null
+          return (
+            <button key={p} onClick={() => setPage(p)}
+              style={{ ...btn(p === page ? ORANGE : t.BG_BTN, p === page ? '#fff' : t.TEXT_MAIN), border: `1.5px solid ${p === page ? 'transparent' : t.BORDER}`, minWidth: 34, padding: '7px 4px', justifyContent: 'center', fontWeight: p === page ? 700 : 500 }}>
+              {p}
+            </button>
+          )
+        })}
+        <button disabled={page >= pagination.totalPages} onClick={() => setPage(p => p + 1)}
+          style={{ ...btn(t.BG_BTN, page >= pagination.totalPages ? t.TEXT_DIM : t.TEXT_MAIN), border: `1px solid ${t.BORDER}`, cursor: page >= pagination.totalPages ? 'not-allowed' : 'pointer', padding: '7px 11px' }}>›</button>
+        <button disabled={page >= pagination.totalPages} onClick={() => setPage(pagination.totalPages)}
+          style={{ ...btn(t.BG_BTN, page >= pagination.totalPages ? t.TEXT_DIM : t.TEXT_MAIN), border: `1px solid ${t.BORDER}`, cursor: page >= pagination.totalPages ? 'not-allowed' : 'pointer', padding: '7px 10px' }}>»</button>
+      </div>
+    </div>
+  )}
+</div>
       </div>
     </>
   )

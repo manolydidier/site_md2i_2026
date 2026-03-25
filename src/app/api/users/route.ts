@@ -4,6 +4,7 @@ import { withPermission } from '../../../(permisionGuard)/lib/permissions'
 import { prisma } from '@/app/lib/prisma'
 
 // ── GET /api/users — liste paginée + filtres + recherche ─────────────────────
+// ── GET /api/users ─────────────────────────────────────────────────────────
 export async function GET(req: NextRequest) {
   const guard = await withPermission(req, { action: 'canList' })
   if (!guard.ok) return guard.response
@@ -11,14 +12,24 @@ export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url)
   const page     = Math.max(1, parseInt(searchParams.get('page')   ?? '1'))
   const limit    = Math.min(100, parseInt(searchParams.get('limit') ?? '20'))
-  const search   = searchParams.get('search')  ?? ''
-  const status   = searchParams.get('status')  ?? ''
-  const roleCode = searchParams.get('role')    ?? ''
-  const sortBy   = searchParams.get('sortBy')  ?? 'createdAt'
-  const sortDir  = searchParams.get('sortDir') ?? 'desc'
+  const search   = searchParams.get('search')   ?? ''
+  const status   = searchParams.get('status')   ?? ''
+  const roleCode = searchParams.get('role')     ?? ''
+  const deleted  = searchParams.get('deleted')  // 'true' | 'false' | null = tous
+  const sortBy   = searchParams.get('sortBy')   ?? 'createdAt'
+  const sortDir  = searchParams.get('sortDir')  ?? 'desc'
+
+  // ── Filtre deletedAt ─────────────────────────────────────────────────────
+  // Par défaut (deleted absent) : TOUS les utilisateurs, y compris soft-deleted
+  // deleted=false : uniquement les non-supprimés
+  // deleted=true  : uniquement les soft-deleted
+  const deletedFilter =
+    deleted === 'true'  ? { deletedAt: { not: null } } :
+    deleted === 'false' ? { deletedAt: null }           :
+    {}  // aucun filtre — tout afficher
 
   const where: any = {
-    deletedAt: null,
+    ...deletedFilter,
     ...(status && { status }),
     ...(search && {
       OR: [
@@ -44,6 +55,7 @@ export async function GET(req: NextRequest) {
         firstName: true, lastName: true, phone: true,
         avatarUrl: true, status: true, emailVerified: true,
         lastLoginAt: true, createdAt: true,
+        deletedAt: true,   // ← exposé pour que le front sache si soft-deleted
         userRoles: {
           include: { role: { select: { id: true, name: true, code: true } } },
         },

@@ -2,11 +2,15 @@
 import { NextRequest } from 'next/server'
 import { auth } from '@/auth'
 import { prisma } from '@/app/lib/prisma'
+import { withPermission } from '@/(permisionGuard)/lib/permissions'
 
 // ── GET /api/roles — liste paginée + recherche + tri ─────────────────────────
 export async function GET(req: NextRequest) {
   const session = await auth()
   if (!session) return Response.json({ error: 'Non authentifié' }, { status: 401 })
+const guard = await withPermission(req, { action: 'canList' })
+  if (!guard.ok) return guard.response
+
 
   const { searchParams } = new URL(req.url)
   const page    = Math.max(1, parseInt(searchParams.get('page')   ?? '1'))

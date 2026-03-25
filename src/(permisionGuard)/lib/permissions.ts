@@ -17,6 +17,8 @@ const ROUTE_RESOURCE_MAP: Record<string, string> = {
   '/api/audit':      'audit_logs',
   '/api/categories': 'categories',
   '/api/tags':       'tags',
+  '/api/roles/permissions':     'permissions',
+'/api/permission-resources':  'permissions',
 }
 
 // ── Mapping méthode HTTP → action ─────────────────────────────────────────────
@@ -81,20 +83,20 @@ export async function withPermission(
   }
 ): Promise<GuardResult> {
 
-  console.log('\n[withPermission] ─────────────────────────────────')
-  console.log('[withPermission] méthode :', req.method)
-  console.log('[withPermission] url     :', req.url)
+  // console.log('\n[withPermission] ─────────────────────────────────')
+  // console.log('[withPermission] méthode :', req.method)
+  // console.log('[withPermission] url     :', req.url)
 
   // 1. Vérifier la session
   const session = await auth()
 
-  console.log('[withPermission] session :', session
-    ? { id: session.user?.id, role: session.user?.role, roleId: session.user?.roleId }
-    : null
-  )
+  // console.log('[withPermission] session :', session
+  //   ? { id: session.user?.id, role: session.user?.role, roleId: session.user?.roleId }
+  //   : null
+  // )
 
   if (!session || !session.user) {
-    console.log('[withPermission] ❌ Non authentifié')
+    // console.log('[withPermission] ❌ Non authentifié')
     return {
       ok: false,
       response: Response.json(
@@ -106,24 +108,24 @@ export async function withPermission(
 
   // 2. allowAnyAuth → juste la session, pas de vérification de permission
   if (options?.allowAnyAuth) {
-    console.log('[withPermission] ✅ allowAnyAuth — session valide')
+    // console.log('[withPermission] ✅ allowAnyAuth — session valide')
     return { ok: true, session, permissions: [] }
   }
 
   // 3. Charger les permissions
   const roleId = session.user.roleId ?? null
-  console.log('[withPermission] roleId :', roleId)
+  // console.log('[withPermission] roleId :', roleId)
 
   const permissions = roleId ? await loadPermissions(roleId) : []
 
-  if (!roleId) {
-    console.log('[withPermission] ⚠️  Aucun rôle assigné à cet utilisateur')
-  }
+  // if (!roleId) {
+  //   console.log('[withPermission] ⚠️  Aucun rôle assigné à cet utilisateur')
+  // }
 
   // 4. FULL_ACCESS → passe tout
   const hasFullAccess = permissions.some(p => p.endsWith('.FULL_ACCESS'))
   if (hasFullAccess) {
-    console.log('[withPermission] ✅ FULL_ACCESS — accès total')
+    // console.log('[withPermission] ✅ FULL_ACCESS — accès total')
     return { ok: true, session, permissions }
   }
 
@@ -136,22 +138,23 @@ export async function withPermission(
   const resource = options?.resource ?? (matchedRoute ? ROUTE_RESOURCE_MAP[matchedRoute] : null)
   const action   = options?.action   ?? METHOD_ACTION_MAP[req.method.toUpperCase()] ?? 'canRead'
 
-  console.log('[withPermission] resource  :', resource)
-  console.log('[withPermission] action    :', action)
+  // console.log('[withPermission] resource  :', resource)
+  // console.log('[withPermission] action    :', action)
 
   // Route non mappée → autoriser
   if (!resource) {
-    console.log('[withPermission] ✅ Route non mappée — accès autorisé')
+    // console.log('[withPermission] ✅ Route non mappée — accès autorisé')
     return { ok: true, session, permissions }
   }
 
   // 6. Vérifier la permission
   const required = `${resource}.${action}`
-  const hasPermission = permissions.includes(required)
+const hasPermission = permissions.includes(required) 
+                   || permissions.includes(`${resource}.FULL_ACCESS`)  // ← ajouté
 
-  console.log('[withPermission] permission requise :', required)
-  console.log('[withPermission] permissions user   :', permissions)
-  console.log('[withPermission] résultat           :', hasPermission ? '✅ AUTORISÉ' : '❌ REFUSÉ')
+  // console.log('[withPermission] permission requise :', required)
+  // console.log('[withPermission] permissions user   :', permissions)
+  // console.log('[withPermission] résultat           :', hasPermission ? '✅ AUTORISÉ' : '❌ REFUSÉ')
 
   if (!hasPermission) {
     return {

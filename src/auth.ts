@@ -16,23 +16,25 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         password: { label: 'Mot de passe', type: 'password' },
       },
 
-      async authorize(credentials) {
+      async authorize(credentials, request) {
         if (!credentials?.email || !credentials?.password) return null
 
         const user = await prisma.user.findUnique({
           where: { email: credentials.email as string },
           include: {
-            // Seulement le rôle — pas les permissions (chargées à la demande)
             userRoles: {
               take: 1,
-              include: {
-                role: { select: { id: true, name: true, code: true } },
-              },
+              orderBy: { assignedAt: 'desc' },
+              include: { role: true },
             },
           },
         })
 
-        if (!user || user.status !== 'ACTIVE') return null
+        if (!user) return null
+
+        if (!user.emailVerified || user.status !== 'ACTIVE') {
+          throw new Error('EMAIL_NOT_VERIFIED')
+        }
 
         const isValid = await bcrypt.compare(
           credentials.password as string,
@@ -43,11 +45,10 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         const role = user.userRoles?.[0]?.role ?? null
 
         return {
-          id:       user.id,
-          email:    user.email,
-          name:     `${user.firstName ?? ''} ${user.lastName ?? ''}`.trim(),
-          role:     role?.name ?? null,
-          roleId:   role?.id   ?? null,
+          id: user.id,
+          email: user.email,
+          role: role?.name ?? null,
+          roleId: role?.id ?? null,
           roleCode: role?.code ?? null,
         }
       },
@@ -57,11 +58,34 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
   callbacks: {
     async jwt({ token, user }) {
       if (user) {
-        token.id       = user.id
-        token.role     = (user as any).role     ?? null
-        token.roleId   = (user as any).roleId   ?? null
-        token.roleCode = (user as any).roleCode ?? null
+        token.id = user.id
       }
+
+      if (token.id) {
+        const dbUser = await prisma.user.findUnique({
+          where: { id: token.id as string },
+          select: {
+            userRoles: {
+              take: 1,
+              orderBy: { assignedAt: 'desc' },
+              select: {
+                role: {
+                  select: { id: true, name: true, code: true },
+                },
+              },
+            },
+          },
+        })
+// ── LOGS TEMPORAIRES ──────────────────────────────
+  // console.log('[jwt] token.id:', token.id)
+  // console.log('[jwt] userRoles trouvés:', JSON.stringify(dbUser?.userRoles))
+  // ─────────────────────────────────────────────────
+        const role = dbUser?.userRoles?.[0]?.role ?? null
+        token.role     = role?.name ?? null
+        token.roleId   = role?.id   ?? null
+        token.roleCode = role?.code ?? null
+      }
+
       return token
     },
 

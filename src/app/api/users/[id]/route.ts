@@ -47,58 +47,78 @@ export async function GET(req: NextRequest, { params }: Ctx) {
 
 // ── PUT /api/users/:id — modifier ────────────────────────────────────────────
 export async function PUT(req: NextRequest, { params }: Ctx) {
+  console.log('Début de la requête PUT pour modifier l\'utilisateur.')
+
   const guard = await withPermission(req)
-  if (!guard.ok) return guard.response
+  if (!guard.ok) {
+    console.log('Permission refusée :', guard.response)
+    return guard.response
+  }
 
   const { id } = await params
   const { firstName, lastName, username, phone, email, roleId } = await req.json()
 
+  console.log('Données reçues pour la mise à jour de l\'utilisateur :', { firstName, lastName, username, phone, email, roleId })
+
+  // Vérification si l'email est unique
   if (email) {
     const existing = await prisma.user.findFirst({
       where: {
         email,
-        id: { not: id },
+        id: { not: id }, // Exclure l'utilisateur actuel
       },
     })
 
     if (existing) {
+      console.log('Erreur : L\'email est déjà utilisé par un autre utilisateur.')
       return Response.json({ error: 'Cet email est déjà utilisé' }, { status: 400 })
     }
   }
 
-  const user = await prisma.user.update({
-    where: { id },
-    data: {
-      ...(firstName !== undefined && { firstName }),
-      ...(lastName !== undefined && { lastName }),
-      ...(username !== undefined && { username }),
-      ...(phone !== undefined && { phone }),
-      ...(email !== undefined && { email }),
-    },
-    select: {
-      id: true,
-      email: true,
-      firstName: true,
-      lastName: true,
-      status: true,
-    },
-  })
+  // Mise à jour des données de l'utilisateur
+  try {
+    const user = await prisma.user.update({
+      where: { id },
+      data: {
+        ...(firstName !== undefined && { firstName }),
+        ...(lastName !== undefined && { lastName }),
+        ...(username !== undefined && { username }),
+        ...(phone !== undefined && { phone }),
+        ...(email !== undefined && { email }),
+      },
+      select: {
+        id: true,
+        email: true,
+        firstName: true,
+        lastName: true,
+        status: true,
+      },
+    })
 
-  if (roleId !== undefined) {
-    await prisma.userRole.deleteMany({ where: { userId: id } })
+    console.log('Utilisateur mis à jour avec succès :', user)
 
-    if (roleId) {
-      await prisma.userRole.create({
-        data: {
-          userId: id,
-          roleId,
-          assignedById: guard.session.user.id,
-        },
-      })
+    // Si un rôle est modifié
+    if (roleId !== undefined) {
+      console.log('Suppression des rôles existants pour l\'utilisateur :', id)
+      await prisma.userRole.deleteMany({ where: { userId: id } })
+
+      if (roleId) {
+        console.log('Assignation du nouveau rôle à l\'utilisateur :', roleId)
+        await prisma.userRole.create({
+          data: {
+            userId: id,
+            roleId,
+            assignedById: guard.session.user.id,
+          },
+        })
+      }
     }
-  }
 
-  return Response.json(user)
+    return Response.json(user)
+  } catch (error) {
+    console.error('Erreur lors de la mise à jour de l\'utilisateur :', error)
+    return Response.json({ error: 'Une erreur est survenue lors de la mise à jour de l\'utilisateur' }, { status: 500 })
+  }
 }
 
 // ── PATCH /api/users/:id — changer le statut ─────────────────────────────────

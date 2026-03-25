@@ -14,13 +14,12 @@ type SortDir    = 'asc' | 'desc'
 type User = {
   id: string; email: string; firstName: string | null; lastName: string | null
   username: string | null; phone: string | null; avatarUrl: string | null
-  status: UserStatus; emailVerified: boolean
+  status: UserStatus; emailVerified: boolean;deletedAt: string | null ;
   lastLoginAt: string | null; createdAt: string
   userRoles: { role: { id: string; name: string; code: string } }[]
 }
 
 type Pagination = { page: number; limit: number; total: number; totalPages: number }
-
 // ─── Constantes ───────────────────────────────────────────────────────────────
 const ORANGE      = '#EF9F27'
 const ORANGE_DARK = '#c97d15'
@@ -253,8 +252,9 @@ function EditModal({ user, roles, onSave, onClose }: {
 }
 
 // ─── Drawer détails utilisateur ────────────────────────────────────────────────
-function UserDrawer({ user, onClose, onEdit, onDelete, onToggleStatus }: {
+function UserDrawer({ user, onClose, onEdit, onDelete, onToggleStatus, }: {
   user: User; onClose: () => void
+   onHardDelete: () => void   // ← nouveau
   onEdit: () => void; onDelete: () => void; onToggleStatus: () => void
 }) {
   const t  = useTokens()
@@ -396,7 +396,7 @@ export default function UsersPage() {
   const [editUser,    setEditUser]    = useState<User | null>(null)
   const [detailUser,  setDetailUser]  = useState<User | null>(null)
   const [confirm,     setConfirm]     = useState<{ title?: string; message: string; danger?: boolean; confirmLabel?: string; onConfirm: () => void } | null>(null)
-
+const [deleted, setDeleted] = useState<'' | 'true' | 'false'>('')
   // ── Fermer dropdown colonnes au clic extérieur ────────────────────────────
   useEffect(() => {
     const fn = (e: MouseEvent) => {
@@ -425,6 +425,7 @@ export default function UsersPage() {
         ...(search   && { search }),
         ...(status   && { status }),
         ...(roleCode && { role: roleCode }),
+        ...(deleted  && { deleted }),
       })
       const res = await api.get(`/api/users?${p}`)
       setUsers(res.data.data)
@@ -501,6 +502,26 @@ export default function UsersPage() {
       },
     })
   }
+// Fonction pour supprimer définitivement un utilisateur
+async function handleHardDelete(user: User) {
+  setConfirm({
+    title: 'Suppression définitive',
+    message: `Supprimer DÉFINITIVEMENT et irrémédiablement ${fullName(user)} (${user.email}) de la base de données ? Aucune récupération possible.`,
+    danger: true,
+    confirmLabel: '⚠ Supprimer définitivement',
+    onConfirm: async () => {
+      setConfirm(null);
+      try {
+        await api.delete(`/api/users/${user.id}/hard`);
+        showToast(`${fullName(user)} supprimé définitivement`);
+        fetchUsers();
+        if (detailUser?.id === user.id) setDetailUser(null);
+      } catch (e: any) {
+        showToast(e?.response?.data?.error || 'Erreur', 'err');
+      }
+    },
+  });
+}
 
   async function handleEdit(data: any) {
     if (!editUser) return
@@ -610,7 +631,17 @@ export default function UsersPage() {
         {/* ── Modales ── */}
         {confirm    && <ConfirmModal {...confirm} onCancel={() => setConfirm(null)} />}
         {editUser   && <EditModal user={editUser} roles={roles} onSave={handleEdit} onClose={() => setEditUser(null)} />}
-        {detailUser && <UserDrawer user={detailUser} onClose={() => setDetailUser(null)} onEdit={() => { setEditUser(detailUser); setDetailUser(null) }} onDelete={() => handleDelete(detailUser)} onToggleStatus={() => handleStatusToggle(detailUser)} />}
+        {/* // Passer onHardDelete au drawer */}
+        {detailUser && (
+          <UserDrawer
+            user={detailUser}
+            onClose={() => setDetailUser(null)}
+            onEdit={() => { setEditUser(detailUser); setDetailUser(null) }}
+            onDelete={() => handleDelete(detailUser)}
+            onToggleStatus={() => handleStatusToggle(detailUser)}
+            onHardDelete={() => handleHardDelete(detailUser)}  // ← nouveau
+          />
+        )}
 
         {/* ── Header ── */}
         <div style={{ marginBottom: '1.5rem', display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}>
@@ -638,6 +669,7 @@ export default function UsersPage() {
                 <option key={s} value={s}>{STATUS_CFG[s].label}</option>
               ))}
             </select>
+          
 
             {/* Rôle */}
             <select style={{ ...inp }} value={roleCode} onChange={e => setRoleCode(e.target.value)}>
@@ -739,7 +771,7 @@ export default function UsersPage() {
                     const isSel  = selected.has(user.id)
 
                     return (
-                      <tr key={user.id} className={`urow${isSel ? ' sel' : ''}`} style={{ borderBottom: `1px solid ${t.DIVIDER}`, transition: 'background .13s', cursor: 'pointer' }}>
+                      <tr key={user.id} className={`urow${isSel ? ' sel' : ''}`} style={{ borderBottom: `1px solid ${t.DIVIDER}`, transition: 'background .13s', cursor: 'pointer',opacity: user.deletedAt ? 0.55 : 1,  }}>
                         {/* Checkbox */}
                         <td style={{ padding: '13px 8px 13px 14px' }} onClick={e => e.stopPropagation()}>
                           <input type="checkbox" checked={isSel} onChange={() => toggleSelect(user.id)} />
@@ -852,6 +884,26 @@ export default function UsersPage() {
                                   <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg>
                                 </button>
                               )}
+                              {!isSelf && user.deletedAt && (
+    <button
+      className="abtn"
+      onClick={() => handleHardDelete(user)}
+      title="Supprimer définitivement"
+      style={{
+        ...btn('rgba(226,75,74,.15)', '#e24b4a'),
+        border: '1px solid rgba(226,75,74,.4)',
+        padding: '6px 9px',
+        fontWeight: 700,
+      }}
+    >
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+        <polyline points="3 6 5 6 21 6"/>
+        <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>
+        <line x1="12" y1="10" x2="12" y2="16"/>
+        <line x1="9" y1="10" x2="15" y2="16"/>
+      </svg>
+    </button>
+  )}
                             </div>
                           </td>
                         )}
