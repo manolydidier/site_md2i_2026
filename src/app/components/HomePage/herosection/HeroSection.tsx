@@ -111,10 +111,10 @@ export default function Hero3D() {
       <div ref={stepsRef} className={styles.hero3dSteps} />
       <div ref={progressRef} className={styles.hero3dProgress} />
 
-      <div className={styles.hero3dScrollHint}>
+      {/* <div className={styles.hero3dScrollHint}>
         <span>Scroll</span>
         <div className={styles.hero3dScrollLine} />
-      </div>
+      </div> */}
     </div>
   )
 }
