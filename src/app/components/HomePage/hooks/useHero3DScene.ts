@@ -18,7 +18,7 @@ type Refs = {
   btnsRef: React.RefObject<HTMLDivElement | null>
   stepsRef: React.RefObject<HTMLDivElement | null>
   progressRef: React.RefObject<HTMLDivElement | null>
-  statsRef: React.RefObject<HTMLDivElement | null>
+  // statsRef: React.RefObject<HTMLDivElement | null>
   topLeftTitleRef: React.RefObject<HTMLHeadingElement | null>
   topLeftTextRef: React.RefObject<HTMLParagraphElement | null>
   topRightTitleRef: React.RefObject<HTMLHeadingElement | null>
@@ -52,7 +52,7 @@ export function useHero3DScene(mode: Mode, theme: HeroTheme, refs: Refs, showPar
     const btnsEl     = refs.btnsRef.current
     const stepsEl    = refs.stepsRef.current
     const progressEl = refs.progressRef.current
-    const statsEl    = refs.statsRef.current
+    // const statsEl    = refs.statsRef.current
 
     if (!root || !canvas || !eyebrowEl || !titleEl || !descEl || !btnsEl || !stepsEl || !progressEl) return
 
@@ -132,6 +132,8 @@ export function useHero3DScene(mode: Mode, theme: HeroTheme, refs: Refs, showPar
     let clock       = 0
     const timers:    ReturnType<typeof setTimeout>[]  = []
     const intervals: ReturnType<typeof setInterval>[] = []
+
+    let autoSlideInterval: ReturnType<typeof setInterval> | null = null
 
     // ── Shadow helper ─────────────────────────────────────────────────────
     function addShadow(g: THREE.Group, scaleX = 1.4, scaleZ = 0.55, offsetY = -1.7) {
@@ -345,30 +347,30 @@ export function useHero3DScene(mode: Mode, theme: HeroTheme, refs: Refs, showPar
     })
 
     // ── Stats counters ────────────────────────────────────────────────────
-    if (statsEl) {
-      statsEl.innerHTML = ''
-      STATS.forEach((stat, idx) => {
-        const item      = document.createElement('div')
-        item.className  = refs.styles.statItem
-        const valueWrap = document.createElement('div')
-        valueWrap.className = refs.styles.statValue
-        const num = document.createElement('span')
-        num.className = refs.styles.statNumber
-        num.textContent = '0'
-        const suf = document.createElement('span')
-        suf.className   = refs.styles.statSuffix
-        suf.textContent = stat.suffix
-        const label = document.createElement('div')
-        label.className  = refs.styles.statLabel
-        label.textContent = stat.label
-        valueWrap.appendChild(num)
-        valueWrap.appendChild(suf)
-        item.appendChild(valueWrap)
-        item.appendChild(label)
-        statsEl.appendChild(item)
-        timers.push(setTimeout(() => animateCounter(num, stat.value, 1400), 400 + idx * 120))
-      })
-    }
+    // if (statsEl) {
+    //   statsEl.innerHTML = ''
+    //   STATS.forEach((stat, idx) => {
+    //     const item      = document.createElement('div')
+    //     item.className  = refs.styles.statItem
+    //     const valueWrap = document.createElement('div')
+    //     valueWrap.className = refs.styles.statValue
+    //     const num = document.createElement('span')
+    //     num.className = refs.styles.statNumber
+    //     num.textContent = '0'
+    //     const suf = document.createElement('span')
+    //     suf.className   = refs.styles.statSuffix
+    //     suf.textContent = stat.suffix
+    //     const label = document.createElement('div')
+    //     label.className  = refs.styles.statLabel
+    //     label.textContent = stat.label
+    //     valueWrap.appendChild(num)
+    //     valueWrap.appendChild(suf)
+    //     item.appendChild(valueWrap)
+    //     item.appendChild(label)
+    //     statsEl.appendChild(item)
+    //     timers.push(setTimeout(() => animateCounter(num, stat.value, 1400), 400 + idx * 120))
+    //   })
+    // }
 
     // ── Particules — ajout unique ─────────────────────────────────────────
     const particles = buildParticleSystem(SLIDES[0].color, mode)
@@ -381,50 +383,50 @@ export function useHero3DScene(mode: Mode, theme: HeroTheme, refs: Refs, showPar
     haloRef.current      = halo
 
     // ── Events ────────────────────────────────────────────────────────────
-    const onWheel = (e: WheelEvent) => {
-      if (Math.abs(e.deltaY) < 20) return
-      const current = currentSlideRef.current
-      if (e.deltaY > 0 && current === SLIDES.length - 1) return
-      if (e.deltaY < 0 && current === 0) return
-      e.preventDefault()
-      if (scrollLockRef.current || transitioningRef.current) return
-      scrollLockRef.current = true
-      timers.push(setTimeout(() => { scrollLockRef.current = false }, 900))
-      const nextIndex = e.deltaY > 0 ? current + 1 : current - 1
-      if (nextIndex < 0 || nextIndex >= SLIDES.length) return
-      transitionTo(nextIndex)
-    }
+    // const onWheel = (e: WheelEvent) => {
+    //   if (Math.abs(e.deltaY) < 20) return
+    //   const current = currentSlideRef.current
+    //   if (e.deltaY > 0 && current === SLIDES.length - 1) return
+    //   if (e.deltaY < 0 && current === 0) return
+    //   e.preventDefault()
+    //   if (scrollLockRef.current || transitioningRef.current) return
+    //   scrollLockRef.current = true
+    //   timers.push(setTimeout(() => { scrollLockRef.current = false }, 900))
+    //   const nextIndex = e.deltaY > 0 ? current + 1 : current - 1
+    //   if (nextIndex < 0 || nextIndex >= SLIDES.length) return
+    //   transitionTo(nextIndex)
+    // }
 
-    const onTouchStart = (e: TouchEvent) => {
-      touchStartYRef.current    = e.touches[0].clientY
-      touchStartXRef.current    = e.touches[0].clientX
-      touchStartTimeRef.current = Date.now()
-    }
+    // const onTouchStart = (e: TouchEvent) => {
+    //   touchStartYRef.current    = e.touches[0].clientY
+    //   touchStartXRef.current    = e.touches[0].clientX
+    //   touchStartTimeRef.current = Date.now()
+    // }
 
-    const onTouchMove = (e: TouchEvent) => {
-      const dy = touchStartYRef.current - e.touches[0].clientY
-      const dx = Math.abs(touchStartXRef.current - e.touches[0].clientX)
-      if (dx > Math.abs(dy) * 1.5) return
-      const current = currentSlideRef.current
-      if (dy > 0 && current === SLIDES.length - 1) return
-      if (dy < 0 && current === 0) return
-      e.preventDefault()
-    }
+    // const onTouchMove = (e: TouchEvent) => {
+    //   const dy = touchStartYRef.current - e.touches[0].clientY
+    //   const dx = Math.abs(touchStartXRef.current - e.touches[0].clientX)
+    //   if (dx > Math.abs(dy) * 1.5) return
+    //   const current = currentSlideRef.current
+    //   if (dy > 0 && current === SLIDES.length - 1) return
+    //   if (dy < 0 && current === 0) return
+    //   e.preventDefault()
+    // }
 
-    const onTouchEnd = (e: TouchEvent) => {
-      const dy       = touchStartYRef.current - e.changedTouches[0].clientY
-      const dx       = Math.abs(touchStartXRef.current - e.changedTouches[0].clientX)
-      const dt       = Date.now() - touchStartTimeRef.current
-      const velocity = Math.abs(dy) / dt
-      if (dx > Math.abs(dy) * 1.5) return
-      const current = currentSlideRef.current
-      if (dy > 0 && current === SLIDES.length - 1) return
-      if (dy < 0 && current === 0) return
-      const threshold = velocity > 0.4 ? 30 : 60
-      if (Math.abs(dy) < threshold) return
-      if (dy > 0) transitionTo(current + 1)
-      else        transitionTo(current - 1)
-    }
+    // const onTouchEnd = (e: TouchEvent) => {
+    //   const dy       = touchStartYRef.current - e.changedTouches[0].clientY
+    //   const dx       = Math.abs(touchStartXRef.current - e.changedTouches[0].clientX)
+    //   const dt       = Date.now() - touchStartTimeRef.current
+    //   const velocity = Math.abs(dy) / dt
+    //   if (dx > Math.abs(dy) * 1.5) return
+    //   const current = currentSlideRef.current
+    //   if (dy > 0 && current === SLIDES.length - 1) return
+    //   if (dy < 0 && current === 0) return
+    //   const threshold = velocity > 0.4 ? 30 : 60
+    //   if (Math.abs(dy) < threshold) return
+    //   if (dy > 0) transitionTo(current + 1)
+    //   else        transitionTo(current - 1)
+    // }
 
     const onMouseMove = (e: MouseEvent) => {
       mouseRef.current.x =  (e.clientX / window.innerWidth  - 0.5) * 2
@@ -433,10 +435,10 @@ export function useHero3DScene(mode: Mode, theme: HeroTheme, refs: Refs, showPar
 
     window.addEventListener('resize',     resize)
     window.addEventListener('mousemove',  onMouseMove)
-    window.addEventListener('wheel',      onWheel, { passive: false })
-    root.addEventListener('touchstart',   onTouchStart, { passive: true })
-    root.addEventListener('touchmove',    onTouchMove,  { passive: false })
-    root.addEventListener('touchend',     onTouchEnd,   { passive: true })
+    // window.addEventListener('wheel',      onWheel, { passive: false })
+    // root.addEventListener('touchstart',   onTouchStart, { passive: true })
+    // root.addEventListener('touchmove',    onTouchMove,  { passive: false })
+    // root.addEventListener('touchend',     onTouchEnd,   { passive: true })
 
     resize()
 
@@ -446,7 +448,14 @@ export function useHero3DScene(mode: Mode, theme: HeroTheme, refs: Refs, showPar
     currentObjRef.current.scale.setScalar(0.56)
     scene.add(currentObjRef.current)
     setContent(0, true)
+autoSlideInterval = setInterval(() => {
+  if (transitioningRef.current) return
 
+  const current = currentSlideRef.current
+  const next = current >= SLIDES.length - 1 ? 0 : current + 1
+
+  transitionTo(next)
+}, 5000)
     // ── Boucle d'animation — sans doublons ────────────────────────────────
     const animate = () => {
       animationId = requestAnimationFrame(animate)
@@ -521,11 +530,11 @@ export function useHero3DScene(mode: Mode, theme: HeroTheme, refs: Refs, showPar
 
       window.removeEventListener('resize',    resize)
       window.removeEventListener('mousemove', onMouseMove)
-      window.removeEventListener('wheel',     onWheel)
-      root.removeEventListener('touchstart',  onTouchStart)
-      root.removeEventListener('touchmove',   onTouchMove)
-      root.removeEventListener('touchend',    onTouchEnd)
-
+      // window.removeEventListener('wheel',     onWheel)
+      // root.removeEventListener('touchstart',  onTouchStart)
+      // root.removeEventListener('touchmove',   onTouchMove)
+      // root.removeEventListener('touchend',    onTouchEnd)
+if (autoSlideInterval) clearInterval(autoSlideInterval)
       scene.traverse((obj) => {
         const mesh = obj as THREE.Mesh
         mesh.geometry?.dispose()

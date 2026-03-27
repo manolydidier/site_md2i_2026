@@ -51,9 +51,9 @@ export const SLIDES: Slide[] = [
   },
 ]
 
-export const STATS: Stat[] = [
-  { value: 54, suffix: '', label: 'pays' },
-  { value: 35, suffix: '+', label: "ans d'expérience" },
-  { value: 3, suffix: '', label: 'langues' },
-  { value: 100, suffix: '+', label: 'projets livrés' },
-]
+// export const STATS: Stat[] = [
+//   { value: 54, suffix: '', label: 'pays' },
+//   { value: 35, suffix: '+', label: "ans d'expérience" },
+//   { value: 3, suffix: '', label: 'langues' },
+//   { value: 100, suffix: '+', label: 'projets livrés' },
+// ]

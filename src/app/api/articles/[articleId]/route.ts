@@ -1,21 +1,56 @@
-// app/api/articles/[articleId]/route.ts
-import { NextRequest } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/app/lib/prisma'
 
-export async function GET(req: NextRequest, { params }: { params: { articleId: string } }) {
-  const { articleId } = params
-
+export async function GET(
+  request: NextRequest,
+  context: { params: Promise<{ postId: string }> }
+) {
   try {
-    const article = await prisma.post.findUnique({
-      where: { id: articleId },
+    const { postId } = await context.params
+
+    const post = await prisma.post.findUnique({
+      where: { id: postId },
+      select: {
+        id: true,
+        title: true,
+        slug: true,
+        excerpt: true,
+        coverImage: true,
+        status: true,
+        publishedAt: true,
+        createdAt: true,
+        updatedAt: true,
+        gjsHtml: true,
+        gjsStyles: true,
+        gjsComponents: true,
+        author: {
+          select: {
+            
+            email: true,
+          },
+        },
+        category: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
+      },
     })
 
-    if (!article) {
-      return Response.json({ error: 'Article non trouvé' }, { status: 404 })
+    if (!post) {
+      return NextResponse.json(
+        { error: 'Post introuvable' },
+        { status: 404 }
+      )
     }
 
-    return Response.json(article)
+    return NextResponse.json(post)
   } catch (error) {
-    return Response.json({ error: 'Erreur serveur' }, { status: 500 })
+    console.error('[GET /api/posts/[postId]]', error)
+    return NextResponse.json(
+      { error: 'Internal Server Error' },
+      { status: 500 }
+    )
   }
 }

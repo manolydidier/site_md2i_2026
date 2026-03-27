@@ -5,13 +5,12 @@ import { usePathname } from 'next/navigation'
 import { signOut, useSession } from 'next-auth/react'
 import { useState, useEffect, useRef } from 'react'
 import { useTheme } from '../context/ThemeContext'
-import { useSidebar,SIDEBAR_W, SIDEBAR_COLLAPSED } from '../context/SidebarContext'
+import { useSidebar, SIDEBAR_W, SIDEBAR_COLLAPSED } from '../context/SidebarContext'
 
 const ORANGE = '#EF9F27'
 const ORANGE_DARK = '#c97d15'
-export const ADMIN_SIDEBAR_WIDTH = 272
-export const ADMIN_SIDEBAR_COLLAPSED_WIDTH = 68
 
+// ── Menu tree ────────────────────────────────────────────────────────────────
 const MENU_SECTIONS = [
   {
     title: 'Contenu',
@@ -19,8 +18,9 @@ const MENU_SECTIONS = [
       {
         href: '/admin',
         label: 'Dashboard',
+        exact: true,
         icon: (
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
             <rect x="3" y="3" width="7" height="7" rx="1.5" />
             <rect x="14" y="3" width="7" height="7" rx="1.5" />
             <rect x="3" y="14" width="7" height="7" rx="1.5" />
@@ -32,7 +32,7 @@ const MENU_SECTIONS = [
         href: '/admin/pages',
         label: 'Pages',
         icon: (
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
             <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
             <polyline points="14 2 14 8 20 8" />
           </svg>
@@ -41,22 +41,34 @@ const MENU_SECTIONS = [
       {
         href: '/admin/posts',
         label: 'Blog',
+        addHref: '/admin/posts/new',
         icon: (
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
             <path d="M12 20h9" />
             <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" />
           </svg>
         ),
+        children: [
+          { href: '/admin/posts', label: 'Tous les articles', exact: true },
+          { href: '/admin/posts/new', label: 'Nouvel article' },
+          { href: '/admin/categories', label: 'Catégories' },
+          { href: '/admin/tags', label: 'Tags' },
+        ],
       },
       {
         href: '/admin/projects',
         label: 'Portfolio',
+        addHref: '/admin/projects/new',
         icon: (
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
             <rect x="2" y="7" width="20" height="14" rx="2" />
             <path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2" />
           </svg>
         ),
+        children: [
+          { href: '/admin/projects', label: 'Tous les projets', exact: true },
+          { href: '/admin/projects/new', label: 'Nouveau projet' },
+        ],
       },
     ],
   },
@@ -66,13 +78,18 @@ const MENU_SECTIONS = [
       {
         href: '/admin/products',
         label: 'Produits',
+        addHref: '/admin/products/new',
         icon: (
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
             <path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z" />
             <line x1="3" y1="6" x2="21" y2="6" />
             <path d="M16 10a4 4 0 0 1-8 0" />
           </svg>
         ),
+        children: [
+          { href: '/admin/products', label: 'Tous les produits', exact: true },
+          { href: '/admin/products/new', label: 'Nouveau produit' },
+        ],
       },
     ],
   },
@@ -84,7 +101,7 @@ const MENU_SECTIONS = [
         label: 'Messages',
         badge: { label: '2', color: '#1D9E75' },
         icon: (
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
             <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
           </svg>
         ),
@@ -92,23 +109,34 @@ const MENU_SECTIONS = [
       {
         href: '/admin/users',
         label: 'Utilisateurs',
+        addHref: '/admin/users/new',
         icon: (
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
             <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
             <circle cx="9" cy="7" r="4" />
             <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
             <path d="M16 3.13a4 4 0 0 1 0 7.75" />
           </svg>
         ),
+        children: [
+          { href: '/admin/users', label: 'Tous les utilisateurs', exact: true },
+          { href: '/admin/users/new', label: 'Nouvel utilisateur' },
+          { href: '/admin/permissions', label: 'Permissions' },
+        ],
       },
       {
         href: '/admin/roles',
         label: 'Rôles',
+        addHref: '/admin/roles?action=new',
         icon: (
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
             <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
           </svg>
         ),
+        children: [
+          { href: '/admin/roles', label: 'Tous les rôles', exact: true },
+          { href: '/admin/roles?action=new', label: 'Nouveau rôle' },
+        ],
       },
     ],
   },
@@ -119,7 +147,7 @@ const MENU_SECTIONS = [
         href: '/admin/audit',
         label: 'Audit',
         icon: (
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
             <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />
           </svg>
         ),
@@ -128,24 +156,284 @@ const MENU_SECTIONS = [
   },
 ] as const
 
+type Child = { href: string; label: string; exact?: boolean }
 type MenuItem = {
   href: string
   label: string
+  exact?: boolean
   icon: React.ReactNode
-  badge?: {
-    label: string
-    color: string
-  }
+  addHref?: string
+  badge?: { label: string; color: string }
+  children?: readonly Child[]
 }
 
+// ── Sub-item component ────────────────────────────────────────────────────────
+function SubItem({
+  child,
+  pathname,
+  c,
+  isLast,
+}: {
+  child: Child
+  pathname: string
+  c: Record<string, string>
+  isLast: boolean
+}) {
+  const isActive = child.exact
+    ? pathname === child.href
+    : pathname.startsWith(child.href)
+
+  return (
+    <div style={{ display: 'flex', alignItems: 'stretch' }}>
+      {/* Tree line */}
+      <div style={{
+        width: 28,
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        flexShrink: 0,
+      }}>
+        <div style={{
+          width: 1,
+          flex: 1,
+          background: isLast ? 'transparent' : `rgba(239,159,39,0.15)`,
+        }} />
+        <div style={{
+          width: 12,
+          height: 1,
+          background: `rgba(239,159,39,0.20)`,
+          marginBottom: isLast ? 0 : 'auto',
+          alignSelf: 'center',
+        }} />
+        {!isLast && <div style={{ width: 1, flex: 1, background: `rgba(239,159,39,0.15)` }} />}
+      </div>
+
+      <Link
+        href={child.href}
+        style={{
+          flex: 1,
+          display: 'flex',
+          alignItems: 'center',
+          gap: 7,
+          padding: '6px 10px 6px 4px',
+          borderRadius: 9,
+          textDecoration: 'none',
+          fontSize: 12.5,
+          fontWeight: isActive ? 600 : 400,
+          color: isActive ? ORANGE : c.textSoft,
+          background: isActive ? 'rgba(239,159,39,0.07)' : 'transparent',
+          transition: 'background 0.14s, color 0.14s',
+          margin: '1px 0',
+        }}
+        className="adm-sub-link"
+      >
+        <span style={{
+          width: 5,
+          height: 5,
+          borderRadius: '50%',
+          flexShrink: 0,
+          background: isActive ? ORANGE : `rgba(239,159,39,0.30)`,
+          transition: 'background 0.14s',
+        }} />
+        {child.label}
+      </Link>
+    </div>
+  )
+}
+
+// ── Main NavItem ──────────────────────────────────────────────────────────────
+function NavItem({
+  tab,
+  pathname,
+  collapsed,
+  c,
+  setMobileOpen,
+}: {
+  tab: MenuItem
+  pathname: string
+  collapsed: boolean
+  c: Record<string, string>
+  setMobileOpen: (v: boolean) => void
+}) {
+  const isActive = tab.exact
+    ? pathname === tab.href
+    : pathname.startsWith(tab.href)
+
+  const hasChildren = tab.children && tab.children.length > 0
+  const childActive = hasChildren && tab.children!.some((ch) =>
+    ch.exact ? pathname === ch.href : pathname.startsWith(ch.href)
+  )
+
+  // Auto-open if a child is active
+  const [open, setOpen] = useState(childActive || isActive)
+  const [hovered, setHovered] = useState(false)
+
+  // Sync open state when pathname changes
+  useEffect(() => {
+    if (childActive || isActive) setOpen(true)
+  }, [pathname])
+
+  const highlighted = isActive || childActive
+
+  return (
+    <div>
+      {/* Main row */}
+      <div
+        style={{ position: 'relative' }}
+        onMouseEnter={() => setHovered(true)}
+        onMouseLeave={() => setHovered(false)}
+      >
+        <Link
+          href={tab.href}
+          onClick={() => {
+            setMobileOpen(false)
+            if (hasChildren) setOpen((v) => !v)
+          }}
+          className="adm-link"
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: collapsed ? 'center' : 'space-between',
+            gap: 10,
+            padding: collapsed ? '11px 0' : '9px 10px',
+            borderRadius: 12,
+            textDecoration: 'none',
+            color: highlighted ? c.text : c.textSoft,
+            background: highlighted ? c.activeBg : 'transparent',
+            border: `1px solid ${highlighted ? c.activeBorder : 'transparent'}`,
+            position: 'relative',
+            transition: 'background 0.15s, border-color 0.15s, color 0.15s',
+          }}
+        >
+          {/* Active left bar */}
+          {highlighted && !collapsed && (
+            <div style={{
+              position: 'absolute',
+              left: 0, top: '22%', bottom: '22%',
+              width: 3, borderRadius: '0 3px 3px 0',
+              background: `linear-gradient(to bottom, ${ORANGE}, ${ORANGE_DARK})`,
+            }} />
+          )}
+
+          <span style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
+            <span style={{
+              display: 'flex', flexShrink: 0,
+              color: highlighted ? ORANGE : c.textMute,
+              transition: 'color 0.15s',
+            }}>
+              {tab.icon}
+            </span>
+
+            <span style={{
+              maxWidth: collapsed ? 0 : 130,
+              overflow: 'hidden', whiteSpace: 'nowrap',
+              opacity: collapsed ? 0 : 1,
+              transition: 'max-width 0.28s cubic-bezier(.22,1,.36,1), opacity 0.18s',
+              fontSize: 13.5,
+              fontWeight: highlighted ? 600 : 400,
+            }}>
+              {tab.label}
+            </span>
+          </span>
+
+          {/* Right side: badge OR chevron */}
+          {!collapsed && (
+            <span style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
+              {tab.badge && (
+                <span style={{
+                  fontSize: 10, padding: '2px 7px', borderRadius: 999,
+                  fontWeight: 700,
+                  background: `${tab.badge.color}18`,
+                  color: tab.badge.color,
+                  border: `1px solid ${tab.badge.color}30`,
+                }}>
+                  {tab.badge.label}
+                </span>
+              )}
+              {hasChildren && (
+                <svg
+                  width="10" height="10" viewBox="0 0 24 24"
+                  fill="none" stroke={c.textMute} strokeWidth="2.5"
+                  style={{
+                    transition: 'transform 0.22s cubic-bezier(.22,1,.36,1)',
+                    transform: open ? 'rotate(90deg)' : 'rotate(0deg)',
+                  }}
+                >
+                  <polyline points="9 18 15 12 9 6" />
+                </svg>
+              )}
+            </span>
+          )}
+        </Link>
+
+        {/* Hover + button */}
+        {!collapsed && tab.addHref && hovered && (
+          <Link
+            href={tab.addHref}
+            onClick={(e) => e.stopPropagation()}
+            title="Ajouter"
+            style={{
+              position: 'absolute',
+              right: hasChildren ? 28 : 10,
+              top: '50%',
+              transform: 'translateY(-50%)',
+              width: 22, height: 22,
+              borderRadius: 7,
+              background: 'rgba(239,159,39,0.12)',
+              border: '1px solid rgba(239,159,39,0.28)',
+              color: ORANGE,
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              textDecoration: 'none',
+              animation: 'adm-pop-in 0.15s cubic-bezier(.22,1,.36,1)',
+              zIndex: 2,
+            }}
+            className="adm-add-btn"
+          >
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.8">
+              <line x1="12" y1="5" x2="12" y2="19" />
+              <line x1="5" y1="12" x2="19" y2="12" />
+            </svg>
+          </Link>
+        )}
+
+        {/* Tooltip (collapsed) */}
+        {collapsed && <div className="adm-tt">{tab.label}</div>}
+      </div>
+
+      {/* Children */}
+      {hasChildren && !collapsed && (
+        <div style={{
+          overflow: 'hidden',
+          maxHeight: open ? `${tab.children!.length * 40}px` : '0px',
+          transition: 'max-height 0.28s cubic-bezier(.22,1,.36,1)',
+          paddingLeft: 10,
+          marginTop: open ? 2 : 0,
+        }}>
+          <div style={{ paddingBottom: 4 }}>
+            {tab.children!.map((child, idx) => (
+              <SubItem
+                key={child.href}
+                child={child}
+                pathname={pathname}
+                c={c}
+                isLast={idx === tab.children!.length - 1}
+              />
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ── Sidebar ───────────────────────────────────────────────────────────────────
 export default function AdminSidebar() {
   const pathname = usePathname()
   const { data: session } = useSession()
   const { dark, toggleTheme } = useTheme()
 
   const [ddOpen, setDdOpen] = useState(false)
-
- const { collapsed, setCollapsed, mobileOpen, setMobileOpen } = useSidebar()
+  const { collapsed, setCollapsed, mobileOpen, setMobileOpen } = useSidebar()
   const ddRef = useRef<HTMLDivElement>(null)
 
   const initials = session?.user?.name
@@ -157,10 +445,7 @@ export default function AdminSidebar() {
       if (ddRef.current && !ddRef.current.contains(e.target as Node)) setDdOpen(false)
     }
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        setMobileOpen(false)
-        setDdOpen(false)
-      }
+      if (e.key === 'Escape') { setMobileOpen(false); setDdOpen(false) }
     }
     document.addEventListener('mousedown', onMouse)
     document.addEventListener('keydown', onKey)
@@ -170,19 +455,14 @@ export default function AdminSidebar() {
     }
   }, [])
 
-  useEffect(() => {
-    setMobileOpen(false)
-    setDdOpen(false)
-  }, [pathname])
+  useEffect(() => { setMobileOpen(false); setDdOpen(false) }, [pathname])
 
   useEffect(() => {
     document.body.style.overflow = mobileOpen ? 'hidden' : ''
-    return () => {
-      document.body.style.overflow = ''
-    }
+    return () => { document.body.style.overflow = '' }
   }, [mobileOpen])
 
-  const c = {
+  const c: Record<string, string> = {
     shell: dark ? '#0B0B0E' : '#FFFFFF',
     shellSoft: dark ? 'rgba(255,255,255,.04)' : 'rgba(0,0,0,.03)',
     border: dark ? 'rgba(255,255,255,.08)' : 'rgba(0,0,0,.08)',
@@ -206,16 +486,23 @@ export default function AdminSidebar() {
 
         @keyframes adm-overlay-in { from{opacity:0} to{opacity:1} }
         @keyframes adm-drop-in { from{opacity:0;transform:translateY(-6px) scale(.98)} to{opacity:1;transform:none} }
+        @keyframes adm-pop-in { from{opacity:0;transform:translateY(-50%) scale(.7)} to{opacity:1;transform:translateY(-50%) scale(1)} }
 
         .adm-scroll::-webkit-scrollbar { width: 3px; }
         .adm-scroll::-webkit-scrollbar-thumb { background: rgba(239,159,39,.18); border-radius: 999px; }
         .adm-scroll::-webkit-scrollbar-track { background: transparent; }
 
-        .adm-link { transition: background .15s, color .15s, border-color .15s, transform .15s; }
-        .adm-link:hover { background: ${dark ? 'rgba(255,255,255,.04)' : 'rgba(0,0,0,.03)'}; }
+        .adm-link { transition: background .15s, color .15s, border-color .15s; }
+        .adm-link:hover { background: ${dark ? 'rgba(255,255,255,.04)' : 'rgba(0,0,0,.03)'} !important; }
+
+        .adm-sub-link:hover { background: rgba(239,159,39,0.07) !important; color: ${ORANGE} !important; }
+        .adm-sub-link:hover span:first-child { background: ${ORANGE} !important; }
 
         .adm-btn { transition: background .15s, color .15s, border-color .15s; }
         .adm-btn:hover { background: ${dark ? 'rgba(255,255,255,.08)' : 'rgba(0,0,0,.05)'} !important; color: ${dark ? '#F2EFEA' : '#181818'} !important; }
+
+        .adm-add-btn:hover { background: rgba(239,159,39,0.20) !important; border-color: rgba(239,159,39,0.45) !important; transform: translateY(-50%) scale(1.08) !important; }
+        .adm-add-btn { transition: background .13s, border-color .13s, transform .13s !important; }
 
         .adm-dd-item { transition: background .13s; cursor: pointer; }
         .adm-dd-item:hover { background: ${dark ? 'rgba(255,255,255,.05)' : 'rgba(0,0,0,.04)'} !important; }
@@ -271,6 +558,7 @@ export default function AdminSidebar() {
         }
       `}</style>
 
+      {/* ── Mobile top bar ── */}
       <div className="adm-topbar" style={{
         position: 'sticky', top: 0, zIndex: 120, display: 'none',
         alignItems: 'center', justifyContent: 'space-between',
@@ -320,6 +608,7 @@ export default function AdminSidebar() {
         </button>
       </div>
 
+      {/* ── Overlay ── */}
       <div className="adm-overlay" onClick={() => setMobileOpen(false)} style={{
         display: mobileOpen ? 'block' : 'none',
         position: 'fixed', inset: 0, background: 'rgba(0,0,0,.40)',
@@ -327,6 +616,7 @@ export default function AdminSidebar() {
         animation: 'adm-overlay-in .2s ease',
       }} />
 
+      {/* ── Sidebar ── */}
       <aside className={`adm-sidebar${mobileOpen ? ' open' : ''}`} style={{
         position: 'fixed', top: 0, left: 0, bottom: 0,
         width: sidebarW, zIndex: 119,
@@ -337,24 +627,24 @@ export default function AdminSidebar() {
         overflow: 'visible',
         boxShadow: mobileOpen ? '0 20px 60px rgba(0,0,0,.3)' : 'none',
       }}>
+        {/* Collapse button */}
         <button
           className="adm-collapse-btn"
           onClick={() => { setCollapsed(v => !v); setDdOpen(false) }}
           title={collapsed ? 'Ouvrir le menu' : 'Réduire le menu'}
         >
           <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.8"
-            style={{ transition: 'transform .28s cubic-bezier(.22,1,.36,1)', transform: collapsed ? 'rotate(180deg)' : 'none' }}
-          >
+            style={{ transition: 'transform .28s cubic-bezier(.22,1,.36,1)', transform: collapsed ? 'rotate(180deg)' : 'none' }}>
             <polyline points="15 18 9 12 15 6" />
           </svg>
         </button>
 
+        {/* Logo */}
         <div style={{
           height: 68, padding: '0 12px',
           display: 'flex', alignItems: 'center',
           justifyContent: collapsed ? 'center' : 'flex-start',
-          borderBottom: `1px solid ${c.border}`, flexShrink: 0,
-          overflow: 'hidden',
+          borderBottom: `1px solid ${c.border}`, flexShrink: 0, overflow: 'hidden',
         }}>
           <Link href="/admin" onClick={() => setMobileOpen(false)} style={{
             textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 11,
@@ -368,7 +658,6 @@ export default function AdminSidebar() {
             }}>
               <span style={{ fontFamily: "'Syne', sans-serif", fontWeight: 800, fontSize: 12, color: ORANGE }}>M2</span>
             </div>
-
             <div style={{
               overflow: 'hidden',
               maxWidth: collapsed ? 0 : 160,
@@ -386,119 +675,39 @@ export default function AdminSidebar() {
           </Link>
         </div>
 
+        {/* Nav */}
         <div className="adm-scroll" style={{ flex: 1, overflowY: 'auto', overflowX: 'visible', padding: '12px 10px' }}>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
             {MENU_SECTIONS.map((section) => (
               <div key={section.title}>
+                {/* Section title */}
                 {!collapsed && (
-                  <div
-                    style={{
-                      fontSize: 10,
-                      fontWeight: 700,
-                      letterSpacing: '.10em',
-                      textTransform: 'uppercase',
-                      color: c.textMute,
-                      padding: '0 8px',
-                      marginBottom: 7,
-                      marginTop: 4,
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: 8,
-                    }}
-                  >
+                  <div style={{
+                    fontSize: 10, fontWeight: 700, letterSpacing: '.10em',
+                    textTransform: 'uppercase', color: c.textMute,
+                    padding: '0 8px', marginBottom: 5, marginTop: 6,
+                    display: 'flex', alignItems: 'center', gap: 8,
+                  }}>
                     <span style={{ width: 4, height: 4, borderRadius: '50%', background: ORANGE, opacity: .7 }} />
                     {section.title}
                   </div>
                 )}
 
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                  {section.items.map((tab: MenuItem) => {
-                    const isActive =
-                      tab.href === '/admin' ? pathname === '/admin' : pathname.startsWith(tab.href)
+                {collapsed && <div style={{ height: 8 }} />}
 
-                    return (
-                      <div key={tab.href} className="adm-tt-wrap">
-                        <Link
-                          href={tab.href}
-                          onClick={() => setMobileOpen(false)}
-                          className="adm-link"
-                          style={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: collapsed ? 'center' : 'space-between',
-                            gap: 10,
-                            padding: collapsed ? '11px 0' : '10px 10px',
-                            borderRadius: 12,
-                            textDecoration: 'none',
-                            color: isActive ? c.text : c.textSoft,
-                            background: isActive ? c.activeBg : 'transparent',
-                            border: `1px solid ${isActive ? c.activeBorder : 'transparent'}`,
-                            position: 'relative',
-                          }}
-                        >
-                          {isActive && !collapsed && (
-                            <div
-                              style={{
-                                position: 'absolute',
-                                left: 0,
-                                top: '22%',
-                                bottom: '22%',
-                                width: 3,
-                                borderRadius: '0 3px 3px 0',
-                                background: `linear-gradient(to bottom, ${ORANGE}, ${ORANGE_DARK})`,
-                              }}
-                            />
-                          )}
-
-                          <span style={{ display: 'flex', alignItems: 'center', gap: 11, minWidth: 0 }}>
-                            <span
-                              style={{
-                                display: 'flex',
-                                flexShrink: 0,
-                                color: isActive ? ORANGE : c.textMute,
-                                transition: 'color .15s',
-                              }}
-                            >
-                              {tab.icon}
-                            </span>
-
-                            <span
-                              style={{
-                                maxWidth: collapsed ? 0 : 140,
-                                overflow: 'hidden',
-                                whiteSpace: 'nowrap',
-                                opacity: collapsed ? 0 : 1,
-                                transition: 'max-width .28s cubic-bezier(.22,1,.36,1), opacity .18s',
-                                fontSize: 13.5,
-                                fontWeight: isActive ? 600 : 400,
-                              }}
-                            >
-                              {tab.label}
-                            </span>
-                          </span>
-
-                          {!collapsed && tab.badge && (
-                            <span
-                              style={{
-                                fontSize: 10,
-                                padding: '2px 7px',
-                                borderRadius: 999,
-                                fontWeight: 700,
-                                flexShrink: 0,
-                                background: `${tab.badge.color}18`,
-                                color: tab.badge.color,
-                                border: `1px solid ${tab.badge.color}30`,
-                              }}
-                            >
-                              {tab.badge.label}
-                            </span>
-                          )}
-                        </Link>
-
-                        {collapsed && <div className="adm-tt">{tab.label}</div>}
-                      </div>
-                    )
-                  })}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                  {(section.items as readonly MenuItem[]).map((tab) => (
+                    <div key={tab.href} className="adm-tt-wrap">
+                      <NavItem
+                        tab={tab}
+                        pathname={pathname}
+                        collapsed={collapsed}
+                        c={c}
+                        setMobileOpen={setMobileOpen}
+                      />
+                      {collapsed && <div className="adm-tt">{tab.label}</div>}
+                    </div>
+                  ))}
                 </div>
               </div>
             ))}
@@ -506,6 +715,7 @@ export default function AdminSidebar() {
 
           <div style={{ margin: '14px 4px', height: 1, background: c.border }} />
 
+          {/* View site */}
           <div className="adm-tt-wrap" style={{ marginBottom: 4 }}>
             <Link href="/" target="_blank" className="adm-btn" style={{
               display: 'flex', alignItems: 'center',
@@ -528,6 +738,7 @@ export default function AdminSidebar() {
             {collapsed && <div className="adm-tt">Voir le site</div>}
           </div>
 
+          {/* Theme toggle */}
           <div className="adm-tt-wrap">
             <button onClick={toggleTheme} className="adm-btn" style={{
               display: 'flex', alignItems: 'center',
@@ -539,8 +750,8 @@ export default function AdminSidebar() {
               fontFamily: 'inherit', width: '100%', textAlign: 'left',
             }}>
               {dark
-                ? <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ flexShrink: 0 }}><circle cx="12" cy="12" r="5" /><line x1="12" y1="1" x2="12" y2="3" /><line x1="12" y1="21" x2="12" y2="23" /><line x1="4.22" y1="4.22" x2="5.64" y2="5.64" /><line x1="18.36" y1="18.36" x2="19.78" y2="19.78" /><line x1="1" y1="12" x2="3" y2="12" /><line x1="21" y1="12" x2="23" y2="12" /></svg>
-                : <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ flexShrink: 0 }}><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" /></svg>
+                ? <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ flexShrink: 0 }}><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/></svg>
+                : <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ flexShrink: 0 }}><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
               }
               <span style={{ maxWidth: collapsed ? 0 : 120, overflow: 'hidden', whiteSpace: 'nowrap', opacity: collapsed ? 0 : 1, transition: 'max-width .28s cubic-bezier(.22,1,.36,1), opacity .18s' }}>
                 {dark ? 'Mode clair' : 'Mode sombre'}
@@ -550,6 +761,7 @@ export default function AdminSidebar() {
           </div>
         </div>
 
+        {/* ── User card ── */}
         <div ref={ddRef} style={{ padding: '10px', borderTop: `1px solid ${c.border}`, flexShrink: 0 }}>
           <div onClick={() => !collapsed && setDdOpen(v => !v)} className="adm-user-card" style={{
             display: 'flex', alignItems: 'center',
@@ -566,7 +778,6 @@ export default function AdminSidebar() {
             }}>
               {initials}
             </div>
-
             <div style={{
               minWidth: 0, flex: 1,
               maxWidth: collapsed ? 0 : 160, overflow: 'hidden',
@@ -580,7 +791,6 @@ export default function AdminSidebar() {
                 {session?.user?.email || 'Administrateur'}
               </div>
             </div>
-
             {!collapsed && (
               <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke={c.textMute} strokeWidth="2.4"
                 style={{ transition: 'transform .2s', transform: ddOpen ? 'rotate(180deg)' : 'none', flexShrink: 0 }}>
@@ -597,8 +807,8 @@ export default function AdminSidebar() {
               animation: 'adm-drop-in .18s cubic-bezier(.22,1,.36,1)',
             }}>
               {[
-                { href: '/admin/profile', label: 'Mon profil', icon: <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" /></svg> },
-                { href: '/admin/settings', label: 'Paramètres', icon: <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="3" /><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33h.01a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51h.01a1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82v.01a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" /></svg> },
+                { href: '/admin/profile', label: 'Mon profil', icon: <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg> },
+                { href: '/admin/settings', label: 'Paramètres', icon: <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33h.01a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51h.01a1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82v.01a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg> },
               ].map(item => (
                 <Link key={item.href} href={item.href} className="adm-dd-item" style={{
                   display: 'flex', alignItems: 'center', gap: 10,
@@ -612,21 +822,17 @@ export default function AdminSidebar() {
 
               <div style={{ height: 1, margin: '5px 4px', background: c.ddBorder }} />
 
-              <button
-                onClick={() => signOut({ callbackUrl: '/login' })}
-                className="adm-dd-item"
-                style={{
-                  display: 'flex', alignItems: 'center', gap: 10,
-                  padding: '9px 10px', borderRadius: 10,
-                  color: '#e05a5a', background: 'none', border: 'none',
-                  width: '100%', textAlign: 'left', cursor: 'pointer',
-                  fontFamily: 'inherit', fontSize: 13,
-                }}
-              >
+              <button onClick={() => signOut({ callbackUrl: '/login' })} className="adm-dd-item" style={{
+                display: 'flex', alignItems: 'center', gap: 10,
+                padding: '9px 10px', borderRadius: 10,
+                color: '#e05a5a', background: 'none', border: 'none',
+                width: '100%', textAlign: 'left', cursor: 'pointer',
+                fontFamily: 'inherit', fontSize: 13,
+              }}>
                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
-                  <polyline points="16 17 21 12 16 7" />
-                  <line x1="21" y1="12" x2="9" y2="12" />
+                  <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
+                  <polyline points="16 17 21 12 16 7"/>
+                  <line x1="21" y1="12" x2="9" y2="12"/>
                 </svg>
                 Déconnexion
               </button>

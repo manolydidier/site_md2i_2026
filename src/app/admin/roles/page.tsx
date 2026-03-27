@@ -4,7 +4,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { useTheme } from '@/app/context/ThemeContext'
 import api from '@/app/lib/axios'
-
+import { useSearchParams, useRouter } from 'next/navigation'
 // ─── Types ────────────────────────────────────────────────────────────────────
 type SpecialPermission = 'NONE' | 'FULL_ACCESS'
 
@@ -429,8 +429,19 @@ export default function RolesPage() {
   const [confirm,     setConfirm]     = useState<{ title?: string; message: string; danger?: boolean; confirmLabel?: string; onConfirm: () => void } | null>(null)
 const [accessDenied, setAccessDenied] = useState(false)
   // init editRole to null (not 'new')
+
+  const searchParams = useSearchParams()
+const router = useRouter()
+
   useEffect(() => { setEditRole(null) }, [])
 
+  useEffect(() => {
+  if (searchParams.get('action') === 'new') {
+    setEditRole(null)
+    setShowModal(true)
+    router.replace('/admin/roles', { scroll: false })
+  }
+}, [searchParams])
   // ── Charger rôles ─────────────────────────────────────────────────────────
   const fetchRoles = useCallback(async () => {
   setLoading(true)

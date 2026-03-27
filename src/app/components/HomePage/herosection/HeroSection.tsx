@@ -107,7 +107,7 @@ export default function Hero3D() {
         </div>
       </div>
 
-      <div ref={statsRef} className={styles.hero3dStats} />
+      {/* <div ref={statsRef} className={styles.hero3dStats} /> */}
       <div ref={stepsRef} className={styles.hero3dSteps} />
       <div ref={progressRef} className={styles.hero3dProgress} />
 
