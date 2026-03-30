@@ -171,14 +171,15 @@
   flex-direction: column;
   align-items: center;
   padding: 10px 20px;
+
 }
 
 .statValue {
   font-family: 'Syne', sans-serif;
-  font-size: 18px;
-  font-weight: 800;
+  font-size: 25px;
+  font-weight: 500;
   color: var(--accent);
-  line-height: 1;
+  /* line-height: 1; */
 }
 
 .statLabel {

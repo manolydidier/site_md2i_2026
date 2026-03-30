@@ -13,12 +13,12 @@ interface GrapesEditorProps {
   postId?: string;
 }
 
-type PanelTab = "blocks" | "layers" | "styles" | "traits" | "code";
+type PanelTab = "blocks" | "layers" | "code";
 type Device = "desktop" | "tablet" | "mobile";
 type SaveStatus = "idle" | "saving" | "saved" | "error";
 
-const ORANGE = "#EF9F27";
-const ORANGE_DARK = "#c97d15";
+const ORANGE = "#F28C18";
+const ORANGE_DARK = "#C96A08";
 
 const BASE_BLOCKS_CSS = `
 /* MD2I_BASE_BLOCKS */
@@ -119,7 +119,8 @@ export default function GrapesEditor({ mode, postId }: GrapesEditorProps) {
   const gjsRef = useRef<Editor | null>(null);
   const { dark } = useTheme();
 
-  const [activeTab, setActiveTab] = useState<PanelTab>("blocks");
+  const [activeTab, setActiveTab] = useState<PanelTab | null>(null);
+  const [inspectorTab, setInspectorTab] = useState<"styles" | "properties">("styles");
   const [device, setDevice] = useState<Device>("desktop");
   const [saveStatus, setSaveStatus] = useState<SaveStatus>("idle");
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -131,6 +132,12 @@ export default function GrapesEditor({ mode, postId }: GrapesEditorProps) {
   const [codeJs, setCodeJs] = useState("");
   const [codeNotice, setCodeNotice] = useState("");
   const [importMode, setImportMode] = useState<"append" | "replace">("append");
+  const [linkConfig, setLinkConfig] = useState({
+    href: "",
+    title: "",
+    targetBlank: false,
+    noFollow: false,
+  });
 
   const [pageSettings, setPageSettings] = useState({
     backgroundColor: dark ? "#0B0B0E" : "#FFFFFF",
@@ -153,25 +160,25 @@ export default function GrapesEditor({ mode, postId }: GrapesEditorProps) {
   });
 
   const colors = {
-    shell: dark ? "#0B0B0E" : "#FFFFFF",
-    shellSoft: dark ? "rgba(255,255,255,.04)" : "rgba(0,0,0,.03)",
-    shellSoft2: dark ? "rgba(255,255,255,.06)" : "rgba(0,0,0,.045)",
-    border: dark ? "rgba(255,255,255,.08)" : "rgba(0,0,0,.08)",
-    borderStrong: dark ? "rgba(255,255,255,.14)" : "rgba(0,0,0,.12)",
-    text: dark ? "#F2EFEA" : "#181818",
-    textSoft: dark ? "rgba(255,255,255,.56)" : "rgba(0,0,0,.58)",
-    textMute: dark ? "rgba(255,255,255,.34)" : "rgba(0,0,0,.34)",
-    hover: dark ? "rgba(255,255,255,.05)" : "rgba(0,0,0,.04)",
-    panel: dark ? "#131318" : "#FFFFFF",
-    panelSoft: dark ? "#15161B" : "#FBFBFC",
-    canvas: dark ? "#0F1014" : "#F5F7FA",
+    shell: dark ? "#151922" : "#FFFFFF",
+    shellSoft: dark ? "rgba(255,255,255,.07)" : "rgba(15,23,42,.04)",
+    shellSoft2: dark ? "rgba(255,255,255,.10)" : "rgba(15,23,42,.06)",
+    border: dark ? "rgba(255,255,255,.13)" : "rgba(15,23,42,.10)",
+    borderStrong: dark ? "rgba(255,255,255,.18)" : "rgba(15,23,42,.14)",
+    text: dark ? "#F5F7FB" : "#181818",
+    textSoft: dark ? "rgba(245,247,251,.78)" : "rgba(15,23,42,.62)",
+    textMute: dark ? "rgba(245,247,251,.50)" : "rgba(15,23,42,.40)",
+    hover: dark ? "rgba(255,255,255,.08)" : "rgba(15,23,42,.04)",
+    panel: dark ? "#1B202B" : "#FFFFFF",
+    panelSoft: dark ? "#232936" : "#FBFBFC",
+    canvas: dark ? "#10141C" : "#F5F7FA",
     success: "#22c55e",
     danger: "#ef4444",
     warning: "#fb923c",
     accent: ORANGE,
     accentDark: ORANGE_DARK,
-    accentSoft: "rgba(239,159,39,.10)",
-    accentSoftBorder: "rgba(239,159,39,.24)",
+    accentSoft: "rgba(242,140,24,.12)",
+    accentSoftBorder: "rgba(242,140,24,.28)",
   };
 
   const quickTextColors = dark
@@ -179,8 +186,34 @@ export default function GrapesEditor({ mode, postId }: GrapesEditorProps) {
     : ["#181818", "#475569", ORANGE, "#1D9E75", "#dc2626"];
 
   const quickBackgroundColors = dark
-    ? ["transparent", "#131318", "#1B1D24", "rgba(239,159,39,.10)", "#ffffff"]
-    : ["transparent", "#ffffff", "#f8fafc", "rgba(239,159,39,.10)", "#181818"];
+    ? ["transparent", "#1B202B", "#232936", "rgba(242,140,24,.12)", "#ffffff"]
+    : ["transparent", "#ffffff", "#f8fafc", "rgba(242,140,24,.10)", "#181818"];
+
+  const getSelectedComponent = () => gjsRef.current?.getSelected() as any;
+
+  const syncLinkConfigFromSelection = useCallback(() => {
+    const selected = getSelectedComponent();
+
+    if (!selected) {
+      setLinkConfig({
+        href: "",
+        title: "",
+        targetBlank: false,
+        noFollow: false,
+      });
+      return;
+    }
+
+    const attrs = (selected.getAttributes?.() || selected.get?.("attributes") || {}) as Record<string, string>;
+    const relValue = String(attrs.rel || "");
+
+    setLinkConfig({
+      href: String(attrs.href || ""),
+      title: String(attrs.title || ""),
+      targetBlank: attrs.target === "_blank",
+      noFollow: relValue.includes("nofollow"),
+    });
+  }, []);
 
   const appendBaseBlocksCss = useCallback((editor: Editor) => {
     const currentCss = editor.getCss() || "";
@@ -660,6 +693,7 @@ const readPageStyles = useCallback(() => {
         const selected = editor.getSelected() as any;
         if (!selected) {
           setSelectedName("Aucun élément");
+          syncLinkConfigFromSelection();
           return;
         }
 
@@ -671,6 +705,7 @@ const readPageStyles = useCallback(() => {
           "Élément";
 
         setSelectedName(String(label));
+        syncLinkConfigFromSelection();
       };
 
       editor.on("load", async () => {
@@ -700,13 +735,14 @@ const readPageStyles = useCallback(() => {
       gjsRef.current?.destroy();
       gjsRef.current = null;
     };
-  }, [appendBaseBlocksCss, loadPost, mode, readPageStyles, registerCustomBlocks]);
+  }, [appendBaseBlocksCss, loadPost, mode, readPageStyles, registerCustomBlocks, syncLinkConfigFromSelection]);
 
   const openTab = (tab: PanelTab) => {
   if (tab === "code") {
     syncCodeFieldsSilently();
   }
-  setActiveTab(tab);
+
+  setActiveTab((prev) => (prev === tab ? null : tab));
 };
 
   const switchDevice = (d: Device) => {
@@ -724,12 +760,12 @@ const readPageStyles = useCallback(() => {
     const selected = editor?.getSelected();
 
     if (!selected) {
-      setActiveTab("styles");
+      setInspectorTab("styles");
       return;
     }
 
     selected.addStyle(style);
-    setActiveTab("styles");
+    setInspectorTab("styles");
   };
 
   const clearQuickStyles = () => {
@@ -737,7 +773,7 @@ const readPageStyles = useCallback(() => {
     const selected = editor?.getSelected();
 
     if (!selected) {
-      setActiveTab("styles");
+      setInspectorTab("styles");
       return;
     }
 
@@ -749,6 +785,118 @@ const readPageStyles = useCallback(() => {
       "box-shadow": "",
       padding: "",
     });
+  };
+
+  const applyLinkToSelected = () => {
+    const selected = getSelectedComponent();
+
+    if (!selected) {
+      setInspectorTab("properties");
+      setCodeNotice("Sélectionne un élément avant d’ajouter un lien.");
+      setTimeout(() => setCodeNotice(""), 2400);
+      return;
+    }
+
+    const href = linkConfig.href.trim() || "#";
+    const originalTagName = String(selected.get?.("tagName") || "").toLowerCase();
+    const currentAttrs = {
+      ...(selected.getAttributes?.() || selected.get?.("attributes") || {}),
+    } as Record<string, string>;
+
+    const relParts = new Set<string>();
+    if (linkConfig.targetBlank) {
+      relParts.add("noopener");
+      relParts.add("noreferrer");
+    }
+    if (linkConfig.noFollow) {
+      relParts.add("nofollow");
+    }
+
+    const nextAttrs: Record<string, string> = {
+      ...currentAttrs,
+      href,
+    };
+
+    if (linkConfig.title.trim()) nextAttrs.title = linkConfig.title.trim();
+    else delete nextAttrs.title;
+
+    if (linkConfig.targetBlank) nextAttrs.target = "_blank";
+    else delete nextAttrs.target;
+
+    if (relParts.size) nextAttrs.rel = Array.from(relParts).join(" ");
+    else delete nextAttrs.rel;
+
+    selected.set?.("tagName", "a");
+    selected.addAttributes?.(nextAttrs);
+
+    const childCount =
+      typeof selected.components === "function" ? selected.components().length : 0;
+    const currentStyle = (selected.getStyle?.() || {}) as Record<string, string>;
+    const blockLikeTags = [
+      "div",
+      "section",
+      "article",
+      "main",
+      "aside",
+      "nav",
+      "header",
+      "footer",
+      "ul",
+      "ol",
+      "li",
+      "figure",
+      "button",
+      "picture",
+      "img",
+      "card",
+    ];
+
+    const nextStyle: Record<string, string> = {
+      cursor: "pointer",
+    };
+
+    if (!currentStyle.display && (blockLikeTags.includes(originalTagName) || childCount > 0)) {
+      nextStyle.display = originalTagName === "img" ? "inline-block" : "block";
+    }
+
+    selected.addStyle(nextStyle);
+
+    setInspectorTab("properties");
+    setCodeNotice("Sélection rendue cliquable.");
+    setTimeout(() => setCodeNotice(""), 2400);
+    syncLinkConfigFromSelection();
+  };
+
+  const removeLinkFromSelected = () => {
+    const selected = getSelectedComponent();
+
+    if (!selected) {
+      setInspectorTab("properties");
+      return;
+    }
+
+    const nextAttrs = {
+      ...(selected.getAttributes?.() || selected.get?.("attributes") || {}),
+    } as Record<string, string>;
+
+    delete nextAttrs.href;
+    delete nextAttrs.target;
+    delete nextAttrs.rel;
+
+    selected.addAttributes?.(nextAttrs);
+    selected.addStyle({
+      cursor: "",
+    });
+
+    setLinkConfig((prev) => ({
+      ...prev,
+      href: "",
+      targetBlank: false,
+      noFollow: false,
+    }));
+
+    setCodeNotice("Lien retiré de la sélection.");
+    setTimeout(() => setCodeNotice(""), 2400);
   };
 
   const upsertStoredJsComponent = (_js: string) => {
@@ -871,7 +1019,7 @@ body {
 }
 
 .demo-hero__content {
-  border: 1px solid rgba(255,255,255,.08);
+  border: 1px solid var(--ed-border);
   background: rgba(255,255,255,.04);
   border-radius: 28px;
   padding: 40px;
@@ -949,7 +1097,7 @@ body {
 }
 
 .demo-card {
-  border: 1px solid rgba(255,255,255,.08);
+  border: 1px solid var(--ed-border);
   background: rgba(255,255,255,.03);
   border-radius: 18px;
   padding: 20px;
@@ -1375,116 +1523,248 @@ document.querySelectorAll('.light-demo__btn').forEach((btn) => {
         </div>
       </header>
 
-      <div className="ed-body">
-        <aside className="ed-sidebar">
-          <nav className="ed-tabs">
+      <div className="ed-body ed-body--studio">
+        <aside className="ed-left-rail">
+          <div className="ed-left-rail__top">
+            <button
+              className="ed-rail-brand"
+              onClick={() => openTab("blocks")}
+              title="Ouvrir les blocs"
+              type="button"
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
+                <path d="M12 5v14M5 12h14" />
+              </svg>
+            </button>
+
+            <button
+              className={`ed-rail-code ${activeTab === "code" ? "is-active" : ""}`}
+              onClick={() => openTab("code")}
+              type="button"
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <polyline points="16 18 22 12 16 6" />
+                <polyline points="8 6 2 12 8 18" />
+              </svg>
+              <span>Code</span>
+            </button>
+          </div>
+
+          <div className="ed-rail-stack">
             {[
               {
                 id: "blocks",
+                title: "Blocs",
                 icon: (
-                  <svg
-                    width="16"
-                    height="16"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                  >
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                     <rect x="3" y="3" width="7" height="7" rx="1" />
                     <rect x="14" y="3" width="7" height="7" rx="1" />
                     <rect x="3" y="14" width="7" height="7" rx="1" />
                     <rect x="14" y="14" width="7" height="7" rx="1" />
                   </svg>
                 ),
-                label: "Blocs",
               },
               {
                 id: "layers",
+                title: "Calques",
                 icon: (
-                  <svg
-                    width="16"
-                    height="16"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                  >
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                     <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" />
                   </svg>
                 ),
-                label: "Calques",
               },
-              {
-                id: "styles",
-                icon: (
-                  <svg
-                    width="16"
-                    height="16"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                  >
-                    <circle cx="13.5" cy="6.5" r=".5" fill="currentColor" />
-                    <circle cx="17.5" cy="10.5" r=".5" fill="currentColor" />
-                    <circle cx="8.5" cy="7.5" r=".5" fill="currentColor" />
-                    <circle cx="6.5" cy="12.5" r=".5" fill="currentColor" />
-                    <path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.926 0 1.648-.746 1.648-1.688 0-.437-.18-.835-.437-1.125-.29-.289-.438-.652-.438-1.125a1.64 1.64 0 011.668-1.668h1.996c3.051 0 5.555-2.503 5.555-5.554C21.965 6.012 17.461 2 12 2z" />
-                  </svg>
-                ),
-                label: "Styles",
-              },
-              {
-                id: "traits",
-                icon: (
-                  <svg
-                    width="16"
-                    height="16"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                  >
-                    <path d="M12 20h9M16.5 3.5a2.121 2.121 0 013 3L7 19l-4 1 1-4L16.5 3.5z" />
-                  </svg>
-                ),
-                label: "Options",
-              },
-              {
-                id: "code",
-                icon: (
-                  <svg
-                    width="16"
-                    height="16"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                  >
-                    <polyline points="16 18 22 12 16 6" />
-                    <polyline points="8 6 2 12 8 18" />
-                  </svg>
-                ),
-                label: "Code",
-              },
-            ].map((t) => (
+            ].map((item) => (
               <button
-                key={t.id}
-                className={`ed-tab ${activeTab === t.id ? "is-active" : ""}`}
-                onClick={() => openTab(t.id as PanelTab)}
+                key={item.id}
+                type="button"
+                className={`ed-rail-btn ${activeTab === item.id ? "is-active" : ""}`}
+                onClick={() => openTab(item.id as PanelTab)}
+                title={item.title}
               >
-                {t.icon}
-                <span>{t.label}</span>
+                {item.icon}
               </button>
             ))}
-          </nav>
+          </div>
 
-          <div className="ed-panel-host">
-            <div id="ed-blocks" className={`ed-panel ${activeTab === "blocks" ? "is-visible" : ""}`} />
-            <div id="ed-layers" className={`ed-panel ${activeTab === "layers" ? "is-visible" : ""}`} />
+          <div className="ed-rail-bottom">
+            <button className="ed-rail-btn" type="button" onClick={() => setSidebarOpen(true)} title="Paramètres">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <circle cx="12" cy="12" r="3" />
+                <path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 01-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09a1.65 1.65 0 00-1-1.51 1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09a1.65 1.65 0 001.51-1 1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06a1.65 1.65 0 001.82.33h.09A1.65 1.65 0 0010 3.09V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06a1.65 1.65 0 00-.33 1.82v.09a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z" />
+              </svg>
+            </button>
+            <button className="ed-rail-btn" type="button" onClick={cleanHtml} title="Vider le canvas">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <polyline points="3 6 5 6 21 6" />
+                <path d="M19 6l-1 14H6L5 6m5 0V4h4v2" />
+              </svg>
+            </button>
+          </div>
+        </aside>
 
-            <div className={`ed-panel ${activeTab === "styles" ? "is-visible" : ""}`}>
-              <div className="ed-style-shell">
+        <aside className={`ed-left-drawer ${activeTab ? "is-open" : ""} ${activeTab === "code" ? "is-wide" : ""}`}>
+          <div className="ed-left-drawer__head">
+            <div>
+              <span className="ed-left-drawer__eyebrow">Studio</span>
+              <strong>
+                {activeTab === "blocks" && "Blocs"}
+                {activeTab === "layers" && "Calques"}
+                {activeTab === "code" && "Code personnalisé"}
+              </strong>
+            </div>
+
+            <button className="ed-left-drawer__close" type="button" onClick={() => setActiveTab(null)}>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M18 6L6 18M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+
+          <div id="ed-blocks" className={`ed-panel ${activeTab === "blocks" ? "is-visible" : ""}`} />
+          <div id="ed-layers" className={`ed-panel ${activeTab === "layers" ? "is-visible" : ""}`} />
+
+          <div className={`ed-panel ${activeTab === "code" ? "is-visible" : ""}`}>
+<div className="ed-code-shell">
+                <div className="ed-code-card">
+                  <div className="ed-code-head">
+                    <div>
+                      <h3 className="ed-code-title">Importer HTML / CSS / JS</h3>
+                      <p className="ed-code-subtitle">
+                        Collez votre code puis appliquez-le dans l’éditeur
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="ed-import-switch">
+                    <button
+                      type="button"
+                      className={`ed-switch-btn ${importMode === "append" ? "is-active" : ""}`}
+                      onClick={() => setImportMode("append")}
+                    >
+                      Ajouter
+                    </button>
+
+                    <button
+                      type="button"
+                      className={`ed-switch-btn ${importMode === "replace" ? "is-active" : ""}`}
+                      onClick={() => setImportMode("replace")}
+                    >
+                      Remplacer
+                    </button>
+                  </div>
+
+                  <div className="ed-code-field">
+                    <label>HTML</label>
+                    <textarea
+                      value={codeHtml}
+                      onChange={(e) => setCodeHtml(e.target.value)}
+                      placeholder="<section>...</section>"
+                      rows={9}
+                    />
+                  </div>
+
+                  <div className="ed-code-field">
+                    <label>CSS</label>
+                    <textarea
+                      value={codeCss}
+                      onChange={(e) => setCodeCss(e.target.value)}
+                      placeholder="body { margin: 0; }"
+                      rows={9}
+                    />
+                  </div>
+
+                  <div className="ed-code-field">
+                    <label>JS</label>
+                    <textarea
+                      value={codeJs}
+                      onChange={(e) => setCodeJs(e.target.value)}
+                      placeholder="document.querySelector(...)"
+                      rows={8}
+                    />
+                  </div>
+
+                  <div className="ed-code-actions">
+                    <button type="button" className="ed-code-primary" onClick={applyCodeBundle}>
+                      Appliquer le code
+                    </button>
+
+                    <button
+                      type="button"
+                      className="ed-code-secondary"
+                      onClick={() => {
+                        setCodeHtml("");
+                        setCodeCss("");
+                        setCodeJs("");
+                        setCodeNotice("");
+                      }}
+                    >
+                      Vider
+                    </button>
+                  </div>
+
+                  {codeNotice && <p className="ed-code-notice">{codeNotice}</p>}
+                </div>
+
+                <div className="ed-code-card">
+                  <div className="ed-code-head">
+                    <div>
+                      <h3 className="ed-code-title">Exemples rapides</h3>
+                      <p className="ed-code-subtitle">
+                        Chargez un exemple puis cliquez sur “Appliquer le code”
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="ed-example-list">
+                    <button type="button" className="ed-example-btn" onClick={fillExampleBodyDark}>
+                      Exemple body sombre
+                    </button>
+
+                    <button type="button" className="ed-example-btn" onClick={fillExampleBodyLight}>
+                      Exemple body clair
+                    </button>
+                  </div>
+
+                  <div className="ed-example-note">
+                    Astuce : mettez le mode sur <strong>Remplacer</strong> pour tester un template
+                    complet, ou sur <strong>Ajouter</strong> pour injecter seulement une section.
+                  </div>
+                </div>
+              </div>
+          </div>
+        </aside>
+
+        <main className="ed-canvas-area">
+          {!isReady && (
+            <div className="ed-splash">
+              <div className="ed-splash__ring" />
+              <p>Chargement de l'éditeur…</p>
+            </div>
+          )}
+          <div ref={mountRef} className="ed-mount" />
+        </main>
+
+        <aside className="ed-rightbar">
+          <div className="ed-rightbar__tabs">
+            <button
+              type="button"
+              className={`ed-rightbar__tab ${inspectorTab === "styles" ? "is-active" : ""}`}
+              onClick={() => setInspectorTab("styles")}
+            >
+              Styles
+            </button>
+            <button
+              type="button"
+              className={`ed-rightbar__tab ${inspectorTab === "properties" ? "is-active" : ""}`}
+              onClick={() => setInspectorTab("properties")}
+            >
+              Properties
+            </button>
+          </div>
+
+          <div className="ed-rightbar__body">
+            <div className={`ed-inspector-panel ${inspectorTab === "styles" ? "is-visible" : ""}`}>
+<div className="ed-style-shell">
                 <div className="ed-global-card">
                   <div className="ed-global-card__head">
                     <div>
@@ -1787,129 +2067,97 @@ document.querySelectorAll('.light-demo__btn').forEach((btn) => {
               </div>
             </div>
 
-            <div id="ed-traits" className={`ed-panel ${activeTab === "traits" ? "is-visible" : ""}`} />
+            <div className={`ed-inspector-panel ${inspectorTab === "properties" ? "is-visible" : ""}`}>
+              <div className="ed-props-shell">
+                <div className="ed-style-topcard">
+                  <div className="ed-style-topcard__row">
+                    <span className="ed-style-kicker">Sélection</span>
+                    <span className="ed-style-pill">{selectedName}</span>
+                  </div>
+                  <p className="ed-props-note">
+                    Propriétés, attributs et options du composant sélectionné.
+                  </p>
+                </div>
 
-            <div className={`ed-panel ${activeTab === "code" ? "is-visible" : ""}`}>
-              <div className="ed-code-shell">
-                <div className="ed-code-card">
-                  <div className="ed-code-head">
+                <div className="ed-link-card">
+                  <div className="ed-link-card__head">
                     <div>
-                      <h3 className="ed-code-title">Importer HTML / CSS / JS</h3>
-                      <p className="ed-code-subtitle">
-                        Collez votre code puis appliquez-le dans l’éditeur
+                      <h3 className="ed-link-card__title">Lien rapide</h3>
+                      <p className="ed-link-card__subtitle">
+                        Rends n’importe quel élément cliquable depuis ce panneau.
                       </p>
                     </div>
                   </div>
 
-                  <div className="ed-import-switch">
-                    <button
-                      type="button"
-                      className={`ed-switch-btn ${importMode === "append" ? "is-active" : ""}`}
-                      onClick={() => setImportMode("append")}
-                    >
-                      Ajouter
-                    </button>
-
-                    <button
-                      type="button"
-                      className={`ed-switch-btn ${importMode === "replace" ? "is-active" : ""}`}
-                      onClick={() => setImportMode("replace")}
-                    >
-                      Remplacer
-                    </button>
-                  </div>
-
-                  <div className="ed-code-field">
-                    <label>HTML</label>
-                    <textarea
-                      value={codeHtml}
-                      onChange={(e) => setCodeHtml(e.target.value)}
-                      placeholder="<section>...</section>"
-                      rows={9}
+                  <div className="ed-link-field">
+                    <label>URL / ancre</label>
+                    <input
+                      value={linkConfig.href}
+                      onChange={(e) =>
+                        setLinkConfig((prev) => ({ ...prev, href: e.target.value }))
+                      }
+                      placeholder="https://... ou #section"
                     />
                   </div>
 
-                  <div className="ed-code-field">
-                    <label>CSS</label>
-                    <textarea
-                      value={codeCss}
-                      onChange={(e) => setCodeCss(e.target.value)}
-                      placeholder="body { margin: 0; }"
-                      rows={9}
+                  <div className="ed-link-field">
+                    <label>Titre du lien</label>
+                    <input
+                      value={linkConfig.title}
+                      onChange={(e) =>
+                        setLinkConfig((prev) => ({ ...prev, title: e.target.value }))
+                      }
+                      placeholder="Texte d’aide facultatif"
                     />
                   </div>
 
-                  <div className="ed-code-field">
-                    <label>JS</label>
-                    <textarea
-                      value={codeJs}
-                      onChange={(e) => setCodeJs(e.target.value)}
-                      placeholder="document.querySelector(...)"
-                      rows={8}
+                  <label className="ed-link-check">
+                    <input
+                      type="checkbox"
+                      checked={linkConfig.targetBlank}
+                      onChange={(e) =>
+                        setLinkConfig((prev) => ({
+                          ...prev,
+                          targetBlank: e.target.checked,
+                        }))
+                      }
                     />
+                    <span>Ouvrir dans un nouvel onglet</span>
+                  </label>
+
+                  <label className="ed-link-check">
+                    <input
+                      type="checkbox"
+                      checked={linkConfig.noFollow}
+                      onChange={(e) =>
+                        setLinkConfig((prev) => ({
+                          ...prev,
+                          noFollow: e.target.checked,
+                        }))
+                      }
+                    />
+                    <span>Ajouter <code>nofollow</code></span>
+                  </label>
+
+                  <div className="ed-link-actions">
+                    <button type="button" className="ed-link-primary" onClick={applyLinkToSelected}>
+                      Rendre cliquable
+                    </button>
+                    <button type="button" className="ed-link-secondary" onClick={removeLinkFromSelected}>
+                      Retirer le lien
+                    </button>
                   </div>
 
-                  <div className="ed-code-actions">
-                    <button type="button" className="ed-code-primary" onClick={applyCodeBundle}>
-                      Appliquer le code
-                    </button>
-
-                    <button
-                      type="button"
-                      className="ed-code-secondary"
-                      onClick={() => {
-                        setCodeHtml("");
-                        setCodeCss("");
-                        setCodeJs("");
-                        setCodeNotice("");
-                      }}
-                    >
-                      Vider
-                    </button>
-                  </div>
-
-                  {codeNotice && <p className="ed-code-notice">{codeNotice}</p>}
+                  <p className="ed-link-help">
+                    Sélectionne un bloc, une image, un bouton, un texte ou une carte, puis applique le lien.
+                  </p>
                 </div>
 
-                <div className="ed-code-card">
-                  <div className="ed-code-head">
-                    <div>
-                      <h3 className="ed-code-title">Exemples rapides</h3>
-                      <p className="ed-code-subtitle">
-                        Chargez un exemple puis cliquez sur “Appliquer le code”
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="ed-example-list">
-                    <button type="button" className="ed-example-btn" onClick={fillExampleBodyDark}>
-                      Exemple body sombre
-                    </button>
-
-                    <button type="button" className="ed-example-btn" onClick={fillExampleBodyLight}>
-                      Exemple body clair
-                    </button>
-                  </div>
-
-                  <div className="ed-example-note">
-                    Astuce : mettez le mode sur <strong>Remplacer</strong> pour tester un template
-                    complet, ou sur <strong>Ajouter</strong> pour injecter seulement une section.
-                  </div>
-                </div>
+                <div id="ed-traits" className="ed-props-host" />
               </div>
             </div>
           </div>
         </aside>
-
-        <main className="ed-canvas-area">
-          {!isReady && (
-            <div className="ed-splash">
-              <div className="ed-splash__ring" />
-              <p>Chargement de l'éditeur…</p>
-            </div>
-          )}
-          <div ref={mountRef} className="ed-mount" />
-        </main>
       </div>
 
       <PostMetaSidebar
@@ -1981,18 +2229,18 @@ document.querySelectorAll('.light-demo__btn').forEach((btn) => {
           height: 100vh;
           overflow: hidden;
           background: ${dark
-            ? "radial-gradient(circle at top left, rgba(239,159,39,.08), transparent 30%), #0B0B0E"
-            : "radial-gradient(circle at top left, rgba(239,159,39,.06), transparent 28%), #F7F8FA"};
+            ? "radial-gradient(circle at top left, rgba(242,140,24,.12), transparent 30%), #151922"
+            : "linear-gradient(180deg, #FFF7EE 0%, #FFFDF9 16%, #F7F8FA 100%)"};
         }
 
         .ed-topbar {
           display: flex;
           align-items: center;
           gap: 12px;
-          padding: 0 16px;
-          height: 60px;
-          min-height: 60px;
-          background: ${dark ? "rgba(11,11,14,.92)" : "rgba(255,255,255,.90)"};
+          padding: 0 18px;
+          height: 68px;
+          min-height: 68px;
+          background: ${dark ? "#1B202B" : "rgba(255,255,255,.96)"};
           border-bottom: 1px solid var(--ed-border);
           backdrop-filter: blur(12px);
           z-index: 60;
@@ -2045,8 +2293,8 @@ document.querySelectorAll('.light-demo__btn').forEach((btn) => {
         }
 
         .ed-title-input {
-          background: var(--ed-shell-soft);
-          border: 1px solid transparent;
+          background: ${dark ? "rgba(255,255,255,.05)" : "#ffffff"};
+          border: 1px solid var(--ed-border);
           outline: none;
           font-family: var(--font);
           font-size: 14px;
@@ -2079,7 +2327,7 @@ document.querySelectorAll('.light-demo__btn').forEach((btn) => {
         }
 
         .ed-badge {
-          font-size: 10px;
+          font-size: 11px;
           font-weight: 700;
           letter-spacing: 0.06em;
           text-transform: uppercase;
@@ -2176,7 +2424,7 @@ document.querySelectorAll('.light-demo__btn').forEach((btn) => {
           display: flex;
           align-items: center;
           gap: 6px;
-          padding: 9px 14px;
+          padding: 10px 16px;
           border-radius: 12px;
           font-family: var(--font);
           font-size: 12px;
@@ -2218,15 +2466,15 @@ document.querySelectorAll('.light-demo__btn').forEach((btn) => {
 
         .ed-btn--primary {
           background: linear-gradient(135deg, var(--ed-accent), var(--ed-accent-dark));
-          border-color: transparent;
+          border-color: rgba(255,255,255,.08);
           color: #fff;
           font-weight: 700;
-          box-shadow: 0 10px 24px rgba(239,159,39,.24);
+          box-shadow: 0 14px 30px rgba(242,140,24,.28);
         }
 
         .ed-btn--primary:hover:not(:disabled) {
           transform: translateY(-1px);
-          box-shadow: 0 14px 28px rgba(239,159,39,.30);
+          box-shadow: 0 18px 36px rgba(242,140,24,.32);
         }
 
         .ed-body {
@@ -2236,9 +2484,9 @@ document.querySelectorAll('.light-demo__btn').forEach((btn) => {
         }
 
         .ed-sidebar {
-          width: 320px;
-          min-width: 320px;
-          background: ${dark ? "rgba(11,11,14,.92)" : "rgba(255,255,255,.88)"};
+          width: 360px;
+          min-width: 360px;
+          background: ${dark ? "#1B202B" : "rgba(255,255,255,.97)"};
           border-right: 1px solid var(--ed-border);
           display: flex;
           flex-direction: column;
@@ -2250,24 +2498,27 @@ document.querySelectorAll('.light-demo__btn').forEach((btn) => {
           display: flex;
           border-bottom: 1px solid var(--ed-border);
           flex-shrink: 0;
-          padding: 8px;
-          gap: 6px;
-          background: ${dark ? "rgba(255,255,255,.02)" : "rgba(255,255,255,.65)"};
+          padding: 10px;
+          gap: 8px;
+          display: grid;
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+          background: transparent;
         }
 
         .ed-tab {
           flex: 1;
           display: flex;
-          flex-direction: column;
+          flex-direction: row;
           align-items: center;
-          gap: 4px;
-          padding: 10px 4px 9px;
+          justify-content: flex-start;
+          gap: 10px;
+          padding: 12px 14px;
           background: transparent;
           border: 1px solid transparent;
           border-radius: 12px;
           color: var(--ed-text-soft);
           font-family: var(--font);
-          font-size: 10px;
+          font-size: 11px;
           font-weight: 700;
           letter-spacing: 0.04em;
           text-transform: uppercase;
@@ -2311,12 +2562,18 @@ document.querySelectorAll('.light-demo__btn').forEach((btn) => {
           flex: 1;
           overflow: hidden;
           position: relative;
-          background: var(--ed-canvas);
+          background: linear-gradient(180deg, rgba(242,140,24,.06), transparent 30%), var(--ed-canvas);
+          padding: 18px;
         }
 
         .ed-mount {
           width: 100%;
           height: 100%;
+          border-radius: 26px;
+          overflow: hidden;
+          box-shadow: ${dark ? "0 26px 60px rgba(0,0,0,.34)" : "0 26px 60px rgba(15,23,42,.10)"};
+          border: 1px solid ${dark ? "rgba(255,255,255,.06)" : "rgba(15,23,42,.08)"};
+          background: ${dark ? "#111318" : "#ffffff"};
         }
 
         .ed-splash {
@@ -2324,8 +2581,9 @@ document.querySelectorAll('.light-demo__btn').forEach((btn) => {
           inset: 0;
           background: ${dark ? "rgba(11,11,14,.82)" : "rgba(245,247,251,.88)"};
           display: flex;
-          flex-direction: column;
+          flex-direction: row;
           align-items: center;
+          justify-content: flex-start;
           justify-content: center;
           z-index: 50;
           gap: 14px;
@@ -2344,7 +2602,7 @@ document.querySelectorAll('.light-demo__btn').forEach((btn) => {
         }
 
         .ed-style-shell {
-          padding: 12px 10px 16px;
+          padding: 14px 12px 18px;
           display: flex;
           flex-direction: column;
           gap: 12px;
@@ -2361,7 +2619,7 @@ document.querySelectorAll('.light-demo__btn').forEach((btn) => {
         }
 
         .ed-style-topcard {
-          padding: 12px;
+          padding: 16px;
         }
 
         .ed-style-topcard__row {
@@ -2373,7 +2631,7 @@ document.querySelectorAll('.light-demo__btn').forEach((btn) => {
         }
 
         .ed-style-kicker {
-          font-size: 10px;
+          font-size: 11px;
           font-weight: 800;
           letter-spacing: 0.08em;
           text-transform: uppercase;
@@ -2403,7 +2661,7 @@ document.querySelectorAll('.light-demo__btn').forEach((btn) => {
           align-items: center;
           justify-content: space-between;
           gap: 10px;
-          padding: 12px 12px 8px;
+          padding: 14px 14px 10px;
           color: var(--ed-text);
           font-size: 12px;
           font-weight: 700;
@@ -2473,7 +2731,7 @@ document.querySelectorAll('.light-demo__btn').forEach((btn) => {
           background: var(--ed-shell-soft);
           color: var(--ed-text);
           border-radius: 12px;
-          padding: 10px 12px;
+          padding: 11px 14px;
           cursor: pointer;
           font-size: 12px;
           font-weight: 600;
@@ -2503,7 +2761,7 @@ document.querySelectorAll('.light-demo__btn').forEach((btn) => {
           align-items: flex-start;
           justify-content: space-between;
           gap: 12px;
-          padding: 12px;
+          padding: 16px;
           border-bottom: 1px solid var(--ed-border);
         }
 
@@ -2550,7 +2808,7 @@ document.querySelectorAll('.light-demo__btn').forEach((btn) => {
           background: var(--ed-shell-soft);
           color: var(--ed-text);
           border-radius: 12px;
-          padding: 9px 12px;
+          padding: 11px 16px;
           cursor: pointer;
           font-size: 12px;
           font-weight: 700;
@@ -2567,7 +2825,7 @@ document.querySelectorAll('.light-demo__btn').forEach((btn) => {
           display: grid;
           grid-template-columns: 1fr;
           gap: 12px;
-          padding: 12px;
+          padding: 16px;
         }
 
         .ed-global-field {
@@ -2611,7 +2869,7 @@ document.querySelectorAll('.light-demo__btn').forEach((btn) => {
           background: var(--ed-shell-soft);
           color: var(--ed-text);
           border-radius: 12px;
-          padding: 10px 12px;
+          padding: 11px 14px;
           font-family: var(--font);
           font-size: 12px;
           outline: none;
@@ -2643,7 +2901,7 @@ document.querySelectorAll('.light-demo__btn').forEach((btn) => {
         }
 
         .ed-code-shell {
-          padding: 12px 10px 18px;
+          padding: 14px 12px 20px;
           display: flex;
           flex-direction: column;
           gap: 12px;
@@ -2653,7 +2911,7 @@ document.querySelectorAll('.light-demo__btn').forEach((btn) => {
           background: var(--ed-panel);
           border: 1px solid var(--ed-border);
           border-radius: 18px;
-          padding: 14px;
+          padding: 16px;
           box-shadow: var(--shadow-sm);
         }
 
@@ -2691,7 +2949,7 @@ document.querySelectorAll('.light-demo__btn').forEach((btn) => {
           background: var(--ed-shell-soft);
           color: var(--ed-text-soft);
           border-radius: 12px;
-          padding: 10px 12px;
+          padding: 11px 14px;
           cursor: pointer;
           font-size: 12px;
           font-weight: 700;
@@ -2750,7 +3008,7 @@ document.querySelectorAll('.light-demo__btn').forEach((btn) => {
         .ed-code-secondary,
         .ed-example-btn {
           border-radius: 12px;
-          padding: 10px 14px;
+          padding: 11px 16px;
           font-size: 12px;
           font-weight: 700;
           cursor: pointer;
@@ -2761,7 +3019,7 @@ document.querySelectorAll('.light-demo__btn').forEach((btn) => {
           border: 1px solid transparent;
           background: linear-gradient(135deg, var(--ed-accent), var(--ed-accent-dark));
           color: #fff;
-          box-shadow: 0 10px 24px rgba(239,159,39,.24);
+          box-shadow: 0 14px 30px rgba(242,140,24,.28);
         }
 
         .ed-code-primary:hover {
@@ -2815,16 +3073,17 @@ document.querySelectorAll('.light-demo__btn').forEach((btn) => {
         }
 
         .gjs-cv-canvas {
-          background: ${dark ? "#0F1014" : "#ffffff"} !important;
+          background: ${dark ? "#12141A" : "#ffffff"} !important;
           width: 100% !important;
           height: 100% !important;
           top: 0 !important;
-          box-shadow: inset 0 0 0 1px ${dark ? "rgba(255,255,255,.06)" : "rgba(148,163,184,.16)"};
+          box-shadow: inset 0 0 0 1px ${dark ? "rgba(255,255,255,.06)" : "rgba(148,163,184,.12)"};
+          border-radius: 24px !important;
         }
 
         .gjs-frame-wrapper,
         .gjs-cv-canvas iframe {
-          background: ${dark ? "#0F1014" : "#fff"} !important;
+          background: ${dark ? "#111722" : "#fff"} !important;
         }
 
         .gjs-block-categories {
@@ -2855,7 +3114,7 @@ document.querySelectorAll('.light-demo__btn').forEach((btn) => {
 
         .gjs-blocks-c {
           display: grid !important;
-          grid-template-columns: repeat(2, 1fr) !important;
+          grid-template-columns: 1fr !important;
           gap: 10px !important;
           padding: 12px !important;
           background: transparent !important;
@@ -2865,8 +3124,8 @@ document.querySelectorAll('.light-demo__btn').forEach((btn) => {
           background: var(--ed-panel) !important;
           border: 1px solid var(--ed-border) !important;
           border-radius: 16px !important;
-          padding: 16px 10px 12px !important;
-          text-align: center !important;
+          padding: 16px 14px !important;
+          text-align: left !important;
           font-family: var(--font) !important;
           font-size: 11px !important;
           color: var(--ed-text-soft) !important;
@@ -2875,8 +3134,9 @@ document.querySelectorAll('.light-demo__btn').forEach((btn) => {
           min-height: 78px !important;
           display: flex !important;
           flex-direction: column !important;
-          align-items: center !important;
+          align-items: flex-start !important;
           justify-content: center !important;
+          min-height: 84px !important;
           gap: 8px !important;
           box-shadow: var(--shadow-sm) !important;
         }
@@ -3156,6 +3416,484 @@ document.querySelectorAll('.light-demo__btn').forEach((btn) => {
             transform: rotate(360deg);
           }
         }
+
+
+        .ed-topbar {
+          height: 46px;
+          min-height: 46px;
+          padding: 0 12px;
+          background: ${dark ? "#181D27" : "#FFFFFF"};
+          border-bottom: 1px solid var(--ed-border);
+        }
+
+        .ed-topbar__left {
+          gap: 8px;
+          max-width: 36%;
+        }
+
+        .ed-title-input {
+          max-width: 220px;
+          background: ${dark ? "#202634" : "#FFFFFF"};
+          border-color: var(--ed-border);
+          border-radius: 8px;
+          height: 32px;
+          padding: 0 10px;
+        }
+
+        .ed-badge {
+          border-radius: 8px;
+          padding: 4px 8px;
+        }
+
+        .ed-device-row {
+          padding: 0;
+          border-radius: 8px;
+          background: transparent;
+          border: none;
+          box-shadow: none;
+          gap: 0;
+        }
+
+        .ed-device-btn {
+          width: 34px;
+          height: 30px;
+          border-radius: 8px;
+          border: 1px solid var(--ed-border);
+          background: ${dark ? "#202634" : "#F7F8FC"};
+        }
+
+        .ed-body--studio {
+          display: grid;
+          grid-template-columns: 56px auto 1fr 320px;
+          height: calc(100vh - 46px);
+        }
+
+        .ed-left-rail {
+          background: ${dark ? "#171B24" : "#F7F8FC"};
+          border-right: 1px solid rgba(255,255,255,.08);
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: space-between;
+          padding: 8px 6px 10px;
+          gap: 12px;
+        }
+
+        .ed-left-rail__top,
+        .ed-rail-stack,
+        .ed-rail-bottom {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          gap: 10px;
+          width: 100%;
+        }
+
+        .ed-rail-brand,
+        .ed-rail-btn {
+          width: 38px;
+          height: 38px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          border-radius: 10px;
+          border: 1px solid var(--ed-border);
+          background: ${dark ? "#202634" : "#FFFFFF"};
+          color: var(--ed-text-soft);
+          cursor: pointer;
+          transition: all .16s ease;
+        }
+
+        .ed-rail-brand:hover,
+        .ed-rail-btn:hover,
+        .ed-rail-code:hover {
+          border-color: rgba(242,140,24,.4);
+          color: #fff;
+          background: rgba(242,140,24,.12);
+          box-shadow: 0 0 0 3px rgba(242,140,24,.08);
+        }
+
+        .ed-rail-btn.is-active,
+        .ed-rail-code.is-active {
+          background: linear-gradient(180deg, rgba(242,140,24,.24), rgba(242,140,24,.10));
+          color: #fff;
+          border-color: rgba(242,140,24,.48);
+        }
+
+        .ed-rail-code {
+          width: 38px;
+          min-height: 38px;
+          padding: 0;
+          overflow: hidden;
+          border-radius: 10px;
+          border: 1px solid var(--ed-border);
+          background: ${dark ? "#202634" : "#FFFFFF"};
+          color: var(--ed-text-soft);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          cursor: pointer;
+          transition: all .16s ease;
+        }
+
+        .ed-rail-code span {
+          display: none;
+        }
+
+        .ed-left-drawer {
+          width: 0;
+          min-width: 0;
+          overflow: hidden;
+          background: var(--ed-panel);
+          border-right: 1px solid rgba(255,255,255,.08);
+          transition: width .18s ease, min-width .18s ease;
+        }
+
+        .ed-left-drawer.is-open {
+          width: 300px;
+          min-width: 300px;
+        }
+
+        .ed-left-drawer.is-wide {
+          width: 430px;
+          min-width: 430px;
+        }
+
+        .ed-left-drawer__head {
+          height: 54px;
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          padding: 0 14px;
+          border-bottom: 1px solid var(--ed-border);
+          background: ${dark ? "#202634" : "#F7F8FC"};
+        }
+
+        .ed-left-drawer__eyebrow {
+          display: block;
+          font-size: 10px;
+          line-height: 1;
+          text-transform: uppercase;
+          letter-spacing: .08em;
+          color: var(--ed-text-mute);
+          margin-bottom: 6px;
+        }
+
+        .ed-left-drawer__head strong {
+          font-size: 13px;
+          color: var(--ed-text);
+        }
+
+        .ed-left-drawer__close {
+          width: 30px;
+          height: 30px;
+          border-radius: 8px;
+          border: 1px solid var(--ed-border);
+          background: ${dark ? "#171D27" : "#FFFFFF"};
+          color: var(--ed-text-soft);
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          cursor: pointer;
+        }
+
+        .ed-rightbar {
+          width: 320px;
+          min-width: 320px;
+          background: var(--ed-panel);
+          border-left: 1px solid rgba(255,255,255,.08);
+          display: flex;
+          flex-direction: column;
+          overflow: hidden;
+        }
+
+        .ed-rightbar__tabs {
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          background: ${dark ? "#171D27" : "#FFFFFF"};
+          border-bottom: 1px solid var(--ed-border);
+        }
+
+        .ed-rightbar__tab {
+          height: 38px;
+          border: none;
+          border-bottom: 2px solid transparent;
+          background: transparent;
+          color: var(--ed-text-soft);
+          font-size: 13px;
+          font-weight: 600;
+          cursor: pointer;
+        }
+
+        .ed-rightbar__tab.is-active {
+          color: var(--ed-text);
+          border-bottom-color: var(--ed-accent);
+          background: linear-gradient(180deg, rgba(242,140,24,.10), transparent);
+        }
+
+        .ed-rightbar__body {
+          flex: 1;
+          overflow-y: auto;
+        }
+
+        .ed-inspector-panel {
+          display: none;
+          min-height: 100%;
+        }
+
+        .ed-inspector-panel.is-visible {
+          display: block;
+        }
+
+        .ed-style-shell {
+          padding: 10px;
+          gap: 10px;
+        }
+
+        .ed-props-shell {
+          padding: 10px;
+          display: flex;
+          flex-direction: column;
+          gap: 10px;
+        }
+
+        .ed-props-host {
+          min-height: 240px;
+        }
+
+        .ed-props-note {
+          margin-top: 8px;
+          font-size: 12px;
+          line-height: 1.55;
+          color: var(--ed-text-soft);
+        }
+
+        .ed-link-card {
+          background: var(--ed-panel);
+          border: 1px solid var(--ed-border);
+          border-radius: 12px;
+          padding: 14px;
+          box-shadow: var(--shadow-sm);
+        }
+
+        .ed-link-card__head {
+          margin-bottom: 12px;
+        }
+
+        .ed-link-card__title {
+          font-size: 14px;
+          font-weight: 700;
+          color: var(--ed-text);
+        }
+
+        .ed-link-card__subtitle {
+          margin-top: 4px;
+          font-size: 12px;
+          line-height: 1.55;
+          color: var(--ed-text-soft);
+        }
+
+        .ed-link-field {
+          display: flex;
+          flex-direction: column;
+          gap: 7px;
+          margin-bottom: 12px;
+        }
+
+        .ed-link-field label {
+          font-size: 11px;
+          font-weight: 700;
+          letter-spacing: .08em;
+          text-transform: uppercase;
+          color: var(--ed-text-mute);
+        }
+
+        .ed-link-field input {
+          width: 100%;
+          min-height: 38px;
+          border-radius: 10px;
+          border: 1px solid var(--ed-border);
+          background: ${dark ? "#171D27" : "#FFFFFF"};
+          color: var(--ed-text);
+          font-size: 12px;
+          padding: 0 12px;
+          outline: none;
+        }
+
+        .ed-link-field input:focus {
+          border-color: var(--ed-accent-soft-border);
+          box-shadow: 0 0 0 4px rgba(242,140,24,.10);
+        }
+
+        .ed-link-check {
+          display: flex;
+          align-items: center;
+          gap: 10px;
+          margin-bottom: 10px;
+          font-size: 12px;
+          color: var(--ed-text-soft);
+          cursor: pointer;
+        }
+
+        .ed-link-check input {
+          accent-color: var(--ed-accent);
+        }
+
+        .ed-link-check code {
+          font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+          font-size: 11px;
+          color: var(--ed-accent);
+        }
+
+        .ed-link-actions {
+          display: flex;
+          gap: 10px;
+          flex-wrap: wrap;
+          margin-top: 14px;
+        }
+
+        .ed-link-primary,
+        .ed-link-secondary {
+          border-radius: 10px;
+          padding: 10px 12px;
+          font-size: 12px;
+          font-weight: 700;
+          cursor: pointer;
+          transition: all .15s ease;
+        }
+
+        .ed-link-primary {
+          border: 1px solid transparent;
+          color: #fff;
+          background: linear-gradient(135deg, var(--ed-accent), var(--ed-accent-dark));
+          box-shadow: 0 10px 22px rgba(242,140,24,.22);
+        }
+
+        .ed-link-secondary {
+          border: 1px solid var(--ed-border);
+          background: var(--ed-shell-soft);
+          color: var(--ed-text);
+        }
+
+        .ed-link-secondary:hover,
+        .ed-link-primary:hover {
+          transform: translateY(-1px);
+        }
+
+        .ed-link-help {
+          margin-top: 12px;
+          font-size: 12px;
+          line-height: 1.55;
+          color: var(--ed-text-soft);
+        }
+
+        .ed-canvas-area {
+          background: ${dark ? "#111722" : "#EEF2F7"};
+          position: relative;
+        }
+
+        .gjs-cv-canvas {
+          background: ${dark ? "#1D2430" : "#E9EEF5"} !important;
+          box-shadow: inset 0 0 0 1px rgba(255,255,255,.04);
+        }
+
+        .gjs-frame-wrapper,
+        .gjs-cv-canvas iframe {
+          background: ${dark ? "#ffffff" : "#f6f4ef"} !important;
+        }
+
+        .gjs-blocks-c {
+          grid-template-columns: 1fr !important;
+          gap: 8px !important;
+          padding: 12px !important;
+        }
+
+        .gjs-block {
+          min-height: 62px !important;
+          border-radius: 12px !important;
+          align-items: flex-start !important;
+          text-align: left !important;
+          padding: 12px !important;
+        }
+
+        .gjs-block-label {
+          font-size: 12px !important;
+        }
+
+        .gjs-layer {
+          font-size: 12px !important;
+        }
+
+        .gjs-sm-sector,
+        .gjs-trt-trait,
+        .gjs-layer,
+        .ed-style-topcard,
+        .ed-quick-card,
+        .ed-global-card,
+        .ed-code-card {
+          border-radius: 12px !important;
+        }
+
+        .gjs-sm-sector-title,
+        .gjs-block-category .gjs-title {
+          font-size: 11px !important;
+          padding: 11px 12px !important;
+        }
+
+        .gjs-sm-property,
+        .gjs-trt-trait {
+          padding: 10px 10px !important;
+        }
+
+        .gjs-field,
+        .gjs-sm-input-holder {
+          min-height: 34px !important;
+          border-radius: 8px !important;
+          background: ${dark ? "#171D27" : "#FFFFFF"} !important;
+          border-color: var(--ed-border) !important;
+        }
+
+        .gjs-field input,
+        .gjs-field select,
+        .gjs-field textarea,
+        .gjs-sm-input-holder input,
+        .gjs-sm-input-holder select,
+        .gjs-sm-input-holder textarea {
+          font-size: 12px !important;
+          padding: 7px 9px !important;
+        }
+
+        .ed-global-card__head,
+        .ed-quick-head {
+          padding: 10px 12px 8px;
+        }
+
+        .ed-global-grid {
+          gap: 10px;
+          padding: 10px;
+        }
+
+        @media (max-width: 1280px) {
+          .ed-body--studio {
+            grid-template-columns: 56px auto 1fr 290px;
+          }
+
+          .ed-rightbar {
+            width: 290px;
+            min-width: 290px;
+          }
+        }
+
+        @media (max-width: 1120px) {
+          .ed-rightbar {
+            display: none;
+          }
+
+          .ed-body--studio {
+            grid-template-columns: 56px auto 1fr;
+          }
+        }
+
       `}</style>
     </div>
   );

@@ -88,7 +88,13 @@ export default function PostDetailClient() {
   }, [articleId])
 
   useEffect(() => {
-    if (!mountRef.current || !post || gjsRef.current) return
+    if (!mountRef.current || !post) return
+    
+    // Nettoyer l'ancien éditeur s'il existe
+    if (gjsRef.current) {
+      gjsRef.current.destroy()
+      gjsRef.current = null
+    }
 
     const pageBg = dark ? '#020a1a' : '#ffffff'
 
@@ -106,11 +112,95 @@ export default function PostDetailClient() {
         ],
       },
       protectedCss: '',
+      // Désactiver l'édition
+      editable: false,
+      // Désactiver tous les composants interactifs
+      components: {
+        defaults: {
+          editable: false,
+          draggable: false,
+          selectable: false,
+          hoverable: false,
+          highlightable: false,
+          copyable: false,
+          removable: false,
+        }
+      },
+      // Désactiver les commandes d'édition
+      commands: {
+        defaults: [
+          { id: 'core:component:delete', run: () => {} },
+          { id: 'core:component:copy', run: () => {} },
+          { id: 'core:component:paste', run: () => {} },
+          { id: 'core:component:duplicate', run: () => {} },
+          { id: 'core:component:move', run: () => {} },
+          { id: 'core:component:select', run: () => {} },
+          { id: 'core:component:style', run: () => {} },
+          { id: 'core:component:enter', run: () => {} },
+          { id: 'core:component:exit', run: () => {} },
+          { id: 'core:component:remove', run: () => {} },
+          { id: 'core:component:create', run: () => {} },
+          { id: 'core:component:add', run: () => {} },
+          { id: 'core:component:clone', run: () => {} },
+        ]
+      },
+      // Désactiver le drag and drop
+      dragManager: {
+        disable: true,
+      },
+      // Désactiver les sélecteurs
+      selectorManager: {
+        component: null,
+      },
+      // Désactiver les traits
+      traitManager: {
+        disable: true,
+      },
+      // Désactiver le style manager
+      styleManager: {
+        disable: true,
+      },
+      // Désactiver le layer manager
+      layerManager: {
+        disable: true,
+      },
+      // Désactiver le block manager
+      blockManager: {
+        disable: true,
+      },
+      // Désactiver le device manager
+      deviceManager: {
+        disable: true,
+      },
+      allowScripts: true,
     })
 
     gjsRef.current = editor
 
+    // Désactiver la sélection de composants
+    editor.on('component:selected', () => {
+      editor.select(null)
+    })
+
+    // Désactiver le hover
+    editor.on('component:mouseover', (component) => {
+      editor.getHighlighter().remove()
+    })
+
+    // Désactiver tous les outils d'édition
     editor.on('load', () => {
+      // Désactiver toutes les commandes
+      const commands = editor.Commands.getAll()
+      Object.keys(commands).forEach(cmdId => {
+        if (cmdId.startsWith('core:')) {
+          editor.Commands.add(cmdId, {
+            run: () => {},
+            stop: () => {},
+          })
+        }
+      })
+
+      // Charger le contenu
       if (post.gjsComponents) {
         editor.setComponents(post.gjsComponents as any)
       } else if (post.gjsHtml) {
@@ -134,83 +224,210 @@ export default function PostDetailClient() {
         })
       }
 
-      const canvasDoc = editor.Canvas.getDocument()
-      if (canvasDoc) {
-        const oldPatch = canvasDoc.getElementById('post-first-section-fix')
-        oldPatch?.remove()
-
-        const style = canvasDoc.createElement('style')
-        style.id = 'post-first-section-fix'
-        style.innerHTML = `
-          html, body {
-            margin: 0 !important;
-            padding: 0 !important;
-            min-height: auto !important;
-            height: auto !important;
-            background: ${pageBg} !important;
+      // Désactiver tous les composants
+      const allComponents = editor.getComponents()
+      const disableComponent = (component: any) => {
+        if (component && component.set) {
+          component.set('editable', false)
+          component.set('draggable', false)
+          component.set('selectable', false)
+          component.set('hoverable', false)
+          component.set('highlightable', false)
+          component.set('copyable', false)
+          component.set('removable', false)
+          component.set('toolbar', null)
+          component.set('badge', null)
+          
+          // Désactiver les composants enfants
+          if (component.components && component.components().length > 0) {
+            component.components().forEach((child: any) => disableComponent(child))
           }
-
-          body {
-            overflow-x: hidden !important;
-          }
-
-          body > section:first-of-type,
-          body > div:first-of-type,
-          body > main:first-of-type {
-            margin-top: 0 !important;
-            min-height: auto !important;
-          }
-
-          section:first-of-type,
-          .hero:first-of-type,
-          .hero-section:first-of-type {
-            margin-top: 0 !important;
-            min-height: auto !important;
-          }
-        `
-        canvasDoc.head.appendChild(style)
+        }
       }
+      
+      allComponents.forEach((component: any) => disableComponent(component))
 
-      if (post.gjsJs?.trim()) {
-        if (canvasDoc) {
-          const existing = canvasDoc.querySelector('script[data-post-js]')
-          existing?.remove()
-          const script = canvasDoc.createElement('script')
-          script.setAttribute('data-post-js', 'true')
-          script.text = post.gjsJs
-          canvasDoc.body.appendChild(script)
+      // Attendre que le canvas soit prêt
+      const setupCanvas = () => {
+        try {
+          const canvasDoc = editor.Canvas?.getDocument()
+          if (!canvasDoc) {
+            setTimeout(setupCanvas, 50)
+            return
+          }
+
+          // Ajouter les styles pour désactiver complètement l'interaction
+          const style = canvasDoc.createElement('style')
+          style.id = 'readonly-styles'
+          style.innerHTML = `
+            /* Désactiver la sélection de texte */
+            * {
+              user-select: none !important;
+              -webkit-user-select: none !important;
+              -moz-user-select: none !important;
+              -ms-user-select: none !important;
+              -webkit-user-drag: none !important;
+              user-drag: none !important;
+              -webkit-tap-highlight-color: transparent !important;
+            }
+            
+            /* Désactiver le drag and drop */
+            *:active,
+            *:focus {
+              outline: none !important;
+            }
+            
+            /* Désactiver les curseurs d'édition */
+            * {
+              cursor: default !important;
+            }
+            
+            /* Réactiver pour les éléments interactifs */
+            a, button, [role="button"], input, select, textarea {
+              user-select: text !important;
+              -webkit-user-select: text !important;
+              cursor: pointer !important;
+            }
+            
+            /* Empêcher le drag des images */
+            img, svg, canvas {
+              pointer-events: none !important;
+              user-select: none !important;
+            }
+            
+            /* Désactiver les sélections */
+            ::selection {
+              background: transparent !important;
+            }
+            
+            ::-moz-selection {
+              background: transparent !important;
+            }
+            
+            /* Désactiver les outlines */
+            *:focus {
+              outline: none !important;
+            }
+          `
+          
+          const oldStyle = canvasDoc.getElementById('readonly-styles')
+          if (oldStyle) oldStyle.remove()
+          canvasDoc.head.appendChild(style)
+
+          // Empêcher tous les événements de drag
+          const preventDrag = (e: Event) => {
+            e.preventDefault()
+            e.stopPropagation()
+            return false
+          }
+          
+          const preventContextMenu = (e: Event) => {
+            e.preventDefault()
+            return false
+          }
+          
+          // Ajouter tous les écouteurs d'événements
+          canvasDoc.body.addEventListener('dragstart', preventDrag)
+          canvasDoc.body.addEventListener('drop', preventDrag)
+          canvasDoc.body.addEventListener('dragenter', preventDrag)
+          canvasDoc.body.addEventListener('dragover', preventDrag)
+          canvasDoc.body.addEventListener('dragend', preventDrag)
+          canvasDoc.body.addEventListener('contextmenu', preventContextMenu)
+          
+          // Empêcher la sélection de texte
+          canvasDoc.body.addEventListener('selectstart', (e) => {
+            const target = e.target as HTMLElement
+            // Permettre la sélection uniquement dans les champs de formulaire
+            if (!target.closest('input') && !target.closest('textarea') && !target.closest('[contenteditable="true"]')) {
+              e.preventDefault()
+            }
+          })
+          
+          // Empêcher la copie
+          canvasDoc.body.addEventListener('copy', (e) => {
+            const target = e.target as HTMLElement
+            if (!target.closest('input') && !target.closest('textarea')) {
+              e.preventDefault()
+              return false
+            }
+          })
+          
+          // Empêcher le collage
+          canvasDoc.body.addEventListener('paste', (e) => {
+            const target = e.target as HTMLElement
+            if (!target.closest('input') && !target.closest('textarea')) {
+              e.preventDefault()
+              return false
+            }
+          })
+          
+          // Stocker les fonctions de nettoyage
+          ;(editor as any).__eventHandlers = {
+            preventDrag,
+            preventContextMenu,
+          }
+
+          // Exécuter le JS personnalisé
+          if (post.gjsJs?.trim()) {
+            const existing = canvasDoc.querySelector('script[data-post-js]')
+            if (existing) existing.remove()
+            
+            const script = canvasDoc.createElement('script')
+            script.setAttribute('data-post-js', 'true')
+            script.text = post.gjsJs
+            canvasDoc.body.appendChild(script)
+          }
+
+          // Mesurer la hauteur
+          setTimeout(() => {
+            try {
+              const iframeEl = editor.Canvas.getFrameEl()
+              if (iframeEl?.contentDocument) {
+                const body = iframeEl.contentDocument.body
+                const html = iframeEl.contentDocument.documentElement
+                if (body && html) {
+                  const h = Math.max(body.scrollHeight, body.offsetHeight, html.scrollHeight, html.offsetHeight, 900)
+                  setCanvasHeight(h)
+                }
+              }
+            } catch (e) {
+              console.warn('Error measuring height:', e)
+            }
+          }, 200)
+          
+        } catch (e) {
+          console.warn('Error setting up canvas:', e)
         }
       }
 
+      setupCanvas()
+      
+      // Passer en mode preview
       editor.runCommand('preview')
-      measureHeight()
-    })
-
-    const measureHeight = () => {
-      try {
-        const iframeEl = editor.Canvas.getFrameEl()
-        if (!iframeEl) return
-        const innerDoc = iframeEl.contentDocument
-        const body = innerDoc?.body
-        const html = innerDoc?.documentElement
-        if (!body || !html) return
-        const h = Math.max(body.scrollHeight, body.offsetHeight, html.scrollHeight, html.offsetHeight, 900)
-        setCanvasHeight(h)
-      } catch {}
-    }
-
-    editor.on('canvas:frame:load:body', () => {
-      measureHeight()
-      setTimeout(measureHeight, 200)
-      setTimeout(measureHeight, 600)
-      setTimeout(measureHeight, 1200)
     })
 
     return () => {
-      gjsRef.current?.destroy()
-      gjsRef.current = null
+      // Nettoyer
+      if (gjsRef.current) {
+        const editor = gjsRef.current
+        try {
+          const canvasDoc = editor.Canvas?.getDocument()
+          if (canvasDoc && (editor as any).__eventHandlers) {
+            const handlers = (editor as any).__eventHandlers
+            canvasDoc.body.removeEventListener('dragstart', handlers.preventDrag)
+            canvasDoc.body.removeEventListener('drop', handlers.preventDrag)
+            canvasDoc.body.removeEventListener('dragenter', handlers.preventDrag)
+            canvasDoc.body.removeEventListener('dragover', handlers.preventDrag)
+            canvasDoc.body.removeEventListener('dragend', handlers.preventDrag)
+            canvasDoc.body.removeEventListener('contextmenu', handlers.preventContextMenu)
+          }
+        } catch (e) {
+          // Ignorer les erreurs de nettoyage
+        }
+        editor.destroy()
+        gjsRef.current = null
+      }
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [post, dark])
 
   useEffect(() => {
@@ -246,16 +463,32 @@ export default function PostDetailClient() {
         main {
           padding: 0 !important;
           margin: 0 !important;
-        
         }
 
-        .gjs-viewer-root .gjs-editor {
-          background: transparent !important;
-          border: none !important;
+        /* Cacher tous les éléments d'édition de GrapesJS */
+        .gjs-pn-panel,
+        .gjs-pn-panels,
+        [class*="gjs-pn-"],
+        .gjs-off-prv,
+        .gjs-toolbar,
+        .gjs-badge,
+        .gjs-highlighter,
+        .gjs-placeholder,
+        .gjs-spot-default,
+        .gjs-tooltip,
+        .gjs-toolbar-item,
+        .gjs-badge-edit {
+          display: none !important;
+          width: 0 !important;
+          height: 0 !important;
+          overflow: hidden !important;
+          pointer-events: none !important;
+          opacity: 0 !important;
+          visibility: hidden !important;
         }
 
-        .gjs-viewer-root .gjs-cv-canvas {
-          top: 0px !important;
+        .gjs-cv-canvas {
+          top: 0 !important;
           left: 0 !important;
           right: 0 !important;
           bottom: 0 !important;
@@ -264,35 +497,30 @@ export default function PostDetailClient() {
           overflow: hidden !important;
         }
 
-        .gjs-viewer-root .gjs-pn-panel,
-        .gjs-viewer-root .gjs-pn-panels,
-        .gjs-viewer-root [class*="gjs-pn-"],
-        .gjs-viewer-root .gjs-off-prv {
-          display: none !important;
-          width: 0 !important;
-          height: 0 !important;
-          overflow: hidden !important;
-          pointer-events: none !important;
-        }
-
-        .gjs-viewer-root .gjs-cv-canvas__frames {
+        .gjs-cv-canvas__frames {
           pointer-events: none;
         }
-        .gjs-viewer-root .gjs-cv-canvas__frames iframe {
+        
+        .gjs-cv-canvas__frames iframe {
           pointer-events: auto !important;
         }
 
-        .gjs-viewer-root .gjs-toolbar,
-        .gjs-viewer-root .gjs-badge,
-        .gjs-viewer-root .gjs-highlighter,
-        .gjs-viewer-root .gjs-placeholder,
-        .gjs-viewer-root .gjs-spot-default {
-          display: none !important;
+        .gjs-editor {
+          background: transparent !important;
+          border: none !important;
         }
 
-        html,
-        body {
+        html, body {
           background: transparent !important;
+        }
+
+        /* Désactiver tout élément interactif de l'éditeur */
+        .gjs-cv-canvas * {
+          pointer-events: none !important;
+        }
+        
+        .gjs-cv-canvas__frames iframe * {
+          pointer-events: auto !important;
         }
       `}</style>
 
@@ -334,10 +562,76 @@ export default function PostDetailClient() {
       </div>
 
       {drawerOpen && (
-        <div
-          className="fixed inset-0 z-40 bg-black/50 backdrop-blur-sm"
-          onClick={() => setDrawerOpen(false)}
-        />
+        <>
+          <div
+            className="fixed inset-0 z-40 bg-black/50 backdrop-blur-sm"
+            onClick={() => setDrawerOpen(false)}
+          />
+          <div className="fixed right-0 top-0 z-50 h-full w-96 overflow-y-auto bg-[#0a0a1f] shadow-2xl">
+            <div className="sticky top-0 flex items-center justify-between border-b border-white/10 bg-[#0a0a1f]/95 px-5 py-4 backdrop-blur-sm">
+              <h2 className="text-base font-semibold text-white">Détails du post</h2>
+              <button
+                onClick={() => setDrawerOpen(false)}
+                className="rounded-lg p-1.5 text-white/60 hover:bg-white/10 hover:text-white"
+              >
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M18 6L6 18M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            <div className="space-y-6 p-5">
+              <DetailRow label="Titre">{post.title}</DetailRow>
+              <DetailRow label="Slug">{post.slug}</DetailRow>
+              {post.excerpt && <DetailRow label="Extrait">{post.excerpt}</DetailRow>}
+              {post.category && (
+                <DetailRow label="Catégorie">
+                  <span className="inline-flex rounded-md bg-white/5 px-2 py-0.5 text-xs">
+                    {post.category.name}
+                  </span>
+                </DetailRow>
+              )}
+              {post.tags && post.tags.length > 0 && (
+                <DetailRow label="Tags">
+                  <div className="flex flex-wrap gap-1.5">
+                    {post.tags.map(({ tag }) => (
+                      <span key={tag.id} className="inline-flex rounded-md bg-white/5 px-2 py-0.5 text-xs">
+                        {tag.name}
+                      </span>
+                    ))}
+                  </div>
+                </DetailRow>
+              )}
+              <DetailRow label="Statut">
+                <StatusBadge status={post.status} />
+              </DetailRow>
+              {post.publishedAt && (
+                <DetailRow label="Publié le">
+                  {new Date(post.publishedAt).toLocaleDateString('fr-FR', {
+                    day: 'numeric',
+                    month: 'long',
+                    year: 'numeric',
+                  })}
+                </DetailRow>
+              )}
+              <DetailRow label="Créé le">
+                {new Date(post.createdAt || '').toLocaleDateString('fr-FR')}
+              </DetailRow>
+              <DetailRow label="Modifié le">
+                {new Date(post.updatedAt || '').toLocaleDateString('fr-FR')}
+              </DetailRow>
+              {post.author && (
+                <DetailRow label="Auteur">
+                  <div className="flex items-center gap-2">
+                    <div className="flex h-6 w-6 items-center justify-center rounded-full bg-white/10 text-xs">
+                      {post.author.email.charAt(0).toUpperCase()}
+                    </div>
+                    <span>{post.author.email}</span>
+                  </div>
+                </DetailRow>
+              )}
+            </div>
+          </div>
+        </>
       )}
     </>
   )
