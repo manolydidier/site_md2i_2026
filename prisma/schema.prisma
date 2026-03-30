@@ -288,8 +288,9 @@ model Post {
   categoryId     String?    @db.Uuid
 
   // GrapesJS
+  gjsJs String?
   gjsComponents  Json?
-  gjsStyles      Json?
+  gjsStyles      String?
   gjsHtml        String?    @db.Text
 
   createdAt      DateTime   @default(now())
@@ -427,3 +428,4 @@ model ContactMessage {
   @@index([createdAt])
   @@map("contact_messages")
 }
+

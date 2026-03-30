@@ -75,6 +75,7 @@ export async function PUT(request: NextRequest, { params }: Params) {
       gjsComponents,
       gjsStyles,
       gjsHtml,
+      gjsJs,
       tags,
     } = body;
 
@@ -123,6 +124,7 @@ export async function PUT(request: NextRequest, { params }: Params) {
         ...(gjsComponents !== undefined && { gjsComponents }),
         ...(gjsStyles !== undefined && { gjsStyles }),
         ...(gjsHtml !== undefined && { gjsHtml }),
+        ...(gjsJs !== undefined && { gjsJs }),
         updatedAt: new Date(),
         ...(Array.isArray(tags) && {
           tags: {
@@ -188,10 +190,7 @@ export async function PATCH(request: NextRequest, { params }: Params) {
       );
     }
 
-    if (
-      body.slug !== undefined &&
-      body.slug !== existing.slug
-    ) {
+    if (body.slug !== undefined && body.slug !== existing.slug) {
       const slugConflict = await prisma.post.findUnique({
         where: { slug: body.slug },
       });
@@ -216,6 +215,7 @@ export async function PATCH(request: NextRequest, { params }: Params) {
     if (body.gjsComponents !== undefined) updateData.gjsComponents = body.gjsComponents;
     if (body.gjsStyles !== undefined) updateData.gjsStyles = body.gjsStyles;
     if (body.gjsHtml !== undefined) updateData.gjsHtml = body.gjsHtml;
+    if (body.gjsJs !== undefined) updateData.gjsJs = body.gjsJs;
 
     if (body.status !== undefined) {
       updateData.status = body.status as PostStatus;
@@ -238,6 +238,10 @@ export async function PATCH(request: NextRequest, { params }: Params) {
         coverImage: true,
         status: true,
         categoryId: true,
+        gjsComponents: true,
+        gjsStyles: true,
+        gjsHtml: true,
+        gjsJs: true,
         updatedAt: true,
       },
     });

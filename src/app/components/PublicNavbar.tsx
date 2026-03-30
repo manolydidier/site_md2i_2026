@@ -6,9 +6,9 @@ import { usePathname } from 'next/navigation'
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { createPortal } from 'react-dom'
 import { useTheme } from '../context/ThemeContext'
-
+import logo from '../../assets/logo.png'
 const ORANGE = '#EF9F27'
-const LOGO_SRC = '/logo.png' // <- remplace par ton vrai logo
+const LOGO_SRC = logo // <- remplace par ton vrai logo
 
 const LINKS = [
   { href: '/', label: 'Accueil' },
@@ -513,9 +513,9 @@ export default function PublicNavbar() {
                   <Image
                     src={LOGO_SRC}
                     alt="Logo MD2i"
-                    width={32}
-                    height={32}
-                    style={{ width: 32, height: 32, objectFit: 'contain' }}
+                    width={40}
+                    height={40}
+                    style={{ width: 40, height: 40, objectFit: 'contain' }}
                     onError={() => setLogoError(true)}
                   />
                 ) : (
@@ -536,14 +536,17 @@ export default function PublicNavbar() {
                 <span
                   style={{
                     color: t.text,
-                    fontSize: 15,
-                    fontWeight: 800,
+                    fontSize: 12,
+                    fontWeight: 500,
                     letterSpacing: '-0.02em',
                     lineHeight: 1.1,
+                    marginBottom: 5,
+                  
                   }}
                 >
-                  MD2i
+                  
                 </span>
+                MD2I-MADAGASCAR
                 <span
                   style={{
                     color: t.subtleText,
@@ -554,7 +557,7 @@ export default function PublicNavbar() {
                     textOverflow: 'ellipsis',
                   }}
                 >
-                  Cabinet IT & Solutions digitales
+                  Cabinet IT & Solutions digitales 
                 </span>
               </div>
             </Link>

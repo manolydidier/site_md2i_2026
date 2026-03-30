@@ -188,47 +188,50 @@ export default function GrapesEditor({ mode, postId }: GrapesEditorProps) {
     editor.setStyle(`${currentCss}\n\n${BASE_BLOCKS_CSS}`);
   }, []);
 
-  const loadPost = useCallback(
-    async (editor: Editor) => {
-      if (!postId) return;
+  const extractStoredJsFromHtml = (html: string) => {
+  const scriptRegex =
+    /<script[^>]*data-editor-custom-js=["']true["'][^>]*>([\s\S]*?)<\/script>/gi;
 
-      try {
-        const res = await fetch(`/api/posts/${postId}`);
-        if (!res.ok) return;
+  let extractedJs = "";
 
-        const post = await res.json();
+  const cleanedHtml = html.replace(scriptRegex, (_, js) => {
+    extractedJs += `${js ?? ""}\n`;
+    return "";
+  });
 
-        setMeta({
-          title: post.title ?? "",
-          slug: post.slug ?? "",
-          excerpt: post.excerpt ?? "",
-          coverImage: post.coverImage ?? "",
-          status: post.status ?? "DRAFT",
-          categoryId: post.categoryId ?? "",
-          tags: post.tags?.map((t: { tag: { id: string } }) => t.tag.id) ?? [],
-          authorId: post.authorId ?? "",
-        });
-
-        if (post.gjsComponents) editor.setComponents(post.gjsComponents);
-        else if (post.gjsHtml) editor.setComponents(post.gjsHtml);
-
-        if (post.gjsStyles) editor.setStyle(post.gjsStyles);
-
-        appendBaseBlocksCss(editor);
-      } catch (e) {
-        console.error("loadPost", e);
-      }
-    },
-    [appendBaseBlocksCss, postId]
-  );
-
-  const getNumberFromCss = (value: unknown, fallback: number) => {
-    if (!value) return fallback;
-    const match = String(value).match(/-?\d+(\.\d+)?/);
-    return match ? Number(match[0]) : fallback;
+  return {
+    html: cleanedHtml.trim(),
+    js: extractedJs.trim(),
   };
+};
 
-  const readPageStyles = useCallback(() => {
+const syncCodeFieldsFromEditor = useCallback(() => {
+  const editor = gjsRef.current;
+  if (!editor) return;
+
+  const rawHtml = editor.getHtml() || "";
+  const rawCss = editor.getCss() || "";
+  const { html } = extractStoredJsFromHtml(rawHtml);
+
+  setCodeHtml(html);
+  setCodeCss(rawCss);
+  // le JS vient maintenant de l'état codeJs / base, pas du HTML
+  setCodeNotice("HTML / CSS synchronisés depuis le canvas.");
+  setTimeout(() => setCodeNotice(""), 2200);
+}, []);
+
+const syncCodeFieldsSilently = useCallback(() => {
+  const editor = gjsRef.current;
+  if (!editor) return;
+
+  const rawHtml = editor.getHtml() || "";
+  const rawCss = editor.getCss() || "";
+  const { html } = extractStoredJsFromHtml(rawHtml);
+
+  setCodeHtml(html);
+  setCodeCss(rawCss);
+}, []);
+const readPageStyles = useCallback(() => {
     const editor = gjsRef.current;
     const wrapper = editor?.getWrapper() as any;
     if (!wrapper) return;
@@ -244,6 +247,56 @@ export default function GrapesEditor({ mode, postId }: GrapesEditorProps) {
       paddingY: getNumberFromCss(styles["padding-top"], prev.paddingY),
     }));
   }, []);
+
+  const loadPost = useCallback(
+  async (editor: Editor) => {
+    if (!postId) return;
+
+    try {
+      const res = await fetch(`/api/posts/${postId}`);
+      if (!res.ok) return;
+
+      const post = await res.json();
+
+      setMeta({
+        title: post.title ?? "",
+        slug: post.slug ?? "",
+        excerpt: post.excerpt ?? "",
+        coverImage: post.coverImage ?? "",
+        status: post.status ?? "DRAFT",
+        categoryId: post.categoryId ?? "",
+        tags: post.tags?.map((t: { tag: { id: string } }) => t.tag.id) ?? [],
+        authorId: post.authorId ?? "",
+      });
+
+      if (post.gjsComponents) editor.setComponents(post.gjsComponents);
+      else if (post.gjsHtml) editor.setComponents(post.gjsHtml);
+
+      if (post.gjsStyles) editor.setStyle(post.gjsStyles);
+
+      setCodeJs(post.gjsJs ?? "");
+
+      appendBaseBlocksCss(editor);
+
+      setTimeout(() => {
+        runCanvasJs(post.gjsJs ?? "");
+        syncCodeFieldsSilently();
+        readPageStyles();
+      }, 0);
+    } catch (e) {
+      console.error("loadPost", e);
+    }
+  },
+  [appendBaseBlocksCss, postId, readPageStyles, syncCodeFieldsSilently]
+);
+
+  const getNumberFromCss = (value: unknown, fallback: number) => {
+    if (!value) return fallback;
+    const match = String(value).match(/-?\d+(\.\d+)?/);
+    return match ? Number(match[0]) : fallback;
+  };
+
+  
 
   const applyPageStyles = (
     overrides: Partial<{
@@ -435,7 +488,12 @@ export default function GrapesEditor({ mode, postId }: GrapesEditorProps) {
         canvas: {
           styles: [
             "https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap",
+            'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css'
           ],
+          scripts: [
+      'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js'
+    ],
+    
         },
 
         blockManager: { appendTo: "#ed-blocks" },
@@ -616,17 +674,22 @@ export default function GrapesEditor({ mode, postId }: GrapesEditorProps) {
       };
 
       editor.on("load", async () => {
-        setIsReady(true);
+  setIsReady(true);
 
-        if (mode === "edit") {
-          await loadPost(editor);
-        } else {
-          appendBaseBlocksCss(editor);
-        }
+  if (mode === "edit") {
+    await loadPost(editor);
+  } else {
+    appendBaseBlocksCss(editor);
 
-        updateSelectedLabel();
-        readPageStyles();
-      });
+    setTimeout(() => {
+      syncCodeFieldsSilently();
+      runCanvasJs(codeJs);
+      readPageStyles();
+    }, 0);
+  }
+
+  updateSelectedLabel();
+});
 
       editor.on("component:selected", updateSelectedLabel);
       editor.on("component:deselected", updateSelectedLabel);
@@ -639,7 +702,12 @@ export default function GrapesEditor({ mode, postId }: GrapesEditorProps) {
     };
   }, [appendBaseBlocksCss, loadPost, mode, readPageStyles, registerCustomBlocks]);
 
-  const openTab = (tab: PanelTab) => setActiveTab(tab);
+  const openTab = (tab: PanelTab) => {
+  if (tab === "code") {
+    syncCodeFieldsSilently();
+  }
+  setActiveTab(tab);
+};
 
   const switchDevice = (d: Device) => {
     const map: Record<Device, string> = {
@@ -683,78 +751,68 @@ export default function GrapesEditor({ mode, postId }: GrapesEditorProps) {
     });
   };
 
-  const upsertStoredJsComponent = (js: string) => {
-    const editor = gjsRef.current;
-    if (!editor) return;
+  const upsertStoredJsComponent = (_js: string) => {
+  // On garde gjsComponents pour la structure GrapesJS.
+  // Le JS est désormais stocké uniquement dans la colonne gjsJs.
+};
 
-    const wrapper = editor.getWrapper() as any;
-    const existing = wrapper?.find?.('script[data-editor-custom-js="true"]') || [];
+ const runCanvasJs = (js: string) => {
+  const editor = gjsRef.current;
+  if (!editor) return;
 
-    existing.forEach((comp: any) => comp.remove());
+  const doc = editor.Canvas.getDocument();
+  if (!doc) return;
 
-    if (!js.trim()) return;
+  doc
+    .querySelectorAll('script[data-runtime-custom-js="true"]')
+    .forEach((el) => el.remove());
 
-    const safeJs = js.replace(/<\/script>/gi, "<\\/script>");
-    editor.addComponents(
-      `<script data-editor-custom-js="true">${safeJs}</script>`
-    );
-  };
+  if (!js.trim()) return;
 
-  const runCanvasJs = (js: string) => {
-    const editor = gjsRef.current;
-    if (!editor) return;
-
-    const doc = editor.Canvas.getDocument();
-    if (!doc) return;
-
-    doc
-      .querySelectorAll('script[data-runtime-custom-js="true"]')
-      .forEach((el) => el.remove());
-
-    if (!js.trim()) return;
-
-    const script = doc.createElement("script");
-    script.type = "text/javascript";
-    script.setAttribute("data-runtime-custom-js", "true");
-    script.text = js;
-    doc.body.appendChild(script);
-  };
+  const script = doc.createElement("script");
+  script.type = "text/javascript";
+  script.setAttribute("data-runtime-custom-js", "true");
+  script.text = js;
+  doc.body.appendChild(script);
+};
 
   const applyCodeBundle = () => {
-    const editor = gjsRef.current;
-    if (!editor) return;
+  const editor = gjsRef.current;
+  if (!editor) return;
 
-    try {
-      if (importMode === "replace") {
-        editor.setComponents(codeHtml.trim() || `<main></main>`);
-        editor.setStyle(codeCss.trim() || "");
-      } else {
-        if (codeHtml.trim()) {
-          editor.addComponents(codeHtml);
-        }
-
-        if (codeCss.trim()) {
-          const currentCss = editor.getCss() || "";
-          editor.setStyle(`${currentCss}\n\n${codeCss}`);
-        }
+  try {
+    if (importMode === "replace") {
+      editor.setComponents(codeHtml.trim() || `<main></main>`);
+      editor.setStyle(codeCss.trim() || "");
+    } else {
+      if (codeHtml.trim()) {
+        editor.addComponents(codeHtml);
       }
 
-      appendBaseBlocksCss(editor);
-      upsertStoredJsComponent(codeJs);
-      runCanvasJs(codeJs);
-
-      setTimeout(() => {
-        readPageStyles();
-      }, 0);
-
-      setCodeNotice("Code importé dans l’éditeur.");
-      setTimeout(() => setCodeNotice(""), 2500);
-    } catch (error) {
-      console.error(error);
-      setCodeNotice("Erreur pendant l’import du code.");
-      setTimeout(() => setCodeNotice(""), 2500);
+      if (codeCss.trim()) {
+        const currentCss = editor.getCss() || "";
+        editor.setStyle(`${currentCss}\n\n${codeCss}`);
+      }
     }
-  };
+
+    appendBaseBlocksCss(editor);
+
+    // On n'injecte plus le JS dans gjsComponents
+    runCanvasJs(codeJs);
+
+    setTimeout(() => {
+      syncCodeFieldsSilently();
+      readPageStyles();
+    }, 0);
+
+    setCodeNotice("Code importé dans l’éditeur.");
+    setTimeout(() => setCodeNotice(""), 2500);
+  } catch (error) {
+    console.error(error);
+    setCodeNotice("Erreur pendant l’import du code.");
+    setTimeout(() => setCodeNotice(""), 2500);
+  }
+};
 
   const fillExampleBodyDark = () => {
     setImportMode("replace");
@@ -1031,53 +1089,57 @@ document.querySelectorAll('.light-demo__btn').forEach((btn) => {
   const fullscr = () => gjsRef.current?.runCommand("fullscreen");
   const cleanHtml = () => gjsRef.current?.runCommand("core:canvas-clear");
 
-  const handleSave = async (statusOverride?: "DRAFT" | "PUBLISHED") => {
-    const editor = gjsRef.current;
-    if (!editor) return;
+ const handleSave = async (statusOverride?: "DRAFT" | "PUBLISHED") => {
+  const editor = gjsRef.current;
+  if (!editor) return;
 
-    if (!meta.title || !meta.slug || !meta.authorId) {
-      setSidebarOpen(true);
-      return;
-    }
+  if (!meta.title || !meta.slug || !meta.authorId) {
+    setSidebarOpen(true);
+    return;
+  }
 
-    setSaveStatus("saving");
+  runCanvasJs(codeJs);
+  syncCodeFieldsSilently();
 
-    const payload = {
-      ...meta,
-      ...(statusOverride && { status: statusOverride }),
-      gjsComponents: editor.getComponents(),
-      gjsStyles: editor.getStyle(),
-      gjsHtml: editor.getHtml(),
-    };
+  setSaveStatus("saving");
 
-    try {
-      const url = mode === "create" ? "/api/posts" : `/api/posts/${postId}`;
-      const method = mode === "create" ? "POST" : "PUT";
-
-      const res = await fetch(url, {
-        method,
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
-
-      if (!res.ok) {
-        const e = await res.json();
-        throw new Error(e.error ?? "Échec");
-      }
-
-      const saved = await res.json();
-      setSaveStatus("saved");
-      setTimeout(() => setSaveStatus("idle"), 3000);
-
-      if (mode === "create") {
-        router.push(`/admin/posts/${saved.id}/edit`);
-      }
-    } catch (err) {
-      setSaveStatus("error");
-      setTimeout(() => setSaveStatus("idle"), 4000);
-      alert(err instanceof Error ? err.message : "Erreur de sauvegarde");
-    }
+  const payload = {
+    ...meta,
+    ...(statusOverride && { status: statusOverride }),
+    gjsComponents: editor.getComponents().toJSON(),
+    gjsStyles: editor.getStyle(),
+    gjsHtml: editor.getHtml(),
+    gjsJs: codeJs,
   };
+
+  try {
+    const url = mode === "create" ? "/api/posts" : `/api/posts/${postId}`;
+    const method = mode === "create" ? "POST" : "PUT";
+
+    const res = await fetch(url, {
+      method,
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+
+    if (!res.ok) {
+      const e = await res.json();
+      throw new Error(e.error ?? "Échec");
+    }
+
+    const saved = await res.json();
+    setSaveStatus("saved");
+    setTimeout(() => setSaveStatus("idle"), 3000);
+
+    if (mode === "create") {
+      router.push(`/admin/posts/${saved.id}/edit`);
+    }
+  } catch (err) {
+    setSaveStatus("error");
+    setTimeout(() => setSaveStatus("idle"), 4000);
+    alert(err instanceof Error ? err.message : "Erreur de sauvegarde");
+  }
+};
 
   const handleTitleChange = (title: string) =>
     setMeta((p) => ({

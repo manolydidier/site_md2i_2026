@@ -22,6 +22,7 @@ export async function GET(
         updatedAt: true,
         gjsHtml: true,
         gjsStyles: true,
+        gjsJs: true,
         gjsComponents: true,
         author: {
           select: {

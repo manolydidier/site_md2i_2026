@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { prisma } from '@/app/lib/prisma'
+import { prisma } from "@/app/lib/prisma";
 import { PostStatus } from "@/generated/prisma/client";
 
 // GET /api/posts - List all posts
@@ -64,10 +64,10 @@ export async function POST(request: NextRequest) {
       gjsComponents,
       gjsStyles,
       gjsHtml,
+      gjsJs,
       tags = [],
     } = body;
 
-    // Validation
     if (!title || !slug || !authorId) {
       return NextResponse.json(
         { error: "title, slug and authorId are required" },
@@ -77,7 +77,6 @@ export async function POST(request: NextRequest) {
 
     const statusValue = status as PostStatus;
 
-    // Check slug uniqueness
     const existing = await prisma.post.findUnique({ where: { slug } });
     if (existing) {
       return NextResponse.json(
@@ -88,28 +87,32 @@ export async function POST(request: NextRequest) {
 
     const post = await prisma.post.create({
       data: {
-  title,
-  slug,
-  excerpt: excerpt || null,
-  coverImage: coverImage || null,
-  status: statusValue,           // ← utiliser statusValue
-  publishedAt:
-    statusValue === "PUBLISHED"
-      ? publishedAt ? new Date(publishedAt) : new Date()
-      : null,
-  authorId,
-  categoryId: categoryId || null,
-  gjsComponents: gjsComponents ?? null,
-  gjsStyles: gjsStyles ?? null,
-  gjsHtml: gjsHtml || null,
-  tags: tags.length > 0
-    ? {
-        create: tags.map((tagId: string) => ({
-          tag: { connect: { id: tagId } },
-        })),
-      }
-    : undefined,
-},
+        title,
+        slug,
+        excerpt: excerpt || null,
+        coverImage: coverImage || null,
+        status: statusValue,
+        publishedAt:
+          statusValue === "PUBLISHED"
+            ? publishedAt
+              ? new Date(publishedAt)
+              : new Date()
+            : null,
+        authorId,
+        categoryId: categoryId || null,
+        gjsComponents: gjsComponents ?? null,
+        gjsStyles: gjsStyles ?? null,
+        gjsHtml: gjsHtml || null,
+        gjsJs: gjsJs || null,
+        tags:
+          tags.length > 0
+            ? {
+                create: tags.map((tagId: string) => ({
+                  tag: { connect: { id: tagId } },
+                })),
+              }
+            : undefined,
+      },
       include: {
         author: { select: { id: true, email: true } },
         category: { select: { id: true, name: true, slug: true } },
