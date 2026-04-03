@@ -4,561 +4,491 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import api from '@/app/lib/axios'
 import { useTheme } from '@/app/context/ThemeContext'
-import styles from './PublicArticlesPage.module.css'
+import s from './PublicArticlesPage.module.css'
 
-interface Category {
-  id: string
-  name: string
-  slug?: string
-}
-
+interface Category { id: string; name: string; slug?: string }
 interface Article {
-  id: string
-  title: string
-  excerpt: string | null
-  createdAt: string
-  coverImage?: string | null
-  category?: Category | null
+  id: string; title: string; excerpt: string | null;
+  createdAt: string; coverImage?: string | null; category?: Category | null
 }
-
 interface ArticlesResponse {
   data: Article[]
-  categories?: Category[]
-  pagination: {
-    page?: number
-    limit?: number
-    total?: number
-    totalPages: number
-    hasNextPage?: boolean
-    hasPrevPage?: boolean
-  }
+  pagination: { page?: number; limit?: number; total?: number; totalPages: number }
 }
+interface PublicArticlesPageProps { router?: { push: (href: string) => void } }
 
-interface CategoriesResponse extends Array<Category> {}
+type SortKey = 'date-desc' | 'date-asc' | 'title-asc' | 'title-desc'
 
-interface PublicArticlesPageProps {
-  router?: { push: (href: string) => void }
-}
+const EXCERPT_LIMIT = 120
 
-function useStaggeredIn(count: number) {
-  const [visible, setVisible] = useState(false)
-
+function useScroll() {
+  const [prog, setProg] = useState(0)
+  const [top, setTop] = useState(false)
   useEffect(() => {
-    const id = requestAnimationFrame(() => setVisible(true))
-    return () => cancelAnimationFrame(id)
-  }, [count])
-
-  return visible
-}
-
-function useScrollProgress() {
-  const [progress, setProgress] = useState(0)
-  const [showTop, setShowTop] = useState(false)
-
-  useEffect(() => {
-    const onScroll = () => {
-      const scrolled = window.scrollY
-      const total = document.documentElement.scrollHeight - window.innerHeight
-      setProgress(total > 0 ? (scrolled / total) * 100 : 0)
-      setShowTop(scrolled > 400)
+    const fn = () => {
+      const y = window.scrollY
+      const h = document.documentElement.scrollHeight - window.innerHeight
+      setProg(h > 0 ? (y / h) * 100 : 0)
+      setTop(y > 400)
     }
-
-    window.addEventListener('scroll', onScroll, { passive: true })
-    return () => window.removeEventListener('scroll', onScroll)
+    window.addEventListener('scroll', fn, { passive: true })
+    return () => window.removeEventListener('scroll', fn)
   }, [])
-
-  return { progress, showTop }
+  return { prog, top }
 }
 
-const SearchIcon = () => (
-  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-    <circle cx="11" cy="11" r="8" />
-    <path d="m21 21-4.35-4.35" />
+/* ── Icons ── */
+const IconSearch = () => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+    <circle cx="11" cy="11" r="7.5"/><path d="m21 21-4.35-4.35"/>
+  </svg>
+)
+const IconX = () => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M18 6 6 18M6 6l12 12"/>
+  </svg>
+)
+const IconArrow = () => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M5 12h14M12 5l7 7-7 7"/>
+  </svg>
+)
+const IconUp = () => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M12 19V5M5 12l7-7 7 7"/>
+  </svg>
+)
+const IconFilter = () => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M22 3H2l8 9.46V19l4 2v-8.54L22 3z"/>
+  </svg>
+)
+const IconSort = () => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M3 6h18M7 12h10M11 18h2"/>
+  </svg>
+)
+const IconCal = () => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M8 2v4M16 2v4M3 10h18"/><rect x="3" y="4" width="18" height="18" rx="3"/>
+  </svg>
+)
+const IconChevron = ({ open }: { open: boolean }) => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+    style={{ transform: open ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform .25s cubic-bezier(.22,.61,.36,1)' }}>
+    <path d="M6 9l6 6 6-6"/>
   </svg>
 )
 
-const CloseIcon = () => (
-  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-    <path d="M18 6 6 18M6 6l12 12" />
-  </svg>
-)
+const SORT_OPTIONS: { key: SortKey; label: string }[] = [
+  { key: 'date-desc',  label: 'Plus récent'  },
+  { key: 'date-asc',   label: 'Plus ancien'  },
+  { key: 'title-asc',  label: 'A → Z'        },
+  { key: 'title-desc', label: 'Z → A'        },
+]
 
-const ArrowRightIcon = () => (
-  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.3">
-    <path d="M5 12h14M12 5l7 7-7 7" />
-  </svg>
-)
+/* ── Excerpt with expand/collapse ── */
+function ExcerptBlock({ text }: { text: string | null }) {
+  const [expanded, setExpanded] = useState(false)
+  const raw = text?.trim() || 'Aucun extrait disponible.'
+  const isLong = raw.length > EXCERPT_LIMIT
 
-const ArrowUpIcon = () => (
-  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.3">
-    <path d="M12 19V5M5 12l7-7 7 7" />
-  </svg>
-)
+  return (
+    <div className={s.excerptWrap}>
+      <p className={`${s.cardExcerpt} ${expanded ? s.cardExcerptFull : ''}`}>
+        {!isLong || expanded ? raw : raw.slice(0, EXCERPT_LIMIT) + '…'}
+      </p>
+      {isLong && (
+        <button
+          className={s.excerptToggle}
+          onClick={e => { e.stopPropagation(); setExpanded(v => !v) }}
+        >
+          <span>{expanded ? 'Voir moins' : 'Voir plus'}</span>
+          <svg
+            viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
+            strokeLinecap="round" strokeLinejoin="round"
+            style={{ transform: expanded ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform .3s cubic-bezier(.22,.61,.36,1)' }}
+          >
+            <path d="M6 9l6 6 6-6"/>
+          </svg>
+        </button>
+      )}
+    </div>
+  )
+}
 
-const CalendarIcon = () => (
-  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-    <path d="M8 2v4M16 2v4M3 10h18" />
-    <rect x="3" y="4" width="18" height="18" rx="3" />
-  </svg>
-)
+/* ── Glossy Article Card ── */
+function ArticleCard({ article, index, fmt, onNavigate }: {
+  article: Article
+  index: number
+  fmt: Intl.DateTimeFormat
+  onNavigate: (id: string) => void
+}) {
+  const cardRef = useRef<HTMLElement>(null)
+  const glowRef = useRef<HTMLDivElement>(null)
 
-const PublicArticlesPage = ({ router }: PublicArticlesPageProps) => {
+  const onMouseMove = (e: React.MouseEvent<HTMLElement>) => {
+    const el = cardRef.current
+    const glow = glowRef.current
+    if (!el || !glow) return
+    const rect = el.getBoundingClientRect()
+    const x = e.clientX - rect.left
+    const y = e.clientY - rect.top
+    const cx = rect.width / 2
+    const cy = rect.height / 2
+    const rotX = ((y - cy) / cy) * -5
+    const rotY = ((x - cx) / cx) * 5
+    el.style.transform = `perspective(1000px) rotateX(${rotX}deg) rotateY(${rotY}deg) translateZ(6px)`
+    glow.style.background = `radial-gradient(320px circle at ${x}px ${y}px, rgba(255,255,255,0.11), transparent 60%)`
+    glow.style.opacity = '1'
+  }
+
+  const onMouseLeave = () => {
+    const el = cardRef.current
+    const glow = glowRef.current
+    if (!el || !glow) return
+    el.style.transform = ''
+    glow.style.opacity = '0'
+  }
+
+  const a = article
+  const initial = (a.category?.name ?? a.title ?? 'A').charAt(0).toUpperCase()
+
+  return (
+    <article
+      ref={cardRef}
+      className={s.card}
+      style={{ animationDelay: `${index * 65}ms` }}
+      onMouseMove={onMouseMove}
+      onMouseLeave={onMouseLeave}
+      onClick={() => onNavigate(a.id)}
+    >
+      {/* Glossy highlight line at top */}
+      <div className={s.gloss} />
+      {/* Mouse-follow glow */}
+      <div className={s.glow} ref={glowRef} />
+
+      {/* Image */}
+      <div className={s.media}>
+        {a.coverImage
+          ? <img src={a.coverImage} alt={a.title} className={s.img} loading="lazy"/>
+          : <div className={s.placeholder}><span>{initial}</span></div>
+        }
+        <div className={s.imgGloss} />
+        {a.category?.name && <div className={s.badgeCat}>{a.category.name}</div>}
+      </div>
+
+      {/* Body */}
+      <div className={s.body}>
+        <div className={s.dateLine}>
+          <IconCal/>
+          <span>{fmt.format(new Date(a.createdAt))}</span>
+        </div>
+        <h2 className={s.cardTitle}>{a.title}</h2>
+        <ExcerptBlock text={a.excerpt} />
+        <div className={s.cardFooter}>
+          <button
+            className={s.readBtn}
+            onClick={e => { e.stopPropagation(); onNavigate(a.id) }}
+          >
+            Lire l'article <IconArrow/>
+          </button>
+        </div>
+      </div>
+    </article>
+  )
+}
+
+/* ── Main Page ── */
+export default function PublicArticlesPage({ router }: PublicArticlesPageProps) {
   const nextRouter = useRouter()
-  const navigation = router ?? nextRouter
+  const nav = router ?? nextRouter
   const { dark } = useTheme()
 
-  const [mounted, setMounted] = useState(false)
-  const [articles, setArticles] = useState<Article[]>([])
-  const [categories, setCategories] = useState<Category[]>([])
-  const [loading, setLoading] = useState(true)
-  const [categoriesLoading, setCategoriesLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-
-  const [search, setSearch] = useState('')
-  const [debouncedSearch, setDebouncedSearch] = useState('')
-  const [selectedCategory, setSelectedCategory] = useState('')
-
-  const [currentPage, setCurrentPage] = useState(1)
-  const [totalPages, setTotalPages] = useState(1)
-  const [totalItems, setTotalItems] = useState(0)
+  const [mounted, setMounted]         = useState(false)
+  const [articles, setArticles]       = useState<Article[]>([])
+  const [categories, setCategories]   = useState<Category[]>([])
+  const [loading, setLoading]         = useState(true)
+  const [catsLoading, setCatsLoading] = useState(true)
+  const [error, setError]             = useState<string | null>(null)
+  const [search, setSearch]           = useState('')
+  const [debSearch, setDebSearch]     = useState('')
+  const [selCat, setSelCat]           = useState('')
+  const [sort, setSort]               = useState<SortKey>('date-desc')
+  const [page, setPage]               = useState(1)
+  const [totalPages, setTotalPages]   = useState(1)
+  const [totalItems, setTotalItems]   = useState(0)
+  const [filterOpen, setFilterOpen]   = useState(false)
+  const [sortOpen, setSortOpen]       = useState(false)
 
   const searchRef = useRef<HTMLInputElement>(null)
-  const requestIdRef = useRef(0)
+  const reqId     = useRef(0)
+  const filterRef = useRef<HTMLDivElement>(null)
+  const sortRef   = useRef<HTMLDivElement>(null)
 
-  const staggerIn = useStaggeredIn(articles.length)
   const isDark = mounted ? dark : false
-  const { progress, showTop } = useScrollProgress()
+  const { prog, top } = useScroll()
+  const fmt = useMemo(() =>
+    new Intl.DateTimeFormat('fr-FR', { day: '2-digit', month: 'long', year: 'numeric' }), [])
 
+  useEffect(() => { setMounted(true) }, [])
   useEffect(() => {
-    setMounted(true)
-  }, [])
-
-  useEffect(() => {
-    const timer = window.setTimeout(() => {
-      setDebouncedSearch(search)
-    }, 350)
-
-    return () => window.clearTimeout(timer)
+    const t = setTimeout(() => setDebSearch(search), 350)
+    return () => clearTimeout(t)
   }, [search])
-
-  const formatDate = useMemo(
-    () =>
-      new Intl.DateTimeFormat('fr-FR', {
-        day: '2-digit',
-        month: 'long',
-        year: 'numeric',
-      }),
-    []
-  )
-
-  const loadCategories = useCallback(async () => {
-    setCategoriesLoading(true)
-
-    try {
-      const res = await api.get<CategoriesResponse>('/api/categories')
-      setCategories(res.data ?? [])
-    } catch (err) {
-      console.error('Erreur chargement catégories :', err)
-      setCategories([])
-    } finally {
-      setCategoriesLoading(false)
+  useEffect(() => {
+    const fn = (e: MouseEvent) => {
+      if (filterRef.current && !filterRef.current.contains(e.target as Node)) setFilterOpen(false)
+      if (sortRef.current && !sortRef.current.contains(e.target as Node)) setSortOpen(false)
     }
+    document.addEventListener('mousedown', fn)
+    return () => document.removeEventListener('mousedown', fn)
   }, [])
 
-  const loadArticles = useCallback(async (page: number, keyword: string, category: string) => {
-    setLoading(true)
-    setError(null)
+  const fetchCats = useCallback(async () => {
+    setCatsLoading(true)
+    try { const r = await api.get('/api/categories'); setCategories(r.data ?? []) }
+    catch { setCategories([]) }
+    finally { setCatsLoading(false) }
+  }, [])
 
-    const currentRequestId = ++requestIdRef.current
-
+  const fetchArticles = useCallback(async (p: number, kw: string, cat: string, sortKey: SortKey) => {
+    setLoading(true); setError(null)
+    const id = ++reqId.current
     try {
-      const params = new URLSearchParams()
-      params.set('page', String(page))
-      params.set('limit', '9')
-
-      if (keyword.trim()) params.set('search', keyword.trim())
-      if (category) params.set('category', category)
-
-      const res = await api.get<ArticlesResponse>(`/api/articles/public?${params.toString()}`)
-
-      if (currentRequestId !== requestIdRef.current) return
-
-      setArticles(res.data.data ?? [])
-      setTotalPages(res.data.pagination?.totalPages ?? 1)
-      setTotalItems(res.data.pagination?.total ?? res.data.data?.length ?? 0)
-    } catch (err) {
-      if (currentRequestId !== requestIdRef.current) return
-
-      console.error('Erreur chargement articles :', err)
+      const q = new URLSearchParams({ page: String(p), limit: '9', sort: sortKey })
+      if (kw.trim()) q.set('search', kw.trim())
+      if (cat)       q.set('category', cat)
+      const r = await api.get<ArticlesResponse>(`/api/articles/public?${q}`)
+      if (id !== reqId.current) return
+      setArticles(r.data.data ?? [])
+      setTotalPages(r.data.pagination?.totalPages ?? 1)
+      setTotalItems(r.data.pagination?.total ?? r.data.data?.length ?? 0)
+    } catch {
+      if (id !== reqId.current) return
       setError('Impossible de charger les articles.')
-      setArticles([])
-      setTotalPages(1)
-      setTotalItems(0)
-    } finally {
-      if (currentRequestId === requestIdRef.current) {
-        setLoading(false)
-      }
-    }
+      setArticles([]); setTotalPages(1); setTotalItems(0)
+    } finally { if (id === reqId.current) setLoading(false) }
   }, [])
 
-  useEffect(() => {
-    loadCategories()
-  }, [loadCategories])
+  useEffect(() => { fetchCats() }, [fetchCats])
+  useEffect(() => { fetchArticles(page, debSearch, selCat, sort) }, [page, debSearch, selCat, sort, fetchArticles])
 
-  useEffect(() => {
-    loadArticles(currentPage, debouncedSearch, selectedCategory)
-  }, [currentPage, debouncedSearch, selectedCategory, loadArticles])
-
-  const handlePageChange = (page: number) => {
-    if (page < 1 || page > totalPages || page === currentPage || loading) return
-    setCurrentPage(page)
-    window.scrollTo({ top: 0, behavior: 'smooth' })
+  const goPage = (n: number) => {
+    if (n < 1 || n > totalPages || n === page || loading) return
+    setPage(n); window.scrollTo({ top: 0, behavior: 'smooth' })
   }
-
-  const handleArticleClick = (id: string) => {
-    navigation.push(`/articles/${id}`)
-  }
-
-  const handleSearchChange = (value: string) => {
-    setSearch(value)
-    if (currentPage !== 1) setCurrentPage(1)
-  }
-
-  const handleCategoryChange = (value: string) => {
-    setSelectedCategory(value)
-    if (currentPage !== 1) setCurrentPage(1)
-  }
-
-  const clearFilters = () => {
-    setSearch('')
-    setDebouncedSearch('')
-    setSelectedCategory('')
-    setCurrentPage(1)
+  const onSearch = (v: string) => { setSearch(v); if (page !== 1) setPage(1) }
+  const onCat    = (v: string) => { setSelCat(v === selCat ? '' : v); if (page !== 1) setPage(1) }
+  const onSort   = (v: SortKey) => { setSort(v); setSortOpen(false); if (page !== 1) setPage(1) }
+  const clear    = () => {
+    setSearch(''); setDebSearch(''); setSelCat(''); setPage(1); setSort('date-desc')
     searchRef.current?.focus()
   }
 
-  const getExcerpt = (excerpt: string | null) => {
-    if (!excerpt?.trim()) return 'Aucun extrait disponible pour cet article.'
-    return excerpt.length > 145 ? `${excerpt.slice(0, 145)}…` : excerpt
-  }
+  const hasFilters      = search.trim() !== '' || selCat !== ''
+  const activeCat       = categories.find(c => c.slug === selCat)
+  const activeSortLabel = SORT_OPTIONS.find(o => o.key === sort)?.label ?? 'Trier'
 
-  const hasFilters = search.trim() !== '' || selectedCategory !== ''
-
-  const selectedCategoryName =
-    categories.find((cat) => cat.slug === selectedCategory)?.name ?? 'Toutes les catégories'
-
-  const pageNumbers = useMemo(() => {
-    const pages: (number | '…')[] = []
-
-    if (totalPages <= 7) {
-      for (let i = 1; i <= totalPages; i++) pages.push(i)
-    } else {
-      pages.push(1)
-      if (currentPage > 3) pages.push('…')
-
-      for (
-        let i = Math.max(2, currentPage - 1);
-        i <= Math.min(totalPages - 1, currentPage + 1);
-        i++
-      ) {
-        pages.push(i)
-      }
-
-      if (currentPage < totalPages - 2) pages.push('…')
-      pages.push(totalPages)
+  const pages = useMemo(() => {
+    const ps: (number | '…')[] = []
+    if (totalPages <= 7) { for (let i = 1; i <= totalPages; i++) ps.push(i) }
+    else {
+      ps.push(1)
+      if (page > 3) ps.push('…')
+      for (let i = Math.max(2, page - 1); i <= Math.min(totalPages - 1, page + 1); i++) ps.push(i)
+      if (page < totalPages - 2) ps.push('…')
+      ps.push(totalPages)
     }
-
-    return pages
-  }, [currentPage, totalPages])
+    return ps
+  }, [page, totalPages])
 
   return (
-    <div
-      className={styles.articlesPage}
-      data-theme={isDark ? 'dark' : 'light'}
-      suppressHydrationWarning
-    >
-      <div className={styles.progressBar}>
-        <div className={styles.progressFill} style={{ width: `${progress}%` }} />
-      </div>
+    <div className={s.page} data-theme={isDark ? 'dark' : 'light'} suppressHydrationWarning>
 
-      <div className={styles.articlesContainer}>
-        <header className={styles.articlesHeader}>
-          <div className={styles.headerCopy}>
-            <div className={styles.articlesKicker}>
-              <span className={styles.kickerDot} />
-              Actualités
+      <div className={s.progress}><div className={s.progressFill} style={{ width: `${prog}%` }}/></div>
+
+      <div className={s.wrap}>
+
+        {/* ── HERO ── */}
+        <header className={s.hero}>
+          <div className={s.heroLeft}>
+            <div className={s.eyebrow}>
+              <span className={s.eyebrowDot}/>
+              Actualités &amp; Publications
             </div>
-
-            <h1 className={styles.articlesTitle}>
-              Nos dernières <span>Actualités</span>
+            <h1 className={s.heroTitle}>
+              Nos dernières<br/><em>Actualités</em>
             </h1>
-
-            <p className={styles.articlesSubtitle}>
-              Découvrez nos publications, nouveautés et informations importantes concernant nos activités et projets.
-              Restez informé des dernières tendances et évolutions dans le domaine de l&apos;IT et de la transformation digitale.
+            <p className={s.heroSub}>
+              Découvrez nos publications, nouveautés et informations sur nos activités
+              et projets. Restez au fait des dernières tendances IT.
             </p>
           </div>
-
-          <div className={styles.headerMeta}>
-            <div className={styles.statsPill}>
-              <div className={styles.statItem}>
-                <span className={styles.statValue}>{!loading ? totalItems : '—'}</span>
-                <span className={styles.statLabel}>articles</span>
-              </div>
-
-              <div className={styles.statDivider} />
-
-              <div className={styles.statItem}>
-                <span className={styles.statValue}>{categories.length || '—'}</span>
-                <span className={styles.statLabel}>catégories</span>
-              </div>
+          <div className={s.heroStats}>
+            <div className={s.heroStat}>
+              <div className={s.heroStatNum}>{!loading ? totalItems : '—'}</div>
+              <div className={s.heroStatLabel}>articles</div>
+            </div>
+            <div className={s.heroStat}>
+              <div className={s.heroStatNum}>{categories.length || '—'}</div>
+              <div className={s.heroStatLabel}>catégories</div>
             </div>
           </div>
         </header>
 
-        <div className={styles.stickyWrapper}>
-          <section className={styles.filtersCard}>
-            <div className={styles.searchRow}>
-              <div className={styles.searchBox}>
-                <span className={styles.searchIcon}>
-                  <SearchIcon />
-                </span>
-
-                <input
-                  ref={searchRef}
-                  type="text"
-                  value={search}
-                  onChange={(e) => handleSearchChange(e.target.value)}
-                  placeholder="Rechercher un article, un thème ou une catégorie…"
-                  className={styles.searchInput}
-                />
-
-                {search && (
-                  <button
-                    type="button"
-                    className={styles.searchClear}
-                    onClick={() => handleSearchChange('')}
-                    aria-label="Effacer la recherche"
-                  >
-                    <CloseIcon />
-                  </button>
-                )}
-              </div>
+        {/* ── STICKY ── */}
+        <div className={s.sticky}>
+          <div className={s.stickyBar}>
+            <div className={s.searchField}>
+              <IconSearch/>
+              <input
+                ref={searchRef} type="text" value={search}
+                onChange={e => onSearch(e.target.value)}
+                placeholder="Rechercher…" className={s.searchInput}
+              />
+              {search && (
+                <button className={s.iconBtn} onClick={() => onSearch('')} aria-label="Effacer">
+                  <IconX/>
+                </button>
+              )}
             </div>
 
-            <div className={styles.chipsRow}>
-              <span className={styles.chipsLabel}>Catégories</span>
-
-              <div className={styles.chipsScroll}>
+            <div className={s.stickyRight}>
+              {/* Filter dropdown */}
+              <div className={s.dropdown} ref={filterRef}>
                 <button
-                  type="button"
-                  onClick={() => handleCategoryChange('')}
-                  className={`${styles.chip} ${!selectedCategory ? styles.chipActive : ''}`}
+                  className={`${s.dropBtn} ${filterOpen || selCat ? s.dropBtnActive : ''}`}
+                  onClick={() => { setFilterOpen(v => !v); setSortOpen(false) }}
                 >
-                  Toutes
+                  <IconFilter/>
+                  <span>Filtrer</span>
+                  {selCat && <span className={s.dropBadge}>1</span>}
+                  <IconChevron open={filterOpen}/>
                 </button>
-
-                {!categoriesLoading &&
-                  categories.map((cat) => (
-                    <button
-                      type="button"
-                      key={cat.id}
-                      onClick={() => handleCategoryChange(cat.slug ?? '')}
-                      className={`${styles.chip} ${
-                        selectedCategory === (cat.slug ?? '') ? styles.chipActive : ''
-                      }`}
-                    >
-                      {cat.name}
-                    </button>
-                  ))}
-
-                {categoriesLoading &&
-                  Array.from({ length: 4 }).map((_, i) => (
-                    <span key={i} className={styles.chipSkeleton} />
-                  ))}
+                <div className={`${s.dropPanel} ${filterOpen ? s.dropPanelOpen : ''}`}>
+                  <div className={s.dropPanelInner}>
+                    <div className={s.dropLabel}>Catégories</div>
+                    <div className={s.catList}>
+                      <button className={`${s.catPill} ${!selCat ? s.catPillActive : ''}`}
+                        onClick={() => { onCat(''); setFilterOpen(false) }}>Toutes</button>
+                      {!catsLoading && categories.map(c => (
+                        <button key={c.id}
+                          className={`${s.catPill} ${selCat === (c.slug ?? '') ? s.catPillActive : ''}`}
+                          onClick={() => { onCat(c.slug ?? ''); setFilterOpen(false) }}
+                        >{c.name}</button>
+                      ))}
+                      {catsLoading && Array.from({ length: 4 }).map((_, i) => <span key={i} className={s.catSk}/>)}
+                    </div>
+                  </div>
+                </div>
               </div>
 
-              {hasFilters && (
-                <button type="button" className={styles.clearFiltersBtn} onClick={clearFilters}>
-                  Effacer
+              {/* Sort dropdown */}
+              <div className={s.dropdown} ref={sortRef}>
+                <button
+                  className={`${s.dropBtn} ${sortOpen || sort !== 'date-desc' ? s.dropBtnActive : ''}`}
+                  onClick={() => { setSortOpen(v => !v); setFilterOpen(false) }}
+                >
+                  <IconSort/>
+                  <span>{activeSortLabel}</span>
+                  <IconChevron open={sortOpen}/>
                 </button>
-              )}
-            </div>
-
-            <div className={styles.resultsBar}>
-              <div className={styles.resultsText}>
-                <span className={styles.resultsHighlight}>
-                  {!loading
-                    ? `${totalItems} résultat${totalItems > 1 ? 's' : ''}`
-                    : 'Chargement…'}
-                </span>
-
-                {hasFilters && (
-                  <>
-                    <span className={styles.resultsDot}>•</span>
-                    <span>{selectedCategoryName}</span>
-
-                    {search.trim() && (
-                      <>
-                        <span className={styles.resultsDot}>•</span>
-                        <span>"{search.trim()}"</span>
-                      </>
-                    )}
-                  </>
-                )}
+                <div className={`${s.dropPanel} ${s.dropPanelRight} ${sortOpen ? s.dropPanelOpen : ''}`}>
+                  <div className={s.dropPanelInner}>
+                    <div className={s.dropLabel}>Trier par</div>
+                    {SORT_OPTIONS.map(o => (
+                      <button key={o.key}
+                        className={`${s.sortOpt} ${sort === o.key ? s.sortOptActive : ''}`}
+                        onClick={() => onSort(o.key)}
+                      >
+                        {o.label}
+                        {sort === o.key && <span className={s.sortCheck}>✓</span>}
+                      </button>
+                    ))}
+                  </div>
+                </div>
               </div>
 
-              {totalPages > 1 && !loading && (
-                <span className={styles.pageIndicator}>
-                  Page {currentPage}/{totalPages}
+              {hasFilters && <button className={s.clearBtn} onClick={clear}>Tout effacer</button>}
+            </div>
+          </div>
+
+          {hasFilters && (
+            <div className={s.chips}>
+              {activeCat && (
+                <span className={s.chip}>
+                  {activeCat.name}
+                  <button onClick={() => onCat('')}><IconX/></button>
+                </span>
+              )}
+              {search.trim() && (
+                <span className={s.chip}>
+                  "{search.trim()}"
+                  <button onClick={() => onSearch('')}><IconX/></button>
                 </span>
               )}
             </div>
-          </section>
+          )}
+
+          <div className={s.resultsMeta}>
+            <span className={s.resultsCount}>
+              {!loading ? `${totalItems} résultat${totalItems > 1 ? 's' : ''}` : 'Chargement…'}
+            </span>
+            {totalPages > 1 && !loading && (
+              <span className={s.pagePill}>Page {page} / {totalPages}</span>
+            )}
+          </div>
         </div>
 
-        {error && <div className={styles.errorBox}>{error}</div>}
+        {error && <div className={s.error}>{error}</div>}
 
+        {/* ── GRID ── */}
         {loading ? (
-          <div className={styles.articlesGrid}>
+          <div className={s.grid}>
             {Array.from({ length: 6 }).map((_, i) => (
-              <div key={i} className={styles.cardSkeleton}>
-                <div className={`${styles.skeleton} ${styles.skeletonImage}`} />
-                <div className={styles.cardSkeletonBody}>
-                  <div className={`${styles.skeleton} ${styles.skeletonSmall}`} />
-                  <div className={`${styles.skeleton} ${styles.skeletonTitle}`} />
-                  <div className={`${styles.skeleton} ${styles.skeletonLine}`} />
-                  <div className={`${styles.skeleton} ${styles.skeletonLine} ${styles.short}`} />
-                  <div className={`${styles.skeleton} ${styles.skeletonButton}`} />
+              <div key={i} className={s.skCard}>
+                <div className={`${s.sk} ${s.skImg}`}/>
+                <div className={s.skBody}>
+                  <div className={`${s.sk} ${s.skChip}`}/>
+                  <div className={`${s.sk} ${s.skTitle}`}/>
+                  <div className={`${s.sk} ${s.skLine}`}/>
+                  <div className={`${s.sk} ${s.skLine} ${s.skShort}`}/>
                 </div>
               </div>
             ))}
           </div>
         ) : articles.length === 0 ? (
-          <div className={styles.emptyBox}>
-            <div className={styles.emptyIcon}>
-              <SearchIcon />
-            </div>
-
+          <div className={s.empty}>
+            <div className={s.emptyIcon}><IconSearch/></div>
             <h2>Aucune actualité trouvée</h2>
-            <p>Essayez un autre mot-clé ou réinitialisez les filtres pour tout afficher.</p>
-
-            {hasFilters && (
-              <button type="button" className={styles.primaryBtn} onClick={clearFilters}>
-                Réinitialiser les filtres
-              </button>
-            )}
+            <p>Essayez un autre mot-clé ou réinitialisez les filtres.</p>
+            {hasFilters && <button className={s.resetBtn} onClick={clear}>Réinitialiser</button>}
           </div>
         ) : (
           <>
-            <div className={styles.articlesGrid}>
-              {articles.map((article, idx) => (
-                <article
-                  key={article.id}
-                  onClick={() => handleArticleClick(article.id)}
-                  className={`${styles.articleCard} ${staggerIn ? styles.staggerIn : ''}`}
-                  style={staggerIn ? { animationDelay: `${idx * 55}ms` } : { opacity: 0 }}
-                >
-                  <div className={styles.articleCardMedia}>
-                    {article.coverImage ? (
-                      <img
-                        src={article.coverImage}
-                        alt={article.title}
-                        className={styles.articleImage}
-                      />
-                    ) : (
-                      <div className={styles.articlePlaceholder}>
-                        <span>{article.category?.name ?? 'Article'}</span>
-                      </div>
-                    )}
-
-                    <div className={styles.mediaOverlay} />
-
-                    {article.category?.name && (
-                      <div className={styles.articleCategoryBadge}>{article.category.name}</div>
-                    )}
-
-                    <div className={styles.articleDateBadge}>
-                      <span className={styles.articleDateIcon}>
-                        <CalendarIcon />
-                      </span>
-                      {formatDate.format(new Date(article.createdAt))}
-                    </div>
-                  </div>
-
-                  <div className={styles.articleCardBody}>
-                    <div className={styles.articleMetaLine}>
-                      <span className={styles.articleMetaTag}>Publication</span>
-                      <span className={styles.articleMetaDot}>•</span>
-                      <span className={styles.articleMetaTag}>Lecture rapide</span>
-                    </div>
-
-                    <h2 className={styles.articleCardTitle}>{article.title}</h2>
-                    <p className={styles.articleCardExcerpt}>{getExcerpt(article.excerpt)}</p>
-
-                    <div className={styles.articleCardFooter}>
-                      <span className={styles.articleReadLabel}>Voir le détail</span>
-
-                      <button
-                        type="button"
-                        className={styles.readMoreBtn}
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          handleArticleClick(article.id)
-                        }}
-                      >
-                        Lire plus
-                        <span className={styles.readMoreArrow}>
-                          <ArrowRightIcon />
-                        </span>
-                      </button>
-                    </div>
-                  </div>
-                </article>
+            <div className={s.grid}>
+              {articles.map((a, i) => (
+                <ArticleCard
+                  key={a.id}
+                  article={a}
+                  index={i}
+                  fmt={fmt}
+                  onNavigate={id => nav.push(`/articles/${id}`)}
+                />
               ))}
             </div>
 
             {totalPages > 1 && (
-              <nav className={styles.pagination}>
-                <button
-                  type="button"
-                  onClick={() => handlePageChange(currentPage - 1)}
-                  disabled={currentPage <= 1 || loading}
-                  className={styles.paginationArrow}
-                  aria-label="Page précédente"
-                >
-                  ‹
-                </button>
-
-                {pageNumbers.map((p, i) =>
-                  p === '…' ? (
-                    <span key={`ellipsis-${i}`} className={styles.paginationEllipsis}>
-                      …
-                    </span>
-                  ) : (
-                    <button
-                      type="button"
-                      key={p}
-                      onClick={() => handlePageChange(p)}
-                      disabled={p === currentPage || loading}
-                      className={`${styles.paginationNumber} ${
-                        p === currentPage ? styles.active : ''
-                      }`}
-                    >
-                      {p}
-                    </button>
-                  )
+              <nav className={s.pagination}>
+                <button className={s.pBtn} onClick={() => goPage(page - 1)} disabled={page <= 1 || loading}>‹</button>
+                {pages.map((p, i) =>
+                  p === '…'
+                    ? <span key={`e${i}`} className={s.pEll}>…</span>
+                    : <button key={p} className={`${s.pBtn} ${p === page ? s.pActive : ''}`}
+                        onClick={() => goPage(p as number)} disabled={p === page || loading}>{p}</button>
                 )}
-
-                <button
-                  type="button"
-                  onClick={() => handlePageChange(currentPage + 1)}
-                  disabled={currentPage >= totalPages || loading}
-                  className={styles.paginationArrow}
-                  aria-label="Page suivante"
-                >
-                  ›
-                </button>
+                <button className={s.pBtn} onClick={() => goPage(page + 1)} disabled={page >= totalPages || loading}>›</button>
               </nav>
             )}
           </>
@@ -566,15 +496,12 @@ const PublicArticlesPage = ({ router }: PublicArticlesPageProps) => {
       </div>
 
       <button
-        type="button"
-        className={`${styles.scrollTopBtn} ${showTop ? styles.scrollTopVisible : ''}`}
+        className={`${s.scrollTop} ${top ? s.scrollTopShow : ''}`}
         onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
         aria-label="Retour en haut"
       >
-        <ArrowUpIcon />
+        <IconUp/>
       </button>
     </div>
   )
 }
-
-export default PublicArticlesPage
