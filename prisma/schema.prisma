@@ -1,8 +1,3 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Get a free hosted Postgres database in seconds: `npx create-db`
-
 generator client {
   provider = "prisma-client"
   output   = "../src/generated/prisma"
@@ -12,7 +7,330 @@ datasource db {
   provider = "postgresql"
 }
 
-// ─── ENUMS ───────────────────────────────────────────────
+model User {
+  id            String      @id @default(uuid()) @db.Uuid
+  email         String      @unique @db.VarChar(255)
+  username      String?     @unique @db.VarChar(100)
+  passwordHash  String
+  firstName     String?     @db.VarChar(100)
+  lastName      String?     @db.VarChar(100)
+  phone         String?     @db.VarChar(30)
+  avatarUrl     String?
+  status        UserStatus  @default(PENDING)
+  emailVerified Boolean     @default(false)
+  lastLoginAt   DateTime?
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+  deletedAt     DateTime?
+  createdAudits AuditLog[]  @relation("AuditActor")
+  authTokens    AuthToken[]
+  pages         Page[]
+  posts         Post[]
+  products      Product[]
+  projects      Project[]
+  sessions      Session[]
+  assignedRoles UserRole[]  @relation("UserRoleAssignedBy")
+  userRoles     UserRole[]
+
+  @@index([email])
+  @@index([username])
+  @@index([status])
+  @@index([createdAt])
+  @@index([deletedAt])
+  @@map("users")
+}
+
+model Role {
+  id              String           @id @default(uuid()) @db.Uuid
+  name            String           @unique @db.VarChar(100)
+  code            String           @unique @db.VarChar(100)
+  description     String?
+  isSystem        Boolean          @default(false)
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+  rolePermissions RolePermission[]
+  userRoles       UserRole[]
+
+  @@index([name])
+  @@index([code])
+  @@index([isSystem])
+  @@map("roles")
+}
+
+model PermissionResource {
+  id              String           @id @default(uuid()) @db.Uuid
+  name            String           @unique @db.VarChar(100)
+  code            String           @unique @db.VarChar(100)
+  description     String?
+  isActive        Boolean          @default(true)
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+  rolePermissions RolePermission[]
+
+  @@index([name])
+  @@index([code])
+  @@index([isActive])
+  @@map("permission_resources")
+}
+
+model RolePermission {
+  id                String             @id @default(uuid()) @db.Uuid
+  roleId            String             @db.Uuid
+  resourceId        String             @db.Uuid
+  canRead           Boolean            @default(false)
+  canCreate         Boolean            @default(false)
+  canUpdate         Boolean            @default(false)
+  canDelete         Boolean            @default(false)
+  canList           Boolean            @default(false)
+  canExport         Boolean            @default(false)
+  canApprove        Boolean            @default(false)
+  canManage         Boolean            @default(false)
+  specialPermission SpecialPermission  @default(NONE)
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+  resource          PermissionResource @relation(fields: [resourceId], references: [id], onDelete: Cascade)
+  role              Role               @relation(fields: [roleId], references: [id], onDelete: Cascade)
+
+  @@unique([roleId, resourceId])
+  @@index([roleId])
+  @@index([resourceId])
+  @@index([specialPermission])
+  @@map("role_permissions")
+}
+
+model UserRole {
+  id           String   @id @default(uuid()) @db.Uuid
+  userId       String   @db.Uuid
+  roleId       String   @db.Uuid
+  assignedById String?  @db.Uuid
+  assignedAt   DateTime @default(now())
+  assignedBy   User?    @relation("UserRoleAssignedBy", fields: [assignedById], references: [id])
+  role         Role     @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, roleId])
+  @@index([userId])
+  @@index([roleId])
+  @@map("user_roles")
+}
+
+model Session {
+  id           String    @id @default(uuid()) @db.Uuid
+  userId       String    @db.Uuid
+  token        String    @unique
+  refreshToken String?   @unique
+  ipAddress    String?   @db.VarChar(64)
+  userAgent    String?
+  expiresAt    DateTime
+  revokedAt    DateTime?
+  createdAt    DateTime  @default(now())
+  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
+  @@map("sessions")
+}
+
+model AuthToken {
+  id        String    @id @default(uuid()) @db.Uuid
+  userId    String    @db.Uuid
+  token     String    @unique
+  type      TokenType
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([type])
+  @@index([expiresAt])
+  @@map("auth_tokens")
+}
+
+model AuditLog {
+  id        String   @id @default(uuid()) @db.Uuid
+  actorId   String?  @db.Uuid
+  action    String   @db.VarChar(100)
+  entity    String   @db.VarChar(100)
+  entityId  String?  @db.VarChar(100)
+  metadata  Json?
+  ipAddress String?  @db.VarChar(64)
+  userAgent String?
+  createdAt DateTime @default(now())
+  actor     User?    @relation("AuditActor", fields: [actorId], references: [id])
+
+  @@index([actorId])
+  @@index([action])
+  @@index([entity])
+  @@index([createdAt])
+  @@map("audit_logs")
+}
+
+model Page {
+  id            String     @id @default(uuid()) @db.Uuid
+  title         String     @db.VarChar(255)
+  slug          String     @unique @db.VarChar(255)
+  description   String?
+  gjsComponents Json?
+  gjsStyles     Json?
+  gjsHtml       String?
+  status        PageStatus @default(DRAFT)
+  publishedAt   DateTime?
+  authorId      String     @db.Uuid
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+  author        User       @relation(fields: [authorId], references: [id])
+
+  @@index([slug])
+  @@index([status])
+  @@map("pages")
+}
+
+model Category {
+  id          String   @id @default(uuid()) @db.Uuid
+  name        String   @unique @db.VarChar(100)
+  slug        String   @unique @db.VarChar(100)
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  posts       Post[]
+
+  @@index([slug])
+  @@map("categories")
+}
+
+model Post {
+  id            String     @id @default(uuid()) @db.Uuid
+  title         String     @db.VarChar(255)
+  slug          String     @unique @db.VarChar(255)
+  excerpt       String?
+  coverImage    String?
+  status        PostStatus @default(DRAFT)
+  publishedAt   DateTime?
+  authorId      String     @db.Uuid
+  categoryId    String?    @db.Uuid
+  gjsComponents Json?
+  gjsStyles     String?
+  gjsHtml       String?
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+  gjsJs         String?
+  tags          PostTag[]
+  author        User       @relation(fields: [authorId], references: [id])
+  category      Category?  @relation(fields: [categoryId], references: [id])
+
+  @@index([slug])
+  @@index([status])
+  @@index([authorId])
+  @@index([publishedAt])
+  @@map("posts")
+}
+
+model Tag {
+  id        String    @id @default(uuid()) @db.Uuid
+  name      String    @unique @db.VarChar(100)
+  slug      String    @unique @db.VarChar(100)
+  createdAt DateTime  @default(now())
+  posts     PostTag[]
+
+  @@index([slug])
+  @@map("tags")
+}
+
+model PostTag {
+  postId String @db.Uuid
+  tagId  String @db.Uuid
+  post   Post   @relation(fields: [postId], references: [id], onDelete: Cascade)
+  tag    Tag    @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@id([postId, tagId])
+  @@map("post_tags")
+}
+
+model Project {
+  id            String        @id @default(uuid()) @db.Uuid
+  title         String        @db.VarChar(255)
+  slug          String        @unique @db.VarChar(255)
+  excerpt       String?
+  coverImage    String?
+  images        String[]
+  techStack     String[]
+  projectUrl    String?
+  githubUrl     String?
+  status        ProjectStatus @default(DRAFT)
+  publishedAt   DateTime?
+  authorId      String        @db.Uuid
+  gjsComponents Json?
+  gjsStyles     Json?
+  gjsHtml       String?
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+  author        User          @relation(fields: [authorId], references: [id])
+
+  @@index([slug])
+  @@index([status])
+  @@index([publishedAt])
+  @@map("projects")
+}
+
+model ProductCategory {
+  id          String    @id @default(uuid()) @db.Uuid
+  name        String    @unique @db.VarChar(100)
+  slug        String    @unique @db.VarChar(100)
+  description String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  products    Product[]
+
+  @@index([slug])
+  @@map("product_categories")
+}
+
+model Product {
+  id            String           @id @default(uuid()) @db.Uuid
+  name          String           @db.VarChar(255)
+  slug          String           @unique @db.VarChar(255)
+  excerpt       String?
+  price         Decimal?         @db.Decimal(10, 2)
+  coverImage    String?
+  images        String[]
+  status        ProductStatus    @default(DRAFT)
+  publishedAt   DateTime?
+  authorId      String           @db.Uuid
+  categoryId    String?          @db.Uuid
+  gjsComponents Json?
+  gjsStyles     Json?
+  gjsHtml       String?
+  gjsJs String? @db.Text 
+  createdAt     DateTime         @default(now())
+  updatedAt     DateTime         @updatedAt
+  author        User             @relation(fields: [authorId], references: [id])
+  category      ProductCategory? @relation(fields: [categoryId], references: [id])
+
+  @@index([slug])
+  @@index([status])
+  @@index([publishedAt])
+  @@index([categoryId])
+  @@map("products")
+}
+
+model ContactMessage {
+  id        String        @id @default(uuid()) @db.Uuid
+  name      String        @db.VarChar(100)
+  email     String        @db.VarChar(255)
+  phone     String?       @db.VarChar(30)
+  subject   String?       @db.VarChar(255)
+  message   String
+  status    ContactStatus @default(NEW)
+  ipAddress String?       @db.VarChar(64)
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+
+  @@index([email])
+  @@index([status])
+  @@index([createdAt])
+  @@map("contact_messages")
+}
 
 enum UserStatus {
   PENDING
@@ -62,370 +380,3 @@ enum ContactStatus {
   REPLIED
   ARCHIVED
 }
-
-// ─── AUTH & USERS ─────────────────────────────────────────
-
-model User {
-  id            String     @id @default(uuid()) @db.Uuid
-  email         String     @unique @db.VarChar(255)
-  username      String?    @unique @db.VarChar(100)
-  passwordHash  String     @db.Text
-  firstName     String?    @db.VarChar(100)
-  lastName      String?    @db.VarChar(100)
-  phone         String?    @db.VarChar(30)
-  avatarUrl     String?    @db.Text
-  status        UserStatus @default(PENDING)
-  emailVerified Boolean    @default(false)
-  lastLoginAt   DateTime?
-  createdAt     DateTime   @default(now())
-  updatedAt     DateTime   @updatedAt
-  deletedAt     DateTime?
-
-  userRoles     UserRole[]
-  sessions      Session[]
-  authTokens    AuthToken[]
-  createdAudits AuditLog[]  @relation("AuditActor")
-  assignedRoles UserRole[]  @relation("UserRoleAssignedBy")
-  posts         Post[]
-  projects      Project[]
-  products      Product[]
-  pages         Page[]
-
-  @@index([email])
-  @@index([username])
-  @@index([status])
-  @@index([createdAt])
-  @@index([deletedAt])
-  @@map("users")
-}
-
-model Role {
-  id              String           @id @default(uuid()) @db.Uuid
-  name            String           @unique @db.VarChar(100)
-  code            String           @unique @db.VarChar(100)
-  description     String?          @db.Text
-  isSystem        Boolean          @default(false)
-  createdAt       DateTime         @default(now())
-  updatedAt       DateTime         @updatedAt
-
-  userRoles       UserRole[]
-  rolePermissions RolePermission[]
-
-  @@index([name])
-  @@index([code])
-  @@index([isSystem])
-  @@map("roles")
-}
-
-model PermissionResource {
-  id              String           @id @default(uuid()) @db.Uuid
-  name            String           @unique @db.VarChar(100)
-  code            String           @unique @db.VarChar(100)
-  description     String?          @db.Text
-  isActive        Boolean          @default(true)
-  createdAt       DateTime         @default(now())
-  updatedAt       DateTime         @updatedAt
-
-  rolePermissions RolePermission[]
-
-  @@index([name])
-  @@index([code])
-  @@index([isActive])
-  @@map("permission_resources")
-}
-
-model RolePermission {
-  id                String             @id @default(uuid()) @db.Uuid
-  roleId            String             @db.Uuid
-  resourceId        String             @db.Uuid
-  canRead           Boolean            @default(false)
-  canCreate         Boolean            @default(false)
-  canUpdate         Boolean            @default(false)
-  canDelete         Boolean            @default(false)
-  canList           Boolean            @default(false)
-  canExport         Boolean            @default(false)
-  canApprove        Boolean            @default(false)
-  canManage         Boolean            @default(false)
-  specialPermission SpecialPermission  @default(NONE)
-  createdAt         DateTime           @default(now())
-  updatedAt         DateTime           @updatedAt
-
-  role              Role               @relation(fields: [roleId], references: [id], onDelete: Cascade)
-  resource          PermissionResource @relation(fields: [resourceId], references: [id], onDelete: Cascade)
-
-  @@unique([roleId, resourceId])
-  @@index([roleId])
-  @@index([resourceId])
-  @@index([specialPermission])
-  @@map("role_permissions")
-}
-
-model UserRole {
-  id           String   @id @default(uuid()) @db.Uuid
-  userId       String   @db.Uuid
-  roleId       String   @db.Uuid
-  assignedById String?  @db.Uuid
-  assignedAt   DateTime @default(now())
-
-  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  role         Role     @relation(fields: [roleId], references: [id], onDelete: Cascade)
-  assignedBy   User?    @relation("UserRoleAssignedBy", fields: [assignedById], references: [id], onDelete: SetNull)
-
-  @@unique([userId, roleId])
-  @@index([userId])
-  @@index([roleId])
-  @@map("user_roles")
-}
-
-model Session {
-  id           String    @id @default(uuid()) @db.Uuid
-  userId       String    @db.Uuid
-  token        String    @unique @db.Text
-  refreshToken String?   @unique @db.Text
-  ipAddress    String?   @db.VarChar(64)
-  userAgent    String?   @db.Text
-  expiresAt    DateTime
-  revokedAt    DateTime?
-  createdAt    DateTime  @default(now())
-
-  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@index([userId])
-  @@index([expiresAt])
-  @@map("sessions")
-}
-
-model AuthToken {
-  id        String    @id @default(uuid()) @db.Uuid
-  userId    String    @db.Uuid
-  token     String    @unique @db.Text
-  type      TokenType
-  expiresAt DateTime
-  usedAt    DateTime?
-  createdAt DateTime  @default(now())
-
-  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@index([userId])
-  @@index([type])
-  @@index([expiresAt])
-  @@map("auth_tokens")
-}
-
-model AuditLog {
-  id        String   @id @default(uuid()) @db.Uuid
-  actorId   String?  @db.Uuid
-  action    String   @db.VarChar(100)
-  entity    String   @db.VarChar(100)
-  entityId  String?  @db.VarChar(100)
-  metadata  Json?
-  ipAddress String?  @db.VarChar(64)
-  userAgent String?  @db.Text
-  createdAt DateTime @default(now())
-
-  actor     User?    @relation("AuditActor", fields: [actorId], references: [id], onDelete: SetNull)
-
-  @@index([actorId])
-  @@index([action])
-  @@index([entity])
-  @@index([createdAt])
-  @@map("audit_logs")
-}
-
-// ─── PAGES (GrapesJS) ─────────────────────────────────────
-// Pages statiques du site : accueil, à propos, services...
-// Tout le contenu est géré via GrapesJS
-
-model Page {
-  id             String     @id @default(uuid()) @db.Uuid
-  title          String     @db.VarChar(255)
-  slug           String     @unique @db.VarChar(255)
-  description    String?    @db.Text
-
-  // GrapesJS — toujours sauvegarder les 3
-  gjsComponents  Json?      // structure JSON pour re-éditer dans GrapesJS
-  gjsStyles      Json?      // styles CSS en JSON
-  gjsHtml        String?    @db.Text  // HTML final rendu au visiteur
-
-  status         PageStatus @default(DRAFT)
-  publishedAt    DateTime?
-  authorId       String     @db.Uuid
-  createdAt      DateTime   @default(now())
-  updatedAt      DateTime   @updatedAt
-
-  author         User       @relation(fields: [authorId], references: [id], onDelete: Restrict)
-
-  @@index([slug])
-  @@index([status])
-  @@map("pages")
-}
-
-// ─── BLOG ─────────────────────────────────────────────────
-
-model Category {
-  id          String   @id @default(uuid()) @db.Uuid
-  name        String   @unique @db.VarChar(100)
-  slug        String   @unique @db.VarChar(100)
-  description String?  @db.Text
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-
-  posts       Post[]
-
-  @@index([slug])
-  @@map("categories")
-}
-
-model Post {
-  id             String     @id @default(uuid()) @db.Uuid
-  title          String     @db.VarChar(255)
-  slug           String     @unique @db.VarChar(255)
-  excerpt        String?    @db.Text
-  coverImage     String?    @db.Text
-  status         PostStatus @default(DRAFT)
-  publishedAt    DateTime?
-  authorId       String     @db.Uuid
-  categoryId     String?    @db.Uuid
-
-  // GrapesJS
-  gjsJs String?
-  gjsComponents  Json?
-  gjsStyles      String?
-  gjsHtml        String?    @db.Text
-
-  createdAt      DateTime   @default(now())
-  updatedAt      DateTime   @updatedAt
-
-  author         User       @relation(fields: [authorId], references: [id], onDelete: Restrict)
-  category       Category?  @relation(fields: [categoryId], references: [id], onDelete: SetNull)
-  tags           PostTag[]
-
-  @@index([slug])
-  @@index([status])
-  @@index([authorId])
-  @@index([publishedAt])
-  @@map("posts")
-}
-
-model Tag {
-  id        String    @id @default(uuid()) @db.Uuid
-  name      String    @unique @db.VarChar(100)
-  slug      String    @unique @db.VarChar(100)
-  createdAt DateTime  @default(now())
-
-  posts     PostTag[]
-
-  @@index([slug])
-  @@map("tags")
-}
-
-model PostTag {
-  postId String @db.Uuid
-  tagId  String @db.Uuid
-
-  post   Post   @relation(fields: [postId], references: [id], onDelete: Cascade)
-  tag    Tag    @relation(fields: [tagId], references: [id], onDelete: Cascade)
-
-  @@id([postId, tagId])
-  @@map("post_tags")
-}
-
-// ─── PORTFOLIO ────────────────────────────────────────────
-
-model Project {
-  id             String        @id @default(uuid()) @db.Uuid
-  title          String        @db.VarChar(255)
-  slug           String        @unique @db.VarChar(255)
-  excerpt        String?       @db.Text
-  coverImage     String?       @db.Text
-  images         String[]
-  techStack      String[]
-  projectUrl     String?       @db.Text
-  githubUrl      String?       @db.Text
-  status         ProjectStatus @default(DRAFT)
-  publishedAt    DateTime?
-  authorId       String        @db.Uuid
-
-  // GrapesJS — page de détail du projet
-  gjsComponents  Json?
-  gjsStyles      Json?
-  gjsHtml        String?       @db.Text
-
-  createdAt      DateTime      @default(now())
-  updatedAt      DateTime      @updatedAt
-
-  author         User          @relation(fields: [authorId], references: [id], onDelete: Restrict)
-
-  @@index([slug])
-  @@index([status])
-  @@index([publishedAt])
-  @@map("projects")
-}
-
-// ─── PRODUITS ─────────────────────────────────────────────
-
-model ProductCategory {
-  id          String    @id @default(uuid()) @db.Uuid
-  name        String    @unique @db.VarChar(100)
-  slug        String    @unique @db.VarChar(100)
-  description String?   @db.Text
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
-
-  products    Product[]
-
-  @@index([slug])
-  @@map("product_categories")
-}
-
-model Product {
-  id             String           @id @default(uuid()) @db.Uuid
-  name           String           @db.VarChar(255)
-  slug           String           @unique @db.VarChar(255)
-  excerpt        String?          @db.Text
-  price          Decimal?         @db.Decimal(10, 2)
-  coverImage     String?          @db.Text
-  images         String[]
-  status         ProductStatus    @default(DRAFT)
-  publishedAt    DateTime?
-  authorId       String           @db.Uuid
-  categoryId     String?          @db.Uuid
-
-  // GrapesJS — page de détail du produit
-  gjsComponents  Json?
-  gjsStyles      Json?
-  gjsHtml        String?          @db.Text
-
-  createdAt      DateTime         @default(now())
-  updatedAt      DateTime         @updatedAt
-
-  author         User             @relation(fields: [authorId], references: [id], onDelete: Restrict)
-  category       ProductCategory? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
-
-  @@index([slug])
-  @@index([status])
-  @@index([publishedAt])
-  @@index([categoryId])
-  @@map("products")
-}
-
-// ─── CONTACT ──────────────────────────────────────────────
-
-model ContactMessage {
-  id        String        @id @default(uuid()) @db.Uuid
-  name      String        @db.VarChar(100)
-  email     String        @db.VarChar(255)
-  phone     String?       @db.VarChar(30)
-  subject   String?       @db.VarChar(255)
-  message   String        @db.Text
-  status    ContactStatus @default(NEW)
-  ipAddress String?       @db.VarChar(64)
-  createdAt DateTime      @default(now())
-  updatedAt DateTime      @updatedAt
-
-  @@index([email])
-  @@index([status])
-  @@index([createdAt])
-  @@map("contact_messages")
-}
-

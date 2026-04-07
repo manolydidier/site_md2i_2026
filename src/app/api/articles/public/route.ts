@@ -10,7 +10,7 @@ async function getPublicArticles(req: NextRequest) {
 
   const search = (searchParams.get('search') ?? '').trim()
   const category = (searchParams.get('category') ?? '').trim()
-  const sort = searchParams.get('sort') ?? 'newest'
+  const sort = (searchParams.get('sort') ?? 'date-desc').trim()
 
   const where: Parameters<typeof prisma.post.findMany>[0]['where'] = {
     status: 'PUBLISHED',
@@ -26,9 +26,13 @@ async function getPublicArticles(req: NextRequest) {
   }
 
   const orderBy: Parameters<typeof prisma.post.findMany>[0]['orderBy'] =
-    sort === 'oldest'
+    sort === 'date-asc'
       ? { createdAt: 'asc' }
-      : { createdAt: 'desc' }
+      : sort === 'title-asc'
+        ? { title: 'asc' }
+        : sort === 'title-desc'
+          ? { title: 'desc' }
+          : { createdAt: 'desc' }
 
   try {
     const [articles, total, categories] = await Promise.all([

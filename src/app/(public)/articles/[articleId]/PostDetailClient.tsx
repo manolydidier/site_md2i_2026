@@ -7,17 +7,12 @@ import { useTheme } from '@/app/context/ThemeContext'
 import grapesjs, { Editor } from 'grapesjs'
 import 'grapesjs/dist/css/grapes.min.css'
 
-type PostTag = {
-  tag: { id: string; name: string; slug: string }
-}
-
 type Post = {
   id: string
   title: string
   slug: string
   excerpt?: string | null
   coverImage?: string | null
-  status?: string | null
   publishedAt?: string | null
   createdAt?: string | null
   updatedAt?: string | null
@@ -26,9 +21,6 @@ type Post = {
   gjsCss?: string | null
   gjsStyles?: unknown
   gjsComponents?: unknown
-  author?: { id: string; email: string } | null
-  category?: { id: string; name: string; slug: string } | null
-  tags?: PostTag[]
 }
 
 type CanvasEventHandlers = {
@@ -39,70 +31,19 @@ type CanvasEventHandlers = {
   preventPaste: (e: Event) => boolean | void
 }
 
-function StatusBadge({ status, dark }: { status?: string | null; dark: boolean }) {
-  const map: Record<string, { label: string; className: string }> = {
-    published: {
-      label: 'Publié',
-      className: 'bg-emerald-500/15 text-emerald-400 ring-1 ring-emerald-500/30',
-    },
-    draft: {
-      label: 'Brouillon',
-      className: 'bg-amber-500/15 text-amber-400 ring-1 ring-amber-500/30',
-    },
-    archived: {
-      label: 'Archivé',
-      className: dark
-        ? 'bg-white/10 text-white/45 ring-1 ring-white/20'
-        : 'bg-black/5 text-black/45 ring-1 ring-black/10',
-    },
-  }
-
-  const badge = map[(status || '').toLowerCase()]
-  if (!badge) return null
-
-  return (
-    <span
-      className={`inline-flex shrink-0 items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${badge.className}`}
-    >
-      {badge.label}
-    </span>
-  )
-}
-
-function DetailRow({
-  label,
-  children,
-  dark,
-}: {
-  label: string
-  children: React.ReactNode
-  dark: boolean
-}) {
-  return (
-    <div className="flex flex-col gap-0.5">
-      <span
-        className={`text-[10px] font-semibold uppercase tracking-widest ${
-          dark ? 'text-white/30' : 'text-black/35'
-        }`}
-      >
-        {label}
-      </span>
-      <div className={`text-sm ${dark ? 'text-white/80' : 'text-black/80'}`}>{children}</div>
-    </div>
-  )
-}
-
 function getUiColors(dark: boolean) {
   return {
-    panelBg: dark ? '#0a0a1f' : '#ffffff',
-    panelBgSoft: dark ? 'rgba(10, 10, 31, 0.95)' : 'rgba(255, 255, 255, 0.95)',
-    panelBorder: dark ? 'rgba(255,255,255,.10)' : 'rgba(0,0,0,.10)',
-    buttonBg: dark ? 'rgba(0,0,0,.60)' : 'rgba(255,255,255,.88)',
-    buttonBgHover: dark ? 'rgba(0,0,0,.80)' : 'rgba(255,255,255,1)',
-    buttonText: dark ? 'rgba(255,255,255,.90)' : 'rgba(24,24,24,.86)',
-    buttonBorder: dark ? 'rgba(255,255,255,.10)' : 'rgba(0,0,0,.08)',
+    buttonBg: dark ? 'rgba(15, 23, 42, 0.82)' : 'rgba(255,255,255,.92)',
+    buttonBgHover: dark ? 'rgba(15, 23, 42, 0.96)' : 'rgba(255,255,255,1)',
+    buttonText: dark ? '#f8fafc' : '#18181b',
+    buttonBorder: dark ? 'rgba(255,255,255,.02)' : 'rgba(0,0,0,.02)',
+    buttonShadow: dark
+      ? '0 14px 34px rgba(0,0,0,.38)'
+      : '0 14px 34px rgba(15,23,42,.14)',
     appBg: dark ? '#020617' : '#f8fafc',
-    mutedText: dark ? '#6b7280' : '#6b7280',
+    mutedText: dark ? '#94a3b8' : '#6b7280',
+    accent1: '#ef9f27',
+    accent2: '#f7c060',
   }
 }
 
@@ -174,7 +115,7 @@ function measureCanvasHeight(editor: Editor, setCanvasHeight: (height: number) =
           body.offsetHeight,
           html.scrollHeight,
           html.offsetHeight,
-          900
+          window.innerHeight
         )
         setCanvasHeight(h)
       }
@@ -196,7 +137,6 @@ export default function PostDetailClient() {
   const [post, setPost] = useState<Post | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [drawerOpen, setDrawerOpen] = useState(false)
   const [canvasHeight, setCanvasHeight] = useState(900)
 
   const ui = getUiColors(dark)
@@ -484,14 +424,6 @@ export default function PostDetailClient() {
     }, 120)
   }, [dark])
 
-  useEffect(() => {
-    const handler = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') setDrawerOpen(false)
-    }
-    window.addEventListener('keydown', handler)
-    return () => window.removeEventListener('keydown', handler)
-  }, [])
-
   if (loading) {
     return (
       <div className="flex min-h-screen items-center justify-center" style={{ background: ui.appBg }}>
@@ -506,8 +438,18 @@ export default function PostDetailClient() {
         <p className="text-sm" style={{ color: ui.mutedText }}>{error || 'Post introuvable.'}</p>
         <button
           onClick={() => router.back()}
-          className="rounded-lg px-4 py-2 text-sm transition"
-          style={{ background: '#111827', color: '#ffffff' }}
+          style={{
+            height: '44px',
+            padding: '0 18px',
+            borderRadius: '14px',
+            border: 'none',
+            background: `linear-gradient(135deg, ${ui.accent1} 0%, ${ui.accent2} 100%)`,
+            color: '#fff',
+            fontSize: '14px',
+            fontWeight: 700,
+            cursor: 'pointer',
+            boxShadow: '0 14px 30px rgba(239,159,39,.30)',
+          }}
         >
           Retour
         </button>
@@ -520,7 +462,6 @@ export default function PostDetailClient() {
       <style jsx global>{`
         * { margin: 0; padding: 0; box-sizing: border-box; }
 
-        /* GrapesJS overrides */
         .gjs-pn-panel,
         .gjs-pn-panels,
         [class*='gjs-pn-'],
@@ -576,35 +517,13 @@ export default function PostDetailClient() {
         .gjs-cv-canvas__frames iframe * { pointer-events: auto !important; }
       `}</style>
 
-      {/*
-       * STRUCTURE :
-       *
-       *  <root>                          ← h-screen, pas d'overflow
-       *    <scroll-zone>                 ← overflow-y:auto, scroll ici
-       *      <canvas-wrapper>            ← hauteur dynamique GrapesJS
-       *    </scroll-zone>
-       *
-       *    <fixed-buttons>               ← frère de scroll-zone → fixed OK
-       *    <drawer-overlay>              ← frère de scroll-zone → fixed OK
-       *    <drawer-panel>                ← frère de scroll-zone → fixed OK
-       *  </root>
-       *
-       * Règle : un élément position:fixed se positionne par rapport au premier
-       * ancêtre ayant overflow≠visible, transform, filter ou will-change.
-       * En isolant le scroll dans un enfant dédié, les fixed restent ancrés
-       * à la viewport et non au scroll-zone.
-       *)
-      */}
       <div
         style={{
           position: 'relative',
           width: '100%',
           height: '100vh',
-          /* Pas d'overflow ici — ne doit pas créer de containing block */
         }}
       >
-
-        {/* ── Zone de scroll isolée ── */}
         <div
           style={{
             position: 'absolute',
@@ -624,199 +543,50 @@ export default function PostDetailClient() {
           </div>
         </div>
 
-        {/* ── Boutons fixed — EN DEHORS de scroll-zone ── */}
         <div
           style={{
             position: 'fixed',
-            right: '16px',
-            top: '16px',
+            top: '90px',
+            left: '16px',
             zIndex: 9999,
-            display: 'flex',
-            gap: '8px',
           }}
         >
           <button
             onClick={() => router.back()}
             aria-label="Retour"
-            className="flex h-9 w-9 items-center justify-center rounded-xl backdrop-blur-md transition"
             style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '10px',
+              height: '46px',
+              padding: '0 18px',
+              borderRadius: '16px',
+              border: `1px solid ${ui.buttonBorder}`,
               background: ui.buttonBg,
               color: ui.buttonText,
-              border: `1px solid ${ui.buttonBorder}`,
+              fontSize: '14px',
+              fontWeight: 700,
+              cursor: 'pointer',
+              backdropFilter: 'blur(14px)',
+              WebkitBackdropFilter: 'blur(14px)',
+              boxShadow: ui.buttonShadow,
+              transition: 'all .22s ease',
             }}
-            onMouseEnter={(e) => { e.currentTarget.style.background = ui.buttonBgHover }}
-            onMouseLeave={(e) => { e.currentTarget.style.background = ui.buttonBg }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.background = ui.buttonBgHover
+              e.currentTarget.style.transform = 'translateY(-2px)'
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = ui.buttonBg
+              e.currentTarget.style.transform = 'translateY(0)'
+            }}
           >
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
               <path d="M19 12H5M12 5l-7 7 7 7" />
             </svg>
-          </button>
-
-          <button
-            onClick={() => setDrawerOpen(true)}
-            className="flex h-9 items-center gap-2 rounded-xl px-3.5 text-sm font-medium backdrop-blur-md transition"
-            style={{
-              background: ui.buttonBg,
-              color: ui.buttonText,
-              border: `1px solid ${ui.buttonBorder}`,
-            }}
-            onMouseEnter={(e) => { e.currentTarget.style.background = ui.buttonBgHover }}
-            onMouseLeave={(e) => { e.currentTarget.style.background = ui.buttonBg }}
-          >
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <circle cx="12" cy="12" r="10" />
-              <path d="M12 16v-4M12 8h.01" />
-            </svg>
-            Détails
+            
           </button>
         </div>
-
-        {/* ── Drawer — EN DEHORS de scroll-zone ── */}
-        {drawerOpen && (
-          <>
-            {/* Overlay */}
-            <div
-              style={{
-                position: 'fixed',
-                inset: 0,
-                zIndex: 9998,
-                background: 'rgba(0,0,0,0.50)',
-                backdropFilter: 'blur(4px)',
-                WebkitBackdropFilter: 'blur(4px)',
-              }}
-              onClick={() => setDrawerOpen(false)}
-            />
-
-            {/* Panel */}
-            <div
-              style={{
-                position: 'fixed',
-                top: 0,
-                right: 0,
-                zIndex: 9999,
-                height: '100%',
-                width: '384px',
-                background: ui.panelBg,
-                color: dark ? '#ffffff' : '#181818',
-                borderLeft: `1px solid ${ui.panelBorder}`,
-                overflowY: 'auto',
-                boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)',
-              }}
-            >
-              <div
-                className="sticky top-0 flex items-center justify-between px-5 py-4"
-                style={{
-                  background: ui.panelBgSoft,
-                  borderBottom: `1px solid ${ui.panelBorder}`,
-                  backdropFilter: 'blur(8px)',
-                  WebkitBackdropFilter: 'blur(8px)',
-                }}
-              >
-                <h2 className="text-base font-semibold" style={{ color: dark ? '#ffffff' : '#181818' }}>
-                  Détails du post
-                </h2>
-                <button
-                  onClick={() => setDrawerOpen(false)}
-                  className="rounded-lg p-1.5 transition"
-                  style={{ color: dark ? 'rgba(255,255,255,.60)' : 'rgba(0,0,0,.55)' }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.background = dark ? 'rgba(255,255,255,.10)' : 'rgba(0,0,0,.05)'
-                    e.currentTarget.style.color = dark ? '#ffffff' : '#181818'
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.background = 'transparent'
-                    e.currentTarget.style.color = dark ? 'rgba(255,255,255,.60)' : 'rgba(0,0,0,.55)'
-                  }}
-                >
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <path d="M18 6L6 18M6 6l12 12" />
-                  </svg>
-                </button>
-              </div>
-
-              <div className="space-y-6 p-5">
-                <DetailRow dark={dark} label="Titre">{post.title}</DetailRow>
-                <DetailRow dark={dark} label="Slug">{post.slug}</DetailRow>
-
-                {post.excerpt && (
-                  <DetailRow dark={dark} label="Extrait">{post.excerpt}</DetailRow>
-                )}
-
-                {post.category && (
-                  <DetailRow dark={dark} label="Catégorie">
-                    <span
-                      className="inline-flex rounded-md px-2 py-0.5 text-xs"
-                      style={{
-                        background: dark ? 'rgba(255,255,255,.06)' : 'rgba(0,0,0,.05)',
-                        color: dark ? 'rgba(255,255,255,.90)' : 'rgba(0,0,0,.80)',
-                      }}
-                    >
-                      {post.category.name}
-                    </span>
-                  </DetailRow>
-                )}
-
-                {post.tags && post.tags.length > 0 && (
-                  <DetailRow dark={dark} label="Tags">
-                    <div className="flex flex-wrap gap-1.5">
-                      {post.tags.map(({ tag }) => (
-                        <span
-                          key={tag.id}
-                          className="inline-flex rounded-md px-2 py-0.5 text-xs"
-                          style={{
-                            background: dark ? 'rgba(255,255,255,.06)' : 'rgba(0,0,0,.05)',
-                            color: dark ? 'rgba(255,255,255,.90)' : 'rgba(0,0,0,.80)',
-                          }}
-                        >
-                          {tag.name}
-                        </span>
-                      ))}
-                    </div>
-                  </DetailRow>
-                )}
-
-                <DetailRow dark={dark} label="Statut">
-                  <StatusBadge dark={dark} status={post.status} />
-                </DetailRow>
-
-                {post.publishedAt && (
-                  <DetailRow dark={dark} label="Publié le">
-                    {new Date(post.publishedAt).toLocaleDateString('fr-FR', {
-                      day: 'numeric',
-                      month: 'long',
-                      year: 'numeric',
-                    })}
-                  </DetailRow>
-                )}
-
-                <DetailRow dark={dark} label="Créé le">
-                  {new Date(post.createdAt || '').toLocaleDateString('fr-FR')}
-                </DetailRow>
-
-                <DetailRow dark={dark} label="Modifié le">
-                  {new Date(post.updatedAt || '').toLocaleDateString('fr-FR')}
-                </DetailRow>
-
-                {post.author && (
-                  <DetailRow dark={dark} label="Auteur">
-                    <div className="flex items-center gap-2">
-                      <div
-                        className="flex h-6 w-6 items-center justify-center rounded-full text-xs"
-                        style={{
-                          background: dark ? 'rgba(255,255,255,.10)' : 'rgba(0,0,0,.06)',
-                          color: dark ? '#ffffff' : '#181818',
-                        }}
-                      >
-                        {post.author.email.charAt(0).toUpperCase()}
-                      </div>
-                      <span>{post.author.email}</span>
-                    </div>
-                  </DetailRow>
-                )}
-              </div>
-            </div>
-          </>
-        )}
       </div>
     </>
   )

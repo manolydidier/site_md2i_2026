@@ -631,9 +631,12 @@ export default function PublicNavbar() {
                     letterSpacing: '-0.02em',
                     lineHeight: 1.1,
                     marginBottom: 5,
+                     whiteSpace: 'nowrap',
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
                   }}
                 />
-                MD2I-MADAGASCAR
+                MD2I
                 <span
                   style={{
                     color: t.subtleText,
