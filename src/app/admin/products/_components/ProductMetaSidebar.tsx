@@ -21,6 +21,14 @@ interface Category {
   slug?: string
 }
 
+interface MediaImage {
+  id: string
+  url: string
+  name: string
+  size?: number
+  createdAt?: string
+}
+
 interface ProductMetaSidebarProps {
   open: boolean
   onClose: () => void
@@ -59,6 +67,14 @@ export default function ProductMetaSidebar({
   const [uploadSuccess, setUploadSuccess] = useState('')
   const [isDraggingImage, setIsDraggingImage] = useState(false)
 
+  // Media library state
+  const [imageTab, setImageTab] = useState<'upload' | 'library'>('upload')
+  const [libraryImages, setLibraryImages] = useState<MediaImage[]>([])
+  const [libraryLoading, setLibraryLoading] = useState(false)
+  const [libraryError, setLibraryError] = useState('')
+  const [librarySearch, setLibrarySearch] = useState('')
+  const [selectedLibraryId, setSelectedLibraryId] = useState<string | null>(null)
+
   const [showNewCategory, setShowNewCategory] = useState(false)
   const [newCatName, setNewCatName] = useState('')
   const [newCatSlug, setNewCatSlug] = useState('')
@@ -83,6 +99,7 @@ export default function ProductMetaSidebar({
     warning: '#fb923c',
   }
 
+  // Fetch categories + authors
   useEffect(() => {
     fetch('/api/product-categories?limit=200')
       .then((r) => r.json())
@@ -104,7 +121,6 @@ export default function ProductMetaSidebar({
         seen.add(u.id)
         return true
       })
-
       setAuthors(
         merged.map((u: any) => ({
           id: u.id,
@@ -117,18 +133,49 @@ export default function ProductMetaSidebar({
     })
   }, [])
 
+  // Fetch media library when switching to library tab
   useEffect(() => {
-  if (meta.authorId) return
+    if (imageTab !== 'library') return
+    if (libraryImages.length > 0) return // already loaded
 
-  if (preferredAuthorId) {
-    update('authorId', preferredAuthorId)
-    return
-  }
+    setLibraryLoading(true)
+    setLibraryError('')
 
-  if (authors.length === 1) {
-    update('authorId', authors[0].id)
-  }
-}, [authors, meta.authorId, preferredAuthorId])
+    fetch('/api/uploads?limit=200&type=image')
+      .then((r) => r.json())
+      .then((res) => {
+        // adapt to your API response shape: res.data, res.files, res.items, etc.
+        const items: MediaImage[] = (res.data ?? res.files ?? res.items ?? []).map((f: any) => ({
+          id: f.id ?? f._id ?? f.url,
+          url: f.url ?? f.path ?? f.src,
+          name: f.name ?? f.filename ?? f.originalName ?? f.url?.split('/').pop() ?? 'image',
+          size: f.size,
+          createdAt: f.createdAt,
+        }))
+        setLibraryImages(items)
+      })
+      .catch(() => setLibraryError('Impossible de charger la médiathèque.'))
+      .finally(() => setLibraryLoading(false))
+  }, [imageTab])
+
+  // Sync selectedLibraryId with current coverImage when opening library tab
+  useEffect(() => {
+    if (imageTab === 'library' && meta.coverImage) {
+      const match = libraryImages.find((img) => img.url === meta.coverImage)
+      setSelectedLibraryId(match?.id ?? null)
+    }
+  }, [imageTab, libraryImages, meta.coverImage])
+
+  useEffect(() => {
+    if (meta.authorId) return
+    if (preferredAuthorId) {
+      update('authorId', preferredAuthorId)
+      return
+    }
+    if (authors.length === 1) {
+      update('authorId', authors[0].id)
+    }
+  }, [authors, meta.authorId, preferredAuthorId])
 
   useEffect(() => {
     return () => {
@@ -182,10 +229,8 @@ export default function ProductMetaSidebar({
         setCheckingSlug(false)
         return
       }
-
       if (slugTimeout) clearTimeout(slugTimeout)
       setCheckingSlug(true)
-
       const t = setTimeout(async () => {
         try {
           const params = new URLSearchParams({ slug })
@@ -199,7 +244,6 @@ export default function ProductMetaSidebar({
           setCheckingSlug(false)
         }
       }, 500)
-
       setSlugTimeout(t)
     },
     [productId, slugTimeout]
@@ -223,52 +267,43 @@ export default function ProductMetaSidebar({
       setUploadSuccess('')
       return
     }
-
     setUploadingImage(true)
     setUploadError('')
     setUploadSuccess('')
-
     try {
       const formData = new FormData()
       formData.append('file', selectedImage)
-
-      const res = await fetch('/api/upload', {
-        method: 'POST',
-        body: formData,
-      })
-
+      const res = await fetch('/api/upload', { method: 'POST', body: formData })
       const data = await res.json()
       if (!res.ok) throw new Error(data?.error || "Échec de l'upload.")
-
       update('coverImage', data.url)
-
       if (productId) {
         const patchRes = await fetch(`/api/products/${productId}`, {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ coverImage: data.url }),
         })
-
         const patchData = await patchRes.json()
-        if (!patchRes.ok) {
-          throw new Error(
-            patchData?.error || "Image uploadée, mais non enregistrée en base."
-          )
-        }
+        if (!patchRes.ok) throw new Error(patchData?.error || "Image uploadée, mais non enregistrée en base.")
       }
-
       setUploadSuccess(
         productId
           ? 'Image uploadée et enregistrée en base.'
           : 'Image uploadée. Cliquez ensuite sur Brouillon ou Publier pour enregistrer le produit.'
       )
-
+      // Add newly uploaded image to library cache
+      const newEntry: MediaImage = {
+        id: data.id ?? data.url,
+        url: data.url,
+        name: selectedImage.name,
+        size: selectedImage.size,
+        createdAt: new Date().toISOString(),
+      }
+      setLibraryImages((prev) => [newEntry, ...prev])
       setSelectedImage(null)
       setImagePreviewUrl('')
     } catch (error) {
-      setUploadError(
-        error instanceof Error ? error.message : "Erreur pendant l'upload."
-      )
+      setUploadError(error instanceof Error ? error.message : "Erreur pendant l'upload.")
       setUploadSuccess('')
     } finally {
       setUploadingImage(false)
@@ -285,6 +320,7 @@ export default function ProductMetaSidebar({
   const removeImageCompletely = () => {
     clearSelectedImage()
     update('coverImage', '')
+    setSelectedLibraryId(null)
   }
 
   const openFilePicker = () => fileInputRef.current?.click()
@@ -311,40 +347,46 @@ export default function ProductMetaSidebar({
     }
   }
 
+  // Apply a library image as coverImage
+  const handleApplyLibraryImage = (img: MediaImage) => {
+    if (selectedLibraryId === img.id) {
+      // Deselect
+      setSelectedLibraryId(null)
+      update('coverImage', '')
+      return
+    }
+    setSelectedLibraryId(img.id)
+    update('coverImage', img.url)
+    setUploadError('')
+    setUploadSuccess('')
+  }
+
+  const filteredLibrary = libraryImages.filter((img) =>
+    img.name.toLowerCase().includes(librarySearch.toLowerCase())
+  )
+
   const handleCreateCategory = async () => {
     const name = newCatName.trim()
     if (!name) {
       setNewCatError('Le nom est requis.')
       return
     }
-
     setCreatingCategory(true)
     setNewCatError('')
-
     try {
       const res = await fetch('/api/product-categories', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name, slug: newCatSlug.trim() || undefined }),
       })
-
       const data = await res.json()
-      if (!res.ok) {
-        throw new Error(data?.error || 'Impossible de créer la catégorie.')
-      }
-
+      if (!res.ok) throw new Error(data?.error || 'Impossible de créer la catégorie.')
       const createdCategory = data.data ?? data
-
-      setCategories((prev) =>
-        [...prev, createdCategory].sort((a, b) => a.name.localeCompare(b.name))
-      )
-
+      setCategories((prev) => [...prev, createdCategory].sort((a, b) => a.name.localeCompare(b.name)))
       update('categoryId', createdCategory.id)
       setShowNewCategory(false)
     } catch (error) {
-      setNewCatError(
-        error instanceof Error ? error.message : 'Erreur inattendue.'
-      )
+      setNewCatError(error instanceof Error ? error.message : 'Erreur inattendue.')
     } finally {
       setCreatingCategory(false)
     }
@@ -372,7 +414,6 @@ export default function ProductMetaSidebar({
               <p className="sidebar-subtitle">Configuration du produit</p>
             </div>
           </div>
-
           <button type="button" className="sidebar-close" onClick={onClose} aria-label="Fermer">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <line x1="18" y1="6" x2="6" y2="18" />
@@ -382,6 +423,7 @@ export default function ProductMetaSidebar({
         </div>
 
         <div className="sidebar-body">
+          {/* ── Name ── */}
           <div className="field-group">
             <label className="field-label">
               Nom du produit <span className="field-required">*</span>
@@ -395,6 +437,7 @@ export default function ProductMetaSidebar({
             />
           </div>
 
+          {/* ── Slug ── */}
           <div className="field-group">
             <label className="field-label">
               Slug <span className="field-required">*</span>
@@ -412,12 +455,7 @@ export default function ProductMetaSidebar({
                   checkSlug(e.target.value)
                 }}
               />
-              <button
-                type="button"
-                className="slug-regen"
-                onClick={handleRegenerateSlug}
-                title="Regenerate from name"
-              >
+              <button type="button" className="slug-regen" onClick={handleRegenerateSlug} title="Regenerate from name">
                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                   <polyline points="1 4 1 10 7 10" />
                   <polyline points="23 20 23 14 17 14" />
@@ -425,7 +463,6 @@ export default function ProductMetaSidebar({
                 </svg>
               </button>
             </div>
-
             {checkingSlug && <p className="field-hint field-hint--neutral">Checking…</p>}
             {!checkingSlug && slugAvailable === false && (
               <p className="field-hint field-hint--error">This slug is already taken</p>
@@ -435,6 +472,7 @@ export default function ProductMetaSidebar({
             )}
           </div>
 
+          {/* ── Status ── */}
           <div className="field-group">
             <label className="field-label">Status</label>
             <div className="status-buttons">
@@ -442,9 +480,7 @@ export default function ProductMetaSidebar({
                 <button
                   type="button"
                   key={s}
-                  className={`status-btn status-btn--${s.toLowerCase()} ${
-                    meta.status === s ? 'active' : ''
-                  }`}
+                  className={`status-btn status-btn--${s.toLowerCase()} ${meta.status === s ? 'active' : ''}`}
                   onClick={() => update('status', s)}
                 >
                   {s === 'DRAFT' && '📝 '}
@@ -456,6 +492,7 @@ export default function ProductMetaSidebar({
             </div>
           </div>
 
+          {/* ── Excerpt ── */}
           <div className="field-group">
             <label className="field-label">Description courte</label>
             <textarea
@@ -468,6 +505,7 @@ export default function ProductMetaSidebar({
             <p className="field-hint field-hint--neutral">{meta.excerpt.length}/160 characters</p>
           </div>
 
+          {/* ── Price ── */}
           <div className="field-group">
             <label className="field-label">Prix</label>
             <input
@@ -481,137 +519,230 @@ export default function ProductMetaSidebar({
             />
           </div>
 
+          {/* ── Cover Image ── */}
           <div className="field-group">
             <label className="field-label">Cover Image</label>
-            <div className="image-upload-shell">
-              <div className="image-upload-top">
-                <div className="image-upload-texts">
-                  <h4 className="image-upload-title">Image du produit</h4>
-                  <p className="image-upload-subtitle">
-                    Déposez une image ou cliquez pour la choisir
-                  </p>
-                </div>
-                {currentPreview && (
-                  <button type="button" className="image-clear-btn" onClick={removeImageCompletely}>
-                    Retirer
-                  </button>
-                )}
-              </div>
 
-              <div
-                className={`image-dropzone ${isDraggingImage ? 'is-dragging' : ''}`}
-                onClick={openFilePicker}
-                onDragOver={handleDragOver}
-                onDragLeave={handleDragLeave}
-                onDrop={handleDrop}
+            {/* Tab switcher */}
+            <div className="img-tab-bar">
+              <button
+                type="button"
+                className={`img-tab-btn ${imageTab === 'upload' ? 'active' : ''}`}
+                onClick={() => setImageTab('upload')}
               >
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                  <polyline points="17 8 12 3 7 8" />
+                  <line x1="12" y1="3" x2="12" y2="15" />
+                </svg>
+                Upload
+              </button>
+              <button
+                type="button"
+                className={`img-tab-btn ${imageTab === 'library' ? 'active' : ''}`}
+                onClick={() => setImageTab('library')}
+              >
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <rect x="3" y="3" width="7" height="7" rx="1" />
+                  <rect x="14" y="3" width="7" height="7" rx="1" />
+                  <rect x="3" y="14" width="7" height="7" rx="1" />
+                  <rect x="14" y="14" width="7" height="7" rx="1" />
+                </svg>
+                Médiathèque
+                {libraryImages.length > 0 && (
+                  <span className="img-tab-count">{libraryImages.length}</span>
+                )}
+              </button>
+            </div>
+
+            {/* ── Upload tab ── */}
+            {imageTab === 'upload' && (
+              <div className="image-upload-shell">
+                <div className="image-upload-top">
+                  <div className="image-upload-texts">
+                    <h4 className="image-upload-title">Image du produit</h4>
+                    <p className="image-upload-subtitle">Déposez une image ou cliquez pour la choisir</p>
+                  </div>
+                  {currentPreview && (
+                    <button type="button" className="image-clear-btn" onClick={removeImageCompletely}>
+                      Retirer
+                    </button>
+                  )}
+                </div>
+
+                <div
+                  className={`image-dropzone ${isDraggingImage ? 'is-dragging' : ''}`}
+                  onClick={openFilePicker}
+                  onDragOver={handleDragOver}
+                  onDragLeave={handleDragLeave}
+                  onDrop={handleDrop}
+                >
+                  <input
+                    ref={fileInputRef}
+                    className="image-file-input"
+                    type="file"
+                    accept="image/*"
+                    onChange={(e) => handleSelectedFile(e.target.files?.[0] || null)}
+                  />
+                  <div className="image-dropzone__icon">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                      <polyline points="17 8 12 3 7 8" />
+                      <line x1="12" y1="3" x2="12" y2="15" />
+                    </svg>
+                  </div>
+                  <div className="image-dropzone__content">
+                    <strong>Choisir ou déposer une image</strong>
+                    <span>JPG, PNG, WEBP, GIF</span>
+                  </div>
+                </div>
+
+                {currentPreview && (
+                  <div className="image-preview-card">
+                    <div className="image-preview-media">
+                      <img
+                        src={currentPreview}
+                        alt="Preview"
+                        onError={(e) => { ;(e.target as HTMLImageElement).style.display = 'none' }}
+                      />
+                      <div className="image-preview-overlay">
+                        <span className="image-preview-badge">
+                          {selectedImage ? 'Aperçu local' : 'Image enregistrée'}
+                        </span>
+                      </div>
+                    </div>
+                    <div className="image-preview-meta">
+                      <div className="image-preview-meta__row">
+                        <span className="image-preview-label">Source</span>
+                        <span className="image-preview-value">
+                          {selectedImage ? 'Fichier local' : 'Image enregistrée'}
+                        </span>
+                      </div>
+                      {selectedImage && (
+                        <>
+                          <div className="image-preview-meta__row">
+                            <span className="image-preview-label">Nom</span>
+                            <span className="image-preview-value image-preview-value--truncate">
+                              {selectedImage.name}
+                            </span>
+                          </div>
+                          <div className="image-preview-meta__row">
+                            <span className="image-preview-label">Taille</span>
+                            <span className="image-preview-value">
+                              {(selectedImage.size / 1024 / 1024).toFixed(2)} MB
+                            </span>
+                          </div>
+                        </>
+                      )}
+                      <div className="image-preview-meta__row">
+                        <span className="image-preview-label">Chemin</span>
+                        <span className="image-preview-value image-preview-value--truncate">
+                          {meta.coverImage || 'Pas encore uploadée'}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
                 <input
-                  ref={fileInputRef}
-                  className="image-file-input"
-                  type="file"
-                  accept="image/*"
-                  onChange={(e) => handleSelectedFile(e.target.files?.[0] || null)}
+                  className="field-input"
+                  type="text"
+                  value={meta.coverImage}
+                  placeholder="/uploads/products/mon-image.jpg"
+                  onChange={(e) => update('coverImage', e.target.value)}
                 />
 
-                <div className="image-dropzone__icon">
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-                    <polyline points="17 8 12 3 7 8" />
-                    <line x1="12" y1="3" x2="12" y2="15" />
-                  </svg>
+                <div className="image-actions">
+                  <button
+                    type="button"
+                    className="image-upload-btn"
+                    onClick={handleImageUpload}
+                    disabled={uploadingImage || !selectedImage}
+                  >
+                    {uploadingImage ? 'Upload en cours...' : "Uploader l'image"}
+                  </button>
+                  <button
+                    type="button"
+                    className="image-secondary-btn"
+                    onClick={clearSelectedImage}
+                    disabled={!selectedImage}
+                  >
+                    Annuler
+                  </button>
                 </div>
 
-                <div className="image-dropzone__content">
-                  <strong>Choisir ou déposer une image</strong>
-                  <span>JPG, PNG, WEBP, GIF</span>
-                </div>
+                {uploadError && <p className="field-hint field-hint--error">{uploadError}</p>}
+                {uploadSuccess && <p className="field-hint field-hint--success">{uploadSuccess}</p>}
               </div>
+            )}
 
-              {currentPreview && (
-                <div className="image-preview-card">
-                  <div className="image-preview-media">
-                    <img
-                      src={currentPreview}
-                      alt="Preview"
-                      onError={(e) => {
-                        ;(e.target as HTMLImageElement).style.display = 'none'
-                      }}
-                    />
-                    <div className="image-preview-overlay">
-                      <span className="image-preview-badge">
-                        {selectedImage ? 'Aperçu local' : 'Image enregistrée'}
-                      </span>
-                    </div>
+            {/* ── Library tab ── */}
+            {imageTab === 'library' && (
+              <div className="library-shell">
+                <input
+                  className="field-input library-search"
+                  type="text"
+                  value={librarySearch}
+                  placeholder="Rechercher une image…"
+                  onChange={(e) => setLibrarySearch(e.target.value)}
+                />
+
+                {libraryLoading && (
+                  <p className="field-hint field-hint--neutral library-status">Chargement…</p>
+                )}
+                {libraryError && (
+                  <p className="field-hint field-hint--error library-status">{libraryError}</p>
+                )}
+
+                {!libraryLoading && !libraryError && filteredLibrary.length === 0 && (
+                  <p className="field-hint field-hint--neutral library-status">
+                    {librarySearch ? 'Aucun résultat.' : 'Aucune image dans la médiathèque.'}
+                  </p>
+                )}
+
+                {!libraryLoading && filteredLibrary.length > 0 && (
+                  <div className="library-grid">
+                    {filteredLibrary.map((img) => (
+                      <button
+                        key={img.id}
+                        type="button"
+                        className={`library-cell ${selectedLibraryId === img.id ? 'selected' : ''}`}
+                        onClick={() => handleApplyLibraryImage(img)}
+                        title={img.name}
+                      >
+                        <img
+                          src={img.url}
+                          alt={img.name}
+                          onError={(e) => { ;(e.target as HTMLImageElement).style.display = 'none' }}
+                        />
+                        {selectedLibraryId === img.id && (
+                          <div className="library-cell__check">
+                            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3">
+                              <polyline points="20 6 9 17 4 12" />
+                            </svg>
+                          </div>
+                        )}
+                        <div className="library-cell__label">{img.name}</div>
+                      </button>
+                    ))}
                   </div>
+                )}
 
-                  <div className="image-preview-meta">
-                    <div className="image-preview-meta__row">
-                      <span className="image-preview-label">Source</span>
-                      <span className="image-preview-value">
-                        {selectedImage ? 'Fichier local' : 'Image enregistrée'}
-                      </span>
-                    </div>
-
-                    {selectedImage && (
-                      <>
-                        <div className="image-preview-meta__row">
-                          <span className="image-preview-label">Nom</span>
-                          <span className="image-preview-value image-preview-value--truncate">
-                            {selectedImage.name}
-                          </span>
-                        </div>
-                        <div className="image-preview-meta__row">
-                          <span className="image-preview-label">Taille</span>
-                          <span className="image-preview-value">
-                            {(selectedImage.size / 1024 / 1024).toFixed(2)} MB
-                          </span>
-                        </div>
-                      </>
-                    )}
-
-                    <div className="image-preview-meta__row">
-                      <span className="image-preview-label">Chemin</span>
-                      <span className="image-preview-value image-preview-value--truncate">
-                        {meta.coverImage || 'Pas encore uploadée'}
-                      </span>
-                    </div>
+                {selectedLibraryId && (
+                  <div className="library-selected-bar">
+                    <span className="library-selected-bar__text">
+                      {filteredLibrary.find((i) => i.id === selectedLibraryId)?.name ?? 'Image sélectionnée'}
+                    </span>
+                    <button type="button" className="library-selected-bar__clear" onClick={removeImageCompletely}>
+                      Retirer
+                    </button>
                   </div>
-                </div>
-              )}
-
-              <input
-                className="field-input"
-                type="text"
-                value={meta.coverImage}
-                placeholder="/uploads/products/mon-image.jpg"
-                onChange={(e) => update('coverImage', e.target.value)}
-              />
-
-              <div className="image-actions">
-                <button
-                  type="button"
-                  className="image-upload-btn"
-                  onClick={handleImageUpload}
-                  disabled={uploadingImage || !selectedImage}
-                >
-                  {uploadingImage ? 'Upload en cours...' : "Uploader l'image"}
-                </button>
-
-                <button
-                  type="button"
-                  className="image-secondary-btn"
-                  onClick={clearSelectedImage}
-                  disabled={!selectedImage}
-                >
-                  Annuler
-                </button>
+                )}
               </div>
-
-              {uploadError && <p className="field-hint field-hint--error">{uploadError}</p>}
-              {uploadSuccess && <p className="field-hint field-hint--success">{uploadSuccess}</p>}
-            </div>
+            )}
           </div>
 
+          {/* ── Category ── */}
           <div className="field-group">
             <div className="field-label-row">
               <label className="field-label">Category</label>
@@ -658,7 +789,6 @@ export default function ProductMetaSidebar({
                     </svg>
                   </button>
                 </div>
-
                 <div className="new-cat-panel__body">
                   <div className="new-cat-field">
                     <label className="new-cat-label">
@@ -671,12 +801,9 @@ export default function ProductMetaSidebar({
                       value={newCatName}
                       placeholder="Ex: Logiciels"
                       onChange={(e) => setNewCatName(e.target.value)}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter') handleCreateCategory()
-                      }}
+                      onKeyDown={(e) => { if (e.key === 'Enter') handleCreateCategory() }}
                     />
                   </div>
-
                   <div className="new-cat-field">
                     <label className="new-cat-label">Slug</label>
                     <input
@@ -684,18 +811,11 @@ export default function ProductMetaSidebar({
                       type="text"
                       value={newCatSlug}
                       placeholder="logiciels"
-                      onChange={(e) => {
-                        setNewCatSlugEdited(true)
-                        setNewCatSlug(e.target.value)
-                      }}
+                      onChange={(e) => { setNewCatSlugEdited(true); setNewCatSlug(e.target.value) }}
                     />
-                    <p className="field-hint field-hint--neutral">
-                      Généré automatiquement depuis le nom.
-                    </p>
+                    <p className="field-hint field-hint--neutral">Généré automatiquement depuis le nom.</p>
                   </div>
-
                   {newCatError && <p className="field-hint field-hint--error">{newCatError}</p>}
-
                   <div className="new-cat-actions">
                     <button
                       type="button"
@@ -705,7 +825,6 @@ export default function ProductMetaSidebar({
                     >
                       {creatingCategory ? 'Création…' : 'Créer'}
                     </button>
-
                     <button
                       type="button"
                       className="image-secondary-btn"
@@ -720,6 +839,7 @@ export default function ProductMetaSidebar({
             )}
           </div>
 
+          {/* ── Author ── */}
           <div className="field-group">
             <label className="field-label">
               Auteur <span className="field-required">*</span>
@@ -736,7 +856,6 @@ export default function ProductMetaSidebar({
                 </option>
               ))}
             </select>
-
             {authors.length === 0 && (
               <p className="field-hint field-hint--neutral">Chargement des auteurs…</p>
             )}
@@ -1018,6 +1137,7 @@ export default function ProductMetaSidebar({
           border-color: rgba(34,197,94,0.45) !important;
           box-shadow: 0 0 0 3px rgba(34,197,94,0.08);
         }
+
         .field-select {
           appearance: none;
           cursor: pointer;
@@ -1099,6 +1219,57 @@ export default function ProductMetaSidebar({
           color: ${c.warning};
         }
 
+        /* ── Image tab bar ── */
+        .img-tab-bar {
+          display: flex;
+          gap: 4px;
+          background: ${c.inputBg};
+          border: 1px solid ${c.border};
+          border-radius: 12px;
+          padding: 4px;
+        }
+
+        .img-tab-btn {
+          flex: 1;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 6px;
+          padding: 8px 10px;
+          border-radius: 9px;
+          border: none;
+          background: transparent;
+          color: ${c.textMute};
+          font-size: 12px;
+          font-weight: 600;
+          cursor: pointer;
+          transition: all 0.15s ease;
+          font-family: inherit;
+        }
+
+        .img-tab-btn:hover { color: ${c.text}; }
+
+        .img-tab-btn.active {
+          background: rgba(239,159,39,0.10);
+          color: ${ORANGE};
+          border: 1px solid rgba(239,159,39,0.22);
+        }
+
+        .img-tab-count {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          min-width: 18px;
+          height: 18px;
+          padding: 0 5px;
+          border-radius: 99px;
+          background: rgba(239,159,39,0.15);
+          color: ${ORANGE};
+          font-size: 10px;
+          font-weight: 700;
+        }
+
+        /* ── Upload tab ── */
         .image-upload-shell {
           display: flex;
           flex-direction: column;
@@ -1328,27 +1499,132 @@ export default function ProductMetaSidebar({
           cursor: not-allowed;
         }
 
+        /* ── Library tab ── */
+        .library-shell {
+          display: flex;
+          flex-direction: column;
+          gap: 10px;
+        }
+
+        .library-search { resize: none; }
+
+        .library-status {
+          text-align: center;
+          padding: 16px 0;
+        }
+
+        .library-grid {
+          display: grid;
+          grid-template-columns: repeat(3, 1fr);
+          gap: 8px;
+        }
+
+        .library-cell {
+          position: relative;
+          aspect-ratio: 1;
+          border-radius: 12px;
+          overflow: hidden;
+          border: 2px solid transparent;
+          background: ${c.softBg};
+          cursor: pointer;
+          padding: 0;
+          transition: border-color 0.15s ease;
+        }
+
+        .library-cell:hover { border-color: rgba(239,159,39,0.45); }
+
+        .library-cell.selected { border-color: ${ORANGE}; }
+
+        .library-cell img {
+          width: 100%;
+          height: 100%;
+          object-fit: cover;
+          display: block;
+        }
+
+        .library-cell__check {
+          position: absolute;
+          top: 6px;
+          right: 6px;
+          width: 20px;
+          height: 20px;
+          border-radius: 50%;
+          background: ${ORANGE};
+          display: flex;
+          align-items: center;
+          justify-content: center;
+        }
+
+        .library-cell__label {
+          position: absolute;
+          bottom: 0;
+          left: 0;
+          right: 0;
+          background: rgba(0,0,0,0.55);
+          color: #fff;
+          font-size: 9px;
+          padding: 4px 6px;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          white-space: nowrap;
+          opacity: 0;
+          transition: opacity 0.15s ease;
+        }
+
+        .library-cell:hover .library-cell__label { opacity: 1; }
+
+        .library-selected-bar {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 8px;
+          padding: 10px 12px;
+          border-radius: 12px;
+          background: rgba(239,159,39,0.07);
+          border: 1px solid rgba(239,159,39,0.22);
+        }
+
+        .library-selected-bar__text {
+          font-size: 12px;
+          font-weight: 600;
+          color: ${ORANGE};
+          overflow: hidden;
+          text-overflow: ellipsis;
+          white-space: nowrap;
+          flex: 1;
+          min-width: 0;
+        }
+
+        .library-selected-bar__clear {
+          border: 1px solid rgba(239,159,39,0.28);
+          background: transparent;
+          color: ${c.textSoft};
+          border-radius: 8px;
+          padding: 5px 10px;
+          font-size: 11px;
+          font-weight: 700;
+          cursor: pointer;
+          white-space: nowrap;
+          transition: all 0.15s ease;
+          font-family: inherit;
+        }
+
+        .library-selected-bar__clear:hover {
+          color: ${ORANGE};
+          border-color: rgba(239,159,39,0.45);
+        }
+
         @media (max-width: 640px) {
           .meta-sidebar {
             width: 100vw;
             max-width: 100vw;
           }
-
           .sidebar-body { padding: 14px; }
           .field-group { padding: 12px; }
-
-          .image-preview-card {
-            grid-template-columns: 1fr;
-          }
-
-          .image-preview-media {
-            width: 100%;
-            height: 200px;
-          }
-
-          .image-actions {
-            flex-direction: column;
-          }
+          .image-preview-card { grid-template-columns: 1fr; }
+          .image-preview-media { width: 100%; height: 200px; }
+          .image-actions { flex-direction: column; }
+          .library-grid { grid-template-columns: repeat(3, 1fr); }
         }
       `}</style>
     </>
