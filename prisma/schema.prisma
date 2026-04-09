@@ -210,7 +210,7 @@ model Post {
   authorId      String     @db.Uuid
   categoryId    String?    @db.Uuid
   gjsComponents Json?
-  gjsStyles     String?
+  gjsStyles     Json? @db.JsonB
   gjsHtml       String?
   createdAt     DateTime   @default(now())
   updatedAt     DateTime   @updatedAt

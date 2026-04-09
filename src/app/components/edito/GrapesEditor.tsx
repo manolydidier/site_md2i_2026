@@ -13,9 +13,20 @@ interface GrapesEditorProps {
   postId?: string;
 }
 
-type PanelTab = "blocks" | "layers" | "code";
+type PanelTab = "blocks" | "layers" | "code" | "media";
 type Device = "desktop" | "tablet" | "mobile";
 type SaveStatus = "idle" | "saving" | "saved" | "error";
+type MediaKind = "image" | "video" | "file";
+
+type UploadItem = {
+  id: string;
+  url: string;
+  name: string;
+  mimeType?: string;
+  size?: number;
+  createdAt?: string;
+  kind: MediaKind;
+};
 
 const ORANGE = "#F28C18";
 const ORANGE_DARK = "#C96A08";
@@ -117,6 +128,7 @@ export default function GrapesEditor({ mode, postId }: GrapesEditorProps) {
   const router = useRouter();
   const mountRef = useRef<HTMLDivElement>(null);
   const gjsRef = useRef<Editor | null>(null);
+  const mediaInputRef = useRef<HTMLInputElement | null>(null);
   const { dark } = useTheme();
 
   const [activeTab, setActiveTab] = useState<PanelTab | null>(null);
@@ -137,7 +149,16 @@ export default function GrapesEditor({ mode, postId }: GrapesEditorProps) {
     title: "",
     targetBlank: false,
     noFollow: false,
+    download: false,
   });
+
+  const [mediaItems, setMediaItems] = useState<UploadItem[]>([]);
+  const [mediaLoading, setMediaLoading] = useState(false);
+  const [mediaError, setMediaError] = useState("");
+  const [mediaSearch, setMediaSearch] = useState("");
+  const [mediaFilter, setMediaFilter] = useState<"all" | MediaKind>("all");
+  const [uploadingMedia, setUploadingMedia] = useState(false);
+  const [mediaNotice, setMediaNotice] = useState("");
 
   // ─── Quick style panel state ──────────────────────────────────────────────
   const [quickStyle, setQuickStyle] = useState({
@@ -223,6 +244,206 @@ export default function GrapesEditor({ mode, postId }: GrapesEditorProps) {
     ? ["transparent", "#1B202B", "#232936", "rgba(242,140,24,.12)", "#ffffff"]
     : ["transparent", "#ffffff", "#f8fafc", "rgba(242,140,24,.10)", "#181818"];
 
+  const detectMediaKind = useCallback((mimeType?: string, url?: string): MediaKind => {
+    const mime = String(mimeType || "").toLowerCase();
+    const lowerUrl = String(url || "").toLowerCase();
+
+    if (mime.startsWith("image/")) return "image";
+    if (mime.startsWith("video/")) return "video";
+    if (/\.(png|jpg|jpeg|gif|webp|svg|avif)$/i.test(lowerUrl)) return "image";
+    if (/\.(mp4|webm|ogg|mov|m4v)$/i.test(lowerUrl)) return "video";
+
+    return "file";
+  }, []);
+
+  const syncMediaAssetsToEditor = useCallback((items: UploadItem[]) => {
+    const editor = gjsRef.current;
+    if (!editor) return;
+
+    const assetManager = editor.AssetManager;
+    if (!assetManager) return;
+
+    const assetCollection: any = typeof assetManager.getAll === "function" ? assetManager.getAll() : [];
+    const assets = Array.isArray(assetCollection)
+      ? assetCollection
+      : Array.isArray(assetCollection?.models)
+        ? assetCollection.models
+        : [];
+
+    items.forEach((item) => {
+      const existing = assets.find((asset: any) => {
+        const src = asset?.get?.("src") || asset?.attributes?.src;
+        return src === item.url;
+      });
+
+      if (!existing) {
+        assetManager.add({
+          src: item.url,
+          name: item.name,
+          type: item.kind === "image" ? "image" : undefined,
+        } as any);
+      }
+    });
+  }, []);
+
+  const fetchMediaLibrary = useCallback(async () => {
+    try {
+      setMediaLoading(true);
+      setMediaError("");
+      const res = await fetch("/api/uploads?limit=200");
+      const json = await res.json();
+
+      if (!res.ok) {
+        throw new Error(json?.error || "Impossible de charger les fichiers.");
+      }
+
+      const source = Array.isArray(json)
+        ? json
+        : Array.isArray(json?.data)
+          ? json.data
+          : Array.isArray(json?.files)
+            ? json.files
+            : Array.isArray(json?.items)
+              ? json.items
+              : [];
+
+      const items: UploadItem[] = source
+        .map((f: any) => {
+          const url = f?.url ?? f?.path ?? f?.src ?? "";
+          const mimeType = f?.mimeType ?? f?.type ?? "";
+          if (!url) return null;
+
+          return {
+            id: f?.id ?? f?._id ?? url,
+            url,
+            name: f?.name ?? f?.filename ?? f?.originalName ?? url.split("/").pop() ?? "file",
+            mimeType,
+            size: f?.size,
+            createdAt: f?.createdAt,
+            kind: detectMediaKind(mimeType, url),
+          } as UploadItem;
+        })
+        .filter(Boolean) as UploadItem[];
+
+      setMediaItems(items);
+      syncMediaAssetsToEditor(items);
+    } catch (error) {
+      setMediaError(error instanceof Error ? error.message : "Erreur de chargement.");
+    } finally {
+      setMediaLoading(false);
+    }
+  }, [detectMediaKind, syncMediaAssetsToEditor]);
+
+  const handleMediaUpload = useCallback(async (file: File | null) => {
+    if (!file) return;
+
+    try {
+      setUploadingMedia(true);
+      setMediaError("");
+      setMediaNotice("");
+
+      const formData = new FormData();
+      formData.append("file", file);
+
+      const res = await fetch("/api/upload", {
+        method: "POST",
+        body: formData,
+      });
+
+      const json = await res.json();
+      if (!res.ok) throw new Error(json?.error || "Échec de l'upload.");
+
+      const payload = json?.data ?? json;
+      const nextUrl = payload?.url ?? payload?.path ?? payload?.src;
+      if (!nextUrl) throw new Error("URL de fichier absente dans la réponse.");
+
+      const item: UploadItem = {
+        id: payload?.id ?? payload?._id ?? nextUrl,
+        url: nextUrl,
+        name: payload?.name ?? payload?.filename ?? payload?.originalName ?? file.name,
+        mimeType: payload?.mimeType ?? payload?.type ?? file.type,
+        size: payload?.size ?? file.size,
+        createdAt: payload?.createdAt ?? new Date().toISOString(),
+        kind: detectMediaKind(payload?.mimeType ?? payload?.type ?? file.type, nextUrl),
+      };
+
+      setMediaItems((prev) => [item, ...prev]);
+      syncMediaAssetsToEditor([item]);
+      setMediaNotice("Fichier uploadé.");
+      setTimeout(() => setMediaNotice(""), 2200);
+    } catch (error) {
+      setMediaError(error instanceof Error ? error.message : "Erreur pendant l'upload.");
+    } finally {
+      setUploadingMedia(false);
+      if (mediaInputRef.current) mediaInputRef.current.value = "";
+    }
+  }, [detectMediaKind, syncMediaAssetsToEditor]);
+
+  const escapeHtml = useCallback((value: string) => {
+    return value
+      .replaceAll("&", "&amp;")
+      .replaceAll("<", "&lt;")
+      .replaceAll(">", "&gt;")
+      .replaceAll('"', "&quot;")
+      .replaceAll("'", "&#039;");
+  }, []);
+
+  const insertMediaIntoEditor = useCallback((item: UploadItem, mode: "insert" | "open" | "download" = "insert") => {
+    const editor = gjsRef.current;
+    if (!editor) return;
+
+    const safeUrl = escapeHtml(item.url);
+    const safeName = escapeHtml(item.name);
+    const safeType = escapeHtml(item.mimeType || "");
+
+    if (mode === "insert") {
+      if (item.kind === "image") {
+        editor.addComponents(`
+          <img src="${safeUrl}" alt="${safeName}" style="max-width:100%;height:auto;display:block;" />
+        `);
+        return;
+      }
+
+      if (item.kind === "video") {
+        editor.addComponents(`
+          <video controls style="max-width:100%;height:auto;display:block;">
+            <source src="${safeUrl}" type="${safeType || "video/mp4"}" />
+            Votre navigateur ne supporte pas la vidéo.
+          </video>
+        `);
+        return;
+      }
+
+      editor.addComponents(`
+        <div style="display:flex;align-items:center;gap:12px;padding:14px 16px;border:1px solid rgba(0,0,0,.12);border-radius:12px;">
+          <div style="font-size:22px;">📎</div>
+          <div style="flex:1;min-width:0;">
+            <div style="font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${safeName}</div>
+            <a href="${safeUrl}" download="${safeName}" style="color:${ORANGE};text-decoration:none;">Télécharger</a>
+          </div>
+        </div>
+      `);
+      return;
+    }
+
+    if (mode === "open") {
+      editor.addComponents(`
+        <a href="${safeUrl}" target="_blank" rel="noopener noreferrer">${safeName}</a>
+      `);
+      return;
+    }
+
+    editor.addComponents(`
+      <a href="${safeUrl}" download="${safeName}">Télécharger ${safeName}</a>
+    `);
+  }, [escapeHtml]);
+
+  const filteredMediaItems = mediaItems.filter((item) => {
+    const okSearch = item.name.toLowerCase().includes(mediaSearch.toLowerCase());
+    const okFilter = mediaFilter === "all" ? true : item.kind === mediaFilter;
+    return okSearch && okFilter;
+  });
+
   const getSelectedComponent = () => gjsRef.current?.getSelected() as any;
 
   // ─── Sync quickStyle from selected component ──────────────────────────────
@@ -286,7 +507,7 @@ export default function GrapesEditor({ mode, postId }: GrapesEditorProps) {
     const selected = getSelectedComponent();
 
     if (!selected) {
-      setLinkConfig({ href: "", title: "", targetBlank: false, noFollow: false });
+      setLinkConfig({ href: "", title: "", targetBlank: false, noFollow: false, download: false });
       return;
     }
 
@@ -298,6 +519,7 @@ export default function GrapesEditor({ mode, postId }: GrapesEditorProps) {
       title: String(attrs.title || ""),
       targetBlank: attrs.target === "_blank",
       noFollow: relValue.includes("nofollow"),
+      download: typeof attrs.download !== "undefined",
     });
   }, []);
 
@@ -1252,8 +1474,15 @@ export default function GrapesEditor({ mode, postId }: GrapesEditorProps) {
     };
   }, [appendBaseBlocksCss, loadPost, mode, readPageStyles, registerCustomBlocks, syncLinkConfigFromSelection, syncQuickStyleFromSelection]);
 
+  useEffect(() => {
+    if (activeTab === "media" && mediaItems.length === 0 && !mediaLoading) {
+      fetchMediaLibrary();
+    }
+  }, [activeTab, fetchMediaLibrary, mediaItems.length, mediaLoading]);
+
   const openTab = (tab: PanelTab) => {
     if (tab === "code") syncCodeFieldsSilently();
+    if (tab === "media" && mediaItems.length === 0 && !mediaLoading) fetchMediaLibrary();
     setActiveTab((prev) => (prev === tab ? null : tab));
   };
 
@@ -1304,6 +1533,8 @@ export default function GrapesEditor({ mode, postId }: GrapesEditorProps) {
     else delete nextAttrs.target;
     if (relParts.size) nextAttrs.rel = Array.from(relParts).join(" ");
     else delete nextAttrs.rel;
+    if (linkConfig.download) nextAttrs.download = linkConfig.title.trim() || "";
+    else delete nextAttrs.download;
     selected.set?.("tagName", "a");
     selected.addAttributes?.(nextAttrs);
     const childCount = typeof selected.components === "function" ? selected.components().length : 0;
@@ -1327,9 +1558,10 @@ export default function GrapesEditor({ mode, postId }: GrapesEditorProps) {
     delete nextAttrs.href;
     delete nextAttrs.target;
     delete nextAttrs.rel;
+    delete nextAttrs.download;
     selected.addAttributes?.(nextAttrs);
     selected.addStyle({ cursor: "" });
-    setLinkConfig((prev) => ({ ...prev, href: "", targetBlank: false, noFollow: false }));
+    setLinkConfig((prev) => ({ ...prev, href: "", targetBlank: false, noFollow: false, download: false }));
     setCodeNotice("Lien retiré de la sélection.");
     setTimeout(() => setCodeNotice(""), 2400);
   };
@@ -1601,6 +1833,7 @@ export default function GrapesEditor({ mode, postId }: GrapesEditorProps) {
             {[
               { id: "blocks", title: "Blocs", icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="7" height="7" rx="1" /><rect x="14" y="3" width="7" height="7" rx="1" /><rect x="3" y="14" width="7" height="7" rx="1" /><rect x="14" y="14" width="7" height="7" rx="1" /></svg> },
               { id: "layers", title: "Calques", icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" /></svg> },
+              { id: "media", title: "Média", icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="4" width="18" height="16" rx="2" /><circle cx="8.5" cy="9.5" r="1.5" /><path d="M21 15l-5-5L5 20" /></svg> },
             ].map((item) => (
               <button key={item.id} type="button" className={`ed-rail-btn ${activeTab === item.id ? "is-active" : ""}`} onClick={() => openTab(item.id as PanelTab)} title={item.title}>
                 {item.icon}
@@ -1626,6 +1859,7 @@ export default function GrapesEditor({ mode, postId }: GrapesEditorProps) {
                 {activeTab === "blocks" && "Blocs"}
                 {activeTab === "layers" && "Calques"}
                 {activeTab === "code" && "Code personnalisé"}
+                {activeTab === "media" && "Médiathèque"}
               </strong>
             </div>
             <button className="ed-left-drawer__close" type="button" onClick={() => setActiveTab(null)}>
@@ -1635,6 +1869,85 @@ export default function GrapesEditor({ mode, postId }: GrapesEditorProps) {
 
           <div id="ed-blocks" className={`ed-panel ${activeTab === "blocks" ? "is-visible" : ""}`} />
           <div id="ed-layers" className={`ed-panel ${activeTab === "layers" ? "is-visible" : ""}`} />
+
+          <div className={`ed-panel ${activeTab === "media" ? "is-visible" : ""}`}>
+            <div className="ed-media-shell">
+              <div className="ed-media-head">
+                <div>
+                  <h3 className="ed-code-title">Médiathèque</h3>
+                  <p className="ed-code-subtitle">Upload, chargement et insertion rapide dans GrapesJS</p>
+                </div>
+                <button type="button" className="ed-code-primary" onClick={() => mediaInputRef.current?.click()} disabled={uploadingMedia}>
+                  {uploadingMedia ? "Upload…" : "Uploader"}
+                </button>
+                <input
+                  ref={mediaInputRef}
+                  type="file"
+                  hidden
+                  onChange={(e) => handleMediaUpload(e.target.files?.[0] || null)}
+                />
+              </div>
+
+              <div className="ed-media-toolbar">
+                <input
+                  className="ed-media-search"
+                  value={mediaSearch}
+                  onChange={(e) => setMediaSearch(e.target.value)}
+                  placeholder="Rechercher un fichier..."
+                />
+                <div className="ed-media-filters">
+                  {(["all", "image", "video", "file"] as const).map((value) => (
+                    <button
+                      key={value}
+                      type="button"
+                      className={`ed-switch-btn ${mediaFilter === value ? "is-active" : ""}`}
+                      onClick={() => setMediaFilter(value)}
+                    >
+                      {value === "all" ? "Tous" : value === "image" ? "Images" : value === "video" ? "Vidéos" : "Fichiers"}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="ed-media-actions">
+                <button type="button" className="ed-code-secondary" onClick={fetchMediaLibrary} disabled={mediaLoading}>
+                  {mediaLoading ? "Chargement…" : "Rafraîchir"}
+                </button>
+                {mediaNotice && <span className="ed-media-notice">{mediaNotice}</span>}
+              </div>
+
+              {mediaError && <div className="ed-media-error">{mediaError}</div>}
+
+              <div className="ed-media-grid">
+                {filteredMediaItems.map((item) => (
+                  <div key={item.id} className="ed-media-card">
+                    <div className="ed-media-preview">
+                      {item.kind === "image" ? (
+                        <img src={item.url} alt={item.name} />
+                      ) : item.kind === "video" ? (
+                        <video src={item.url} muted playsInline preload="metadata" />
+                      ) : (
+                        <div className="ed-media-file">📎</div>
+                      )}
+                    </div>
+                    <div className="ed-media-card__body">
+                      <div className="ed-media-name" title={item.name}>{item.name}</div>
+                      <div className="ed-media-meta">{item.kind.toUpperCase()}</div>
+                      <div className="ed-media-card__actions">
+                        <button type="button" className="ed-media-btn ed-media-btn--primary" onClick={() => insertMediaIntoEditor(item, "insert")}>Insérer</button>
+                        <button type="button" className="ed-media-btn" onClick={() => insertMediaIntoEditor(item, "open")}>Lien ouvrir</button>
+                        <button type="button" className="ed-media-btn" onClick={() => insertMediaIntoEditor(item, "download")}>Lien télécharger</button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+
+                {!mediaLoading && filteredMediaItems.length === 0 && (
+                  <div className="ed-media-empty">Aucun média trouvé.</div>
+                )}
+              </div>
+            </div>
+          </div>
 
           <div className={`ed-panel ${activeTab === "code" ? "is-visible" : ""}`}>
             <div className="ed-code-shell">
@@ -1955,6 +2268,10 @@ export default function GrapesEditor({ mode, postId }: GrapesEditorProps) {
                     <input type="checkbox" checked={linkConfig.noFollow} onChange={(e) => setLinkConfig((prev) => ({ ...prev, noFollow: e.target.checked }))} />
                     <span>Ajouter <code>nofollow</code></span>
                   </label>
+                  <label className="ed-link-check">
+                    <input type="checkbox" checked={linkConfig.download} onChange={(e) => setLinkConfig((prev) => ({ ...prev, download: e.target.checked }))} />
+                    <span>Forcer le téléchargement</span>
+                  </label>
                   <div className="ed-link-actions">
                     <button type="button" className="ed-link-primary" onClick={applyLinkToSelected}>Rendre cliquable</button>
                     <button type="button" className="ed-link-secondary" onClick={removeLinkFromSelected}>Retirer le lien</button>
@@ -2253,6 +2570,29 @@ export default function GrapesEditor({ mode, postId }: GrapesEditorProps) {
         .ed-link-secondary { border: 1px solid var(--ed-border); background: var(--ed-shell-soft); color: var(--ed-text); }
         .ed-link-primary:hover, .ed-link-secondary:hover { transform: translateY(-1px); }
         .ed-link-help { margin-top: 10px; font-size: 11px; line-height: 1.55; color: var(--ed-text-soft); }
+
+        .ed-media-shell { display: flex; flex-direction: column; gap: 14px; padding: 12px; }
+        .ed-media-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+        .ed-media-toolbar { display: flex; flex-direction: column; gap: 10px; }
+        .ed-media-search { width: 100%; min-height: 38px; border-radius: 10px; border: 1px solid var(--ed-border); background: ${dark ? "#171D27" : "#FFFFFF"}; color: var(--ed-text); padding: 0 12px; outline: none; font: inherit; }
+        .ed-media-search:focus { border-color: var(--ed-accent-soft-border); box-shadow: 0 0 0 4px rgba(239,159,39,.10); }
+        .ed-media-filters { display: flex; flex-wrap: wrap; gap: 8px; }
+        .ed-media-actions { display: flex; align-items: center; gap: 10px; }
+        .ed-media-notice { font-size: 11px; font-weight: 700; color: var(--ed-success); }
+        .ed-media-error { border: 1px solid rgba(239,68,68,.18); background: rgba(239,68,68,.08); color: var(--ed-danger); border-radius: 10px; padding: 10px 12px; font-size: 12px; }
+        .ed-media-grid { display: grid; grid-template-columns: 1fr; gap: 12px; }
+        .ed-media-card { display: grid; grid-template-columns: 92px 1fr; gap: 12px; padding: 12px; border-radius: 14px; border: 1px solid var(--ed-border); background: var(--ed-panel); box-shadow: var(--shadow-sm); }
+        .ed-media-preview { width: 92px; height: 92px; border-radius: 12px; overflow: hidden; border: 1px solid var(--ed-border); background: var(--ed-shell-soft); display: flex; align-items: center; justify-content: center; }
+        .ed-media-preview img, .ed-media-preview video { width: 100%; height: 100%; object-fit: cover; display: block; }
+        .ed-media-file { font-size: 28px; }
+        .ed-media-card__body { min-width: 0; display: flex; flex-direction: column; gap: 8px; }
+        .ed-media-name { font-size: 12px; font-weight: 700; color: var(--ed-text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .ed-media-meta { font-size: 10px; font-weight: 800; letter-spacing: .08em; color: var(--ed-text-mute); }
+        .ed-media-card__actions { display: flex; flex-wrap: wrap; gap: 8px; }
+        .ed-media-btn { border-radius: 8px; padding: 8px 10px; border: 1px solid var(--ed-border); background: var(--ed-shell-soft); color: var(--ed-text); font-size: 11px; font-weight: 700; cursor: pointer; transition: all .15s ease; }
+        .ed-media-btn:hover { transform: translateY(-1px); border-color: var(--ed-accent-soft-border); background: var(--ed-accent-soft); }
+        .ed-media-btn--primary { border-color: transparent; background: linear-gradient(135deg,var(--ed-accent),var(--ed-accent-dark)); color: #fff; box-shadow: 0 8px 18px rgba(242,140,24,.22); }
+        .ed-media-empty { border: 1px dashed var(--ed-border); border-radius: 12px; padding: 18px 14px; text-align: center; color: var(--ed-text-soft); font-size: 12px; }
 
         /* ── GrapesJS overrides ── */
         .gjs-pn-panels { display: none !important; }

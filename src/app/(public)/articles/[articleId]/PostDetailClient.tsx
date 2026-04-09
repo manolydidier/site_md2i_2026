@@ -29,6 +29,7 @@ type CanvasEventHandlers = {
   preventSelectStart: (e: Event) => void
   preventCopy: (e: Event) => boolean | void
   preventPaste: (e: Event) => boolean | void
+  handleAnchorClick: (e: Event) => void
 }
 
 function getUiColors(dark: boolean) {
@@ -320,10 +321,12 @@ export default function PostDetailClient() {
             e.stopPropagation()
             return false
           }
+
           const preventContextMenu = (e: Event) => {
             e.preventDefault()
             return false
           }
+
           const preventSelectStart = (e: Event) => {
             const target = e.target as HTMLElement
             if (
@@ -334,6 +337,7 @@ export default function PostDetailClient() {
               e.preventDefault()
             }
           }
+
           const preventCopy = (e: Event) => {
             const target = e.target as HTMLElement
             if (!target.closest('input') && !target.closest('textarea')) {
@@ -341,12 +345,49 @@ export default function PostDetailClient() {
               return false
             }
           }
+
           const preventPaste = (e: Event) => {
             const target = e.target as HTMLElement
             if (!target.closest('input') && !target.closest('textarea')) {
               e.preventDefault()
               return false
             }
+          }
+
+          const handleAnchorClick = (e: Event) => {
+            const target = e.target as HTMLElement | null
+            const link = target?.closest?.('a[href]') as HTMLAnchorElement | null
+            if (!link) return
+
+            e.preventDefault()
+            e.stopPropagation()
+
+            const href = link.getAttribute('href')
+            if (!href) return
+
+            const absoluteHref = new URL(href, window.location.origin).toString()
+            const isDownload = link.hasAttribute('download')
+            const downloadName = link.getAttribute('download') || ''
+            const targetBlank = link.getAttribute('target') === '_blank'
+
+            if (isDownload) {
+              const tempLink = window.document.createElement('a')
+              tempLink.href = absoluteHref
+              tempLink.style.display = 'none'
+              if (downloadName) tempLink.setAttribute('download', downloadName)
+              tempLink.setAttribute('rel', 'noopener noreferrer')
+              window.document.body.appendChild(tempLink)
+              tempLink.click()
+              tempLink.remove()
+              return
+            }
+
+            if (targetBlank) {
+              window.open(absoluteHref, '_blank', 'noopener,noreferrer')
+              return
+            }
+
+            window.open(absoluteHref, '_blank', 'noopener,noreferrer')
           }
 
           canvasDoc.body.addEventListener('dragstart', preventDrag)
@@ -358,6 +399,7 @@ export default function PostDetailClient() {
           canvasDoc.body.addEventListener('selectstart', preventSelectStart)
           canvasDoc.body.addEventListener('copy', preventCopy)
           canvasDoc.body.addEventListener('paste', preventPaste)
+          canvasDoc.body.addEventListener('click', handleAnchorClick, true)
 
           ;(editor as any).__eventHandlers = {
             preventDrag,
@@ -365,6 +407,7 @@ export default function PostDetailClient() {
             preventSelectStart,
             preventCopy,
             preventPaste,
+            handleAnchorClick,
           } satisfies CanvasEventHandlers
 
           if (post.gjsJs?.trim()) {
@@ -407,13 +450,14 @@ export default function PostDetailClient() {
             canvasDoc.body.removeEventListener('selectstart', handlers.preventSelectStart)
             canvasDoc.body.removeEventListener('copy', handlers.preventCopy)
             canvasDoc.body.removeEventListener('paste', handlers.preventPaste)
+            canvasDoc.body.removeEventListener('click', handlers.handleAnchorClick, true)
           }
         } catch {}
         currentEditor.destroy()
         gjsRef.current = null
       }
     }
-  }, [post])
+  }, [post, dark])
 
   useEffect(() => {
     const editor = gjsRef.current
@@ -584,7 +628,6 @@ export default function PostDetailClient() {
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
               <path d="M19 12H5M12 5l-7 7 7 7" />
             </svg>
-            
           </button>
         </div>
       </div>

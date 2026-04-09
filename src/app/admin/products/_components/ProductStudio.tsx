@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, useCallback } from "react";
+import { useEffect, useRef, useState, useCallback, type ChangeEvent } from "react";
 import { useRouter } from "next/navigation";
 import grapesjs, { Editor } from "grapesjs";
 import "grapesjs/dist/css/grapes.min.css";
@@ -14,9 +14,23 @@ interface ProductStudioProps {
   authorId?: string
 }
 
-type PanelTab = "blocks" | "layers" | "code";
+type PanelTab = "blocks" | "layers" | "media" | "code";
 type Device = "desktop" | "tablet" | "mobile";
 type SaveStatus = "idle" | "saving" | "saved" | "error";
+type MediaKind = "image" | "video" | "file";
+
+interface MediaItem {
+  id: string;
+  name: string;
+  url: string;
+  type: MediaKind;
+  mimeType?: string;
+  size?: number;
+  openUrl?: string;
+  downloadUrl?: string;
+  createdAt?: string;
+  previewUrl?: string;
+}
 
 const ORANGE = "#F28C18";
 const ORANGE_DARK = "#C96A08";
@@ -117,6 +131,7 @@ const BASE_BLOCKS_CSS = `
 export default function ProductStudio({ mode, productId, authorId,}: ProductStudioProps) {
   const router = useRouter();
   const mountRef = useRef<HTMLDivElement>(null);
+  const mediaInputRef = useRef<HTMLInputElement>(null);
   const gjsRef = useRef<Editor | null>(null);
   const { dark } = useTheme();
 
@@ -138,7 +153,13 @@ export default function ProductStudio({ mode, productId, authorId,}: ProductStud
     title: "",
     targetBlank: false,
     noFollow: false,
+    download: false,
   });
+  const [mediaItems, setMediaItems] = useState<MediaItem[]>([]);
+  const [mediaLoading, setMediaLoading] = useState(false);
+  const [mediaUploading, setMediaUploading] = useState(false);
+  const [mediaQuery, setMediaQuery] = useState("");
+  const [mediaNotice, setMediaNotice] = useState("");
 
   // ─── Quick style panel state ──────────────────────────────────────────────
   const [quickStyle, setQuickStyle] = useState({
@@ -226,6 +247,98 @@ export default function ProductStudio({ mode, productId, authorId,}: ProductStud
 
   const getSelectedComponent = () => gjsRef.current?.getSelected() as any;
 
+  const getFirstString = (...values: unknown[]) => {
+    const found = values.find((value) => typeof value === "string" && value.trim());
+    return typeof found === "string" ? found : "";
+  };
+
+  const guessMediaKind = (rawType: string, mimeType: string, url: string): MediaKind => {
+    const typeValue = String(rawType || "").toLowerCase();
+    const mimeValue = String(mimeType || "").toLowerCase();
+    const target = `${typeValue} ${mimeValue} ${String(url || "").toLowerCase()}`;
+
+    if (target.includes("image/") || /(\.png|\.jpe?g|\.gif|\.webp|\.svg|\.avif)(\?|$)/.test(target)) return "image";
+    if (target.includes("video/") || /(\.mp4|\.webm|\.mov|\.m4v|\.ogg)(\?|$)/.test(target)) return "video";
+    return "file";
+  };
+
+  const normalizeMediaItem = useCallback((entry: any, index: number): MediaItem | null => {
+    if (!entry || typeof entry !== "object") return null;
+
+    const url = getFirstString(
+      entry.url,
+      entry.src,
+      entry.fileUrl,
+      entry.publicUrl,
+      entry.path,
+      entry.location,
+      entry.downloadUrl,
+      entry.openUrl,
+      entry.href
+    );
+
+    if (!url) return null;
+
+    const mimeType = getFirstString(entry.mimeType, entry.mimetype, entry.contentType);
+    const rawType = getFirstString(entry.kind, entry.assetType, entry.mediaType, entry.type);
+    const nameFromUrl = (() => {
+      try {
+        return decodeURIComponent(String(url).split("/").pop()?.split("?")[0] || "");
+      } catch {
+        return String(url).split("/").pop()?.split("?")[0] || "";
+      }
+    })();
+
+    const name = getFirstString(
+      entry.name,
+      entry.filename,
+      entry.fileName,
+      entry.originalName,
+      entry.originalFilename,
+      entry.title,
+      nameFromUrl
+    );
+
+    const openUrl = getFirstString(entry.openUrl, entry.url, entry.src, url);
+    const downloadUrl = getFirstString(entry.downloadUrl, entry.url, entry.src, url);
+    const previewUrl = getFirstString(entry.previewUrl, entry.thumbnailUrl, entry.thumbUrl, entry.posterUrl, openUrl);
+    const type = guessMediaKind(rawType, mimeType, url);
+
+    return {
+      id: String(entry.id ?? entry._id ?? entry.key ?? entry.uuid ?? `${name || "media"}-${index}`),
+      name: name || `Média ${index + 1}`,
+      url,
+      type,
+      mimeType: mimeType || rawType || undefined,
+      size: typeof entry.size === "number" ? entry.size : undefined,
+      openUrl,
+      downloadUrl,
+      createdAt: getFirstString(entry.createdAt, entry.updatedAt),
+      previewUrl: type === "image" ? previewUrl || url : previewUrl,
+    };
+  }, []);
+
+  const syncMediaAssetsToEditor = useCallback((items: MediaItem[]) => {
+    const editor = gjsRef.current;
+    if (!editor) return;
+
+    const assetManager = editor.AssetManager;
+    items
+      .filter((item) => item.type === "image")
+      .forEach((item) => {
+        try {
+          assetManager.add({
+            src: item.url,
+            type: "image",
+            name: item.name,
+          } as any);
+        } catch (error) {
+          console.error("AssetManager.add", error);
+        }
+      });
+  }, []);
+
+
   // ─── Sync quickStyle from selected component ──────────────────────────────
   const syncQuickStyleFromSelection = useCallback(() => {
     const selected = getSelectedComponent();
@@ -287,7 +400,7 @@ export default function ProductStudio({ mode, productId, authorId,}: ProductStud
     const selected = getSelectedComponent();
 
     if (!selected) {
-      setLinkConfig({ href: "", title: "", targetBlank: false, noFollow: false });
+      setLinkConfig({ href: "", title: "", targetBlank: false, noFollow: false, download: false });
       return;
     }
 
@@ -299,6 +412,7 @@ export default function ProductStudio({ mode, productId, authorId,}: ProductStud
       title: String(attrs.title || ""),
       targetBlank: attrs.target === "_blank",
       noFollow: relValue.includes("nofollow"),
+      download: Object.prototype.hasOwnProperty.call(attrs, "download"),
     });
   }, []);
 
@@ -404,6 +518,129 @@ export default function ProductStudio({ mode, productId, authorId,}: ProductStud
     const match = String(value).match(/-?\d+(\.\d+)?/);
     return match ? Number(match[0]) : fallback;
   };
+
+  const loadMediaLibrary = useCallback(async () => {
+    setMediaLoading(true);
+    try {
+      const res = await fetch("/api/uploads?limit=200", { cache: "no-store" });
+      if (!res.ok) throw new Error("Impossible de charger la médiathèque.");
+
+      const json = await res.json();
+      const source =
+        (Array.isArray(json) && json) ||
+        (Array.isArray(json?.data) && json.data) ||
+        (Array.isArray(json?.items) && json.items) ||
+        (Array.isArray(json?.uploads) && json.uploads) ||
+        (Array.isArray(json?.files) && json.files) ||
+        [];
+
+      const normalized = source
+        .map((entry: any, index: number) => normalizeMediaItem(entry, index))
+        .filter(Boolean) as MediaItem[];
+
+      setMediaItems(normalized);
+      syncMediaAssetsToEditor(normalized);
+      setMediaNotice("");
+    } catch (error) {
+      console.error("loadMediaLibrary", error);
+      setMediaNotice(error instanceof Error ? error.message : "Erreur de chargement de la médiathèque.");
+    } finally {
+      setMediaLoading(false);
+    }
+  }, [normalizeMediaItem, syncMediaAssetsToEditor]);
+
+  const handleMediaUpload = useCallback(
+    async (event: ChangeEvent<HTMLInputElement>) => {
+      const files = Array.from(event.target.files || []);
+      if (!files.length) return;
+
+      setMediaUploading(true);
+      setMediaNotice("");
+
+      try {
+        for (const file of files) {
+          const formData = new FormData();
+          formData.append("file", file);
+
+          const res = await fetch("/api/upload", {
+            method: "POST",
+            body: formData,
+          });
+
+          if (!res.ok) {
+            let message = "Échec de l'upload.";
+            try {
+              const json = await res.json();
+              message = json?.error || json?.message || message;
+            } catch {}
+            throw new Error(message);
+          }
+        }
+
+        await loadMediaLibrary();
+        setMediaNotice(files.length > 1 ? `${files.length} fichiers envoyés.` : "Fichier envoyé.");
+      } catch (error) {
+        console.error("handleMediaUpload", error);
+        setMediaNotice(error instanceof Error ? error.message : "Erreur pendant l'upload.");
+      } finally {
+        event.target.value = "";
+        setMediaUploading(false);
+      }
+    },
+    [loadMediaLibrary]
+  );
+
+  const insertMediaIntoEditor = useCallback((item: MediaItem) => {
+    const editor = gjsRef.current;
+    if (!editor) return;
+
+    const selected = editor.getSelected() as any;
+    const tagName = String(selected?.get?.("tagName") || "").toLowerCase();
+    const componentType = String(selected?.get?.("type") || "").toLowerCase();
+    const safeName = String(item.name || "Fichier")
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#39;");
+
+    if (item.type === "image" && selected && (tagName === "img" || componentType === "image")) {
+      selected.addAttributes?.({ src: item.url, alt: item.name || "image" });
+      setMediaNotice("Image appliquée à l’élément sélectionné.");
+      return;
+    }
+
+    if (item.type === "video" && selected && tagName === "video") {
+      selected.addAttributes?.({ src: item.url, controls: "true" });
+      selected.addStyle?.({ width: "100%", height: "auto" });
+      setMediaNotice("Vidéo appliquée à l’élément sélectionné.");
+      return;
+    }
+
+    if (item.type === "file" && selected && tagName === "a") {
+      selected.addAttributes?.({
+        href: item.openUrl || item.url,
+        title: item.name,
+        target: "_blank",
+        rel: "noopener noreferrer",
+        download: "download",
+      });
+      setMediaNotice("Lien fichier appliqué à l’élément sélectionné.");
+      syncLinkConfigFromSelection();
+      return;
+    }
+
+    const content =
+      item.type === "image"
+        ? `<img src="${item.url}" alt="${safeName}" />`
+        : item.type === "video"
+          ? `<video src="${item.url}" controls style="max-width:100%;height:auto;"></video>`
+          : `<a href="${item.openUrl || item.url}" title="${safeName}" target="_blank" rel="noopener noreferrer" download>${safeName}</a>`;
+
+    editor.addComponents(content);
+    setMediaNotice("Média inséré dans le canvas.");
+  }, [syncLinkConfigFromSelection]);
+
 
   const applyPageStyles = (
     overrides: Partial<{
@@ -1262,6 +1499,12 @@ export default function ProductStudio({ mode, productId, authorId,}: ProductStud
     };
   },  [appendBaseBlocksCss, loadProduct, mode, readPageStyles, registerCustomBlocks, syncLinkConfigFromSelection, syncQuickStyleFromSelection])
 
+  useEffect(() => {
+    if (activeTab === "media") {
+      loadMediaLibrary();
+    }
+  }, [activeTab, loadMediaLibrary]);
+
   const openTab = (tab: PanelTab) => {
     if (tab === "code") syncCodeFieldsSilently();
     setActiveTab((prev) => (prev === tab ? null : tab));
@@ -1314,6 +1557,8 @@ export default function ProductStudio({ mode, productId, authorId,}: ProductStud
     else delete nextAttrs.target;
     if (relParts.size) nextAttrs.rel = Array.from(relParts).join(" ");
     else delete nextAttrs.rel;
+    if (linkConfig.download) nextAttrs.download = "download";
+    else delete nextAttrs.download;
     selected.set?.("tagName", "a");
     selected.addAttributes?.(nextAttrs);
     const childCount = typeof selected.components === "function" ? selected.components().length : 0;
@@ -1337,9 +1582,10 @@ export default function ProductStudio({ mode, productId, authorId,}: ProductStud
     delete nextAttrs.href;
     delete nextAttrs.target;
     delete nextAttrs.rel;
+    delete nextAttrs.download;
     selected.addAttributes?.(nextAttrs);
     selected.addStyle({ cursor: "" });
-    setLinkConfig((prev) => ({ ...prev, href: "", targetBlank: false, noFollow: false }));
+    setLinkConfig((prev) => ({ ...prev, href: "", targetBlank: false, noFollow: false, download: false }));
     setCodeNotice("Lien retiré de la sélection.");
     setTimeout(() => setCodeNotice(""), 2400);
   };
@@ -1651,6 +1897,7 @@ const handleSave = async (statusOverride?: 'DRAFT' | 'PUBLISHED') => {
             {[
               { id: "blocks", title: "Blocs", icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="7" height="7" rx="1" /><rect x="14" y="3" width="7" height="7" rx="1" /><rect x="3" y="14" width="7" height="7" rx="1" /><rect x="14" y="14" width="7" height="7" rx="1" /></svg> },
               { id: "layers", title: "Calques", icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" /></svg> },
+              { id: "media", title: "Médiathèque", icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 7a2 2 0 012-2h3l2 2h9a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2V7z" /><circle cx="9" cy="11" r="1.5" /><path d="M21 15l-4.5-4.5L10 17" /></svg> },
             ].map((item) => (
               <button key={item.id} type="button" className={`ed-rail-btn ${activeTab === item.id ? "is-active" : ""}`} onClick={() => openTab(item.id as PanelTab)} title={item.title}>
                 {item.icon}
@@ -1668,13 +1915,14 @@ const handleSave = async (statusOverride?: 'DRAFT' | 'PUBLISHED') => {
           </div>
         </aside>
 
-        <aside className={`ed-left-drawer ${activeTab ? "is-open" : ""} ${activeTab === "code" ? "is-wide" : ""}`}>
+        <aside className={`ed-left-drawer ${activeTab ? "is-open" : ""} ${activeTab === "code" || activeTab === "media" ? "is-wide" : ""}`}>
           <div className="ed-left-drawer__head">
             <div>
               <span className="ed-left-drawer__eyebrow">Studio</span>
               <strong>
                 {activeTab === "blocks" && "Blocs"}
                 {activeTab === "layers" && "Calques"}
+                {activeTab === "media" && "Médiathèque"}
                 {activeTab === "code" && "Code personnalisé"}
               </strong>
             </div>
@@ -1685,6 +1933,113 @@ const handleSave = async (statusOverride?: 'DRAFT' | 'PUBLISHED') => {
 
           <div id="ed-blocks" className={`ed-panel ${activeTab === "blocks" ? "is-visible" : ""}`} />
           <div id="ed-layers" className={`ed-panel ${activeTab === "layers" ? "is-visible" : ""}`} />
+
+          <div className={`ed-panel ${activeTab === "media" ? "is-visible" : ""}`}>
+            <div className="ed-media-shell">
+              <div className="ed-media-card">
+                <div className="ed-media-card__head">
+                  <div>
+                    <h3 className="ed-media-card__title">Bibliothèque de médias</h3>
+                    <p className="ed-media-card__subtitle">Upload via <code>/api/upload</code> et chargement via <code>/api/uploads?limit=200</code>.</p>
+                  </div>
+                  <button type="button" className="ed-media-refresh" onClick={loadMediaLibrary} disabled={mediaLoading || mediaUploading}>
+                    Actualiser
+                  </button>
+                </div>
+
+                <div className="ed-media-toolbar">
+                  <input
+                    className="ed-media-search"
+                    value={mediaQuery}
+                    onChange={(e) => setMediaQuery(e.target.value)}
+                    placeholder="Rechercher un média…"
+                  />
+                  <button
+                    type="button"
+                    className="ed-code-primary"
+                    onClick={() => mediaInputRef.current?.click()}
+                    disabled={mediaUploading}
+                  >
+                    {mediaUploading ? "Upload…" : "Ajouter"}
+                  </button>
+                  <input
+                    ref={mediaInputRef}
+                    type="file"
+                    multiple
+                    hidden
+                    onChange={handleMediaUpload}
+                  />
+                </div>
+
+                {mediaNotice && <p className="ed-media-notice">{mediaNotice}</p>}
+                {mediaLoading && !mediaItems.length && <p className="ed-media-empty">Chargement de la médiathèque…</p>}
+
+                <div className="ed-media-grid">
+                  {mediaItems
+                    .filter((item) => {
+                      if (!mediaQuery.trim()) return true;
+                      const q = mediaQuery.trim().toLowerCase();
+                      return (
+                        item.name.toLowerCase().includes(q) ||
+                        item.url.toLowerCase().includes(q) ||
+                        String(item.mimeType || "").toLowerCase().includes(q)
+                      );
+                    })
+                    .map((item) => (
+                      <div key={item.id} className="ed-media-item">
+                        <button type="button" className="ed-media-preview" onClick={() => insertMediaIntoEditor(item)}>
+                          {item.type === "image" ? (
+                            <img src={item.previewUrl || item.url} alt={item.name} />
+                          ) : (
+                            <span className="ed-media-filetype">{item.type === "video" ? "VIDÉO" : "FICHIER"}</span>
+                          )}
+                        </button>
+
+                        <div className="ed-media-meta">
+                          <strong title={item.name}>{item.name}</strong>
+                          <span>{item.mimeType || item.type}</span>
+                        </div>
+
+                        <div className="ed-media-actions">
+                          <button type="button" className="ed-media-insert" onClick={() => insertMediaIntoEditor(item)}>
+                            Insérer
+                          </button>
+                          <a
+                            className="ed-media-link"
+                            href={item.openUrl || item.url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                          >
+                            Ouvrir
+                          </a>
+                          <a
+                            className="ed-media-link"
+                            href={item.downloadUrl || item.url}
+                            download
+                            target="_blank"
+                            rel="noopener noreferrer"
+                          >
+                            Télécharger
+                          </a>
+                        </div>
+                      </div>
+                    ))}
+                </div>
+
+                {!mediaLoading && !mediaItems.filter((item) => {
+                  if (!mediaQuery.trim()) return true;
+                  const q = mediaQuery.trim().toLowerCase();
+                  return (
+                    item.name.toLowerCase().includes(q) ||
+                    item.url.toLowerCase().includes(q) ||
+                    String(item.mimeType || "").toLowerCase().includes(q)
+                  );
+                }).length && (
+                  <p className="ed-media-empty">Aucun média trouvé.</p>
+                )}
+              </div>
+            </div>
+          </div>
 
           <div className={`ed-panel ${activeTab === "code" ? "is-visible" : ""}`}>
             <div className="ed-code-shell">
@@ -2005,6 +2360,10 @@ const handleSave = async (statusOverride?: 'DRAFT' | 'PUBLISHED') => {
                     <input type="checkbox" checked={linkConfig.noFollow} onChange={(e) => setLinkConfig((prev) => ({ ...prev, noFollow: e.target.checked }))} />
                     <span>Ajouter <code>nofollow</code></span>
                   </label>
+                  <label className="ed-link-check">
+                    <input type="checkbox" checked={linkConfig.download} onChange={(e) => setLinkConfig((prev) => ({ ...prev, download: e.target.checked }))} />
+                    <span>Forcer le téléchargement (<code>download</code>)</span>
+                  </label>
                   <div className="ed-link-actions">
                     <button type="button" className="ed-link-primary" onClick={applyLinkToSelected}>Rendre cliquable</button>
                     <button type="button" className="ed-link-secondary" onClick={removeLinkFromSelected}>Retirer le lien</button>
@@ -2287,6 +2646,110 @@ const handleSave = async (statusOverride?: 'DRAFT' | 'PUBLISHED') => {
         .ed-example-list { display: flex; flex-direction: column; gap: 8px; }
         .ed-example-note { margin-top: 12px; padding: 10px; border-radius: 10px; background: var(--ed-shell-soft); border: 1px solid var(--ed-border); color: var(--ed-text-soft); font-size: 11px; line-height: 1.6; }
 
+        .ed-media-shell { padding: 12px 10px 18px; }
+        .ed-media-card { background: var(--ed-panel); border: 1px solid var(--ed-border); border-radius: 14px; padding: 14px; box-shadow: var(--shadow-sm); }
+        .ed-media-card__head { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; margin-bottom: 12px; }
+        .ed-media-card__title { margin: 0; font-size: 13px; font-weight: 700; color: var(--ed-text); }
+        .ed-media-card__subtitle { margin: 4px 0 0; font-size: 11px; line-height: 1.5; color: var(--ed-text-soft); }
+        .ed-media-card__subtitle code { font-family: ui-monospace, monospace; color: var(--ed-accent); font-size: 11px; }
+        .ed-media-refresh, .ed-media-insert {
+          border: 1px solid var(--ed-border);
+          background: var(--ed-shell-soft);
+          color: var(--ed-text);
+          border-radius: 9px;
+          padding: 8px 10px;
+          cursor: pointer;
+          font-size: 11px;
+          font-weight: 700;
+          transition: all .15s ease;
+        }
+        .ed-media-refresh:hover, .ed-media-insert:hover { border-color: var(--ed-accent-soft-border); background: var(--ed-accent-soft); color: var(--ed-accent); }
+        .ed-media-refresh:disabled, .ed-media-insert:disabled { opacity: .6; cursor: not-allowed; }
+        .ed-media-toolbar { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; }
+        .ed-media-search {
+          flex: 1;
+          min-height: 36px;
+          border-radius: 10px;
+          border: 1px solid var(--ed-border);
+          background: ${dark ? "#171D27" : "#FFFFFF"};
+          color: var(--ed-text);
+          font-size: 12px;
+          padding: 0 12px;
+          outline: none;
+        }
+        .ed-media-search:focus { border-color: var(--ed-accent-soft-border); box-shadow: 0 0 0 3px rgba(242,140,24,.10); }
+        .ed-media-notice { margin-bottom: 10px; font-size: 11px; color: var(--ed-accent); font-weight: 600; }
+        .ed-media-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+        .ed-media-item {
+          border: 1px solid var(--ed-border);
+          background: var(--ed-shell-soft);
+          border-radius: 12px;
+          overflow: hidden;
+          display: flex;
+          flex-direction: column;
+        }
+        .ed-media-preview {
+          border: none;
+          background: ${dark ? "#171D27" : "#F8FAFC"};
+          min-height: 120px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          cursor: pointer;
+          padding: 0;
+        }
+        .ed-media-preview img { width: 100%; height: 120px; object-fit: cover; display: block; }
+        .ed-media-filetype {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          min-width: 78px;
+          min-height: 30px;
+          padding: 0 10px;
+          border-radius: 999px;
+          border: 1px solid var(--ed-accent-soft-border);
+          background: var(--ed-accent-soft);
+          color: var(--ed-accent);
+          font-size: 11px;
+          font-weight: 800;
+          letter-spacing: .08em;
+        }
+        .ed-media-meta { padding: 10px 10px 0; display: flex; flex-direction: column; gap: 4px; }
+        .ed-media-meta strong {
+          color: var(--ed-text);
+          font-size: 12px;
+          font-weight: 700;
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+        }
+        .ed-media-meta span { color: var(--ed-text-soft); font-size: 11px; }
+        .ed-media-actions {
+          display: flex;
+          align-items: center;
+          gap: 6px;
+          padding: 10px;
+          flex-wrap: wrap;
+        }
+        .ed-media-link {
+          border: 1px solid var(--ed-border);
+          background: transparent;
+          color: var(--ed-text-soft);
+          border-radius: 9px;
+          padding: 8px 10px;
+          font-size: 11px;
+          font-weight: 700;
+          text-decoration: none;
+          transition: all .15s ease;
+        }
+        .ed-media-link:hover { border-color: var(--ed-accent-soft-border); background: var(--ed-accent-soft); color: var(--ed-accent); }
+        .ed-media-empty {
+          margin-top: 12px;
+          font-size: 11px;
+          color: var(--ed-text-soft);
+          line-height: 1.6;
+        }
+
         .ed-link-card { background: var(--ed-panel); border: 1px solid var(--ed-border); border-radius: 12px; padding: 12px; box-shadow: var(--shadow-sm); }
         .ed-link-card__head { margin-bottom: 10px; }
         .ed-link-card__title { font-size: 13px; font-weight: 700; color: var(--ed-text); }
@@ -2385,6 +2848,7 @@ const handleSave = async (statusOverride?: 'DRAFT' | 'PUBLISHED') => {
         @keyframes gjs-spin { to { transform: rotate(360deg); } }
 
         @media (max-width: 1280px) {
+          .ed-media-grid { grid-template-columns: 1fr; }
           .ed-body--studio { grid-template-columns: 56px auto 1fr 300px; }
           .ed-rightbar { width: 300px; min-width: 300px; }
         }

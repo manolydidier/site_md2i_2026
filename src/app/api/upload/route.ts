@@ -6,12 +6,21 @@ import { NextResponse } from "next/server";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5 MB
+const MAX_FILE_SIZE = 20 * 1024 * 1024; // 20 MB
 const ALLOWED_MIME_TYPES = new Set([
+  // Images
   "image/jpeg",
   "image/png",
   "image/webp",
   "image/gif",
+
+  // Documents / files
+  "application/pdf",
+  "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", // xlsx
+  "application/vnd.ms-excel", // xls
+  "text/csv",
+  "application/zip",
+  "application/x-zip-compressed",
 ]);
 
 function getExtensionFromMime(mimeType: string) {
@@ -24,6 +33,17 @@ function getExtensionFromMime(mimeType: string) {
       return ".webp";
     case "image/gif":
       return ".gif";
+    case "application/pdf":
+      return ".pdf";
+    case "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet":
+      return ".xlsx";
+    case "application/vnd.ms-excel":
+      return ".xls";
+    case "text/csv":
+      return ".csv";
+    case "application/zip":
+    case "application/x-zip-compressed":
+      return ".zip";
     default:
       return "";
   }
@@ -43,14 +63,17 @@ export async function POST(request: Request) {
 
     if (!ALLOWED_MIME_TYPES.has(file.type)) {
       return NextResponse.json(
-        { error: "Format non autorisé. Utilisez JPG, PNG, WEBP ou GIF." },
+        {
+          error:
+            "Format non autorisé. Utilisez JPG, PNG, WEBP, GIF, PDF, XLSX, XLS, CSV ou ZIP.",
+        },
         { status: 400 }
       );
     }
 
     if (file.size > MAX_FILE_SIZE) {
       return NextResponse.json(
-        { error: "Image trop lourde. Maximum 5 MB." },
+        { error: "Fichier trop lourd. Maximum 20 MB." },
         { status: 400 }
       );
     }
@@ -61,9 +84,16 @@ export async function POST(request: Request) {
     const extension =
       getExtensionFromMime(file.type) ||
       path.extname(file.name || "").toLowerCase() ||
-      ".jpg";
+      "";
 
-    const fileName = `${Date.now()}-${randomUUID()}${extension}`;
+    const safeBaseName =
+      path
+        .basename(file.name || "file", path.extname(file.name || ""))
+        .replace(/[^a-zA-Z0-9-_]/g, "-")
+        .replace(/-+/g, "-")
+        .replace(/^-|-$/g, "") || "file";
+
+    const fileName = `${Date.now()}-${randomUUID()}-${safeBaseName}${extension}`;
 
     const relativeDir = path.join("uploads", "posts");
     const absoluteDir = path.join(process.cwd(), "public", relativeDir);
@@ -79,6 +109,7 @@ export async function POST(request: Request) {
         success: true,
         url: publicUrl,
         name: fileName,
+        originalName: file.name,
         size: file.size,
         type: file.type,
       },
@@ -88,7 +119,7 @@ export async function POST(request: Request) {
     console.error("POST /api/upload error:", error);
 
     return NextResponse.json(
-      { error: "Impossible d'uploader l'image." },
+      { error: "Impossible d'uploader le fichier." },
       { status: 500 }
     );
   }

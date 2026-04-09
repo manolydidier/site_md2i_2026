@@ -27,6 +27,14 @@ interface Tag {
   slug: string;
 }
 
+interface MediaImage {
+  id: string;
+  url: string;
+  name: string;
+  size?: number;
+  createdAt?: string;
+}
+
 interface PostMetaSidebarProps {
   open: boolean;
   onClose: () => void;
@@ -64,7 +72,13 @@ export default function PostMetaSidebar({
   const [uploadSuccess, setUploadSuccess] = useState("");
   const [isDraggingImage, setIsDraggingImage] = useState(false);
 
-  // ── New Category Modal state ──────────────────────────────────────────────
+  const [imageTab, setImageTab] = useState<"upload" | "library">("upload");
+  const [libraryImages, setLibraryImages] = useState<MediaImage[]>([]);
+  const [libraryLoading, setLibraryLoading] = useState(false);
+  const [libraryError, setLibraryError] = useState("");
+  const [librarySearch, setLibrarySearch] = useState("");
+  const [selectedLibraryId, setSelectedLibraryId] = useState<string | null>(null);
+
   const [showNewCategory, setShowNewCategory] = useState(false);
   const [newCatName, setNewCatName] = useState("");
   const [newCatSlug, setNewCatSlug] = useState("");
@@ -72,7 +86,6 @@ export default function PostMetaSidebar({
   const [creatingCategory, setCreatingCategory] = useState(false);
   const [newCatError, setNewCatError] = useState("");
   const newCatInputRef = useRef<HTMLInputElement | null>(null);
-  // ─────────────────────────────────────────────────────────────────────────
 
   const c = {
     shell: dark ? "#0B0B0E" : "#FFFFFF",
@@ -93,15 +106,14 @@ export default function PostMetaSidebar({
   useEffect(() => {
     fetch("/api/categories")
       .then((r) => r.json())
-      .then(setCategories)
+      .then((res) => setCategories(res.data ?? res ?? []))
       .catch(() => {});
 
     fetch("/api/tags")
       .then((r) => r.json())
-      .then(setTags)
+      .then((res) => setTags(res.data ?? res ?? []))
       .catch(() => {});
 
-    // Charge les utilisateurs avec rôles auteur/modérateur/admin
     const roles = ["ADMIN", "SUPER_ADMIN", "MODERATEUR", "AUTHOR"];
     Promise.all(
       roles.map((role) =>
@@ -130,6 +142,36 @@ export default function PostMetaSidebar({
   }, []);
 
   useEffect(() => {
+    if (imageTab !== "library") return;
+    if (libraryImages.length > 0) return;
+
+    setLibraryLoading(true);
+    setLibraryError("");
+
+    fetch("/api/uploads?limit=200&type=image")
+      .then((r) => r.json())
+      .then((res) => {
+        const items: MediaImage[] = (res.data ?? res.files ?? res.items ?? []).map((f: any) => ({
+          id: f.id ?? f._id ?? f.url,
+          url: f.url ?? f.path ?? f.src,
+          name: f.name ?? f.filename ?? f.originalName ?? f.url?.split("/").pop() ?? "image",
+          size: f.size,
+          createdAt: f.createdAt,
+        }));
+        setLibraryImages(items);
+      })
+      .catch(() => setLibraryError("Impossible de charger la médiathèque."))
+      .finally(() => setLibraryLoading(false));
+  }, [imageTab, libraryImages.length]);
+
+  useEffect(() => {
+    if (imageTab === "library" && meta.coverImage) {
+      const match = libraryImages.find((img) => img.url === meta.coverImage);
+      setSelectedLibraryId(match?.id ?? null);
+    }
+  }, [imageTab, libraryImages, meta.coverImage]);
+
+  useEffect(() => {
     return () => {
       if (slugTimeout) clearTimeout(slugTimeout);
     };
@@ -145,7 +187,6 @@ export default function PostMetaSidebar({
     return () => URL.revokeObjectURL(objectUrl);
   }, [selectedImage]);
 
-  // Auto-focus the name input when modal opens
   useEffect(() => {
     if (showNewCategory) {
       setTimeout(() => newCatInputRef.current?.focus(), 50);
@@ -157,7 +198,6 @@ export default function PostMetaSidebar({
     }
   }, [showNewCategory]);
 
-  // Auto-generate slug from name (unless manually edited)
   useEffect(() => {
     if (!newCatSlugEdited && newCatName) {
       setNewCatSlug(
@@ -199,7 +239,7 @@ export default function PostMetaSidebar({
     [postId, slugTimeout]
   );
 
-  const update = (field: keyof PostMeta, value: unknown) => {
+  const update = <K extends keyof PostMeta>(field: K, value: PostMeta[K]) => {
     onMetaChange({ ...meta, [field]: value });
   };
 
@@ -236,23 +276,38 @@ export default function PostMetaSidebar({
       formData.append("file", selectedImage);
       const res = await fetch("/api/upload", { method: "POST", body: formData });
       const data = await res.json();
-      if (!res.ok) throw new Error(data?.error || "Échec de l'upload.");
-      update("coverImage", data.url);
+      const payload = data?.data ?? data;
+      if (!res.ok) throw new Error(payload?.error || data?.error || "Échec de l'upload.");
+
+      update("coverImage", payload.url);
+
       if (postId) {
         const patchRes = await fetch(`/api/posts/${postId}`, {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ coverImage: data.url }),
+          body: JSON.stringify({ coverImage: payload.url }),
         });
         const patchData = await patchRes.json();
-        if (!patchRes.ok)
+        if (!patchRes.ok) {
           throw new Error(patchData?.error || "Image uploadée, mais non enregistrée en base.");
+        }
       }
+
       setUploadSuccess(
         postId
           ? "Image uploadée et enregistrée en base."
           : "Image uploadée. Cliquez ensuite sur Brouillon ou Publier pour enregistrer le post."
       );
+
+      const newEntry: MediaImage = {
+        id: payload.id ?? payload.url,
+        url: payload.url,
+        name: payload.originalName ?? selectedImage.name,
+        size: payload.size ?? selectedImage.size,
+        createdAt: payload.createdAt ?? new Date().toISOString(),
+      };
+      setLibraryImages((prev) => [newEntry, ...prev]);
+      setSelectedLibraryId(newEntry.id);
       setSelectedImage(null);
       setImagePreviewUrl("");
     } catch (error) {
@@ -273,6 +328,7 @@ export default function PostMetaSidebar({
   const removeImageCompletely = () => {
     clearSelectedImage();
     update("coverImage", "");
+    setSelectedLibraryId(null);
   };
 
   const openFilePicker = () => fileInputRef.current?.click();
@@ -299,7 +355,22 @@ export default function PostMetaSidebar({
     }
   };
 
-  // ── Create category handler ───────────────────────────────────────────────
+  const handleApplyLibraryImage = (img: MediaImage) => {
+    if (selectedLibraryId === img.id) {
+      setSelectedLibraryId(null);
+      update("coverImage", "");
+      return;
+    }
+    setSelectedLibraryId(img.id);
+    update("coverImage", img.url);
+    setUploadError("");
+    setUploadSuccess("");
+  };
+
+  const filteredLibrary = libraryImages.filter((img) =>
+    img.name.toLowerCase().includes(librarySearch.toLowerCase())
+  );
+
   const handleCreateCategory = async () => {
     const name = newCatName.trim();
     if (!name) {
@@ -316,9 +387,9 @@ export default function PostMetaSidebar({
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data?.error || "Impossible de créer la catégorie.");
-      // Add to local list and auto-select it
-      setCategories((prev) => [...prev, data].sort((a, b) => a.name.localeCompare(b.name)));
-      update("categoryId", data.id);
+      const createdCategory = data.data ?? data;
+      setCategories((prev) => [...prev, createdCategory].sort((a, b) => a.name.localeCompare(b.name)));
+      update("categoryId", createdCategory.id);
       setShowNewCategory(false);
     } catch (error) {
       setNewCatError(error instanceof Error ? error.message : "Erreur inattendue.");
@@ -326,7 +397,6 @@ export default function PostMetaSidebar({
       setCreatingCategory(false);
     }
   };
-  // ─────────────────────────────────────────────────────────────────────────
 
   const currentPreview = imagePreviewUrl || meta.coverImage;
 
@@ -359,7 +429,6 @@ export default function PostMetaSidebar({
         </div>
 
         <div className="sidebar-body">
-          {/* Title */}
           <div className="field-group">
             <label className="field-label">Title <span className="field-required">*</span></label>
             <input
@@ -371,7 +440,6 @@ export default function PostMetaSidebar({
             />
           </div>
 
-          {/* Slug */}
           <div className="field-group">
             <label className="field-label">Slug <span className="field-required">*</span></label>
             <div className="slug-wrapper">
@@ -380,7 +448,10 @@ export default function PostMetaSidebar({
                 type="text"
                 value={meta.slug}
                 placeholder="my-awesome-post"
-                onChange={(e) => { update("slug", e.target.value); checkSlug(e.target.value); }}
+                onChange={(e) => {
+                  update("slug", e.target.value);
+                  checkSlug(e.target.value);
+                }}
               />
               <button type="button" className="slug-regen" onClick={handleRegenerateSlug} title="Regenerate from title">
                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -395,24 +466,25 @@ export default function PostMetaSidebar({
             {!checkingSlug && slugAvailable === true && <p className="field-hint field-hint--success">Slug is available ✓</p>}
           </div>
 
-          {/* Status */}
           <div className="field-group">
             <label className="field-label">Status</label>
             <div className="status-buttons">
               {(["DRAFT", "PUBLISHED", "ARCHIVED"] as const).map((s) => (
                 <button
-                  type="button" key={s}
+                  type="button"
+                  key={s}
                   className={`status-btn status-btn--${s.toLowerCase()} ${meta.status === s ? "active" : ""}`}
                   onClick={() => update("status", s)}
                 >
-                  {s === "DRAFT" && "📝 "}{s === "PUBLISHED" && "🚀 "}{s === "ARCHIVED" && "📦 "}
+                  {s === "DRAFT" && "📝 "}
+                  {s === "PUBLISHED" && "🚀 "}
+                  {s === "ARCHIVED" && "📦 "}
                   {s.charAt(0) + s.slice(1).toLowerCase()}
                 </button>
               ))}
             </div>
           </div>
 
-          {/* Excerpt */}
           <div className="field-group">
             <label className="field-label">Excerpt</label>
             <textarea
@@ -425,87 +497,192 @@ export default function PostMetaSidebar({
             <p className="field-hint field-hint--neutral">{meta.excerpt.length}/160 characters</p>
           </div>
 
-          {/* Cover Image */}
           <div className="field-group">
             <label className="field-label">Cover Image</label>
-            <div className="image-upload-shell">
-              <div className="image-upload-top">
-                <div className="image-upload-texts">
-                  <h4 className="image-upload-title">Image de couverture</h4>
-                  <p className="image-upload-subtitle">Déposez une image ou cliquez pour la choisir</p>
+
+            <div className="img-tab-bar">
+              <button
+                type="button"
+                className={`img-tab-btn ${imageTab === "upload" ? "active" : ""}`}
+                onClick={() => setImageTab("upload")}
+              >
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                  <polyline points="17 8 12 3 7 8" />
+                  <line x1="12" y1="3" x2="12" y2="15" />
+                </svg>
+                Upload
+              </button>
+              <button
+                type="button"
+                className={`img-tab-btn ${imageTab === "library" ? "active" : ""}`}
+                onClick={() => setImageTab("library")}
+              >
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <rect x="3" y="3" width="7" height="7" rx="1" />
+                  <rect x="14" y="3" width="7" height="7" rx="1" />
+                  <rect x="3" y="14" width="7" height="7" rx="1" />
+                  <rect x="14" y="14" width="7" height="7" rx="1" />
+                </svg>
+                Médiathèque
+                {libraryImages.length > 0 && (
+                  <span className="img-tab-count">{libraryImages.length}</span>
+                )}
+              </button>
+            </div>
+
+            {imageTab === "upload" && (
+              <div className="image-upload-shell">
+                <div className="image-upload-top">
+                  <div className="image-upload-texts">
+                    <h4 className="image-upload-title">Image de couverture</h4>
+                    <p className="image-upload-subtitle">Déposez une image ou cliquez pour la choisir</p>
+                  </div>
+                  {currentPreview && (
+                    <button type="button" className="image-clear-btn" onClick={removeImageCompletely}>Retirer</button>
+                  )}
                 </div>
+
+                <div
+                  className={`image-dropzone ${isDraggingImage ? "is-dragging" : ""}`}
+                  onClick={openFilePicker}
+                  onDragOver={handleDragOver}
+                  onDragLeave={handleDragLeave}
+                  onDrop={handleDrop}
+                >
+                  <input
+                    ref={fileInputRef}
+                    className="image-file-input"
+                    type="file"
+                    accept="image/*"
+                    onChange={(e) => handleSelectedFile(e.target.files?.[0] || null)}
+                  />
+                  <div className="image-dropzone__icon">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                      <polyline points="17 8 12 3 7 8" />
+                      <line x1="12" y1="3" x2="12" y2="15" />
+                    </svg>
+                  </div>
+                  <div className="image-dropzone__content">
+                    <strong>Choisir ou déposer une image</strong>
+                    <span>JPG, PNG, WEBP, GIF</span>
+                  </div>
+                </div>
+
                 {currentPreview && (
-                  <button type="button" className="image-clear-btn" onClick={removeImageCompletely}>Retirer</button>
+                  <div className="image-preview-card">
+                    <div className="image-preview-media">
+                      <img src={currentPreview} alt="Preview" onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }} />
+                      <div className="image-preview-overlay">
+                        <span className="image-preview-badge">{selectedImage ? "Aperçu local" : "Image enregistrée"}</span>
+                      </div>
+                    </div>
+                    <div className="image-preview-meta">
+                      <div className="image-preview-meta__row">
+                        <span className="image-preview-label">Source</span>
+                        <span className="image-preview-value">{selectedImage ? "Fichier local" : "Image enregistrée"}</span>
+                      </div>
+                      {selectedImage && (
+                        <>
+                          <div className="image-preview-meta__row">
+                            <span className="image-preview-label">Nom</span>
+                            <span className="image-preview-value image-preview-value--truncate">{selectedImage.name}</span>
+                          </div>
+                          <div className="image-preview-meta__row">
+                            <span className="image-preview-label">Taille</span>
+                            <span className="image-preview-value">{(selectedImage.size / 1024 / 1024).toFixed(2)} MB</span>
+                          </div>
+                        </>
+                      )}
+                      <div className="image-preview-meta__row">
+                        <span className="image-preview-label">Chemin</span>
+                        <span className="image-preview-value image-preview-value--truncate">{meta.coverImage || "Pas encore uploadée"}</span>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                <input
+                  className="field-input"
+                  type="text"
+                  value={meta.coverImage}
+                  placeholder="/uploads/posts/mon-image.jpg"
+                  onChange={(e) => update("coverImage", e.target.value)}
+                />
+
+                <div className="image-actions">
+                  <button type="button" className="image-upload-btn" onClick={handleImageUpload} disabled={uploadingImage || !selectedImage}>
+                    {uploadingImage ? "Upload en cours..." : "Uploader l'image"}
+                  </button>
+                  <button type="button" className="image-secondary-btn" onClick={clearSelectedImage} disabled={!selectedImage}>Annuler</button>
+                </div>
+
+                {uploadError && <p className="field-hint field-hint--error">{uploadError}</p>}
+                {uploadSuccess && <p className="field-hint field-hint--success">{uploadSuccess}</p>}
+              </div>
+            )}
+
+            {imageTab === "library" && (
+              <div className="library-shell">
+                <input
+                  className="field-input library-search"
+                  type="text"
+                  value={librarySearch}
+                  placeholder="Rechercher une image…"
+                  onChange={(e) => setLibrarySearch(e.target.value)}
+                />
+
+                {libraryLoading && (
+                  <p className="field-hint field-hint--neutral library-status">Chargement…</p>
+                )}
+                {libraryError && (
+                  <p className="field-hint field-hint--error library-status">{libraryError}</p>
+                )}
+                {!libraryLoading && !libraryError && filteredLibrary.length === 0 && (
+                  <p className="field-hint field-hint--neutral library-status">
+                    {librarySearch ? "Aucun résultat." : "Aucune image dans la médiathèque."}
+                  </p>
+                )}
+
+                {!libraryLoading && filteredLibrary.length > 0 && (
+                  <div className="library-grid">
+                    {filteredLibrary.map((img) => (
+                      <button
+                        key={img.id}
+                        type="button"
+                        className={`library-cell ${selectedLibraryId === img.id ? "selected" : ""}`}
+                        onClick={() => handleApplyLibraryImage(img)}
+                        title={img.name}
+                      >
+                        <img src={img.url} alt={img.name} onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }} />
+                        {selectedLibraryId === img.id && (
+                          <div className="library-cell__check">
+                            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3">
+                              <polyline points="20 6 9 17 4 12" />
+                            </svg>
+                          </div>
+                        )}
+                        <div className="library-cell__label">{img.name}</div>
+                      </button>
+                    ))}
+                  </div>
+                )}
+
+                {selectedLibraryId && (
+                  <div className="library-selected-bar">
+                    <span className="library-selected-bar__text">
+                      {filteredLibrary.find((i) => i.id === selectedLibraryId)?.name ?? "Image sélectionnée"}
+                    </span>
+                    <button type="button" className="library-selected-bar__clear" onClick={removeImageCompletely}>
+                      Retirer
+                    </button>
+                  </div>
                 )}
               </div>
-              <div
-                className={`image-dropzone ${isDraggingImage ? "is-dragging" : ""}`}
-                onClick={openFilePicker}
-                onDragOver={handleDragOver}
-                onDragLeave={handleDragLeave}
-                onDrop={handleDrop}
-              >
-                <input ref={fileInputRef} className="image-file-input" type="file" accept="image/*"
-                  onChange={(e) => handleSelectedFile(e.target.files?.[0] || null)} />
-                <div className="image-dropzone__icon">
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-                    <polyline points="17 8 12 3 7 8" />
-                    <line x1="12" y1="3" x2="12" y2="15" />
-                  </svg>
-                </div>
-                <div className="image-dropzone__content">
-                  <strong>Choisir ou déposer une image</strong>
-                  <span>JPG, PNG, WEBP, GIF</span>
-                </div>
-              </div>
-              {currentPreview && (
-                <div className="image-preview-card">
-                  <div className="image-preview-media">
-                    <img src={currentPreview} alt="Preview" onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }} />
-                    <div className="image-preview-overlay">
-                      <span className="image-preview-badge">{selectedImage ? "Aperçu local" : "Image enregistrée"}</span>
-                    </div>
-                  </div>
-                  <div className="image-preview-meta">
-                    <div className="image-preview-meta__row">
-                      <span className="image-preview-label">Source</span>
-                      <span className="image-preview-value">{selectedImage ? "Fichier local" : "Image enregistrée"}</span>
-                    </div>
-                    {selectedImage && (
-                      <>
-                        <div className="image-preview-meta__row">
-                          <span className="image-preview-label">Nom</span>
-                          <span className="image-preview-value image-preview-value--truncate">{selectedImage.name}</span>
-                        </div>
-                        <div className="image-preview-meta__row">
-                          <span className="image-preview-label">Taille</span>
-                          <span className="image-preview-value">{(selectedImage.size / 1024 / 1024).toFixed(2)} MB</span>
-                        </div>
-                      </>
-                    )}
-                    <div className="image-preview-meta__row">
-                      <span className="image-preview-label">Chemin</span>
-                      <span className="image-preview-value image-preview-value--truncate">{meta.coverImage || "Pas encore uploadée"}</span>
-                    </div>
-                  </div>
-                </div>
-              )}
-              <input className="field-input" type="text" value={meta.coverImage}
-                placeholder="/uploads/posts/mon-image.jpg"
-                onChange={(e) => update("coverImage", e.target.value)} />
-              <div className="image-actions">
-                <button type="button" className="image-upload-btn" onClick={handleImageUpload} disabled={uploadingImage || !selectedImage}>
-                  {uploadingImage ? "Upload en cours..." : "Uploader l'image"}
-                </button>
-                <button type="button" className="image-secondary-btn" onClick={clearSelectedImage} disabled={!selectedImage}>Annuler</button>
-              </div>
-              {uploadError && <p className="field-hint field-hint--error">{uploadError}</p>}
-              {uploadSuccess && <p className="field-hint field-hint--success">{uploadSuccess}</p>}
-            </div>
+            )}
           </div>
 
-          {/* ── Category ─────────────────────────────────────────────────── */}
           <div className="field-group">
             <div className="field-label-row">
               <label className="field-label">Category</label>
@@ -523,28 +700,18 @@ export default function PostMetaSidebar({
               </button>
             </div>
 
-            <select
-              className="field-select"
-              value={meta.categoryId}
-              onChange={(e) => update("categoryId", e.target.value)}
-            >
+            <select className="field-select" value={meta.categoryId} onChange={(e) => update("categoryId", e.target.value)}>
               <option value="">— No category —</option>
               {categories.map((categ) => (
                 <option key={categ.id} value={categ.id}>{categ.name}</option>
               ))}
             </select>
 
-            {/* Inline new-category form */}
             {showNewCategory && (
               <div className="new-cat-panel">
                 <div className="new-cat-panel__header">
                   <span className="new-cat-panel__title">Nouvelle catégorie</span>
-                  <button
-                    type="button"
-                    className="new-cat-panel__close"
-                    onClick={() => setShowNewCategory(false)}
-                    aria-label="Annuler"
-                  >
+                  <button type="button" className="new-cat-panel__close" onClick={() => setShowNewCategory(false)} aria-label="Annuler">
                     <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                       <line x1="18" y1="6" x2="6" y2="18" />
                       <line x1="6" y1="6" x2="18" y2="18" />
@@ -581,20 +748,10 @@ export default function PostMetaSidebar({
                   {newCatError && <p className="field-hint field-hint--error">{newCatError}</p>}
 
                   <div className="new-cat-actions">
-                    <button
-                      type="button"
-                      className="image-upload-btn"
-                      onClick={handleCreateCategory}
-                      disabled={creatingCategory || !newCatName.trim()}
-                    >
+                    <button type="button" className="image-upload-btn" onClick={handleCreateCategory} disabled={creatingCategory || !newCatName.trim()}>
                       {creatingCategory ? "Création…" : "Créer"}
                     </button>
-                    <button
-                      type="button"
-                      className="image-secondary-btn"
-                      onClick={() => setShowNewCategory(false)}
-                      disabled={creatingCategory}
-                    >
+                    <button type="button" className="image-secondary-btn" onClick={() => setShowNewCategory(false)} disabled={creatingCategory}>
                       Annuler
                     </button>
                   </div>
@@ -602,15 +759,15 @@ export default function PostMetaSidebar({
               </div>
             )}
           </div>
-          {/* ─────────────────────────────────────────────────────────────── */}
 
-          {/* Tags */}
           {tags.length > 0 && (
             <div className="field-group">
               <label className="field-label">Tags</label>
               <div className="tags-grid">
                 {tags.map((tag) => (
-                  <button type="button" key={tag.id}
+                  <button
+                    type="button"
+                    key={tag.id}
                     className={`tag-chip ${meta.tags.includes(tag.id) ? "tag-chip--active" : ""}`}
                     onClick={() => toggleTag(tag.id)}
                   >
@@ -626,14 +783,9 @@ export default function PostMetaSidebar({
             </div>
           )}
 
-          {/* Author */}
           <div className="field-group">
             <label className="field-label">Auteur <span className="field-required">*</span></label>
-            <select
-              className="field-select"
-              value={meta.authorId}
-              onChange={(e) => update("authorId", e.target.value)}
-            >
+            <select className="field-select" value={meta.authorId} onChange={(e) => update("authorId", e.target.value)}>
               <option value="">— Sélectionner un auteur —</option>
               {authors.map((a) => (
                 <option key={a.id} value={a.id}>{a.label}</option>
@@ -740,7 +892,6 @@ export default function PostMetaSidebar({
         .field-label { font-size: 11px; font-weight: 700; color: ${c.textMute}; text-transform: uppercase; letter-spacing: 0.08em; }
         .field-required { color: ${c.danger}; }
 
-        /* Label row with inline button */
         .field-label-row {
           display: flex;
           align-items: center;
@@ -768,7 +919,6 @@ export default function PostMetaSidebar({
           border-color: rgba(239,159,39,0.38);
         }
 
-        /* New category panel */
         .new-cat-panel {
           border: 1px solid rgba(239,159,39,0.22);
           border-radius: 14px;
@@ -855,6 +1005,55 @@ export default function PostMetaSidebar({
         .status-btn--published.active { background: rgba(34,197,94,0.1); border-color: rgba(34,197,94,0.28); color: ${c.success}; }
         .status-btn--archived.active { background: rgba(251,146,60,0.1); border-color: rgba(251,146,60,0.28); color: ${c.warning}; }
 
+        .img-tab-bar {
+          display: flex;
+          gap: 4px;
+          background: ${c.inputBg};
+          border: 1px solid ${c.border};
+          border-radius: 12px;
+          padding: 4px;
+        }
+
+        .img-tab-btn {
+          flex: 1;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 6px;
+          padding: 8px 10px;
+          border-radius: 9px;
+          border: none;
+          background: transparent;
+          color: ${c.textMute};
+          font-size: 12px;
+          font-weight: 600;
+          cursor: pointer;
+          transition: all 0.15s ease;
+          font-family: inherit;
+        }
+
+        .img-tab-btn:hover { color: ${c.text}; }
+
+        .img-tab-btn.active {
+          background: rgba(239,159,39,0.10);
+          color: ${ORANGE};
+          border: 1px solid rgba(239,159,39,0.22);
+        }
+
+        .img-tab-count {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          min-width: 18px;
+          height: 18px;
+          padding: 0 5px;
+          border-radius: 99px;
+          background: rgba(239,159,39,0.15);
+          color: ${ORANGE};
+          font-size: 10px;
+          font-weight: 700;
+        }
+
         .image-upload-shell { display: flex; flex-direction: column; gap: 12px; }
         .image-upload-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; }
         .image-upload-texts { min-width: 0; }
@@ -925,6 +1124,118 @@ export default function PostMetaSidebar({
         .image-secondary-btn:hover:not(:disabled) { color: ${c.text}; background: ${c.hover}; }
         .image-secondary-btn:disabled { opacity: 0.6; cursor: not-allowed; }
 
+        .library-shell {
+          display: flex;
+          flex-direction: column;
+          gap: 10px;
+        }
+
+        .library-search { resize: none; }
+
+        .library-status {
+          text-align: center;
+          padding: 16px 0;
+        }
+
+        .library-grid {
+          display: grid;
+          grid-template-columns: repeat(3, 1fr);
+          gap: 8px;
+        }
+
+        .library-cell {
+          position: relative;
+          aspect-ratio: 1;
+          border-radius: 12px;
+          overflow: hidden;
+          border: 2px solid transparent;
+          background: ${c.softBg};
+          cursor: pointer;
+          padding: 0;
+          transition: border-color 0.15s ease;
+        }
+
+        .library-cell:hover { border-color: rgba(239,159,39,0.45); }
+        .library-cell.selected { border-color: ${ORANGE}; }
+        .library-cell img {
+          width: 100%;
+          height: 100%;
+          object-fit: cover;
+          display: block;
+        }
+
+        .library-cell__check {
+          position: absolute;
+          top: 6px;
+          right: 6px;
+          width: 20px;
+          height: 20px;
+          border-radius: 50%;
+          background: ${ORANGE};
+          display: flex;
+          align-items: center;
+          justify-content: center;
+        }
+
+        .library-cell__label {
+          position: absolute;
+          bottom: 0;
+          left: 0;
+          right: 0;
+          background: rgba(0,0,0,0.55);
+          color: #fff;
+          font-size: 9px;
+          padding: 4px 6px;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          white-space: nowrap;
+          opacity: 0;
+          transition: opacity 0.15s ease;
+        }
+
+        .library-cell:hover .library-cell__label { opacity: 1; }
+
+        .library-selected-bar {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 8px;
+          padding: 10px 12px;
+          border-radius: 12px;
+          background: rgba(239,159,39,0.07);
+          border: 1px solid rgba(239,159,39,0.22);
+        }
+
+        .library-selected-bar__text {
+          font-size: 12px;
+          font-weight: 600;
+          color: ${ORANGE};
+          overflow: hidden;
+          text-overflow: ellipsis;
+          white-space: nowrap;
+          flex: 1;
+          min-width: 0;
+        }
+
+        .library-selected-bar__clear {
+          border: 1px solid rgba(239,159,39,0.28);
+          background: transparent;
+          color: ${c.textSoft};
+          border-radius: 8px;
+          padding: 5px 10px;
+          font-size: 11px;
+          font-weight: 700;
+          cursor: pointer;
+          white-space: nowrap;
+          transition: all 0.15s ease;
+          font-family: inherit;
+        }
+
+        .library-selected-bar__clear:hover {
+          color: ${ORANGE};
+          border-color: rgba(239,159,39,0.45);
+        }
+
         .tags-grid { display: flex; flex-wrap: wrap; gap: 8px; }
         .tag-chip {
           display: inline-flex; align-items: center; gap: 6px; border-radius: 999px;
@@ -944,6 +1255,7 @@ export default function PostMetaSidebar({
           .image-preview-card { grid-template-columns: 1fr; }
           .image-preview-media { width: 100%; height: 200px; }
           .image-actions { flex-direction: column; }
+          .library-grid { grid-template-columns: repeat(3, 1fr); }
         }
       `}</style>
     </>
