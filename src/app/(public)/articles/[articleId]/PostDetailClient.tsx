@@ -144,8 +144,7 @@ export default function PostDetailClient() {
 
   useEffect(() => {
     if (!articleId) return
-
-    ;(async () => {
+;(async () => {
       try {
         setLoading(true)
         setError(null)
