@@ -2,7 +2,9 @@
 
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useTheme } from "@/app/context/ThemeContext";
-
+import { createPortal } from "react-dom"; // Permet de rendre le modal hors de la hiérarchie de la page
+import AnimatedMD2ILogo from "@/app/components/AnimatedMD2ILogo";
+import service from "./service.jpg"
 type IconProps = {
   color: string;
   size?: number;
@@ -46,6 +48,10 @@ const BRAND = {
   ivory: "#F8F7F4",
 };
 
+/* ── image de fond fixe pour toute la page service ── */
+/* Remplace ce chemin par ton vrai asset si nécessaire. */
+const SERVICE_FIXED_BG_URL = service.src;
+
 function serviceTokens(dark: boolean) {
   return {
     bg: dark ? "#0F1116" : "#F7F5F1",
@@ -53,48 +59,40 @@ function serviceTokens(dark: boolean) {
     panel: dark ? "#171B23" : "#FFFFFF",
     panel2: dark ? "#1C212B" : "#FCFBF8",
     panel3: dark ? "#212733" : "#F8F3EA",
-
     border: dark ? "rgba(255,255,255,.08)" : "#E6E0D3",
     borderStrong: dark ? "rgba(255,255,255,.16)" : "#D6CAB6",
-
     text: dark ? "#F5F1E8" : BRAND.charcoal,
     textSoft: dark ? "rgba(245,241,232,.78)" : "#676C75",
     textMute: dark ? "rgba(245,241,232,.56)" : "#8A8E97",
-
     accent: BRAND.gold,
     accentSoft: dark ? "rgba(225,161,44,.14)" : "#FFF6E5",
     accentSoft2: BRAND.goldSoft,
-
     badgeBg: dark ? "rgba(225,161,44,.12)" : "#FFF7E9",
     badgeBorder: dark ? "rgba(225,161,44,.22)" : "rgba(225,161,44,.28)",
-
     overlay: dark ? "rgba(0,0,0,.68)" : "rgba(17,24,39,.52)",
-
     heroGlowA: dark
       ? "radial-gradient(circle, rgba(225,161,44,.18) 0%, transparent 68%)"
       : "radial-gradient(circle, rgba(225,161,44,.12) 0%, transparent 68%)",
     heroGlowB: dark
       ? "radial-gradient(circle, rgba(255,255,255,.06) 0%, transparent 70%)"
       : "radial-gradient(circle, rgba(47,47,49,.06) 0%, transparent 70%)",
-
     cardShadow: dark
       ? "0 10px 24px rgba(0,0,0,.22)"
       : "0 10px 24px rgba(17,24,39,.06)",
-
     cardShadowHover: dark
       ? "0 28px 68px rgba(0,0,0,.46), 0 10px 24px rgba(0,0,0,.24)"
       : "0 28px 68px rgba(17,24,39,.12), 0 10px 24px rgba(17,24,39,.06)",
-
     modalShadow: dark
       ? "0 34px 110px rgba(0,0,0,.46)"
       : "0 34px 110px rgba(15,23,42,.22)",
-
     ctaGradient: dark
       ? "linear-gradient(135deg, #17181C 0%, #2E3138 52%, #51545B 100%)"
       : "linear-gradient(135deg, #2F2F31 0%, #52555B 52%, #76787F 100%)",
-
     ctaText: "#FFFFFF",
     ctaSub: dark ? "rgba(255,255,255,.76)" : "rgba(255,255,255,.76)",
+    fixedBgImage: dark
+      ? `radial-gradient(ellipse at 20% 50%, rgba(225,161,44,.06) 0%, transparent 60%), radial-gradient(ellipse at 80% 20%, rgba(255,255,255,.03) 0%, transparent 55%)`
+      : `radial-gradient(ellipse at 20% 50%, rgba(225,161,44,.07) 0%, transparent 60%), radial-gradient(ellipse at 80% 20%, rgba(47,47,49,.04) 0%, transparent 55%)`,
   };
 }
 
@@ -180,7 +178,7 @@ const Icons = {
 };
 
 /* ───────────────────────── DATA ───────────────────────── */
-/* Remplace imageUrl par tes vrais visuels métier si besoin */
+
 const services: Service[] = [
   {
     id: "project",
@@ -204,7 +202,7 @@ const services: Service[] = [
       "Accompagnement à la prise de décision et à la résolution de blocages",
     ],
     livrables: [
-      "Plans d’action opérationnels",
+      "Plans d'action opérationnels",
       "Tableaux de bord et outils de suivi",
       "Rapports périodiques de mise en œuvre",
       "Cadres de coordination et matrices de responsabilités",
@@ -219,7 +217,7 @@ const services: Service[] = [
       "Projets publics structurants",
       "Initiatives financées par partenaires techniques et financiers",
     ],
-    kpi: "21+ ans d’expérience sectorielle",
+    kpi: "21+ ans d'expérience sectorielle",
     imageUrl: "https://picsum.photos/seed/md2i-project-premium/1600/1000",
   },
   {
@@ -236,7 +234,7 @@ const services: Service[] = [
     detailTitle: "Appui institutionnel et renforcement organisationnel",
     illustrationLabel: "Gouvernance, performance et organisation",
     intro:
-      "MD2I soutient les institutions dans l’amélioration de leur gouvernance, de leurs mécanismes internes et de leur efficacité, à travers des approches structurées, pragmatiques et adaptées au contexte local.",
+      "MD2I soutient les institutions dans l'amélioration de leur gouvernance, de leurs mécanismes internes et de leur efficacité, à travers des approches structurées, pragmatiques et adaptées au contexte local.",
     missions: [
       "Diagnostic organisationnel et institutionnel",
       "Révision des procédures et circuits de décision",
@@ -251,7 +249,7 @@ const services: Service[] = [
     ],
     impacts: [
       "Institutions plus efficaces et plus lisibles",
-      "Meilleure continuité dans l’exécution des missions",
+      "Meilleure continuité dans l'exécution des missions",
       "Décisions mieux structurées et plus traçables",
     ],
     examples: [
@@ -280,7 +278,7 @@ const services: Service[] = [
     missions: [
       "Cartographie des processus existants",
       "Conception des parcours de traitement numériques",
-      "Mise en place de plateformes et d’outils dématérialisés",
+      "Mise en place de plateformes et d'outils dématérialisés",
       "Sécurisation des échanges, accès et historiques",
     ],
     livrables: [
@@ -316,11 +314,11 @@ const services: Service[] = [
     detailTitle: "Développement logiciel et modélisation des systèmes",
     illustrationLabel: "Architecture applicative et conception fonctionnelle",
     intro:
-      "MD2I développe des solutions adaptées aux besoins métiers, en intégrant la modélisation des processus, la qualité technique et l’alignement avec les réalités opérationnelles.",
+      "MD2I développe des solutions adaptées aux besoins métiers, en intégrant la modélisation des processus, la qualité technique et l'alignement avec les réalités opérationnelles.",
     missions: [
       "Analyse fonctionnelle et technique",
       "Modélisation des données et des processus",
-      "Développement d’applications sur mesure",
+      "Développement d'applications sur mesure",
       "Maintenance évolutive et amélioration continue",
     ],
     livrables: [
@@ -335,7 +333,7 @@ const services: Service[] = [
       "Meilleure intégration entre outils et services",
     ],
     examples: [
-      "Systèmes d’information publics",
+      "Systèmes d'information publics",
       "Plateformes de gestion sectorielle",
       "Outils de suivi de programmes",
     ],
@@ -356,18 +354,18 @@ const services: Service[] = [
     detailTitle: "Génie hydraulique, génie civil et prévention des risques",
     illustrationLabel: "Infrastructures, risques et modélisation territoriale",
     intro:
-      "MD2I associe expertise technique et outils d’analyse pour appuyer les projets liés aux infrastructures, à la gestion de l’eau et à la réduction des vulnérabilités.",
+      "MD2I associe expertise technique et outils d'analyse pour appuyer les projets liés aux infrastructures, à la gestion de l'eau et à la réduction des vulnérabilités.",
     missions: [
       "Études techniques et diagnostics de terrain",
-      "Appui à la planification d’infrastructures hydrauliques",
+      "Appui à la planification d'infrastructures hydrauliques",
       "Analyse des risques et vulnérabilités",
       "Intégration de données techniques et territoriales",
     ],
     livrables: [
       "Rapports techniques et notes de cadrage",
-      "Cartographies d’appui à la décision",
+      "Cartographies d'appui à la décision",
       "Scénarios de prévention et de gestion des risques",
-      "Documents d’aide à la programmation des travaux",
+      "Documents d'aide à la programmation des travaux",
     ],
     impacts: [
       "Meilleure anticipation des risques",
@@ -396,18 +394,18 @@ const services: Service[] = [
     detailTitle: "Logiciels de gestion comptable, financière et RH",
     illustrationLabel: "Gestion intégrée des ressources et des opérations",
     intro:
-      "MD2I met en place des outils de gestion permettant d’améliorer la fiabilité des données comptables, financières et RH tout en renforçant le pilotage interne.",
+      "MD2I met en place des outils de gestion permettant d'améliorer la fiabilité des données comptables, financières et RH tout en renforçant le pilotage interne.",
     missions: [
       "Analyse des besoins de gestion et de reporting",
       "Paramétrage et adaptation des outils",
       "Intégration des modules comptables, financiers et RH",
-      "Formation des équipes et accompagnement à l’appropriation",
+      "Formation des équipes et accompagnement à l'appropriation",
     ],
     livrables: [
       "Solutions intégrées de gestion",
       "Référentiels et paramétrages métier",
       "États et tableaux de bord automatisés",
-      "Guides d’utilisation et supports de formation",
+      "Guides d'utilisation et supports de formation",
     ],
     impacts: [
       "Données de gestion plus fiables",
@@ -436,7 +434,7 @@ const services: Service[] = [
     detailTitle: "Études socio-économiques, enquêtes et diagnostics",
     illustrationLabel: "Collecte, analyse et valorisation de données",
     intro:
-      "MD2I réalise des études et enquêtes destinées à produire des informations robustes pour orienter les stratégies publiques, les projets et les décisions d’investissement.",
+      "MD2I réalise des études et enquêtes destinées à produire des informations robustes pour orienter les stratégies publiques, les projets et les décisions d'investissement.",
     missions: [
       "Conception méthodologique des études",
       "Organisation de la collecte de données",
@@ -444,10 +442,10 @@ const services: Service[] = [
       "Production de recommandations opérationnelles",
     ],
     livrables: [
-      "Rapports d’étude et diagnostics",
+      "Rapports d'étude et diagnostics",
       "Bases de données consolidées",
       "Notes de synthèse et présentations stratégiques",
-      "Recommandations d’orientation et d’aide à la décision",
+      "Recommandations d'orientation et d'aide à la décision",
     ],
     impacts: [
       "Décisions mieux fondées sur les données",
@@ -476,18 +474,18 @@ const services: Service[] = [
     detailTitle: "Intelligence artificielle et automatisation intelligente",
     illustrationLabel: "Analyse, automatisation et aide à la décision",
     intro:
-      "MD2I intègre des approches d’intelligence artificielle pour automatiser certaines tâches, accélérer l’analyse des données et renforcer les outils d’aide à la décision.",
+      "MD2I intègre des approches d'intelligence artificielle pour automatiser certaines tâches, accélérer l'analyse des données et renforcer les outils d'aide à la décision.",
     missions: [
-      "Identification des cas d’usage pertinents",
+      "Identification des cas d'usage pertinents",
       "Automatisation des tâches répétitives et documentaires",
       "Structuration des données pour exploitation avancée",
-      "Intégration de briques d’aide à la décision",
+      "Intégration de briques d'aide à la décision",
     ],
     livrables: [
-      "Flux d’automatisation",
+      "Flux d'automatisation",
       "Assistants et outils de traitement avancé",
-      "Dispositifs d’analyse augmentée",
-      "Cadres d’usage responsables et gouvernés",
+      "Dispositifs d'analyse augmentée",
+      "Cadres d'usage responsables et gouvernés",
     ],
     impacts: [
       "Gains de temps significatifs",
@@ -495,7 +493,7 @@ const services: Service[] = [
       "Appui plus rapide et plus pertinent aux décisions",
     ],
     examples: [
-      "Traitement automatisé d’information",
+      "Traitement automatisé d'information",
       "Synthèse documentaire",
       "Aide à la décision dans les systèmes publics",
     ],
@@ -516,7 +514,7 @@ const services: Service[] = [
     detailTitle: "Formation, accompagnement et renforcement de capacités",
     illustrationLabel: "Transmission, montée en compétence et appropriation",
     intro:
-      "MD2I conçoit des dispositifs de formation et d’accompagnement visant à assurer l’appropriation durable des méthodes, outils et systèmes déployés.",
+      "MD2I conçoit des dispositifs de formation et d'accompagnement visant à assurer l'appropriation durable des méthodes, outils et systèmes déployés.",
     missions: [
       "Évaluation des besoins en compétences",
       "Conception de parcours de formation adaptés",
@@ -527,7 +525,7 @@ const services: Service[] = [
       "Modules de formation",
       "Guides et supports pédagogiques",
       "Plans de renforcement de capacités",
-      "Dispositifs d’évaluation des acquis",
+      "Dispositifs d'évaluation des acquis",
     ],
     impacts: [
       "Montée en compétence des équipes",
@@ -536,7 +534,7 @@ const services: Service[] = [
     ],
     examples: [
       "Formation métier",
-      "Formation à l’utilisation d’outils numériques",
+      "Formation à l'utilisation d'outils numériques",
       "Renforcement institutionnel sur le long terme",
     ],
     kpi: "Appropriation plus durable des dispositifs",
@@ -555,7 +553,6 @@ function useVisible<T extends HTMLElement>(threshold = 0.14) {
       setVisible(true);
       return;
     }
-
     const obs = new IntersectionObserver(
       ([entry]) => {
         if (entry.isIntersecting) {
@@ -565,7 +562,6 @@ function useVisible<T extends HTMLElement>(threshold = 0.14) {
       },
       { threshold }
     );
-
     obs.observe(ref.current);
     return () => obs.disconnect();
   }, [threshold]);
@@ -578,17 +574,13 @@ function useReducedMotion() {
 
   useEffect(() => {
     if (typeof window === "undefined" || !window.matchMedia) return;
-
     const media = window.matchMedia("(prefers-reduced-motion: reduce)");
     const update = () => setReduceMotion(media.matches);
-
     update();
-
     if (media.addEventListener) {
       media.addEventListener("change", update);
       return () => media.removeEventListener("change", update);
     }
-
     media.addListener(update);
     return () => media.removeListener(update);
   }, []);
@@ -701,6 +693,7 @@ function ImpactChip({
         fontWeight: 700,
         color: theme.textSoft,
         fontFamily: "'Inter', sans-serif",
+        whiteSpace: "nowrap",
       }}
     >
       <span
@@ -733,9 +726,11 @@ function FilterButton({
       type="button"
       onClick={onClick}
       style={{
+        width: "100%",
+        minHeight: 46,
         padding: "12px 16px",
-        borderRadius: 999,
-        border: `1px solid ${active ? theme.badgeBorder : theme.border}`,
+        borderRadius: 16,
+        border: `1.5px solid ${active ? theme.accent : theme.border}`,
         background: active ? theme.badgeBg : theme.panel,
         color: active ? theme.accent : theme.textSoft,
         cursor: "pointer",
@@ -744,6 +739,12 @@ function FilterButton({
         fontFamily: "'Inter', sans-serif",
         transition: "all .25s ease",
         whiteSpace: "nowrap",
+        display: "inline-flex",
+        alignItems: "center",
+        justifyContent: "flex-start",
+        textAlign: "left",
+        lineHeight: 1.2,
+        boxSizing: "border-box",
       }}
     >
       {label}
@@ -822,7 +823,6 @@ function DetailBlock({
       >
         {title}
       </h4>
-
       <div style={{ display: "grid", gap: 10 }}>
         {items.map((item, index) => (
           <div
@@ -912,7 +912,6 @@ function FeaturedService({
             transform: reduceMotion ? "none" : "scale(1.03)",
           }}
         />
-
         <div
           style={{
             position: "absolute",
@@ -921,7 +920,6 @@ function FeaturedService({
               "linear-gradient(180deg, rgba(0,0,0,.08) 0%, rgba(0,0,0,.18) 38%, rgba(0,0,0,.52) 100%)",
           }}
         />
-
         <div
           style={{
             position: "absolute",
@@ -949,7 +947,6 @@ function FeaturedService({
           >
             {service.badge}
           </span>
-
           <span
             style={{
               padding: "8px 12px",
@@ -967,7 +964,6 @@ function FeaturedService({
             {service.category}
           </span>
         </div>
-
         <div
           style={{
             position: "absolute",
@@ -994,7 +990,6 @@ function FeaturedService({
           >
             <Icon color="#FFFFFF" size={28} />
           </div>
-
           <div
             style={{
               color: "#FFFFFF",
@@ -1007,7 +1002,6 @@ function FeaturedService({
           >
             {service.title}
           </div>
-
           <div
             style={{
               color: "rgba(255,255,255,.82)",
@@ -1051,7 +1045,6 @@ function FeaturedService({
               <Icons.Sparkles color={theme.accent} size={14} />
               Service vedette
             </span>
-
             <span
               style={{
                 padding: "8px 12px",
@@ -1113,7 +1106,6 @@ function FeaturedService({
             >
               Valeur ajoutée principale
             </div>
-
             <div
               style={{
                 color: theme.textSoft,
@@ -1124,7 +1116,6 @@ function FeaturedService({
             >
               {service.kpi}
             </div>
-
             <div style={{ display: "flex", flexWrap: "wrap", gap: 10 }}>
               {service.impacts.slice(0, 2).map((impact, index) => (
                 <ImpactChip key={index} text={impact} accent={service.accent} theme={theme} />
@@ -1152,14 +1143,7 @@ function FeaturedService({
           </div>
         </div>
 
-        <div
-          style={{
-            display: "flex",
-            flexWrap: "wrap",
-            gap: 12,
-            alignItems: "center",
-          }}
-        >
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 12, alignItems: "center" }}>
           <button
             type="button"
             onClick={() => onOpen(service)}
@@ -1182,7 +1166,6 @@ function FeaturedService({
             Voir le détail
             <Icons.ArrowRight color="#FFFFFF" size={15} />
           </button>
-
           <CTAButton theme={theme} />
         </div>
       </div>
@@ -1261,7 +1244,6 @@ function ServiceCard({
           transition: "background .25s ease",
         }}
       />
-
       <div
         style={{
           position: "absolute",
@@ -1300,7 +1282,6 @@ function ServiceCard({
         >
           <Icon color={hovered ? "#FFFFFF" : service.accent} size={22} />
         </div>
-
         <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "flex-end", gap: 8 }}>
           <span
             style={{
@@ -1316,7 +1297,6 @@ function ServiceCard({
           >
             {service.category}
           </span>
-
           <span
             style={{
               padding: "7px 10px",
@@ -1347,7 +1327,6 @@ function ServiceCard({
         >
           {service.title}
         </h3>
-
         <div
           style={{
             color: theme.accent,
@@ -1360,7 +1339,6 @@ function ServiceCard({
         >
           {service.shortLabel}
         </div>
-
         <p
           style={{
             margin: 0,
@@ -1374,6 +1352,7 @@ function ServiceCard({
         </p>
       </div>
 
+      {/* ── FIX TAGS : minWidth 0 + overflow hidden pour éviter le débordement ── */}
       <div
         style={{
           position: "relative",
@@ -1381,6 +1360,8 @@ function ServiceCard({
           display: "flex",
           flexWrap: "wrap",
           gap: 10,
+          minWidth: 0,
+          overflow: "hidden",
         }}
       >
         {service.impacts.slice(0, 2).map((impact, index) => (
@@ -1421,369 +1402,371 @@ function ServiceCard({
 
 /* ────────────────────── MODAL ───────────────────── */
 
-function ServiceModal({
-  service,
-  onClose,
-  theme,
-}: {
-  service: Service;
-  onClose: () => void;
-  theme: ReturnType<typeof serviceTokens>;
+function ServiceModal({ // Déclare le composant modal
+  service, // Service sélectionné à afficher
+  onClose, // Fonction de fermeture
+  theme, // Tokens de thème
+}: { // Typage des props
+  service: Service; // Type du service
+  onClose: () => void; // Type de la fermeture
+  theme: ReturnType<typeof serviceTokens>; // Type des tokens du thème
 }) {
-  const [activeTab, setActiveTab] = useState<ModalTab>("overview");
-  const panelRef = useRef<HTMLDivElement | null>(null);
+  const [activeTab, setActiveTab] = useState<ModalTab>("overview"); // Onglet actif
+  const [isMounted, setIsMounted] = useState(false); // Évite les erreurs SSR avec document.body
+  const panelRef = useRef<HTMLDivElement | null>(null); // Référence du panneau modal
 
-  useEffect(() => {
-    setActiveTab("overview");
-  }, [service]);
+  useEffect(() => { // Quand le service change
+    setActiveTab("overview"); // On remet le premier onglet
+  }, [service]); // Dépend du service affiché
 
-  useEffect(() => {
-    const previousOverflow = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
+  useEffect(() => { // Montage client
+    setIsMounted(true); // Le composant est prêt côté navigateur
+  }, []); // Une seule fois
 
-    const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
+  useEffect(() => { // Gestion du scroll body + clavier
+    if (!isMounted) return; // Ne rien faire avant montage
 
-      if (e.key === "Tab" && panelRef.current) {
-        const focusables = panelRef.current.querySelectorAll<HTMLElement>(
-          'button, a[href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
-        );
+    const previousOverflow = document.body.style.overflow; // Sauvegarde l’ancien overflow du body
+    document.body.style.overflow = "hidden"; // Bloque le scroll de fond
 
-        if (!focusables.length) return;
+    const onKeyDown = (e: KeyboardEvent) => { // Gestion clavier
+      if (e.key === "Escape") onClose(); // Ferme au clic sur Escape
 
-        const first = focusables[0];
-        const last = focusables[focusables.length - 1];
-        const active = document.activeElement as HTMLElement | null;
+      if (e.key === "Tab" && panelRef.current) { // Si navigation clavier dans le modal
+        const focusables = panelRef.current.querySelectorAll<HTMLElement>( // On récupère tous les éléments focusables
+          'button, a[href], input, select, textarea, [tabindex]:not([tabindex="-1"])' // Sélecteur des éléments focusables
+        ); // Fin du querySelectorAll
 
-        if (e.shiftKey && active === first) {
-          e.preventDefault();
-          last.focus();
-        } else if (!e.shiftKey && active === last) {
-          e.preventDefault();
-          first.focus();
+        if (!focusables.length) return; // S’il n’y en a pas, on sort
+
+        const first = focusables[0]; // Premier élément focusable
+        const last = focusables[focusables.length - 1]; // Dernier élément focusable
+        const active = document.activeElement as HTMLElement | null; // Élément actuellement focus
+
+        if (e.shiftKey && active === first) { // Si Shift+Tab sur le premier
+          e.preventDefault(); // On bloque la sortie du focus
+          last.focus(); // On renvoie le focus à la fin
+        } else if (!e.shiftKey && active === last) { // Si Tab sur le dernier
+          e.preventDefault(); // On bloque la sortie du focus
+          first.focus(); // On renvoie le focus au début
         }
       }
-    };
+    }; // Fin du handler clavier
 
-    window.addEventListener("keydown", onKeyDown);
+    window.addEventListener("keydown", onKeyDown); // Abonne l’évènement clavier
 
-    const timer = window.setTimeout(() => {
-      const first = panelRef.current?.querySelector<HTMLElement>("button, a[href]");
-      first?.focus();
-    }, 40);
+    const timer = window.setTimeout(() => { // Petit délai pour laisser le DOM se peindre
+      const first = panelRef.current?.querySelector<HTMLElement>("button, a[href]"); // Cherche le premier bouton/lien
+      first?.focus(); // Donne le focus
+    }, 40); // 40ms
 
-    return () => {
-      document.body.style.overflow = previousOverflow;
-      window.removeEventListener("keydown", onKeyDown);
-      window.clearTimeout(timer);
-    };
-  }, [onClose]);
+    return () => { // Nettoyage à la fermeture / démontage
+      document.body.style.overflow = previousOverflow; // Restaure le scroll body
+      window.removeEventListener("keydown", onKeyDown); // Retire l’écoute clavier
+      window.clearTimeout(timer); // Supprime le timer
+    }; // Fin du cleanup
+  }, [isMounted, onClose]); // Dépend du montage et de la fermeture
 
-  const tabLabels: { key: ModalTab; label: string }[] = [
-    { key: "overview", label: "Vue d’ensemble" },
-    { key: "missions", label: "Missions" },
-    { key: "livrables", label: "Livrables" },
-    { key: "impacts", label: "Résultats" },
-  ];
+  const tabLabels: { key: ModalTab; label: string }[] = [ // Définition des onglets
+    { key: "overview", label: "Vue d'ensemble" }, // Onglet 1
+    { key: "missions", label: "Missions" }, // Onglet 2
+    { key: "livrables", label: "Livrables" }, // Onglet 3
+    { key: "impacts", label: "Résultats" }, // Onglet 4
+  ]; // Fin du tableau
 
-  return (
-    <div
-      role="dialog"
-      aria-modal="true"
-      aria-label={service.detailTitle}
-      className="md2i-modal-overlay"
-      onClick={onClose}
-      style={{
-        position: "fixed",
-        inset: 0,
-        zIndex: 9999,
-        padding: 20,
-        background: theme.overlay,
-        backdropFilter: "blur(10px)",
-        WebkitBackdropFilter: "blur(10px)",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-      }}
+  if (!isMounted) return null; // Tant qu’on n’est pas côté client, on ne rend rien
+
+  return createPortal( // On rend le modal directement dans document.body
+    <div // Overlay principal
+      role="dialog" // Accessibilité : dialogue
+      aria-modal="true" // Accessibilité : modal
+      aria-label={service.detailTitle} // Label du modal
+      className="md2i-modal-overlay" // Classe CSS existante
+      onClick={onClose} // Clic sur l’overlay = fermeture
+      style={{ // Styles overlay
+        position: "fixed", // Toujours collé au viewport
+        inset: 0, // Prend tout l’écran
+        zIndex: 999999, // Très haut pour passer au-dessus du reste
+        background: theme.overlay, // Fond sombre
+        backdropFilter: "blur(10px)", // Flou sur l’arrière-plan
+        WebkitBackdropFilter: "blur(10px)", // Compat Safari
+        overflowY: "auto", // Scroll vertical si contenu trop grand
+        overscrollBehavior: "contain", // Évite les rebonds parasites
+      }} // Fin des styles overlay
     >
-      <div
-        ref={panelRef}
-        className="md2i-modal-panel md2i-modal-layout"
-        onClick={(e) => e.stopPropagation()}
-        style={{
-          width: "100%",
-          maxWidth: 1180,
-          maxHeight: "92vh",
-          overflow: "hidden",
-          borderRadius: 28,
-          border: `1px solid ${theme.border}`,
-          background: theme.panel,
-          boxShadow: theme.modalShadow,
-          display: "grid",
-          gridTemplateColumns: "1fr 1.06fr",
-        }}
+      <div // Wrapper qui garantit le centrage réel
+        style={{ // Styles du wrapper interne
+          minHeight: "100dvh", // Hauteur mini = viewport dynamique
+          display: "grid", // Grille pour centrer facilement
+          placeItems: "center", // Centre horizontalement et verticalement
+          padding: 20, // Espace autour du modal
+        }} // Fin des styles wrapper
       >
-        <div
-          style={{
-            position: "relative",
-            minHeight: 320,
-            background: theme.panel2,
-            overflow: "hidden",
-          }}
+        <div // Panneau modal
+          ref={panelRef} // Référence pour le focus trap
+          className="md2i-modal-panel md2i-modal-layout" // Classes existantes
+          onClick={(e) => e.stopPropagation()} // Empêche la fermeture quand on clique dedans
+          style={{ // Styles du panneau
+            width: "min(1180px, 100%)", // Largeur responsive
+            maxHeight: "92vh", // Hauteur max
+            overflow: "hidden", // Coupe ce qui dépasse
+            borderRadius: 28, // Coins arrondis
+            border: `1px solid ${theme.border}`, // Bordure
+            background: theme.panel, // Fond panneau
+            boxShadow: theme.modalShadow, // Ombre
+            display: "grid", // Layout interne
+            gridTemplateColumns: "1fr 1.06fr", // Deux colonnes desktop
+          }} // Fin des styles panneau
         >
-          <img
-            src={service.imageUrl}
-            alt={service.illustrationLabel}
-            style={{
-              width: "100%",
-              height: "100%",
-              objectFit: "cover",
-              display: "block",
-            }}
-          />
+          {/* Garde ici tout ton contenu modal actuel inchangé : */}
+          {/* - la colonne image gauche */}
+          {/* - la colonne contenu droit */}
+          {/* - les tabs */}
+          {/* - les blocs overview / missions / livrables / impacts */}
+          {/* - le footer sticky avec les boutons */}
+          {/* Le bug de centrage vient de l’enveloppe, pas du contenu interne. */}
 
           <div
             style={{
-              position: "absolute",
-              inset: 0,
-              background:
-                "linear-gradient(180deg, rgba(0,0,0,.10) 0%, rgba(0,0,0,.20) 35%, rgba(0,0,0,.58) 100%)",
-            }}
-          />
-
-          <div
-            style={{
-              position: "absolute",
-              top: 18,
-              left: 18,
-              right: 18,
-              display: "flex",
-              justifyContent: "space-between",
-              alignItems: "flex-start",
-              gap: 12,
+              position: "relative",
+              minHeight: 320,
+              background: theme.panel2,
+              overflow: "hidden",
             }}
           >
-            <div style={{ display: "flex", flexWrap: "wrap", gap: 10 }}>
-              <span
-                style={{
-                  padding: "8px 12px",
-                  borderRadius: 999,
-                  background: "rgba(255,255,255,.14)",
-                  border: "1px solid rgba(255,255,255,.18)",
-                  color: "#FFFFFF",
-                  fontSize: "0.75rem",
-                  fontWeight: 800,
-                  fontFamily: "'Inter', sans-serif",
-                }}
-              >
-                {service.category}
-              </span>
-
-              <span
-                style={{
-                  padding: "8px 12px",
-                  borderRadius: 999,
-                  background: "rgba(255,255,255,.10)",
-                  border: "1px solid rgba(255,255,255,.18)",
-                  color: "rgba(255,255,255,.92)",
-                  fontSize: "0.75rem",
-                  fontWeight: 700,
-                  fontFamily: "'Inter', sans-serif",
-                }}
-              >
-                {service.badge}
-              </span>
-            </div>
-          </div>
-
-          <div
-            style={{
-              position: "absolute",
-              left: 22,
-              right: 22,
-              bottom: 22,
-              display: "grid",
-              gap: 14,
-            }}
-          >
+            <img
+              src={service.imageUrl}
+              alt={service.illustrationLabel}
+              style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
+            />
             <div
               style={{
-                width: 62,
-                height: 62,
-                borderRadius: 18,
-                background: "rgba(255,255,255,.16)",
-                border: "1px solid rgba(255,255,255,.18)",
-                backdropFilter: "blur(12px)",
-                WebkitBackdropFilter: "blur(12px)",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
+                position: "absolute",
+                inset: 0,
+                background:
+                  "linear-gradient(180deg, rgba(0,0,0,.10) 0%, rgba(0,0,0,.20) 35%, rgba(0,0,0,.58) 100%)",
               }}
-            >
-              <service.Icon color="#FFFFFF" size={28} />
-            </div>
-
+            />
             <div
               style={{
-                color: "#FFFFFF",
-                fontSize: "1.6rem",
-                lineHeight: 1.15,
-                fontWeight: 700,
-                fontFamily: "'Georgia', serif",
-                maxWidth: 520,
-              }}
-            >
-              {service.detailTitle}
-            </div>
-
-            <div
-              style={{
-                color: "rgba(255,255,255,.84)",
-                fontSize: "0.92rem",
-                lineHeight: 1.8,
-                fontFamily: "'Inter', sans-serif",
-                maxWidth: 560,
-              }}
-            >
-              {service.illustrationLabel}
-            </div>
-
-            <div style={{ display: "flex", flexWrap: "wrap", gap: 10 }}>
-              {service.examples.slice(0, 3).map((item, index) => (
-                <span
-                  key={index}
-                  style={{
-                    padding: "8px 12px",
-                    borderRadius: 999,
-                    background: "rgba(255,255,255,.12)",
-                    border: "1px solid rgba(255,255,255,.14)",
-                    color: "#FFFFFF",
-                    fontSize: "0.74rem",
-                    fontWeight: 700,
-                    fontFamily: "'Inter', sans-serif",
-                  }}
-                >
-                  {item}
-                </span>
-              ))}
-            </div>
-          </div>
-        </div>
-
-        <div
-          className="md2i-modal-scroll"
-          style={{
-            overflowY: "auto",
-            maxHeight: "92vh",
-            padding: "28px 28px 24px",
-            background: theme.panel,
-          }}
-        >
-          <div
-            style={{
-              position: "sticky",
-              top: 0,
-              zIndex: 3,
-              background: theme.panel,
-              paddingBottom: 18,
-              marginBottom: 18,
-              borderBottom: `1px solid ${theme.border}`,
-            }}
-          >
-            <div
-              style={{
+                position: "absolute",
+                top: 18,
+                left: 18,
+                right: 18,
                 display: "flex",
                 justifyContent: "space-between",
                 alignItems: "flex-start",
-                gap: 14,
-                marginBottom: 16,
+                gap: 12,
               }}
             >
-              <div style={{ display: "grid", gap: 8 }}>
-                <div
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 10 }}>
+                <span
                   style={{
-                    color: theme.accent,
-                    fontSize: "0.72rem",
+                    padding: "8px 12px",
+                    borderRadius: 999,
+                    background: "rgba(255,255,255,.14)",
+                    border: "1px solid rgba(255,255,255,.18)",
+                    color: "#FFFFFF",
+                    fontSize: "0.75rem",
                     fontWeight: 800,
-                    letterSpacing: "0.12em",
-                    textTransform: "uppercase",
                     fontFamily: "'Inter', sans-serif",
                   }}
                 >
-                  Domaine d’expertise
-                </div>
-
-                <div
+                  {service.category}
+                </span>
+                <span
                   style={{
-                    color: theme.text,
-                    fontSize: "1.35rem",
-                    lineHeight: 1.18,
+                    padding: "8px 12px",
+                    borderRadius: 999,
+                    background: "rgba(255,255,255,.10)",
+                    border: "1px solid rgba(255,255,255,.18)",
+                    color: "rgba(255,255,255,.92)",
+                    fontSize: "0.75rem",
                     fontWeight: 700,
-                    fontFamily: "'Georgia', serif",
+                    fontFamily: "'Inter', sans-serif",
                   }}
                 >
-                  {service.title}
-                </div>
+                  {service.badge}
+                </span>
               </div>
-
-              <button
-                type="button"
-                aria-label="Fermer"
-                onClick={onClose}
-                className="md2i-modal-close"
-                style={{
-                  width: 46,
-                  height: 46,
-                  borderRadius: 14,
-                  border: `1px solid ${theme.border}`,
-                  background: theme.panel2,
-                  color: theme.textSoft,
-                  cursor: "pointer",
-                  fontSize: "1.25rem",
-                  flexShrink: 0,
-                }}
-              >
-                ×
-              </button>
             </div>
-
             <div
               style={{
-                display: "flex",
-                flexWrap: "wrap",
-                gap: 10,
+                position: "absolute",
+                left: 22,
+                right: 22,
+                bottom: 22,
+                display: "grid",
+                gap: 14,
               }}
             >
-              {tabLabels.map((tab) => {
-                const active = activeTab === tab.key;
-                return (
-                  <button
-                    key={tab.key}
-                    type="button"
-                    onClick={() => setActiveTab(tab.key)}
-                    style={{
-                      minHeight: 42,
-                      padding: "10px 14px",
-                      borderRadius: 999,
-                      border: `1px solid ${active ? theme.badgeBorder : theme.border}`,
-                      background: active ? theme.badgeBg : theme.panel2,
-                      color: active ? theme.accent : theme.textSoft,
-                      cursor: "pointer",
-                      fontSize: "0.8rem",
-                      fontWeight: 800,
-                      fontFamily: "'Inter', sans-serif",
-                    }}
-                  >
-                    {tab.label}
-                  </button>
-                );
-              })}
+              <div
+                style={{
+                  width: 62,
+                  height: 62,
+                  borderRadius: 18,
+                  background: "rgba(255,255,255,.16)",
+                  border: "1px solid rgba(255,255,255,.18)",
+                  backdropFilter: "blur(12px)",
+                  WebkitBackdropFilter: "blur(12px)",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+              >
+                <service.Icon color="#FFFFFF" size={28} />
+              </div>
+              <div
+                style={{
+                  color: "#FFFFFF",
+                  fontSize: "1.6rem",
+                  lineHeight: 1.15,
+                  fontWeight: 700,
+                  fontFamily: "'Georgia', serif",
+                  maxWidth: 520,
+                }}
+              >
+                {service.detailTitle}
+              </div>
+              <div
+                style={{
+                  color: "rgba(255,255,255,.84)",
+                  fontSize: "0.92rem",
+                  lineHeight: 1.8,
+                  fontFamily: "'Inter', sans-serif",
+                  maxWidth: 560,
+                }}
+              >
+                {service.illustrationLabel}
+              </div>
             </div>
           </div>
 
-          <div style={{ display: "grid", gap: 22 }}>
-            {activeTab === "overview" && (
-              <>
+          <div
+            className="md2i-modal-scroll"
+            style={{
+              overflowY: "auto",
+              maxHeight: "92vh",
+              padding: "28px 28px 24px",
+              background: theme.panel,
+            }}
+          >
+            <div
+              style={{
+                position: "sticky",
+                top: 0,
+                zIndex: 3,
+                background: theme.panel,
+                paddingBottom: 18,
+                marginBottom: 18,
+                borderBottom: `1px solid ${theme.border}`,
+              }}
+            >
+              <div
+                style={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "flex-start",
+                  gap: 14,
+                  marginBottom: 16,
+                }}
+              >
+                <div style={{ display: "grid", gap: 8 }}>
+                  <div
+                    style={{
+                      color: theme.accent,
+                      fontSize: "0.72rem",
+                      fontWeight: 800,
+                      letterSpacing: "0.12em",
+                      textTransform: "uppercase",
+                      fontFamily: "'Inter', sans-serif",
+                    }}
+                  >
+                    Domaine d'expertise
+                  </div>
+                  <div
+                    style={{
+                      color: theme.text,
+                      fontSize: "1.35rem",
+                      lineHeight: 1.18,
+                      fontWeight: 700,
+                      fontFamily: "'Georgia', serif",
+                    }}
+                  >
+                    {service.title}
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  aria-label="Fermer"
+                  onClick={onClose}
+                  className="md2i-modal-close"
+                  style={{
+                    width: 46,
+                    height: 46,
+                    borderRadius: 14,
+                    border: `1px solid ${theme.border}`,
+                    background: theme.panel2,
+                    color: theme.textSoft,
+                    cursor: "pointer",
+                    fontSize: "1.25rem",
+                    flexShrink: 0,
+                  }}
+                >
+                  ×
+                </button>
+              </div>
+
+              <div
+                className="md2i-modal-tabs"
+                style={{
+                  display: "flex",
+                  gap: 8,
+                  overflowX: "auto",
+                  overflowY: "visible",
+                  scrollbarWidth: "none",
+                  WebkitOverflowScrolling: "touch" as React.CSSProperties["WebkitOverflowScrolling"],
+                  padding: "2px 0 8px",
+                  marginBottom: -8,
+                }}
+              >
+                {tabLabels.map((tab) => {
+                  const active = activeTab === tab.key;
+
+                  return (
+                    <button
+                      key={tab.key}
+                      type="button"
+                      onClick={() => setActiveTab(tab.key)}
+                      style={{
+                        height: 42,
+                        padding: "0 16px",
+                        borderRadius: 999,
+                        border: `1.5px solid ${active ? theme.accent : theme.border}`,
+                        background: active ? theme.badgeBg : theme.panel2,
+                        color: active ? theme.accent : theme.textSoft,
+                        cursor: "pointer",
+                        fontSize: "0.8rem",
+                        fontWeight: 800,
+                        fontFamily: "'Inter', sans-serif",
+                        whiteSpace: "nowrap",
+                        flexShrink: 0,
+                        display: "inline-flex",
+                        alignItems: "center",
+                        lineHeight: 1,
+                        boxSizing: "border-box",
+                      }}
+                    >
+                      {tab.label}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            <div style={{ display: "grid", gap: 22 }}>
+              {activeTab === "overview" && (
                 <div
                   style={{
                     padding: "18px",
@@ -1815,165 +1798,80 @@ function ServiceModal({
                     {service.intro}
                   </p>
                 </div>
+              )}
 
-                <div
-                  style={{
-                    display: "grid",
-                    gridTemplateColumns: "repeat(2, minmax(0,1fr))",
-                    gap: 14,
-                  }}
-                  className="md2i-overview-grid"
-                >
-                  <div
-                    style={{
-                      padding: "18px",
-                      borderRadius: 18,
-                      background: theme.panel2,
-                      border: `1px solid ${theme.border}`,
-                    }}
-                  >
-                    <div
-                      style={{
-                        color: theme.text,
-                        fontSize: "0.9rem",
-                        fontWeight: 800,
-                        marginBottom: 10,
-                        fontFamily: "'Inter', sans-serif",
-                      }}
-                    >
-                      Valeur ajoutée
-                    </div>
-                    <div
-                      style={{
-                        color: theme.textSoft,
-                        fontSize: "0.89rem",
-                        lineHeight: 1.8,
-                        fontFamily: "'Inter', sans-serif",
-                      }}
-                    >
-                      {service.kpi}
-                    </div>
-                  </div>
-
-                  <div
-                    style={{
-                      padding: "18px",
-                      borderRadius: 18,
-                      background: theme.panel2,
-                      border: `1px solid ${theme.border}`,
-                    }}
-                  >
-                    <div
-                      style={{
-                        color: theme.text,
-                        fontSize: "0.9rem",
-                        fontWeight: 800,
-                        marginBottom: 10,
-                        fontFamily: "'Inter', sans-serif",
-                      }}
-                    >
-                      Contextes d’intervention
-                    </div>
-                    <div style={{ display: "flex", flexWrap: "wrap", gap: 10 }}>
-                      {service.examples.map((item, index) => (
-                        <span
-                          key={index}
-                          style={{
-                            padding: "8px 12px",
-                            borderRadius: 999,
-                            background: service.accentLight,
-                            color: service.accent,
-                            fontSize: "0.74rem",
-                            fontWeight: 700,
-                            fontFamily: "'Inter', sans-serif",
-                          }}
-                        >
-                          {item}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-
+              {activeTab === "missions" && (
                 <DetailBlock
-                  title="Résultats attendus"
+                  title="Missions typiques"
+                  items={service.missions}
+                  accent={service.accent}
+                  theme={theme}
+                />
+              )}
+
+              {activeTab === "livrables" && (
+                <DetailBlock
+                  title="Livrables et outils produits"
+                  items={service.livrables}
+                  accent={service.accent}
+                  theme={theme}
+                />
+              )}
+
+              {activeTab === "impacts" && (
+                <DetailBlock
+                  title="Impacts et bénéfices attendus"
                   items={service.impacts}
                   accent={service.accent}
                   theme={theme}
                 />
-              </>
-            )}
+              )}
+            </div>
 
-            {activeTab === "missions" && (
-              <DetailBlock
-                title="Missions typiques"
-                items={service.missions}
-                accent={service.accent}
-                theme={theme}
-              />
-            )}
-
-            {activeTab === "livrables" && (
-              <DetailBlock
-                title="Livrables et outils produits"
-                items={service.livrables}
-                accent={service.accent}
-                theme={theme}
-              />
-            )}
-
-            {activeTab === "impacts" && (
-              <DetailBlock
-                title="Impacts et bénéfices attendus"
-                items={service.impacts}
-                accent={service.accent}
-                theme={theme}
-              />
-            )}
-          </div>
-
-          <div
-            style={{
-              position: "sticky",
-              bottom: 0,
-              marginTop: 26,
-              paddingTop: 18,
-              background: `linear-gradient(to top, ${theme.panel} 78%, rgba(255,255,255,0))`,
-              borderTop: `1px solid ${theme.border}`,
-              display: "flex",
-              flexWrap: "wrap",
-              gap: 12,
-            }}
-          >
-            <CTAButton theme={theme} filled label="Parler à MD2I" />
-            <button
-              type="button"
-              onClick={onClose}
+            <div
               style={{
-                minHeight: 48,
-                padding: "14px 20px",
-                borderRadius: 14,
-                border: `1px solid ${theme.border}`,
-                background: theme.panel2,
-                color: theme.textSoft,
-                cursor: "pointer",
-                fontSize: "0.875rem",
-                fontWeight: 800,
-                fontFamily: "'Inter', sans-serif",
+                position: "sticky",
+                bottom: 0,
+                marginTop: 26,
+                paddingTop: 18,
+                background: `linear-gradient(to top, ${theme.panel} 78%, rgba(255,255,255,0))`,
+                borderTop: `1px solid ${theme.border}`,
+                display: "flex",
+                flexWrap: "wrap",
+                gap: 12,
               }}
             >
-              Fermer
-            </button>
+              <CTAButton theme={theme} filled label="Parler à MD2I" />
+              <button
+                type="button"
+                onClick={onClose}
+                style={{
+                  minHeight: 48,
+                  padding: "14px 20px",
+                  borderRadius: 14,
+                  border: `1px solid ${theme.border}`,
+                  background: theme.panel2,
+                  color: theme.textSoft,
+                  cursor: "pointer",
+                  fontSize: "0.875rem",
+                  fontWeight: 800,
+                  fontFamily: "'Inter', sans-serif",
+                }}
+              >
+                Fermer
+              </button>
+            </div>
           </div>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body // Le modal sort complètement de la hiérarchie du composant
   );
 }
 
 /* ────────────────────── MAIN COMPONENT ───────────────────── */
 
-export default function MD2IServicesSectionPremium() {
+export default function MD2IServicesSection() {
   const { dark } = useTheme();
   const reduceMotion = useReducedMotion();
 
@@ -1981,6 +1879,7 @@ export default function MD2IServicesSectionPremium() {
   const [selectedCategory, setSelectedCategory] = useState<ServiceCategory | "Tous">("Tous");
   const [selectedService, setSelectedService] = useState<Service | null>(null);
   const [previewServiceId, setPreviewServiceId] = useState<string>(services[0].id);
+  const sectionRef = useRef<HTMLElement | null>(null);
 
   const [headerRef, headerVisible] = useVisible<HTMLDivElement>(0.16);
   const [featuredRef, featuredVisible] = useVisible<HTMLDivElement>(0.12);
@@ -2000,17 +1899,17 @@ export default function MD2IServicesSectionPremium() {
 
   const filteredServices = useMemo(() => {
     if (selectedCategory === "Tous") return services;
-    return services.filter((service) => service.category === selectedCategory);
+    return services.filter((s) => s.category === selectedCategory);
   }, [selectedCategory]);
 
   useEffect(() => {
-    if (!filteredServices.some((service) => service.id === previewServiceId)) {
+    if (!filteredServices.some((s) => s.id === previewServiceId)) {
       setPreviewServiceId(filteredServices[0]?.id ?? services[0].id);
     }
   }, [filteredServices, previewServiceId]);
 
   const previewService =
-    filteredServices.find((service) => service.id === previewServiceId) ??
+    filteredServices.find((s) => s.id === previewServiceId) ??
     filteredServices[0] ??
     services[0];
 
@@ -2018,386 +1917,435 @@ export default function MD2IServicesSectionPremium() {
 
   return (
     <section
+      ref={sectionRef}
       style={{
         position: "relative",
-        overflow: "hidden",
-        background: T.bg,
-        padding: "96px 24px",
+        overflow: "visible",
+        minHeight: "100vh",
+        backgroundColor: T.bg,
+        backgroundImage: `${dark
+          ? "linear-gradient(180deg, rgba(10,14,20,.78) 0%, rgba(10,14,20,.88) 100%)"
+          : "linear-gradient(180deg, rgba(247,245,241,.74) 0%, rgba(247,245,241,.88) 100%)"}, url(${SERVICE_FIXED_BG_URL})`,
+        backgroundAttachment: "fixed, fixed",
+        backgroundRepeat: "no-repeat, no-repeat",
+        backgroundSize: "cover, cover",
+        backgroundPosition: "center, center",
+        padding: "60px 24px 96px",
+        
+         backdropFilter: "blur(10px)", // Applique le flou sur ce qu'il y a derrière
+         WebkitBackdropFilter: "blur(10px)", // Support Safari
+
+       
       }}
     >
-      <div
-        style={{
-          position: "absolute",
-          top: -140,
-          right: -100,
-          width: 540,
-          height: 540,
-          borderRadius: "50%",
-          background: T.heroGlowA,
-          pointerEvents: "none",
-        }}
-      />
-      <div
-        style={{
-          position: "absolute",
-          bottom: -120,
-          left: -80,
-          width: 460,
-          height: 460,
-          borderRadius: "50%",
-          background: T.heroGlowB,
-          pointerEvents: "none",
-        }}
-      />
+      <div style={{ 
+        maxWidth: 1380, margin: "0 auto", position: "relative", zIndex: 1,
+        
+        }}>
+        <div className="md2i-services-shell">
+          <div className="md2i-services-main">
 
-      <div style={{ maxWidth: 1180, margin: "0 auto", position: "relative" }}>
-        {/* HEADER */}
-        <div
-          ref={headerRef}
-          style={{
-            display: "grid",
-            gap: 24,
-            marginBottom: 42,
-            opacity: headerVisible ? 1 : 0,
-            transform: reduceMotion ? "none" : headerVisible ? "translateY(0)" : "translateY(26px)",
-            transition: reduceMotion ? "none" : "opacity .7s ease, transform .7s cubic-bezier(.22,1,.36,1)",
-          }}
-        >
-          <div style={{ display: "flex", justifyContent: "center" }}>
-            <SectionPill label="MD2I Madagascar" theme={T} />
-          </div>
-
-          <div style={{ textAlign: "center", display: "grid", gap: 16 }}>
-            <h2
+            {/* ── HEADER ── */}
+            <div
+              ref={headerRef}
               style={{
-                margin: 0,
-                color: T.text,
-                fontSize: "clamp(2rem, 4vw, 3.1rem)",
-                lineHeight: 1.08,
-                letterSpacing: "-0.03em",
-                fontWeight: 700,
-                fontFamily: "'Georgia', serif",
+                display: "grid",
+                gap: 24,
+                marginBottom: 42,
+                opacity: headerVisible ? 1 : 0,
+                transform: reduceMotion ? "none" : headerVisible ? "translateY(0)" : "translateY(26px)",
+                transition: reduceMotion ? "none" : "opacity .7s ease, transform .7s cubic-bezier(.22,1,.36,1)",
               }}
             >
-              Des expertises structurées pour des projets à fort impact
-            </h2>
+              <div style={{ display: "grid", justifyItems: "center", gap: 18 }}>
+                <div
+                  style={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: 10,
+                    fontFamily: "'Roboto', 'Syne', sans-serif",
+                    fontSize: "11px",
+                    fontWeight: 800,
+                    letterSpacing: "0.18em",
+                    textTransform: "uppercase",
+                    color: T.accent,
+                  }}
+                >
+                  <span
+                    style={{
+                      width: 6,
+                      height: 6,
+                      borderRadius: "50%",
+                      background: T.accent,
+                      boxShadow: `0 0 0 6px ${dark ? "rgba(225,161,44,.16)" : "rgba(225,161,44,.10)"}`,
+                    }}
+                  />
+                  MD2I Madagascar
+                </div>
 
-            <p
+                <div style={{ textAlign: "center", display: "grid", gap: 16 }}>
+                  <h2
+                    style={{
+                      margin: 0,
+                      color: T.text,
+                      fontSize: "clamp(2.4rem, 4.8vw, 4rem)",
+                      lineHeight: 1.05,
+                      letterSpacing: "-0.04em",
+                      fontWeight: 800,
+                      fontFamily: "'Roboto', 'Syne', sans-serif",
+                      textWrap: "balance",
+                      textShadow: dark ? "0 2px 14px rgba(0,0,0,.34)" : "0 2px 14px rgba(0,0,0,.12)",
+                    }}
+                  >
+                    Des expertises <em style={{ fontStyle: "normal", color: T.accent }}>structurées</em> pour des projets à fort impact
+                  </h2>
+                  <p
+                    style={{
+                      maxWidth: 760,
+                      margin: "0 auto",
+                      color: T.textSoft,
+                      fontSize: "1rem",
+                      lineHeight: 1.88,
+                      fontFamily: "'DM Sans', sans-serif",
+                      letterSpacing: "-0.01em",
+                    }}
+                  >
+                    MD2I Madagascar accompagne les institutions publiques, les projets de développement
+                    et les organisations partenaires avec une approche fondée sur la rigueur,
+                    la lisibilité des processus, la digitalisation et l'adaptation au terrain.
+                  </p>
+                </div>
+              </div>
+
+              <div
+                className="md2i-stats-grid"
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "repeat(3, minmax(0,1fr))",
+                  gap: 16,
+                  marginTop: 4,
+                }}
+              >
+                <StatCard title="d'expérience au service des institutions et des projets" value="21+" theme={T} />
+                <StatCard title="domaines d'expertise structurés dans cette section" value="9" theme={T} />
+                <StatCard title="approche : conseil, outils, gouvernance, données et renforcement" value="360°" theme={T} />
+              </div>
+            </div>
+
+            {/* ── FEATURED ── */}
+            <div
+              ref={featuredRef}
               style={{
-                maxWidth: 760,
-                margin: "0 auto",
-                color: T.textSoft,
-                fontSize: "1rem",
-                lineHeight: 1.88,
-                fontFamily: "'Inter', sans-serif",
+                marginBottom: 28,
+                opacity: featuredVisible ? 1 : 0,
+                transform: reduceMotion ? "none" : featuredVisible ? "translateY(0)" : "translateY(26px)",
+                transition: reduceMotion ? "none" : "opacity .75s ease, transform .75s cubic-bezier(.22,1,.36,1)",
               }}
             >
-              MD2I Madagascar accompagne les institutions publiques, les projets de développement
-              et les organisations partenaires avec une approche fondée sur la rigueur,
-              la lisibilité des processus, la digitalisation et l’adaptation au terrain.
-            </p>
-          </div>
-
-          <div
-            className="md2i-stats-grid"
-            style={{
-              display: "grid",
-              gridTemplateColumns: "repeat(3, minmax(0,1fr))",
-              gap: 16,
-              marginTop: 4,
-            }}
-          >
-            <StatCard title="d’expérience au service des institutions et des projets" value="21+" theme={T} />
-            <StatCard title="domaines d’expertise structurés dans cette section" value="9" theme={T} />
-            <StatCard title="approche : conseil, outils, gouvernance, données et renforcement" value="360°" theme={T} />
-          </div>
-        </div>
-
-        {/* FILTERS */}
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "center",
-            marginBottom: 28,
-          }}
-        >
-          <div
-            className="md2i-filters-row"
-            style={{
-              display: "flex",
-              flexWrap: "wrap",
-              gap: 10,
-              justifyContent: "center",
-            }}
-          >
-            {categories.map((category) => (
-              <FilterButton
-                key={category}
-                label={category}
-                active={selectedCategory === category}
-                onClick={() => setSelectedCategory(category)}
-                theme={T}
-              />
-            ))}
-          </div>
-        </div>
-
-        {/* FEATURED */}
-        <div
-          ref={featuredRef}
-          style={{
-            marginBottom: 28,
-            opacity: featuredVisible ? 1 : 0,
-            transform: reduceMotion ? "none" : featuredVisible ? "translateY(0)" : "translateY(26px)",
-            transition: reduceMotion ? "none" : "opacity .75s ease, transform .75s cubic-bezier(.22,1,.36,1)",
-          }}
-        >
-          <FeaturedService
-            service={previewService}
-            theme={T}
-            onOpen={setSelectedService}
-            reduceMotion={reduceMotion}
-          />
-        </div>
-
-        {/* GRID */}
-        <div
-          ref={gridRef}
-          style={{
-            marginBottom: 64,
-            opacity: gridVisible ? 1 : 0,
-            transition: "opacity .4s ease",
-          }}
-        >
-          <div
-            className="md2i-grid"
-            style={{
-              display: "grid",
-              gridTemplateColumns: "repeat(3, minmax(0,1fr))",
-              gap: 22,
-            }}
-          >
-            {filteredServices.map((service, index) => (
-              <ServiceCard
-                key={service.id}
-                service={service}
+              <FeaturedService
+                service={previewService}
                 theme={T}
                 onOpen={setSelectedService}
-                onPreview={(s) => setPreviewServiceId(s.id)}
-                delay={index * 55}
                 reduceMotion={reduceMotion}
               />
-            ))}
-          </div>
-        </div>
+            </div>
 
-        {/* CTA */}
-        <div
-          ref={ctaRef}
-          className="md2i-cta"
-          style={{
-            position: "relative",
-            overflow: "hidden",
-            borderRadius: 24,
-            background: T.ctaGradient,
-            padding: "52px 46px",
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-            gap: 28,
-            opacity: ctaVisible ? 1 : 0,
-            transform: reduceMotion ? "none" : ctaVisible ? "translateY(0)" : "translateY(22px)",
-            transition: reduceMotion
-              ? "none"
-              : "opacity .7s ease .1s, transform .7s cubic-bezier(.22,1,.36,1) .1s",
-          }}
-        >
-          <div
-            style={{
-              position: "absolute",
-              top: -60,
-              right: -30,
-              width: 260,
-              height: 260,
-              borderRadius: "50%",
-              background: "radial-gradient(circle, rgba(225,161,44,.18) 0%, transparent 70%)",
-              pointerEvents: "none",
-            }}
-          />
+            {/* ── GRILLE ── */}
+            <div
+              ref={gridRef}
+              style={{ marginBottom: 64, opacity: gridVisible ? 1 : 0, transition: "opacity .4s ease" }}
+            >
+              <div
+                className="md2i-grid"
+                style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0,1fr))", gap: 22 }}
+              >
+                {filteredServices.map((service, index) => (
+                  <ServiceCard
+                    key={service.id}
+                    service={service}
+                    theme={T}
+                    onOpen={setSelectedService}
+                    onPreview={(s) => setPreviewServiceId(s.id)}
+                    delay={index * 55}
+                    reduceMotion={reduceMotion}
+                  />
+                ))}
+              </div>
+            </div>
 
-          <div
-            style={{
-              position: "absolute",
-              left: "35%",
-              bottom: -80,
-              width: 220,
-              height: 220,
-              borderRadius: "50%",
-              background: "radial-gradient(circle, rgba(255,255,255,.05) 0%, transparent 70%)",
-              pointerEvents: "none",
-            }}
-          />
-
-          <div style={{ position: "relative", zIndex: 1, flex: 1 }}>
-            <div style={{ width: 28, height: 2, borderRadius: 999, background: T.accentSoft2, marginBottom: 16 }} />
-            <h3
+            {/* ── CTA ── */}
+            <div
+              ref={ctaRef}
+              className="md2i-cta"
               style={{
-                margin: "0 0 14px",
-                color: T.ctaText,
-                fontSize: "clamp(1.25rem, 2.2vw, 1.55rem)",
-                lineHeight: 1.22,
-                fontWeight: 700,
-                letterSpacing: "-0.02em",
-                fontFamily: "'Georgia', serif",
+                position: "relative",
+                overflow: "hidden",
+                borderRadius: 24,
+                background: T.ctaGradient,
+                padding: "52px 46px",
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                gap: 28,
+                opacity: ctaVisible ? 1 : 0,
+                transform: reduceMotion ? "none" : ctaVisible ? "translateY(0)" : "translateY(22px)",
+                transition: reduceMotion
+                  ? "none"
+                  : "opacity .7s ease .1s, transform .7s cubic-bezier(.22,1,.36,1) .1s",
               }}
             >
-              Besoin d’une expertise claire, structurée et directement opérationnelle ?
-            </h3>
+              <div
+                style={{
+                  position: "absolute",
+                  top: -60,
+                  right: -30,
+                  width: 260,
+                  height: 260,
+                  borderRadius: "50%",
+                  background: "radial-gradient(circle, rgba(225,161,44,.18) 0%, transparent 70%)",
+                  pointerEvents: "none",
+                }}
+              />
+              <div
+                style={{
+                  position: "absolute",
+                  left: "35%",
+                  bottom: -80,
+                  width: 220,
+                  height: 220,
+                  borderRadius: "50%",
+                  background: "radial-gradient(circle, rgba(255,255,255,.05) 0%, transparent 70%)",
+                  pointerEvents: "none",
+                }}
+              />
 
-            <p
-              style={{
-                margin: 0,
-                maxWidth: 620,
-                color: T.ctaSub,
-                fontSize: "0.92rem",
-                lineHeight: 1.82,
-                fontFamily: "'Inter', sans-serif",
-              }}
-            >
-              MD2I intervient à l’interface entre conseil, ingénierie, transformation numérique,
-              données et renforcement institutionnel, avec des solutions alignées sur les réalités
-              de terrain et les exigences des partenaires.
-            </p>
+              <div style={{ position: "relative", zIndex: 1, flex: 1 }}>
+                <div style={{ width: 28, height: 2, borderRadius: 999, background: T.accentSoft2, marginBottom: 16 }} />
+                <h3
+                  style={{
+                    margin: "0 0 14px",
+                    color: T.ctaText,
+                    fontSize: "clamp(1.25rem, 2.2vw, 1.55rem)",
+                    lineHeight: 1.22,
+                    fontWeight: 700,
+                    letterSpacing: "-0.02em",
+                    fontFamily: "'Georgia', serif",
+                  }}
+                >
+                  Besoin d'une expertise claire, structurée et directement opérationnelle ?
+                </h3>
+                <p
+                  style={{
+                    margin: 0,
+                    maxWidth: 620,
+                    color: T.ctaSub,
+                    fontSize: "0.92rem",
+                    lineHeight: 1.82,
+                    fontFamily: "'Inter', sans-serif",
+                  }}
+                >
+                  MD2I intervient à l'interface entre conseil, ingénierie, transformation numérique,
+                  données et renforcement institutionnel, avec des solutions alignées sur les réalités
+                  de terrain et les exigences des partenaires.
+                </p>
+              </div>
+
+              <div style={{ position: "relative", zIndex: 1 }}>
+                <CTAButton theme={T} filled />
+              </div>
+            </div>
           </div>
 
-          <div style={{ position: "relative", zIndex: 1 }}>
-            <CTAButton theme={T} filled />
-          </div>
+          <aside className="md2i-services-sidebar">
+            <div className="md2i-services-sidebar-sticky">
+              <div className="md2i-services-sidebar-card">
+                <div style={{ display: "grid", gap: 8 }}>
+                  <div
+                    style={{
+                      color: T.accent,
+                      fontSize: "0.72rem",
+                      fontWeight: 800,
+                      letterSpacing: "0.12em",
+                      textTransform: "uppercase",
+                      fontFamily: "'Inter', sans-serif",
+                    }}
+                  >
+                    Explorer les expertises
+                  </div>
+                  <div
+                    style={{
+                      color: T.text,
+                      fontSize: "1rem",
+                      lineHeight: 1.3,
+                      fontWeight: 700,
+                      fontFamily: "'Georgia', serif",
+                    }}
+                  >
+                    Filtres de services
+                  </div>
+                  <div
+                    style={{
+                      color: T.textSoft,
+                      fontSize: "0.84rem",
+                      lineHeight: 1.75,
+                      fontFamily: "'Inter', sans-serif",
+                    }}
+                  >
+                    Filtrer rapidement les domaines d'expertise.
+                  </div>
+                </div>
+
+                <div className="md2i-filters-column">
+                  {categories.map((category) => (
+                    <FilterButton
+                      key={category}
+                      label={category}
+                      active={selectedCategory === category}
+                      onClick={() => setSelectedCategory(category)}
+                      theme={T}
+                    />
+                  ))}
+                </div>
+              </div>
+            </div>
+          </aside>
         </div>
       </div>
 
+      {/* ── MODAL ── */}
       {selectedService && (
-        <ServiceModal service={selectedService} onClose={() => setSelectedService(null)} theme={T} />
+        <ServiceModal
+          service={selectedService}
+          onClose={() => setSelectedService(null)}
+          theme={T}
+        />
       )}
 
+      {/* ── STYLES GLOBAUX ── */}
       <style>{`
+        .md2i-services-shell {
+          display: grid;
+          grid-template-columns: minmax(0, 1fr) 280px;
+          gap: 28px;
+          align-items: start;
+        }
+        .md2i-services-main {
+          min-width: 0;
+        }
+        .md2i-services-sidebar {
+          min-width: 0;
+          min-height: 100%;
+        }
+      .md2i-services-sidebar-sticky{
+      position: sticky;
+      top: 96px;}
+        .md2i-services-sidebar-card {
+      
+     
+        
+          display: grid;
+          gap: 16px;
+          padding: 18px;
+          border-radius: 24px;
+          background: ${dark ? "rgba(19,24,33,.78)" : "rgba(255,255,255,.72)"};
+          border: 1px solid ${dark ? "rgba(255,255,255,.10)" : "rgba(47,47,49,.08)"};
+          box-shadow: ${dark ? "0 16px 48px rgba(0,0,0,.34)" : "0 16px 48px rgba(17,24,39,.10)"};
+          backdrop-filter: blur(18px) saturate(1.4);
+          -webkit-backdrop-filter: blur(18px) saturate(1.4);
+        }
+          .md2i-services-sidebar-card *{
+          position: relative;
+  z-index: 1;
+            }
+        .md2i-filters-column {
+          display: flex;
+          flex-direction: column;
+          gap: 10px;
+        }
         .md2i-modal-overlay {
           animation: md2iFadeIn .25s ease;
         }
-
         .md2i-modal-panel {
           animation: md2iZoomIn .4s cubic-bezier(.22,1,.36,1);
           transform-origin: center;
         }
-
         .md2i-modal-close {
           transition: transform .25s ease, background .25s ease, border-color .25s ease;
         }
-
         .md2i-modal-close:hover {
           transform: rotate(90deg);
         }
-
+        .md2i-modal-tabs::-webkit-scrollbar {
+          display: none;
+        }
         .md2i-modal-scroll {
           scrollbar-width: thin;
           scrollbar-color: ${T.accent} ${dark ? "#23262D" : "#F1EEE8"};
         }
-
-        .md2i-modal-scroll::-webkit-scrollbar {
-          width: 8px;
-        }
-
+        .md2i-modal-scroll::-webkit-scrollbar { width: 8px; }
         .md2i-modal-scroll::-webkit-scrollbar-track {
           background: ${dark ? "#23262D" : "#F1EEE8"};
           border-radius: 999px;
         }
-
         .md2i-modal-scroll::-webkit-scrollbar-thumb {
           background: ${T.accent};
           border-radius: 999px;
         }
-
         @keyframes md2iFadeIn {
           from { opacity: 0; }
-          to { opacity: 1; }
+          to   { opacity: 1; }
         }
-
         @keyframes md2iZoomIn {
-          from {
-            opacity: 0;
-            transform: translateY(16px) scale(.97);
-          }
-          to {
-            opacity: 1;
-            transform: translateY(0) scale(1);
-          }
+          from { opacity: 0; transform: translateY(16px) scale(.97); }
+          to   { opacity: 1; transform: translateY(0)    scale(1);   }
         }
-
         @media (max-width: 1080px) {
-          .md2i-grid {
-            grid-template-columns: repeat(2, minmax(0,1fr)) !important;
-          }
-
-          .md2i-featured-grid {
+          .md2i-grid               { grid-template-columns: repeat(2, minmax(0,1fr)) !important; }
+          .md2i-featured-grid      { grid-template-columns: 1fr !important; }
+          .md2i-modal-layout       { grid-template-columns: 1fr !important; }
+          .md2i-stats-grid         { grid-template-columns: 1fr !important; }
+          .md2i-overview-grid      { grid-template-columns: 1fr !important; }
+        }
+        @media (max-width: 1180px) {
+          .md2i-services-shell {
             grid-template-columns: 1fr !important;
           }
-
-          .md2i-modal-layout {
-            grid-template-columns: 1fr !important;
+          .md2i-services-sidebar {
+            order: -1;
           }
-
-          .md2i-stats-grid {
-            grid-template-columns: 1fr !important;
-          }
-
-          .md2i-overview-grid {
-            grid-template-columns: 1fr !important;
+          .md2i-services-sidebar-sticky {
+            top: 86px;
           }
         }
-
         @media (max-width: 820px) {
-          .md2i-cta {
-            flex-direction: column !important;
-            align-items: flex-start !important;
-            padding: 36px 24px !important;
-          }
+          .md2i-cta { flex-direction: column !important; align-items: flex-start !important; padding: 36px 24px !important; }
         }
-
         @media (max-width: 700px) {
-          .md2i-grid {
-            grid-template-columns: 1fr !important;
-          }
-
-          .md2i-filters-row {
-            justify-content: flex-start !important;
-            overflow-x: auto;
-            flex-wrap: nowrap !important;
-            width: 100%;
-            padding-bottom: 6px;
+          .md2i-grid { grid-template-columns: 1fr !important; }
+          .md2i-services-sidebar-card {
+            padding: 14px !important;
+            border-radius: 20px !important;
           }
         }
-
         @media (max-width: 560px) {
           .md2i-modal-overlay {
             padding: 10px !important;
-            align-items: flex-end !important;
+            place-items: center !important;
           }
-
           .md2i-modal-panel {
-            border-radius: 24px 24px 0 0 !important;
+            width: 100% !important;
+            max-width: 100% !important;
             max-height: 94vh !important;
+            border-radius: 24px !important;
           }
         }
-
         @media (prefers-reduced-motion: reduce) {
           .md2i-modal-overlay,
           .md2i-modal-panel,
-          .md2i-modal-close {
-            animation: none !important;
-            transition: none !important;
-          }
+          .md2i-modal-close { animation: none !important; transition: none !important; }
         }
       `}</style>
+
     </section>
   );
 }

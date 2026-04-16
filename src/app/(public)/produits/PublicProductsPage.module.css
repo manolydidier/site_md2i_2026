@@ -449,6 +449,54 @@
 
 .dropPanelInner { padding: 14px; }
 
+.dropPanelHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.dropPanelTitle {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: .02em;
+  color: var(--t1);
+}
+
+.dropPanelHint {
+  margin-top: 2px;
+  font-size: 10px;
+  color: var(--t3);
+}
+
+.dropCloseBtn {
+  width: 28px;
+  height: 28px;
+  border: 1px solid var(--line2);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--t3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all .18s ease;
+  flex-shrink: 0;
+}
+
+.dropCloseBtn:hover {
+  color: var(--t1);
+  background: var(--bg2);
+  border-color: var(--line);
+  transform: scale(1.04);
+}
+
+.dropCloseBtn svg {
+  width: 12px;
+  height: 12px;
+}
+
 .dropLabel {
   font-size: 10px;
   font-weight: 700;
@@ -734,25 +782,14 @@
     transform .5s cubic-bezier(.22, .61, .36, 1),
     box-shadow .5s cubic-bezier(.22, .61, .36, 1),
     border-color .3s;
-  will-change: transform;
-  opacity: 0;
-  animation: fadeUp .5s cubic-bezier(.22, .61, .36, 1) forwards;
+  will-change: transform, opacity;
+  backface-visibility: hidden;
+  transform-style: preserve-3d;
 }
 
 .card:hover {
   box-shadow: var(--card-sh-hover);
   border-color: var(--card-hover-border);
-}
-
-@keyframes fadeUp {
-  from {
-    opacity: 0;
-    transform: perspective(1000px) translateY(20px);
-  }
-  to {
-    opacity: 1;
-    transform: perspective(1000px) translateY(0);
-  }
 }
 
 .gloss {
@@ -873,7 +910,6 @@
   z-index: 5;
 }
 
-/* Top section: name + short description */
 .cardHeader { margin-bottom: 12px; }
 
 .cardTopRow {
@@ -884,7 +920,6 @@
   margin-bottom: 8px;
 }
 
-/* "Solution premium" label — very small, subdued */
 .cardEyebrow {
   font-size: 9px;
   font-weight: 700;
@@ -894,7 +929,6 @@
   opacity: .7;
 }
 
-/* Date — ultra-secondary */
 .dateLine {
   display: flex;
   align-items: center;
@@ -911,7 +945,6 @@
   flex-shrink: 0;
 }
 
-/* Product name */
 .cardTitle {
   margin: 0;
   font-family: 'DM Sans', sans-serif;
@@ -929,7 +962,6 @@
 
 .card:hover .cardTitle { color: var(--acc); }
 
-/* Excerpt — compact, never dominant */
 .excerptWrap {
   margin-top: 6px;
   margin-bottom: 14px;
@@ -980,7 +1012,6 @@
   flex-shrink: 0;
 }
 
-/* ─── Card footer — price front and center ──────────────────────────────────── */
 .cardFooter {
   margin-top: auto;
   padding-top: 14px;
@@ -995,7 +1026,6 @@
   margin-bottom: 14px;
 }
 
-/* Left: category + version info */
 .cardDetails {
   display: flex;
   flex-direction: column;
@@ -1022,7 +1052,6 @@
   color: var(--t2);
 }
 
-/* Right: price block — this is the star */
 .pricePanel {
   display: flex;
   flex-direction: column;
@@ -1052,7 +1081,6 @@
   background-clip: text;
 }
 
-/* Bottom row: category tag + CTA button */
 .cardActionRow {
   display: flex;
   align-items: center;
@@ -1072,7 +1100,6 @@
   max-width: 120px;
 }
 
-/* CTA — premium, product-feel */
 .readBtn {
   display: inline-flex;
   align-items: center;

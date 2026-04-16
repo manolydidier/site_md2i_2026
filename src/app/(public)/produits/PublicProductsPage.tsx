@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { motion, useReducedMotion } from 'framer-motion'
 import api from '@/app/lib/axios'
 import { useTheme } from '@/app/context/ThemeContext'
 import s from './PublicProductsPage.module.css'
@@ -65,6 +66,8 @@ function useScroll() {
     }
 
     window.addEventListener('scroll', fn, { passive: true })
+    fn()
+
     return () => window.removeEventListener('scroll', fn)
   }, [])
 
@@ -82,7 +85,7 @@ function formatPrice(value: Product['price']) {
 const IconSearch = () => (
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
     <circle cx="11" cy="11" r="7.5" />
-    <path d="m21 21-4.35-4.35" />
+    <path d="M22 22l-4.35-4.35" />
   </svg>
 )
 
@@ -204,8 +207,11 @@ function ProductCard({
 }) {
   const cardRef = useRef<HTMLElement>(null)
   const glowRef = useRef<HTMLDivElement>(null)
+  const prefersReducedMotion = useReducedMotion()
 
   const onMouseMove = (e: React.MouseEvent<HTMLElement>) => {
+    if (prefersReducedMotion) return
+
     const el = cardRef.current
     const glow = glowRef.current
     if (!el || !glow) return
@@ -238,13 +244,20 @@ function ProductCard({
   const categoryLabel = product.category?.name || 'Catalogue'
 
   return (
-    <article
+    <motion.article
       ref={cardRef}
       className={s.card}
-      style={{ animationDelay: `${index * 65}ms` }}
       onMouseMove={onMouseMove}
       onMouseLeave={onMouseLeave}
       onClick={() => onNavigate(href)}
+      initial={prefersReducedMotion ? false : { opacity: 0, y: 34, scale: 0.988 }}
+      whileInView={prefersReducedMotion ? {} : { opacity: 1, y: 0, scale: 1 }}
+      viewport={{ once: true, amount: 0.2 }}
+      transition={{
+        duration: 0.65,
+        delay: index * 0.08,
+        ease: [0.22, 1, 0.36, 1],
+      }}
     >
       <div className={s.gloss} />
       <div className={s.glow} ref={glowRef} />
@@ -281,6 +294,7 @@ function ProductCard({
               </div>
             )}
           </div>
+
           <h2 className={s.cardTitle}>{product.name}</h2>
         </div>
 
@@ -293,6 +307,7 @@ function ProductCard({
                 <span className={s.detailLabel}>Catégorie</span>
                 <span className={s.detailValue}>{categoryLabel}</span>
               </div>
+
               {publishedLabel && (
                 <div className={s.detailItem}>
                   <span className={s.detailLabel}>Mis à jour</span>
@@ -326,7 +341,7 @@ function ProductCard({
           </div>
         </div>
       </div>
-    </article>
+    </motion.article>
   )
 }
 
@@ -377,7 +392,9 @@ export default function PublicProductsPage({ router }: PublicProductsPageProps) 
     [],
   )
 
-  useEffect(() => { setMounted(true) }, [])
+  useEffect(() => {
+    setMounted(true)
+  }, [])
 
   useEffect(() => {
     const t = setTimeout(() => setDebSearch(search), 350)
@@ -391,14 +408,17 @@ export default function PublicProductsPage({ router }: PublicProductsPageProps) 
     }
   }, [])
 
-  const startAutoClose = useCallback((panel: 'filter' | 'sort') => {
-    clearAutoClose()
+  const startAutoClose = useCallback(
+    (panel: 'filter' | 'sort') => {
+      clearAutoClose()
 
-    autoCloseRef.current = window.setTimeout(() => {
-      if (panel === 'filter') setFilterOpen(false)
-      if (panel === 'sort') setSortOpen(false)
-    }, 6000)
-  }, [clearAutoClose])
+      autoCloseRef.current = window.setTimeout(() => {
+        if (panel === 'filter') setFilterOpen(false)
+        if (panel === 'sort') setSortOpen(false)
+      }, 6000)
+    },
+    [clearAutoClose],
+  )
 
   useEffect(() => {
     return () => clearAutoClose()
@@ -410,6 +430,7 @@ export default function PublicProductsPage({ router }: PublicProductsPageProps) 
         setFilterOpen(false)
         clearAutoClose()
       }
+
       if (sortRef.current && !sortRef.current.contains(e.target as Node)) {
         setSortOpen(false)
         clearAutoClose()
@@ -475,7 +496,9 @@ export default function PublicProductsPage({ router }: PublicProductsPageProps) 
     [],
   )
 
-  useEffect(() => { fetchCats() }, [fetchCats])
+  useEffect(() => {
+    fetchCats()
+  }, [fetchCats])
 
   useEffect(() => {
     fetchProducts(page, debSearch, selCat, sort, minPrice, maxPrice, imageMode)
@@ -535,7 +558,6 @@ export default function PublicProductsPage({ router }: PublicProductsPageProps) 
   }
 
   const activeCat = categories.find((c) => c.id === selCat)
-  const activeSortLabel = SORT_OPTIONS.find((o) => o.key === sort)?.label ?? 'Trier'
 
   const activeFilterCount =
     (selCat ? 1 : 0) +
@@ -641,9 +663,7 @@ export default function PublicProductsPage({ router }: PublicProductsPageProps) 
                 >
                   <IconFilter />
                   <span>{filterOpen ? 'Fermer filtres' : 'Afficher filtres'}</span>
-                  {activeFilterCount > 0 && (
-                    <span className={s.dropBadge}>{activeFilterCount}</span>
-                  )}
+                  {activeFilterCount > 0 && <span className={s.dropBadge}>{activeFilterCount}</span>}
                   <IconChevron open={filterOpen} />
                 </button>
 
@@ -693,9 +713,7 @@ export default function PublicProductsPage({ router }: PublicProductsPageProps) 
                         ))}
 
                       {catsLoading &&
-                        Array.from({ length: 4 }).map((_, i) => (
-                          <span key={i} className={s.catSk} />
-                        ))}
+                        Array.from({ length: 4 }).map((_, i) => <span key={i} className={s.catSk} />)}
                     </div>
 
                     <div className={s.dropLabel} style={{ marginTop: 16 }}>Prix</div>
@@ -735,12 +753,14 @@ export default function PublicProductsPage({ router }: PublicProductsPageProps) 
                       >
                         Tous
                       </button>
+
                       <button
                         className={`${s.switchBtn} ${imageMode === 'with-image' ? s.switchBtnActive : ''}`}
                         onClick={() => onImageMode('with-image')}
                       >
                         Avec image
                       </button>
+
                       <button
                         className={`${s.switchBtn} ${imageMode === 'without-image' ? s.switchBtnActive : ''}`}
                         onClick={() => onImageMode('without-image')}
@@ -821,42 +841,54 @@ export default function PublicProductsPage({ router }: PublicProductsPageProps) 
               {activeCat && (
                 <span className={s.chip}>
                   {activeCat.name}
-                  <button onClick={() => onCat('')}><IconX /></button>
+                  <button onClick={() => onCat('')}>
+                    <IconX />
+                  </button>
                 </span>
               )}
 
               {search.trim() && (
                 <span className={s.chip}>
                   "{search.trim()}"
-                  <button onClick={() => onSearch('')}><IconX /></button>
+                  <button onClick={() => onSearch('')}>
+                    <IconX />
+                  </button>
                 </span>
               )}
 
               {minPrice.trim() && (
                 <span className={s.chip}>
                   Min {formatPrice(minPrice)}
-                  <button onClick={() => onMinPrice('')}><IconX /></button>
+                  <button onClick={() => onMinPrice('')}>
+                    <IconX />
+                  </button>
                 </span>
               )}
 
               {maxPrice.trim() && (
                 <span className={s.chip}>
                   Max {formatPrice(maxPrice)}
-                  <button onClick={() => onMaxPrice('')}><IconX /></button>
+                  <button onClick={() => onMaxPrice('')}>
+                    <IconX />
+                  </button>
                 </span>
               )}
 
               {imageMode === 'with-image' && (
                 <span className={s.chip}>
                   Avec image
-                  <button onClick={() => onImageMode('all')}><IconX /></button>
+                  <button onClick={() => onImageMode('all')}>
+                    <IconX />
+                  </button>
                 </span>
               )}
 
               {imageMode === 'without-image' && (
                 <span className={s.chip}>
                   Sans image
-                  <button onClick={() => onImageMode('all')}><IconX /></button>
+                  <button onClick={() => onImageMode('all')}>
+                    <IconX />
+                  </button>
                 </span>
               )}
             </div>

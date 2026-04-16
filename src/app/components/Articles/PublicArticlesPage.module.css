@@ -28,7 +28,7 @@
   --line2: rgba(0, 0, 0, .12);
   --sk-a: #ECEAE3;
   --sk-b: #F6F4EF;
-  --sticky-bg: rgba(247, 245, 241, .96);
+  --sticky-bg: rgba(247, 245, 241, .46);
   --ph-bg: #E6E2D9;
   --ph-text: #C0BDB5;
   --drop-bg: #FFFFFF;
@@ -53,7 +53,7 @@
   --line2: rgba(255, 255, 255, .12);
   --sk-a: #1A1814;
   --sk-b: #242018;
-  --sticky-bg: rgba(10, 9, 8, .97);
+  --sticky-bg: rgba(10, 9, 8, .46);
   --ph-bg: #1E1B16;
   --ph-text: #33302A;
   --drop-bg: #1C1A15;
@@ -237,7 +237,7 @@
   top: 0;
   z-index: 100;
   background:
-    linear-gradient(180deg, rgba(255, 255, 255, .05), rgba(255, 255, 255, 0)),
+    linear-gradient(180deg, rgba(255, 255, 255, .01), rgba(255, 255, 255, 0)),
     var(--sticky-bg);
   backdrop-filter: blur(22px) saturate(1.8);
   -webkit-backdrop-filter: blur(22px) saturate(1.8);
@@ -245,6 +245,7 @@
   margin: 0 -40px;
   padding: 14px 40px 10px;
   box-shadow: 0 10px 28px rgba(0, 0, 0, .04);
+  backdrop-filter: blur(12px);
 }
 
 .stickyBar {
@@ -696,14 +697,9 @@
     transform .5s cubic-bezier(.22, .61, .36, 1),
     box-shadow .5s cubic-bezier(.22, .61, .36, 1),
     border-color .3s;
-  will-change: transform;
-  opacity: 0;
-  animation: fadeUp .5s cubic-bezier(.22, .61, .36, 1) forwards;
-}
-
-@keyframes fadeUp {
-  from { opacity: 0; transform: perspective(1000px) translateY(20px); }
-  to { opacity: 1; transform: perspective(1000px) translateY(0); }
+  will-change: transform, opacity;
+  backface-visibility: hidden;
+  transform-style: preserve-3d;
 }
 
 .card:hover {
