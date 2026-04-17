@@ -5,6 +5,7 @@ import PublicArticlesPage from '../components/Articles/PublicArticlesPage'
 import OrganisationSection from '../components/HomePage/organisation/OrganisationSection'
 import ProductsSection from '../components/HomePage/products/ProductsSection'
 import PublicProductsPage from './produits/PublicProductsPage'
+import TechListe from '../components/footer/TechListe'
 
 
 export default function Home() {
@@ -15,6 +16,7 @@ export default function Home() {
       <PublicArticlesPage/>
       <OrganisationSection />
       <PublicProductsPage />
+      <TechListe />
     </>
   )
 }

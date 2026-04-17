@@ -6,11 +6,7 @@ import Link from 'next/link'
 // Importe les hooks React nécessaires au composant.
 import { useState, useMemo, useEffect, useRef } from 'react'
 
-// Importe le contexte de thème déjà utilisé dans ton footer d’origine.
-
-
-// Importe le nouveau composant TechListe qui gère toute la partie techno.
-import TechListe from './TechListe'
+// Importe le contexte de thème déjà utilisé dans ton projet.
 import { useTheme } from '@/app/context/ThemeContext'
 
 // Couleur orange principale de la marque.
@@ -141,7 +137,7 @@ function tokens(dark: boolean) {
 }
 
 // Hook pour faire apparaître doucement le footer au scroll.
-function useFadeIn(delay = 0) {
+function useFadeIn() {
   // Référence de l’élément observé.
   const ref = useRef<HTMLDivElement>(null)
 
@@ -176,7 +172,7 @@ function useFadeIn(delay = 0) {
 
     // Nettoyage au démontage.
     return () => observer.disconnect()
-  }, [delay])
+  }, [])
 
   // Retourne la ref et l’état.
   return { ref, visible }
@@ -185,7 +181,7 @@ function useFadeIn(delay = 0) {
 // Petit séparateur décoratif entre la page et le footer.
 function FooterSeparator({ dark }: { dark: boolean }) {
   return (
-    <div style={{ position: 'relative', height: 80, overflow: 'hidden', marginBottom: -2 }}>
+    <div className='mt-36' style={{ position: 'relative', height: 80, overflow: 'hidden', marginBottom: -2 }}>
       <svg
         viewBox="0 0 1440 80"
         preserveAspectRatio="none"
@@ -227,7 +223,7 @@ function FooterSeparator({ dark }: { dark: boolean }) {
 
 // Composant principal du footer public.
 export default function PublicFooter() {
-  // Récupère le thème courant depuis ton contexte.
+  // Récupère le thème courant depuis le contexte.
   const { dark } = useTheme()
 
   // Calcule les tokens uniquement quand le thème change.
@@ -333,55 +329,163 @@ export default function PublicFooter() {
           color: #fff !important;
         }
 
-        @media (max-width: 1040px) {
-          .fgrid-bottom { grid-template-columns: 1fr 1fr !important; }
-          .fbrand { grid-column: 1 / -1 !important; }
+        .footer-shell {
+          max-width: 1460px;
+          margin: 0 auto;
+        }
+
+        .fgrid-bottom {
+          grid-template-columns:
+            minmax(340px, 1.55fr)
+            minmax(220px, .95fr)
+            minmax(220px, .95fr)
+            minmax(340px, 1.2fr) !important;
+          align-items: start;
+        }
+
+        .footer-col-stretch {
+          min-width: 0;
+        }
+
+        .footer-map-card {
+          height: 100%;
+        }
+
+        .footer-newsletter-box {
+          width: 100%;
+        }
+
+        @media (max-width: 1280px) {
+          .footer-shell {
+            max-width: 1280px;
+          }
+
+          .fgrid-bottom {
+            grid-template-columns: repeat(2, minmax(280px, 1fr)) !important;
+            gap: 28px !important;
+          }
+
+          .fbrand {
+            grid-column: 1 / -1 !important;
+            max-width: none !important;
+          }
+
+          .fside {
+            grid-column: 1 / -1 !important;
+          }
+        }
+
+        @media (max-width: 900px) {
+          .footer-shell {
+            max-width: 100%;
+          }
+
+          .fgrid-bottom {
+            grid-template-columns: 1fr !important;
+            gap: 24px !important;
+          }
+
+          .fbrand,
+          .fside {
+            grid-column: auto !important;
+          }
+
+          .footer-map-top {
+            flex-direction: column !important;
+            align-items: flex-start !important;
+          }
+
+          .footer-map-meta {
+            flex-direction: column !important;
+          }
+
+          .footer-map-cta {
+            width: 100%;
+            justify-content: center;
+          }
         }
 
         @media (max-width: 680px) {
-          .fgrid-bottom { grid-template-columns: 1fr !important; }
-          .fbrand { grid-column: auto !important; }
-          .fbottom { flex-direction: column !important; align-items: flex-start !important; }
+          .fbottom {
+            flex-direction: column !important;
+            align-items: flex-start !important;
+          }
+
+          .footer-legal-links {
+            gap: 12px !important;
+          }
+
+          .footer-brand-copy {
+            max-width: none !important;
+          }
+
+          .footer-socials {
+            width: 100%;
+          }
+
+          .footer-socials a {
+            flex: 0 0 auto;
+          }
+        }
+
+        @media (max-width: 520px) {
+          .footer-root {
+            padding-left: 16px !important;
+            padding-right: 16px !important;
+          }
+
+          .footer-map-box {
+            height: 240px !important;
+          }
+
+          .footer-brand-row {
+            align-items: flex-start !important;
+          }
+
+          .footer-brand-title {
+            font-size: 15px !important;
+          }
+
+          .footer-brand-subtitle {
+            font-size: 10.5px !important;
+          }
         }
       `}</style>
 
       {/* Affiche le séparateur au-dessus du footer. */}
       <FooterSeparator dark={dark} />
 
-      {/* Footer principal. */}
+      {/* Footer principal avec id stable */}
       <footer
+        id="public-footer" // Permet d’identifier clairement le footer dans le DOM si besoin.
         ref={rootRef}
+        className="footer-root"
         style={{
           background: t.bg,
           borderTop: `1px solid ${t.border}`,
-          padding: 'clamp(36px, 5vw, 56px) clamp(16px, 5vw, 72px) 28px',
+          padding: 'clamp(40px, 5vw, 64px) clamp(16px, 4vw, 64px) 28px',
           fontFamily: "'Inter', sans-serif",
         }}
       >
-        {/* Conteneur central du footer. */}
-        <div style={{ maxWidth: 1180, margin: '0 auto' }}>
-          {/* Partie haute : composant TechListe. */}
-          <div style={{ ...fadeStyle(0), marginBottom: 36 }}>
-            <TechListe dark={dark} theme={t} />
-          </div>
-
-          {/* Ligne de séparation entre stack et contenu bas du footer. */}
+        {/* Conteneur central élargi. */}
+        <div className="footer-shell">
+          {/* Ligne de séparation au-dessus du contenu bas. */}
           <div style={{ height: 1, background: t.border, marginBottom: 40 }} />
 
-          {/* Partie basse du footer : marque, navigation, services, contact/newsletter. */}
+          {/* Grille principale du footer. */}
           <div
             className="fgrid-bottom"
             style={{
               display: 'grid',
-              gridTemplateColumns: '1.8fr 1fr 1fr 1.35fr',
               gap: '40px 32px',
               marginBottom: 48,
             }}
           >
-            {/* Bloc marque / identité. */}
-            <div className="fbrand" style={fadeStyle(0.06)}>
+            {/* Colonne identité / marque / newsletter */}
+            <div className="fbrand footer-col-stretch" style={fadeStyle(0.06)}>
               <Link
                 href="/"
+                className="footer-brand-row"
                 style={{
                   display: 'flex',
                   alignItems: 'center',
@@ -392,9 +496,9 @@ export default function PublicFooter() {
               >
                 <div
                   style={{
-                    width: 44,
-                    height: 44,
-                    borderRadius: 13,
+                    width: 48,
+                    height: 48,
+                    borderRadius: 14,
                     background: t.orangeSoft,
                     border: `1px solid ${t.orangeBorder}`,
                     display: 'flex',
@@ -408,7 +512,7 @@ export default function PublicFooter() {
                       color: ORANGE,
                       fontFamily: "'Syne', sans-serif",
                       fontWeight: 800,
-                      fontSize: 15,
+                      fontSize: 16,
                       letterSpacing: '-0.03em',
                     }}
                   >
@@ -418,9 +522,10 @@ export default function PublicFooter() {
 
                 <div>
                   <div
+                    className="footer-brand-title"
                     style={{
                       color: t.text,
-                      fontSize: 16,
+                      fontSize: 17,
                       fontWeight: 700,
                       letterSpacing: '-0.02em',
                       lineHeight: 1.1,
@@ -430,6 +535,7 @@ export default function PublicFooter() {
                   </div>
 
                   <div
+                    className="footer-brand-subtitle"
                     style={{
                       color: t.subtleText,
                       fontSize: 11,
@@ -472,18 +578,27 @@ export default function PublicFooter() {
               </div>
 
               <p
+                className="footer-brand-copy"
                 style={{
                   fontSize: 13.5,
                   lineHeight: 1.78,
                   color: t.softText,
                   marginBottom: 22,
-                  maxWidth: 340,
+                  maxWidth: 420,
                 }}
               >
                 Nous accompagnons les entreprises dans leur transformation digitale — conseil, développement sur mesure et solutions IT innovantes à Madagascar et à l'international.
               </p>
 
-              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+              <div
+                className="footer-socials"
+                style={{
+                  display: 'flex',
+                  gap: 8,
+                  flexWrap: 'wrap',
+                  marginBottom: 18,
+                }}
+              >
                 {SOCIALS.map((s) => (
                   <a
                     key={s.label}
@@ -491,9 +606,9 @@ export default function PublicFooter() {
                     aria-label={s.label}
                     className="fsoc"
                     style={{
-                      width: 38,
-                      height: 38,
-                      borderRadius: 11,
+                      width: 40,
+                      height: 40,
+                      borderRadius: 12,
                       background: t.iconBg,
                       border: `1px solid ${t.iconBorder}`,
                       display: 'flex',
@@ -508,10 +623,101 @@ export default function PublicFooter() {
                   </a>
                 ))}
               </div>
+
+              {/* Carte newsletter */}
+              <div
+                className="footer-newsletter-box"
+                style={{
+                  background: t.cardBg,
+                  border: `1px solid ${t.cardBorder}`,
+                  borderRadius: 18,
+                  padding: 18,
+                }}
+              >
+                <p
+                  style={{
+                    fontSize: 13,
+                    fontWeight: 600,
+                    color: t.text,
+                    marginBottom: 5,
+                  }}
+                >
+                  Newsletter
+                </p>
+
+                <p
+                  style={{
+                    fontSize: 12,
+                    color: t.softText,
+                    lineHeight: 1.55,
+                    marginBottom: 12,
+                  }}
+                >
+                  Actualités IT et offres exclusives.
+                </p>
+
+                {subscribed ? (
+                  <div
+                    style={{
+                      padding: '10px 12px',
+                      borderRadius: 10,
+                      background: 'rgba(34,197,94,.10)',
+                      border: '1px solid rgba(34,197,94,.28)',
+                      color: '#22C55E',
+                      fontSize: 12.5,
+                      fontWeight: 500,
+                      textAlign: 'center',
+                    }}
+                  >
+                    ✓ Merci pour votre inscription !
+                  </div>
+                ) : (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                    <input
+                      className="fnl-input"
+                      type="email"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      onKeyDown={(e) => e.key === 'Enter' && handleSubscribe()}
+                      placeholder="votre@email.com"
+                      style={{
+                        width: '100%',
+                        padding: '11px 13px',
+                        borderRadius: 11,
+                        border: `1px solid ${t.cardBorder}`,
+                        background: t.inputBg,
+                        fontSize: 13,
+                        color: t.text,
+                        fontFamily: "'Inter', sans-serif",
+                        transition: 'border .16s',
+                      }}
+                    />
+
+                    <button
+                      className="fnl-btn"
+                      onClick={handleSubscribe}
+                      style={{
+                        padding: '11px 14px',
+                        borderRadius: 11,
+                        background: ORANGE,
+                        border: 'none',
+                        color: '#fff',
+                        fontSize: 13,
+                        fontWeight: 700,
+                        cursor: 'pointer',
+                        fontFamily: "'Inter', sans-serif",
+                        transition: 'all .18s ease',
+                      }}
+                    >
+                      S'abonner →
+                    </button>
+                  </div>
+                )}
+              </div>
             </div>
 
-            {/* Bloc navigation. */}
-            <div style={fadeStyle(0.12)}>
+            {/* Colonne navigation */}
+            <div className="footer-col-stretch" style={fadeStyle(0.12)}>
               <p
                 style={{
                   fontSize: 11,
@@ -578,8 +784,8 @@ export default function PublicFooter() {
               </div>
             </div>
 
-            {/* Bloc services. */}
-            <div style={fadeStyle(0.18)}>
+            {/* Colonne services */}
+            <div className="footer-col-stretch" style={fadeStyle(0.18)}>
               <p
                 style={{
                   fontSize: 11,
@@ -643,9 +849,8 @@ export default function PublicFooter() {
               </div>
             </div>
 
-            {/* Colonne droite : carte localisation + newsletter. */}
-            <div style={{ ...fadeStyle(0.26), display: 'flex', flexDirection: 'column', gap: 16 }}>
-              {/* Carte localisation / contact. */}
+            {/* Colonne droite : carte localisation */}
+            <div className="fside footer-col-stretch" style={{ ...fadeStyle(0.26), display: 'flex', flexDirection: 'column', gap: 16 }}>
               <div
                 className="footer-map-card"
                 style={{
@@ -656,8 +861,9 @@ export default function PublicFooter() {
                   boxShadow: dark ? '0 10px 30px rgba(0,0,0,.22)' : '0 10px 30px rgba(15,23,42,.08)',
                 }}
               >
-                {/* En-tête de la carte. */}
+                {/* En-tête de la carte */}
                 <div
+                  className="footer-map-top"
                   style={{
                     display: 'flex',
                     alignItems: 'center',
@@ -736,11 +942,12 @@ export default function PublicFooter() {
                   </a>
                 </div>
 
-                {/* Zone carte OpenStreetMap. */}
+                {/* Zone carte */}
                 <div
+                  className="footer-map-box"
                   style={{
                     position: 'relative',
-                    height: 'clamp(220px, 28vw, 320px)',
+                    height: 'clamp(260px, 26vw, 360px)',
                     overflow: 'hidden',
                     background: dark ? '#101216' : '#EEF2F7',
                   }}
@@ -870,8 +1077,9 @@ export default function PublicFooter() {
                   </div>
                 </div>
 
-                {/* Coordonnées rapides sous la carte. */}
+                {/* Coordonnées rapides */}
                 <div
+                  className="footer-map-meta"
                   style={{
                     padding: '14px 16px 16px',
                     display: 'flex',
@@ -916,14 +1124,13 @@ export default function PublicFooter() {
                       ),
                     },
                   ].map((item, i) => {
-                    // Contenu commun de chaque ligne de contact.
                     const content = (
                       <div
                         style={{
                           display: 'flex',
                           alignItems: 'center',
                           gap: 10,
-                          padding: '9px 10px',
+                          padding: '10px 10px',
                           borderRadius: 12,
                           border: `1px solid ${dark ? 'rgba(255,255,255,.05)' : 'rgba(0,0,0,.05)'}`,
                           background: dark ? 'rgba(255,255,255,.02)' : 'rgba(255,255,255,.72)',
@@ -931,9 +1138,9 @@ export default function PublicFooter() {
                       >
                         <span
                           style={{
-                            width: 28,
-                            height: 28,
-                            borderRadius: 8,
+                            width: 30,
+                            height: 30,
+                            borderRadius: 9,
                             background: `${item.color}18`,
                             border: `1px solid ${item.color}28`,
                             display: 'flex',
@@ -952,6 +1159,7 @@ export default function PublicFooter() {
                             color: t.softText,
                             fontWeight: 500,
                             lineHeight: 1.45,
+                            wordBreak: 'break-word',
                           }}
                         >
                           {item.text}
@@ -959,19 +1167,22 @@ export default function PublicFooter() {
                       </div>
                     )
 
-                    // Si le lien est externe, on ajoute target et rel.
-                    return item.external ? (
-                      <a
-                        key={i}
-                        href={item.href}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="footer-contact-link"
-                        style={{ textDecoration: 'none' }}
-                      >
-                        {content}
-                      </a>
-                    ) : (
+                    if (item.external) {
+                      return (
+                        <a
+                          key={i}
+                          href={item.href}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="footer-contact-link"
+                          style={{ textDecoration: 'none' }}
+                        >
+                          {content}
+                        </a>
+                      )
+                    }
+
+                    return (
                       <a
                         key={i}
                         href={item.href}
@@ -984,100 +1195,10 @@ export default function PublicFooter() {
                   })}
                 </div>
               </div>
-
-              {/* Carte newsletter. */}
-              <div
-                style={{
-                  background: t.cardBg,
-                  border: `1px solid ${t.cardBorder}`,
-                  borderRadius: 18,
-                  padding: 18,
-                }}
-              >
-                <p
-                  style={{
-                    fontSize: 13,
-                    fontWeight: 600,
-                    color: t.text,
-                    marginBottom: 5,
-                  }}
-                >
-                  Newsletter
-                </p>
-
-                <p
-                  style={{
-                    fontSize: 12,
-                    color: t.softText,
-                    lineHeight: 1.55,
-                    marginBottom: 12,
-                  }}
-                >
-                  Actualités IT et offres exclusives.
-                </p>
-
-                {subscribed ? (
-                  <div
-                    style={{
-                      padding: '10px 12px',
-                      borderRadius: 10,
-                      background: 'rgba(34,197,94,.10)',
-                      border: '1px solid rgba(34,197,94,.28)',
-                      color: '#22C55E',
-                      fontSize: 12.5,
-                      fontWeight: 500,
-                      textAlign: 'center',
-                    }}
-                  >
-                    ✓ Merci pour votre inscription !
-                  </div>
-                ) : (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 7 }}>
-                    <input
-                      className="fnl-input"
-                      type="email"
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                      onKeyDown={(e) => e.key === 'Enter' && handleSubscribe()}
-                      placeholder="votre@email.com"
-                      style={{
-                        width: '100%',
-                        padding: '9px 12px',
-                        borderRadius: 10,
-                        border: `1px solid ${t.cardBorder}`,
-                        background: t.inputBg,
-                        fontSize: 13,
-                        color: t.text,
-                        fontFamily: "'Inter', sans-serif",
-                        transition: 'border .16s',
-                      }}
-                    />
-
-                    <button
-                      className="fnl-btn"
-                      onClick={handleSubscribe}
-                      style={{
-                        padding: '10px 14px',
-                        borderRadius: 10,
-                        background: ORANGE,
-                        border: 'none',
-                        color: '#fff',
-                        fontSize: 13,
-                        fontWeight: 700,
-                        cursor: 'pointer',
-                        fontFamily: "'Inter', sans-serif",
-                        transition: 'all .18s ease',
-                      }}
-                    >
-                      S'abonner →
-                    </button>
-                  </div>
-                )}
-              </div>
             </div>
           </div>
 
-          {/* Bas de footer. */}
+          {/* Bas du footer */}
           <div style={{ borderTop: `1px solid ${t.border}`, paddingTop: 22, ...fadeStyle(0.36) }}>
             <div
               className="fbottom"
@@ -1095,7 +1216,14 @@ export default function PublicFooter() {
                 {' '}— Tous droits réservés. Conçu avec soin à Madagascar 🇲🇬
               </p>
 
-              <div style={{ display: 'flex', gap: 18, flexWrap: 'wrap' }}>
+              <div
+                className="footer-legal-links"
+                style={{
+                  display: 'flex',
+                  gap: 18,
+                  flexWrap: 'wrap',
+                }}
+              >
                 {['Mentions légales', 'Confidentialité', 'CGU'].map((item) => (
                   <Link
                     key={item}
