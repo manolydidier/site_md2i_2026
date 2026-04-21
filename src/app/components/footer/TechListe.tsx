@@ -120,7 +120,7 @@ function getTokens(dark: boolean) {
     dark,
 
     // Fond global de la section.
-    bg: dark ? '#0F0D0A' : '#FBF8F3',
+    bg: dark ? '#0F0D0A' : '#ffffff',
 
     // Surfaces glass / premium.
     surface1: dark ? 'rgba(27, 23, 18, 0.74)' : 'rgba(255, 255, 255, 0.64)',
@@ -201,29 +201,22 @@ function getTokens(dark: boolean) {
   }
 }
 
-// Retourne un style de cadrage doux spécifique à chaque catégorie.
-function getCategoryFrame(categoryColor: string, dark: boolean) {
+// Remplacer la fonction getCategoryFrame par celle-ci (couleur unifiée)
+function getCategoryFrame(dark: boolean) {
+  const unifiedColor = ORANGE // Couleur unique pour toutes les catégories
+  
   return {
-    // Bordure légère.
-    border: dark ? `${categoryColor}22` : `${categoryColor}18`,
-
-    // Halo intérieur léger.
+    border: dark ? `${unifiedColor}22` : `${unifiedColor}18`,
     insetGlow: dark
       ? `inset 0 1px 0 rgba(255,255,255,0.03)`
       : `inset 0 1px 0 rgba(255,255,255,0.55)`,
-
-    // Halo externe léger.
     outerGlow: dark
-      ? `0 10px 30px ${categoryColor}12`
-      : `0 10px 26px ${categoryColor}0D`,
-
-    // Ligne haute décorative.
-    topLine: `linear-gradient(90deg, transparent 0%, ${categoryColor}55 35%, ${categoryColor}80 50%, ${categoryColor}55 65%, transparent 100%)`,
-
-    // Voile coloré de fond.
+      ? `0 10px 30px ${unifiedColor}12`
+      : `0 10px 26px ${unifiedColor}0D`,
+    topLine: `linear-gradient(90deg, transparent 0%, ${unifiedColor}55 35%, ${unifiedColor}80 50%, ${unifiedColor}55 65%, transparent 100%)`,
     softOverlay: dark
-      ? `linear-gradient(135deg, ${categoryColor}10 0%, transparent 55%)`
-      : `linear-gradient(135deg, ${categoryColor}0B 0%, transparent 55%)`,
+      ? `linear-gradient(135deg, ${unifiedColor}10 0%, transparent 55%)`
+      : `linear-gradient(135deg, ${unifiedColor}0B 0%, transparent 55%)`,
   }
 }
 
@@ -1182,7 +1175,7 @@ function TechCategoryCard({
   const items = sortItems(category.items, sortBy)
 
   // Styles de cadrage doux.
-  const frame = getCategoryFrame(category.color, theme.dark)
+  const frame = getCategoryFrame(theme.dark)
 
   // Rien si vide.
   if (!items.length) {
@@ -1199,19 +1192,19 @@ function TechCategoryCard({
         padding: viewMode === 'compact' ? 18 : 22,
         background: theme.cardBg,
         border: `1px solid ${frame.border}`,
-        boxShadow: `${theme.shadowMd}, ${frame.outerGlow}, ${frame.insetGlow}`,
+        // boxShadow: `${theme.shadowMd}, ${frame.outerGlow}, ${frame.insetGlow}`,
         backdropFilter: 'blur(16px)',
         WebkitBackdropFilter: 'blur(16px)',
         transition: 'transform 0.24s ease, box-shadow 0.24s ease, border-color 0.24s ease',
       }}
       onMouseEnter={(e) => {
         e.currentTarget.style.transform = 'translateY(-2px)'
-        e.currentTarget.style.boxShadow = `${theme.shadowLg}, 0 12px 34px ${category.color}16, ${frame.insetGlow}`
+        // e.currentTarget.style.boxShadow = `${theme.shadowLg}, 0 12px 34px ${category.color}16, ${frame.insetGlow}`
         e.currentTarget.style.borderColor = theme.dark ? `${category.color}30` : `${category.color}24`
       }}
       onMouseLeave={(e) => {
         e.currentTarget.style.transform = 'translateY(0)'
-        e.currentTarget.style.boxShadow = `${theme.shadowMd}, ${frame.outerGlow}, ${frame.insetGlow}`
+        // e.currentTarget.style.boxShadow = `${theme.shadowMd}, ${frame.outerGlow}, ${frame.insetGlow}`
         e.currentTarget.style.borderColor = frame.border
       }}
     >
@@ -1278,16 +1271,18 @@ function TechCategoryCard({
               gap: 10,
             }}
           >
-            <div
-              style={{
-                width: 8,
-                height: 8,
-                borderRadius: '50%',
-                background: category.color,
-                boxShadow: `0 0 10px ${category.color}55`,
-                flexShrink: 0,
-              }}
-            />
+      
+
+<div
+  style={{
+    width: 6,
+    height: 6,
+    borderRadius: '50%',
+    background: theme.accent,  // ← utilise l'orange unifié
+    boxShadow: `0 0 0 3px ${theme.accentSoft}`,  // ← halo plus subtil
+    flexShrink: 0,
+  }}
+/>
 
             <h3
               style={{

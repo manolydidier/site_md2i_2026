@@ -380,3 +380,49 @@ enum ContactStatus {
   REPLIED
   ARCHIVED
 }
+
+// Modèle Reference autonome (sans lien avec User et Tag existants)
+model Reference {
+  id            String          @id @default(uuid()) @db.Uuid
+  country       String          @db.VarChar(100)
+  code          String          @db.VarChar(10)
+  lat           Decimal         @db.Decimal(10, 6)
+  lng           Decimal         @db.Decimal(10, 6)
+  title         String          @db.VarChar(500)
+  slug          String          @unique @db.VarChar(500)
+  excerpt       String          @db.Text
+  image         String          @db.VarChar(500)
+  details       String          @db.Text
+  date          String          @db.VarChar(10)
+  client        String          @db.VarChar(200)
+  category      String          @db.VarChar(100)
+  tags          String[]        // Stocké comme tableau de strings
+  impact        String?         @db.VarChar(200)
+  technologies  String[]        // Stocké comme tableau de strings
+  team          String?         @db.VarChar(100)
+  duration      String?         @db.VarChar(50)
+  budget        String?         @db.VarChar(50)
+  status        ReferenceStatus @default(PUBLISHED)
+  publishedAt   DateTime?
+  authorId      String?         @db.Uuid
+  gjsComponents Json?
+  gjsStyles     Json?
+  gjsHtml       String?
+  gjsJs         String?
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+
+  @@index([country])
+  @@index([category])
+  @@index([date])
+  @@index([client])
+  @@index([status])
+  @@index([slug])
+  @@map("references")
+}
+
+enum ReferenceStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
