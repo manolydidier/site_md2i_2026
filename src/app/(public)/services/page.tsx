@@ -2,9 +2,10 @@
 
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useTheme } from "@/app/context/ThemeContext";
-import { createPortal } from "react-dom"; // Permet de rendre le modal hors de la hiérarchie de la page
+import { createPortal } from "react-dom";
 import AnimatedMD2ILogo from "@/app/components/AnimatedMD2ILogo";
-import service from "./service.jpg"
+import service from "./service.jpg";
+
 type IconProps = {
   color: string;
   size?: number;
@@ -48,8 +49,6 @@ const BRAND = {
   ivory: "#F8F7F4",
 };
 
-/* ── image de fond fixe pour toute la page service ── */
-/* Remplace ce chemin par ton vrai asset si nécessaire. */
 const SERVICE_FIXED_BG_URL = service.src;
 
 function serviceTokens(dark: boolean) {
@@ -553,6 +552,7 @@ function useVisible<T extends HTMLElement>(threshold = 0.14) {
       setVisible(true);
       return;
     }
+
     const obs = new IntersectionObserver(
       ([entry]) => {
         if (entry.isIntersecting) {
@@ -562,6 +562,7 @@ function useVisible<T extends HTMLElement>(threshold = 0.14) {
       },
       { threshold }
     );
+
     obs.observe(ref.current);
     return () => obs.disconnect();
   }, [threshold]);
@@ -574,13 +575,17 @@ function useReducedMotion() {
 
   useEffect(() => {
     if (typeof window === "undefined" || !window.matchMedia) return;
+
     const media = window.matchMedia("(prefers-reduced-motion: reduce)");
     const update = () => setReduceMotion(media.matches);
+
     update();
+
     if (media.addEventListener) {
       media.addEventListener("change", update);
       return () => media.removeEventListener("change", update);
     }
+
     media.addListener(update);
     return () => media.removeListener(update);
   }, []);
@@ -792,7 +797,13 @@ function CTAButton({
       }}
     >
       {label}
-      <span style={{ display: "inline-flex", transform: hovered ? "translateX(3px)" : "translateX(0)", transition: "transform .28s ease" }}>
+      <span
+        style={{
+          display: "inline-flex",
+          transform: hovered ? "translateX(3px)" : "translateX(0)",
+          transition: "transform .28s ease",
+        }}
+      >
         <Icons.ArrowRight color={filled ? "#FFFFFF" : theme.accent} size={15} />
       </span>
     </a>
@@ -1352,7 +1363,6 @@ function ServiceCard({
         </p>
       </div>
 
-      {/* ── FIX TAGS : minWidth 0 + overflow hidden pour éviter le débordement ── */}
       <div
         style={{
           position: "relative",
@@ -1402,130 +1412,122 @@ function ServiceCard({
 
 /* ────────────────────── MODAL ───────────────────── */
 
-function ServiceModal({ // Déclare le composant modal
-  service, // Service sélectionné à afficher
-  onClose, // Fonction de fermeture
-  theme, // Tokens de thème
-}: { // Typage des props
-  service: Service; // Type du service
-  onClose: () => void; // Type de la fermeture
-  theme: ReturnType<typeof serviceTokens>; // Type des tokens du thème
+function ServiceModal({
+  service,
+  onClose,
+  theme,
+}: {
+  service: Service;
+  onClose: () => void;
+  theme: ReturnType<typeof serviceTokens>;
 }) {
-  const [activeTab, setActiveTab] = useState<ModalTab>("overview"); // Onglet actif
-  const [isMounted, setIsMounted] = useState(false); // Évite les erreurs SSR avec document.body
-  const panelRef = useRef<HTMLDivElement | null>(null); // Référence du panneau modal
+  const [activeTab, setActiveTab] = useState<ModalTab>("overview");
+  const [isMounted, setIsMounted] = useState(false);
+  const panelRef = useRef<HTMLDivElement | null>(null);
 
-  useEffect(() => { // Quand le service change
-    setActiveTab("overview"); // On remet le premier onglet
-  }, [service]); // Dépend du service affiché
+  useEffect(() => {
+    setActiveTab("overview");
+  }, [service]);
 
-  useEffect(() => { // Montage client
-    setIsMounted(true); // Le composant est prêt côté navigateur
-  }, []); // Une seule fois
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
 
-  useEffect(() => { // Gestion du scroll body + clavier
-    if (!isMounted) return; // Ne rien faire avant montage
+  useEffect(() => {
+    if (!isMounted) return;
 
-    const previousOverflow = document.body.style.overflow; // Sauvegarde l’ancien overflow du body
-    document.body.style.overflow = "hidden"; // Bloque le scroll de fond
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
 
-    const onKeyDown = (e: KeyboardEvent) => { // Gestion clavier
-      if (e.key === "Escape") onClose(); // Ferme au clic sur Escape
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
 
-      if (e.key === "Tab" && panelRef.current) { // Si navigation clavier dans le modal
-        const focusables = panelRef.current.querySelectorAll<HTMLElement>( // On récupère tous les éléments focusables
-          'button, a[href], input, select, textarea, [tabindex]:not([tabindex="-1"])' // Sélecteur des éléments focusables
-        ); // Fin du querySelectorAll
+      if (e.key === "Tab" && panelRef.current) {
+        const focusables = panelRef.current.querySelectorAll<HTMLElement>(
+          'button, a[href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+        );
 
-        if (!focusables.length) return; // S’il n’y en a pas, on sort
+        if (!focusables.length) return;
 
-        const first = focusables[0]; // Premier élément focusable
-        const last = focusables[focusables.length - 1]; // Dernier élément focusable
-        const active = document.activeElement as HTMLElement | null; // Élément actuellement focus
+        const first = focusables[0];
+        const last = focusables[focusables.length - 1];
+        const active = document.activeElement as HTMLElement | null;
 
-        if (e.shiftKey && active === first) { // Si Shift+Tab sur le premier
-          e.preventDefault(); // On bloque la sortie du focus
-          last.focus(); // On renvoie le focus à la fin
-        } else if (!e.shiftKey && active === last) { // Si Tab sur le dernier
-          e.preventDefault(); // On bloque la sortie du focus
-          first.focus(); // On renvoie le focus au début
+        if (e.shiftKey && active === first) {
+          e.preventDefault();
+          last.focus();
+        } else if (!e.shiftKey && active === last) {
+          e.preventDefault();
+          first.focus();
         }
       }
-    }; // Fin du handler clavier
+    };
 
-    window.addEventListener("keydown", onKeyDown); // Abonne l’évènement clavier
+    window.addEventListener("keydown", onKeyDown);
 
-    const timer = window.setTimeout(() => { // Petit délai pour laisser le DOM se peindre
-      const first = panelRef.current?.querySelector<HTMLElement>("button, a[href]"); // Cherche le premier bouton/lien
-      first?.focus(); // Donne le focus
-    }, 40); // 40ms
+    const timer = window.setTimeout(() => {
+      const first = panelRef.current?.querySelector<HTMLElement>("button, a[href]");
+      first?.focus();
+    }, 40);
 
-    return () => { // Nettoyage à la fermeture / démontage
-      document.body.style.overflow = previousOverflow; // Restaure le scroll body
-      window.removeEventListener("keydown", onKeyDown); // Retire l’écoute clavier
-      window.clearTimeout(timer); // Supprime le timer
-    }; // Fin du cleanup
-  }, [isMounted, onClose]); // Dépend du montage et de la fermeture
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      window.removeEventListener("keydown", onKeyDown);
+      window.clearTimeout(timer);
+    };
+  }, [isMounted, onClose]);
 
-  const tabLabels: { key: ModalTab; label: string }[] = [ // Définition des onglets
-    { key: "overview", label: "Vue d'ensemble" }, // Onglet 1
-    { key: "missions", label: "Missions" }, // Onglet 2
-    { key: "livrables", label: "Livrables" }, // Onglet 3
-    { key: "impacts", label: "Résultats" }, // Onglet 4
-  ]; // Fin du tableau
+  const tabLabels: { key: ModalTab; label: string }[] = [
+    { key: "overview", label: "Vue d'ensemble" },
+    { key: "missions", label: "Missions" },
+    { key: "livrables", label: "Livrables" },
+    { key: "impacts", label: "Résultats" },
+  ];
 
-  if (!isMounted) return null; // Tant qu’on n’est pas côté client, on ne rend rien
+  if (!isMounted) return null;
 
-  return createPortal( // On rend le modal directement dans document.body
-    <div // Overlay principal
-      role="dialog" // Accessibilité : dialogue
-      aria-modal="true" // Accessibilité : modal
-      aria-label={service.detailTitle} // Label du modal
-      className="md2i-modal-overlay" // Classe CSS existante
-      onClick={onClose} // Clic sur l’overlay = fermeture
-      style={{ // Styles overlay
-        position: "fixed", // Toujours collé au viewport
-        inset: 0, // Prend tout l’écran
-        zIndex: 999999, // Très haut pour passer au-dessus du reste
-        background: theme.overlay, // Fond sombre
-        backdropFilter: "blur(10px)", // Flou sur l’arrière-plan
-        WebkitBackdropFilter: "blur(10px)", // Compat Safari
-        overflowY: "auto", // Scroll vertical si contenu trop grand
-        overscrollBehavior: "contain", // Évite les rebonds parasites
-      }} // Fin des styles overlay
+  return createPortal(
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-label={service.detailTitle}
+      className="md2i-modal-overlay"
+      onClick={onClose}
+      style={{
+        position: "fixed",
+        inset: 0,
+        zIndex: 999999,
+        background: theme.overlay,
+        backdropFilter: "blur(10px)",
+        WebkitBackdropFilter: "blur(10px)",
+        overflowY: "auto",
+        overscrollBehavior: "contain",
+      }}
     >
-      <div // Wrapper qui garantit le centrage réel
-        style={{ // Styles du wrapper interne
-          minHeight: "100dvh", // Hauteur mini = viewport dynamique
-          display: "grid", // Grille pour centrer facilement
-          placeItems: "center", // Centre horizontalement et verticalement
-          padding: 20, // Espace autour du modal
-        }} // Fin des styles wrapper
+      <div
+        style={{
+          minHeight: "100dvh",
+          display: "grid",
+          placeItems: "center",
+          padding: 20,
+        }}
       >
-        <div // Panneau modal
-          ref={panelRef} // Référence pour le focus trap
-          className="md2i-modal-panel md2i-modal-layout" // Classes existantes
-          onClick={(e) => e.stopPropagation()} // Empêche la fermeture quand on clique dedans
-          style={{ // Styles du panneau
-            width: "min(1180px, 100%)", // Largeur responsive
-            maxHeight: "92vh", // Hauteur max
-            overflow: "hidden", // Coupe ce qui dépasse
-            borderRadius: 28, // Coins arrondis
-            border: `1px solid ${theme.border}`, // Bordure
-            background: theme.panel, // Fond panneau
-            boxShadow: theme.modalShadow, // Ombre
-            display: "grid", // Layout interne
-            gridTemplateColumns: "1fr 1.06fr", // Deux colonnes desktop
-          }} // Fin des styles panneau
+        <div
+          ref={panelRef}
+          className="md2i-modal-panel md2i-modal-layout"
+          onClick={(e) => e.stopPropagation()}
+          style={{
+            width: "min(1180px, 100%)",
+            maxHeight: "92vh",
+            overflow: "hidden",
+            borderRadius: 28,
+            border: `1px solid ${theme.border}`,
+            background: theme.panel,
+            boxShadow: theme.modalShadow,
+            display: "grid",
+            gridTemplateColumns: "1fr 1.06fr",
+          }}
         >
-          {/* Garde ici tout ton contenu modal actuel inchangé : */}
-          {/* - la colonne image gauche */}
-          {/* - la colonne contenu droit */}
-          {/* - les tabs */}
-          {/* - les blocs overview / missions / livrables / impacts */}
-          {/* - le footer sticky avec les boutons */}
-          {/* Le bug de centrage vient de l’enveloppe, pas du contenu interne. */}
-
           <div
             style={{
               position: "relative",
@@ -1865,7 +1867,7 @@ function ServiceModal({ // Déclare le composant modal
         </div>
       </div>
     </div>,
-    document.body // Le modal sort complètement de la hiérarchie du composant
+    document.body
   );
 }
 
@@ -1923,141 +1925,181 @@ export default function MD2IServicesSection() {
         overflow: "visible",
         minHeight: "100vh",
         backgroundColor: T.bg,
-        backgroundImage: `${dark
-          ? "linear-gradient(180deg, rgba(10,14,20,.78) 0%, rgba(10,14,20,.88) 100%)"
-          : "linear-gradient(180deg, rgba(247,245,241,.74) 0%, rgba(247,245,241,.88) 100%)"}, url(${SERVICE_FIXED_BG_URL})`,
+        backgroundImage: `${
+          dark
+            ? "linear-gradient(180deg, rgba(10,14,20,.78) 0%, rgba(10,14,20,.88) 100%)"
+            : "linear-gradient(180deg, rgba(247,245,241,.74) 0%, rgba(247,245,241,.88) 100%)"
+        }, url(${SERVICE_FIXED_BG_URL})`,
         backgroundAttachment: "fixed, fixed",
         backgroundRepeat: "no-repeat, no-repeat",
         backgroundSize: "cover, cover",
         backgroundPosition: "center, center",
         padding: "60px 24px 96px",
-        
-         backdropFilter: "blur(10px)", // Applique le flou sur ce qu'il y a derrière
-         WebkitBackdropFilter: "blur(10px)", // Support Safari
-
-       
+        backdropFilter: "blur(10px)",
+        WebkitBackdropFilter: "blur(10px)",
       }}
     >
-      <div style={{ 
-        maxWidth: 1380, margin: "0 auto", position: "relative", zIndex: 1,
-        
-        }}>
-        <div className="md2i-services-shell">
-          <div className="md2i-services-main">
-
-            {/* ── HEADER ── */}
+      <div
+        style={{
+          maxWidth: 1380,
+          margin: "0 auto",
+          position: "relative",
+          zIndex: 1,
+        }}
+      >
+        {/* ── HEADER ── */}
+        <div
+          ref={headerRef}
+          style={{
+            display: "grid",
+            gap: 24,
+            marginBottom: 42,
+            opacity: headerVisible ? 1 : 0,
+            transform: reduceMotion
+              ? "none"
+              : headerVisible
+              ? "translateY(0)"
+              : "translateY(26px)",
+            transition: reduceMotion
+              ? "none"
+              : "opacity .7s ease, transform .7s cubic-bezier(.22,1,.36,1)",
+          }}
+        >
+          <div style={{ display: "grid", justifyItems: "center", gap: 18 }}>
             <div
-              ref={headerRef}
               style={{
-                display: "grid",
-                gap: 24,
-                marginBottom: 42,
-                opacity: headerVisible ? 1 : 0,
-                transform: reduceMotion ? "none" : headerVisible ? "translateY(0)" : "translateY(26px)",
-                transition: reduceMotion ? "none" : "opacity .7s ease, transform .7s cubic-bezier(.22,1,.36,1)",
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 10,
+                fontFamily: "'Roboto', 'Syne', sans-serif",
+                fontSize: "11px",
+                fontWeight: 800,
+                letterSpacing: "0.18em",
+                textTransform: "uppercase",
+                color: T.accent,
               }}
             >
-              <div style={{ display: "grid", justifyItems: "center", gap: 18 }}>
-                <div
-                  style={{
-                    display: "inline-flex",
-                    alignItems: "center",
-                    gap: 10,
-                    fontFamily: "'Roboto', 'Syne', sans-serif",
-                    fontSize: "11px",
-                    fontWeight: 800,
-                    letterSpacing: "0.18em",
-                    textTransform: "uppercase",
-                    color: T.accent,
-                  }}
-                >
-                  <span
-                    style={{
-                      width: 6,
-                      height: 6,
-                      borderRadius: "50%",
-                      background: T.accent,
-                      boxShadow: `0 0 0 6px ${dark ? "rgba(225,161,44,.16)" : "rgba(225,161,44,.10)"}`,
-                    }}
-                  />
-                  MD2I Madagascar
-                </div>
-
-                <div style={{ textAlign: "center", display: "grid", gap: 16 }}>
-                  <h2
-                    style={{
-                      margin: 0,
-                      color: T.text,
-                      fontSize: "clamp(2.4rem, 4.8vw, 4rem)",
-                      lineHeight: 1.05,
-                      letterSpacing: "-0.04em",
-                      fontWeight: 800,
-                      fontFamily: "'Roboto', 'Syne', sans-serif",
-                      textWrap: "balance",
-                      textShadow: dark ? "0 2px 14px rgba(0,0,0,.34)" : "0 2px 14px rgba(0,0,0,.12)",
-                    }}
-                  >
-                    Des expertises <em style={{ fontStyle: "normal", color: T.accent }}>structurées</em> pour des projets à fort impact
-                  </h2>
-                  <p
-                    style={{
-                      maxWidth: 760,
-                      margin: "0 auto",
-                      color: T.textSoft,
-                      fontSize: "1rem",
-                      lineHeight: 1.88,
-                      fontFamily: "'DM Sans', sans-serif",
-                      letterSpacing: "-0.01em",
-                    }}
-                  >
-                    MD2I Madagascar accompagne les institutions publiques, les projets de développement
-                    et les organisations partenaires avec une approche fondée sur la rigueur,
-                    la lisibilité des processus, la digitalisation et l'adaptation au terrain.
-                  </p>
-                </div>
-              </div>
-
-              <div
-                className="md2i-stats-grid"
+              <span
                 style={{
-                  display: "grid",
-                  gridTemplateColumns: "repeat(3, minmax(0,1fr))",
-                  gap: 16,
-                  marginTop: 4,
+                  width: 6,
+                  height: 6,
+                  borderRadius: "50%",
+                  background: T.accent,
+                  boxShadow: `0 0 0 6px ${
+                    dark ? "rgba(225,161,44,.16)" : "rgba(225,161,44,.10)"
+                  }`,
+                }}
+              />
+              MD2I Madagascar
+            </div>
+
+            <div style={{ textAlign: "center", display: "grid", gap: 16 }}>
+              <h2
+                style={{
+                  margin: 0,
+                  color: T.text,
+                  fontSize: "clamp(2.4rem, 4.8vw, 4rem)",
+                  lineHeight: 1.05,
+                  letterSpacing: "-0.04em",
+                  fontWeight: 800,
+                  fontFamily: "'Roboto', 'Syne', sans-serif",
+                  textWrap: "balance",
+                  textShadow: dark
+                    ? "0 2px 14px rgba(0,0,0,.34)"
+                    : "0 2px 14px rgba(0,0,0,.12)",
                 }}
               >
-                <StatCard title="d'expérience au service des institutions et des projets" value="21+" theme={T} />
-                <StatCard title="domaines d'expertise structurés dans cette section" value="9" theme={T} />
-                <StatCard title="approche : conseil, outils, gouvernance, données et renforcement" value="360°" theme={T} />
-              </div>
+                Des expertises{" "}
+                <em style={{ fontStyle: "normal", color: T.accent }}>structurées</em> pour des
+                projets à fort impact
+              </h2>
+              <p
+                style={{
+                  maxWidth: 760,
+                  margin: "0 auto",
+                  color: T.textSoft,
+                  fontSize: "1rem",
+                  lineHeight: 1.88,
+                  fontFamily: "'DM Sans', sans-serif",
+                  letterSpacing: "-0.01em",
+                }}
+              >
+                MD2I Madagascar accompagne les institutions publiques, les projets de développement
+                et les organisations partenaires avec une approche fondée sur la rigueur,
+                la lisibilité des processus, la digitalisation et l'adaptation au terrain.
+              </p>
             </div>
+          </div>
 
-            {/* ── FEATURED ── */}
-            <div
-              ref={featuredRef}
-              style={{
-                marginBottom: 28,
-                opacity: featuredVisible ? 1 : 0,
-                transform: reduceMotion ? "none" : featuredVisible ? "translateY(0)" : "translateY(26px)",
-                transition: reduceMotion ? "none" : "opacity .75s ease, transform .75s cubic-bezier(.22,1,.36,1)",
-              }}
-            >
-              <FeaturedService
-                service={previewService}
-                theme={T}
-                onOpen={setSelectedService}
-                reduceMotion={reduceMotion}
-              />
-            </div>
+          <div
+            className="md2i-stats-grid"
+            style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(3, minmax(0,1fr))",
+              gap: 16,
+              marginTop: 4,
+            }}
+          >
+            <StatCard
+              title="d'expérience au service des institutions et des projets"
+              value="21+"
+              theme={T}
+            />
+            <StatCard
+              title="domaines d'expertise structurés dans cette section"
+              value="9"
+              theme={T}
+            />
+            <StatCard
+              title="approche : conseil, outils, gouvernance, données et renforcement"
+              value="360°"
+              theme={T}
+            />
+          </div>
+        </div>
 
-            {/* ── GRILLE ── */}
+        {/* ── FEATURED ── */}
+        <div
+          ref={featuredRef}
+          style={{
+            marginBottom: 28,
+            opacity: featuredVisible ? 1 : 0,
+            transform: reduceMotion
+              ? "none"
+              : featuredVisible
+              ? "translateY(0)"
+              : "translateY(26px)",
+            transition: reduceMotion
+              ? "none"
+              : "opacity .75s ease, transform .75s cubic-bezier(.22,1,.36,1)",
+          }}
+        >
+          <FeaturedService
+            service={previewService}
+            theme={T}
+            onOpen={setSelectedService}
+            reduceMotion={reduceMotion}
+          />
+        </div>
+
+        {/* ── SERVICES + SIDEBAR ── */}
+        <div className="md2i-services-content-shell">
+          <div className="md2i-services-main">
             <div
               ref={gridRef}
-              style={{ marginBottom: 64, opacity: gridVisible ? 1 : 0, transition: "opacity .4s ease" }}
+              style={{
+                marginBottom: 64,
+                opacity: gridVisible ? 1 : 0,
+                transition: "opacity .4s ease",
+              }}
             >
               <div
                 className="md2i-grid"
-                style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0,1fr))", gap: 22 }}
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "repeat(3, minmax(0,1fr))",
+                  gap: 22,
+                }}
               >
                 {filteredServices.map((service, index) => (
                   <ServiceCard
@@ -2072,91 +2114,9 @@ export default function MD2IServicesSection() {
                 ))}
               </div>
             </div>
-
-            {/* ── CTA ── */}
-            <div
-              ref={ctaRef}
-              className="md2i-cta"
-              style={{
-                position: "relative",
-                overflow: "hidden",
-                borderRadius: 24,
-                background: T.ctaGradient,
-                padding: "52px 46px",
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "center",
-                gap: 28,
-                opacity: ctaVisible ? 1 : 0,
-                transform: reduceMotion ? "none" : ctaVisible ? "translateY(0)" : "translateY(22px)",
-                transition: reduceMotion
-                  ? "none"
-                  : "opacity .7s ease .1s, transform .7s cubic-bezier(.22,1,.36,1) .1s",
-              }}
-            >
-              <div
-                style={{
-                  position: "absolute",
-                  top: -60,
-                  right: -30,
-                  width: 260,
-                  height: 260,
-                  borderRadius: "50%",
-                  background: "radial-gradient(circle, rgba(225,161,44,.18) 0%, transparent 70%)",
-                  pointerEvents: "none",
-                }}
-              />
-              <div
-                style={{
-                  position: "absolute",
-                  left: "35%",
-                  bottom: -80,
-                  width: 220,
-                  height: 220,
-                  borderRadius: "50%",
-                  background: "radial-gradient(circle, rgba(255,255,255,.05) 0%, transparent 70%)",
-                  pointerEvents: "none",
-                }}
-              />
-
-              <div style={{ position: "relative", zIndex: 1, flex: 1 }}>
-                <div style={{ width: 28, height: 2, borderRadius: 999, background: T.accentSoft2, marginBottom: 16 }} />
-                <h3
-                  style={{
-                    margin: "0 0 14px",
-                    color: T.ctaText,
-                    fontSize: "clamp(1.25rem, 2.2vw, 1.55rem)",
-                    lineHeight: 1.22,
-                    fontWeight: 700,
-                    letterSpacing: "-0.02em",
-                    fontFamily: "'Georgia', serif",
-                  }}
-                >
-                  Besoin d'une expertise claire, structurée et directement opérationnelle ?
-                </h3>
-                <p
-                  style={{
-                    margin: 0,
-                    maxWidth: 620,
-                    color: T.ctaSub,
-                    fontSize: "0.92rem",
-                    lineHeight: 1.82,
-                    fontFamily: "'Inter', sans-serif",
-                  }}
-                >
-                  MD2I intervient à l'interface entre conseil, ingénierie, transformation numérique,
-                  données et renforcement institutionnel, avec des solutions alignées sur les réalités
-                  de terrain et les exigences des partenaires.
-                </p>
-              </div>
-
-              <div style={{ position: "relative", zIndex: 1 }}>
-                <CTAButton theme={T} filled />
-              </div>
-            </div>
           </div>
 
-          <aside className="md2i-services-sidebar">
+          <aside className={`md2i-services-sidebar ${gridVisible ? "is-visible" : ""}`}>
             <div className="md2i-services-sidebar-sticky">
               <div className="md2i-services-sidebar-card">
                 <div style={{ display: "grid", gap: 8 }}>
@@ -2210,6 +2170,96 @@ export default function MD2IServicesSection() {
             </div>
           </aside>
         </div>
+
+        {/* ── CTA ── */}
+        <div
+          ref={ctaRef}
+          className="md2i-cta"
+          style={{
+            position: "relative",
+            overflow: "hidden",
+            borderRadius: 24,
+            background: T.ctaGradient,
+            padding: "52px 46px",
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            gap: 28,
+            opacity: ctaVisible ? 1 : 0,
+            transform: reduceMotion ? "none" : ctaVisible ? "translateY(0)" : "translateY(22px)",
+            transition: reduceMotion
+              ? "none"
+              : "opacity .7s ease .1s, transform .7s cubic-bezier(.22,1,.36,1) .1s",
+          }}
+        >
+          <div
+            style={{
+              position: "absolute",
+              top: -60,
+              right: -30,
+              width: 260,
+              height: 260,
+              borderRadius: "50%",
+              background: "radial-gradient(circle, rgba(225,161,44,.18) 0%, transparent 70%)",
+              pointerEvents: "none",
+            }}
+          />
+          <div
+            style={{
+              position: "absolute",
+              left: "35%",
+              bottom: -80,
+              width: 220,
+              height: 220,
+              borderRadius: "50%",
+              background: "radial-gradient(circle, rgba(255,255,255,.05) 0%, transparent 70%)",
+              pointerEvents: "none",
+            }}
+          />
+
+          <div style={{ position: "relative", zIndex: 1, flex: 1 }}>
+            <div
+              style={{
+                width: 28,
+                height: 2,
+                borderRadius: 999,
+                background: T.accentSoft2,
+                marginBottom: 16,
+              }}
+            />
+            <h3
+              style={{
+                margin: "0 0 14px",
+                color: T.ctaText,
+                fontSize: "clamp(1.25rem, 2.2vw, 1.55rem)",
+                lineHeight: 1.22,
+                fontWeight: 700,
+                letterSpacing: "-0.02em",
+                fontFamily: "'Georgia', serif",
+              }}
+            >
+              Besoin d'une expertise claire, structurée et directement opérationnelle ?
+            </h3>
+            <p
+              style={{
+                margin: 0,
+                maxWidth: 620,
+                color: T.ctaSub,
+                fontSize: "0.92rem",
+                lineHeight: 1.82,
+                fontFamily: "'Inter', sans-serif",
+              }}
+            >
+              MD2I intervient à l'interface entre conseil, ingénierie, transformation numérique,
+              données et renforcement institutionnel, avec des solutions alignées sur les réalités
+              de terrain et les exigences des partenaires.
+            </p>
+          </div>
+
+          <div style={{ position: "relative", zIndex: 1 }}>
+            <CTAButton theme={T} filled />
+          </div>
+        </div>
       </div>
 
       {/* ── MODAL ── */}
@@ -2223,26 +2273,42 @@ export default function MD2IServicesSection() {
 
       {/* ── STYLES GLOBAUX ── */}
       <style>{`
-        .md2i-services-shell {
+        .md2i-services-content-shell {
           display: grid;
           grid-template-columns: minmax(0, 1fr) 280px;
           gap: 28px;
           align-items: start;
         }
+
         .md2i-services-main {
           min-width: 0;
         }
+
         .md2i-services-sidebar {
+        position: relative;
+       
+        height: 95%;
           min-width: 0;
-          min-height: 100%;
+          opacity: 1;
+          transform: translateY(18px);
+          pointer-events: none;
+          transition:
+            opacity .35s ease,
+            transform .45s cubic-bezier(.22,1,.36,1);
         }
-      .md2i-services-sidebar-sticky{
-      position: sticky;
-      top: 96px;}
+
+        .md2i-services-sidebar.is-visible {
+          opacity: 1;
+          transform: translateY(0);
+          pointer-events: auto;
+        }
+
+        .md2i-services-sidebar-sticky {
+          position: sticky;
+          top: 96px;
+        }
+
         .md2i-services-sidebar-card {
-      
-     
-        
           display: grid;
           gap: 16px;
           padding: 18px;
@@ -2253,85 +2319,115 @@ export default function MD2IServicesSection() {
           backdrop-filter: blur(18px) saturate(1.4);
           -webkit-backdrop-filter: blur(18px) saturate(1.4);
         }
-          .md2i-services-sidebar-card *{
+
+        .md2i-services-sidebar-card * {
           position: relative;
-  z-index: 1;
-            }
+          z-index: 1;
+        }
+
         .md2i-filters-column {
           display: flex;
           flex-direction: column;
           gap: 10px;
         }
+
         .md2i-modal-overlay {
           animation: md2iFadeIn .25s ease;
         }
+
         .md2i-modal-panel {
           animation: md2iZoomIn .4s cubic-bezier(.22,1,.36,1);
           transform-origin: center;
         }
+
         .md2i-modal-close {
           transition: transform .25s ease, background .25s ease, border-color .25s ease;
         }
+
         .md2i-modal-close:hover {
           transform: rotate(90deg);
         }
+
         .md2i-modal-tabs::-webkit-scrollbar {
           display: none;
         }
+
         .md2i-modal-scroll {
           scrollbar-width: thin;
           scrollbar-color: ${T.accent} ${dark ? "#23262D" : "#F1EEE8"};
         }
-        .md2i-modal-scroll::-webkit-scrollbar { width: 8px; }
+
+        .md2i-modal-scroll::-webkit-scrollbar {
+          width: 8px;
+        }
+
         .md2i-modal-scroll::-webkit-scrollbar-track {
           background: ${dark ? "#23262D" : "#F1EEE8"};
           border-radius: 999px;
         }
+
         .md2i-modal-scroll::-webkit-scrollbar-thumb {
           background: ${T.accent};
           border-radius: 999px;
         }
+
         @keyframes md2iFadeIn {
           from { opacity: 0; }
           to   { opacity: 1; }
         }
+
         @keyframes md2iZoomIn {
           from { opacity: 0; transform: translateY(16px) scale(.97); }
-          to   { opacity: 1; transform: translateY(0)    scale(1);   }
+          to   { opacity: 1; transform: translateY(0) scale(1); }
         }
+
         @media (max-width: 1080px) {
-          .md2i-grid               { grid-template-columns: repeat(2, minmax(0,1fr)) !important; }
-          .md2i-featured-grid      { grid-template-columns: 1fr !important; }
-          .md2i-modal-layout       { grid-template-columns: 1fr !important; }
-          .md2i-stats-grid         { grid-template-columns: 1fr !important; }
-          .md2i-overview-grid      { grid-template-columns: 1fr !important; }
+          .md2i-grid { grid-template-columns: repeat(2, minmax(0,1fr)) !important; }
+          .md2i-featured-grid { grid-template-columns: 1fr !important; }
+          .md2i-modal-layout { grid-template-columns: 1fr !important; }
+          .md2i-stats-grid { grid-template-columns: 1fr !important; }
+          .md2i-overview-grid { grid-template-columns: 1fr !important; }
         }
+
         @media (max-width: 1180px) {
-          .md2i-services-shell {
+          .md2i-services-content-shell {
             grid-template-columns: 1fr !important;
           }
+
           .md2i-services-sidebar {
             order: -1;
           }
+
           .md2i-services-sidebar-sticky {
             top: 86px;
           }
         }
+
         @media (max-width: 820px) {
-          .md2i-cta { flex-direction: column !important; align-items: flex-start !important; padding: 36px 24px !important; }
+          .md2i-cta {
+            flex-direction: column !important;
+            align-items: flex-start !important;
+            padding: 36px 24px !important;
+          }
         }
+
         @media (max-width: 700px) {
-          .md2i-grid { grid-template-columns: 1fr !important; }
+          .md2i-grid {
+            grid-template-columns: 1fr !important;
+          }
+
           .md2i-services-sidebar-card {
             padding: 14px !important;
             border-radius: 20px !important;
           }
         }
+
         @media (max-width: 560px) {
           .md2i-modal-overlay {
             padding: 10px !important;
             place-items: center !important;
           }
+
           .md2i-modal-panel {
             width: 100% !important;
             max-width: 100% !important;
@@ -2339,13 +2435,16 @@ export default function MD2IServicesSection() {
             border-radius: 24px !important;
           }
         }
+
         @media (prefers-reduced-motion: reduce) {
           .md2i-modal-overlay,
           .md2i-modal-panel,
-          .md2i-modal-close { animation: none !important; transition: none !important; }
+          .md2i-modal-close {
+            animation: none !important;
+            transition: none !important;
+          }
         }
       `}</style>
-
     </section>
   );
 }
