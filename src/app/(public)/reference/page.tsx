@@ -151,7 +151,11 @@ function MinimalTabs({
       style={{
         padding: "12px 14px",
         borderBottom: `0.5px solid ${t.border}`,
-        background: sticky ? t.stickyBg : dark ? "rgba(0,0,0,0.16)" : "rgba(0,0,0,0.015)",
+        background: sticky
+          ? t.stickyBg
+          : dark
+          ? "rgba(0,0,0,0.16)"
+          : "rgba(0,0,0,0.015)",
         backdropFilter: sticky ? "blur(12px)" : "none",
         position: sticky ? "sticky" : "relative",
         top: sticky ? 0 : undefined,
@@ -238,7 +242,11 @@ function MinimalTabs({
                   width: 8,
                   height: 8,
                   borderRadius: "50%",
-                  background: active ? ORANGE : dark ? "rgba(255,255,255,.18)" : "rgba(0,0,0,.16)",
+                  background: active
+                    ? ORANGE
+                    : dark
+                    ? "rgba(255,255,255,.18)"
+                    : "rgba(0,0,0,.16)",
                   flexShrink: 0,
                 }}
               />
@@ -786,11 +794,11 @@ export default function MapReferences() {
 
       const map = L.map(container, {
         center: [20, 10],
-        zoom: 2,
+        zoom: 3,
         zoomControl: true,
         attributionControl: true,
         minZoom: 2,
-        maxZoom: 6,
+        maxZoom: 30,
       });
 
       if (cancelled) {
@@ -1095,6 +1103,12 @@ export default function MapReferences() {
           background: ${dark ? "rgba(255,255,255,.16)" : "rgba(0,0,0,.12)"};
           border-radius: 999px;
         }
+
+        @media (max-width: 960px) {
+          .modal-top-grid {
+            grid-template-columns: 1fr !important;
+          }
+        }
       `}</style>
 
       <main
@@ -1150,28 +1164,7 @@ export default function MapReferences() {
           }}
         >
           <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-            <div
-              style={{
-                width: 38,
-                height: 38,
-                borderRadius: 10,
-                background: ORANGE,
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                color: "white",
-                fontWeight: 700,
-                fontSize: 13,
-                boxShadow: "0 4px 14px rgba(239,159,39,0.35)",
-              }}
-            >
-              M²
-            </div>
-
             <div>
-              <h1 style={{ color: t.text, fontSize: 15, fontWeight: 700 }}>
-                MD2I
-              </h1>
               <p
                 style={{
                   color: t.textMuted,
@@ -1779,48 +1772,147 @@ export default function MapReferences() {
                 style={{
                   padding: "32px 40px 40px",
                   display: "grid",
-                  gridTemplateColumns: "minmax(0, 1.2fr) minmax(280px, 0.8fr)",
                   gap: 28,
                   alignItems: "start",
                 }}
               >
-                <div style={{ minWidth: 0 }}>
-                  <p
-                    style={{
-                      color: ORANGE,
-                      fontSize: 13,
-                      fontWeight: 600,
-                      marginBottom: 6,
-                    }}
-                  >
-                    {modalActiveProject.client}
-                  </p>
+                <div
+                  className="modal-top-grid"
+                  style={{
+                    display: "grid",
+                    gridTemplateColumns:
+                      "minmax(0, 1.2fr) minmax(280px, 0.8fr)",
+                    gap: 28,
+                    alignItems: "start",
+                  }}
+                >
+                  <div style={{ minWidth: 0 }}>
+                    <p
+                      style={{
+                        color: ORANGE,
+                        fontSize: 13,
+                        fontWeight: 600,
+                        marginBottom: 6,
+                      }}
+                    >
+                      {modalActiveProject.client}
+                    </p>
 
-                  <h2
-                    style={{
-                      color: t.text,
-                      fontSize: 32,
-                      fontWeight: 700,
-                      lineHeight: 1.22,
-                      marginBottom: 20,
-                    }}
-                  >
-                    {modalActiveProject.title}
-                  </h2>
+                    <h2
+                      style={{
+                        color: t.text,
+                        fontSize: 32,
+                        fontWeight: 700,
+                        lineHeight: 1.22,
+                        marginBottom: 20,
+                      }}
+                    >
+                      {modalActiveProject.title}
+                    </h2>
 
-                  <div
-                    style={{
-                      borderLeft: `3px solid ${ORANGE}`,
-                      paddingLeft: 16,
-                      marginBottom: 24,
-                    }}
-                  >
-                    <RichHtml
-                      html={modalActiveProject.excerpt}
-                      color={dark ? "rgba(239,159,39,0.85)" : "#a0660a"}
-                    />
+                    <div
+                      style={{
+                        borderLeft: `3px solid ${ORANGE}`,
+                        paddingLeft: 16,
+                        marginBottom: 0,
+                      }}
+                    >
+                      <RichHtml
+                        html={modalActiveProject.excerpt}
+                        color={dark ? "rgba(239,159,39,0.85)" : "#a0660a"}
+                      />
+                    </div>
                   </div>
 
+                  <aside style={{ minWidth: 0 }}>
+                    <div
+                      style={{
+                        position: "sticky",
+                        top: 96,
+                        display: "grid",
+                        gap: 12,
+                      }}
+                    >
+                      <div
+                        style={{
+                          display: "grid",
+                          gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
+                          gap: 12,
+                        }}
+                      >
+                        {modalActiveProject.team && (
+                          <MetricCard
+                            icon="👥"
+                            label="Équipe"
+                            value={modalActiveProject.team}
+                            t={t}
+                          />
+                        )}
+                        {modalActiveProject.duration && (
+                          <MetricCard
+                            icon="⏱️"
+                            label="Durée"
+                            value={modalActiveProject.duration}
+                            t={t}
+                          />
+                        )}
+                        {modalActiveProject.budget && (
+                          <MetricCard
+                            icon="💰"
+                            label="Budget"
+                            value={modalActiveProject.budget}
+                            t={t}
+                          />
+                        )}
+                        {modalActiveProject.impact && (
+                          <MetricCard
+                            icon="📈"
+                            label="Impact"
+                            value={modalActiveProject.impact}
+                            t={t}
+                          />
+                        )}
+                      </div>
+
+                      <button
+                        style={{
+                          width: "100%",
+                          padding: "14px 0",
+                          borderRadius: 14,
+                          background: ORANGE,
+                          border: "none",
+                          color: "white",
+                          fontSize: 14,
+                          fontWeight: 700,
+                          cursor: "pointer",
+                        }}
+                      >
+                        📧 Contacter MD2I
+                      </button>
+
+                      <button
+                        onClick={() =>
+                          setModalData((prev) => ({ ...prev, visible: false }))
+                        }
+                        style={{
+                          width: "100%",
+                          padding: "14px 0",
+                          borderRadius: 14,
+                          background: "transparent",
+                          border: `0.5px solid ${t.border}`,
+                          color: t.textSoft,
+                          fontSize: 14,
+                          fontWeight: 600,
+                          cursor: "pointer",
+                        }}
+                      >
+                        Fermer
+                      </button>
+                    </div>
+                  </aside>
+                </div>
+
+                <div style={{ minWidth: 0 }}>
                   <div style={{ marginBottom: 24 }}>
                     <RichHtml html={modalActiveProject.details} color={t.textSoft} />
                   </div>
@@ -1881,7 +1973,10 @@ export default function MapReferences() {
                                 prev.includes(tag) ? prev : [...prev, tag]
                               );
                               setModalData((prev) => ({ ...prev, visible: false }));
-                              showTemporaryNotification(`Filtre ajouté : #${tag}`, "info");
+                              showTemporaryNotification(
+                                `Filtre ajouté : #${tag}`,
+                                "info"
+                              );
                             }}
                             style={{
                               color: ORANGE,
@@ -1900,93 +1995,6 @@ export default function MapReferences() {
                     </div>
                   )}
                 </div>
-
-                <aside style={{ minWidth: 0 }}>
-                  <div
-                    style={{
-                      position: "sticky",
-                      top: 96,
-                      display: "grid",
-                      gap: 12,
-                    }}
-                  >
-                    <div
-                      style={{
-                        display: "grid",
-                        gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
-                        gap: 12,
-                      }}
-                    >
-                      {modalActiveProject.team && (
-                        <MetricCard
-                          icon="👥"
-                          label="Équipe"
-                          value={modalActiveProject.team}
-                          t={t}
-                        />
-                      )}
-                      {modalActiveProject.duration && (
-                        <MetricCard
-                          icon="⏱️"
-                          label="Durée"
-                          value={modalActiveProject.duration}
-                          t={t}
-                        />
-                      )}
-                      {modalActiveProject.budget && (
-                        <MetricCard
-                          icon="💰"
-                          label="Budget"
-                          value={modalActiveProject.budget}
-                          t={t}
-                        />
-                      )}
-                      {modalActiveProject.impact && (
-                        <MetricCard
-                          icon="📈"
-                          label="Impact"
-                          value={modalActiveProject.impact}
-                          t={t}
-                        />
-                      )}
-                    </div>
-
-                    <button
-                      style={{
-                        width: "100%",
-                        padding: "14px 0",
-                        borderRadius: 14,
-                        background: ORANGE,
-                        border: "none",
-                        color: "white",
-                        fontSize: 14,
-                        fontWeight: 700,
-                        cursor: "pointer",
-                      }}
-                    >
-                      📧 Contacter MD2I
-                    </button>
-
-                    <button
-                      onClick={() =>
-                        setModalData((prev) => ({ ...prev, visible: false }))
-                      }
-                      style={{
-                        width: "100%",
-                        padding: "14px 0",
-                        borderRadius: 14,
-                        background: "transparent",
-                        border: `0.5px solid ${t.border}`,
-                        color: t.textSoft,
-                        fontSize: 14,
-                        fontWeight: 600,
-                        cursor: "pointer",
-                      }}
-                    >
-                      Fermer
-                    </button>
-                  </div>
-                </aside>
               </div>
             </div>
           </div>

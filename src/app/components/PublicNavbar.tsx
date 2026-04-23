@@ -14,7 +14,7 @@ const LOGO_SRC = logo
 const LINKS = [
   { href: '/', label: 'Accueil' },
   { href: '/services', label: 'Services' },
-  { href: '/portfolio', label: 'Portfolio' },
+  { href: '/reference', label: 'Réferences' },
   { href: '/blog', label: 'Blog' },
   { href: '/a-propos', label: 'À propos' },
   { href: '/contact', label: 'Contact' },
