@@ -1,17 +1,8 @@
 // app/(backoffice)/email-marketing/page.tsx
-// Page principale du module email marketing
-
 "use client";
 
 import { useState, type ReactNode } from "react";
-import {
-  Mail,
-  Users,
-  LayoutGrid,
-  Send,
-  UserPlus,
-  Plus,
-} from "lucide-react";
+import { Mail, Users, LayoutGrid, Send, UserPlus, Plus } from "lucide-react";
 
 import { ContactsTable } from "@/app/components/email-mrketing/ContactsTable";
 import { GroupsManager } from "@/app/components/email-mrketing/Groupsmanager";
@@ -22,91 +13,80 @@ import type { Campaign } from "@/app/types/email-marketing";
 type Tab = "campaigns" | "contacts" | "groups";
 type View = "list" | "new" | "edit";
 
+// ---------------------------------------------------------------------------
+// Tokens
+// ---------------------------------------------------------------------------
+
+const ORANGE        = "#EF9F27";
+const ORANGE_SOFT   = "rgba(239,159,39,0.10)";
+const ORANGE_BORDER = "rgba(239,159,39,0.22)";
+const BG            = "#F8FAFC";
+const SURFACE       = "#FFFFFF";
+const BORDER        = "#E5E7EB";
+const TEXT          = "#111827";
+const MUTED         = "#6B7280";
+const SOFT_TEXT     = "#9CA3AF";
+const FONT          = "inherit";
+
+// ---------------------------------------------------------------------------
+// Page
+// ---------------------------------------------------------------------------
+
 export default function EmailMarketingPage() {
-  const [activeTab, setActiveTab] = useState<Tab>("campaigns");
-  const [view, setView] = useState<View>("list");
+  const [activeTab, setActiveTab]           = useState<Tab>("campaigns");
+  const [view, setView]                     = useState<View>("list");
   const [editingCampaign, setEditingCampaign] = useState<Campaign | null>(null);
 
   const tabs: { id: Tab; label: string; icon: ReactNode }[] = [
-    {
-      id: "campaigns",
-      label: "Campagnes",
-      icon: <Mail size={14} />,
-    },
-    {
-      id: "contacts",
-      label: "Contacts",
-      icon: <Users size={14} />,
-    },
-    {
-      id: "groups",
-      label: "Groupes",
-      icon: <LayoutGrid size={14} />,
-    },
+    { id: "campaigns", label: "Campagnes", icon: <Mail size={14} /> },
+    { id: "contacts",  label: "Contacts",  icon: <Users size={14} /> },
+    { id: "groups",    label: "Groupes",   icon: <LayoutGrid size={14} /> },
   ];
 
-  const handleNewCampaign = () => {
-    setEditingCampaign(null);
-    setView("new");
-  };
-
-  const handleEditCampaign = (campaign: Campaign) => {
-    setEditingCampaign(campaign);
-    setView("edit");
-  };
-
-  const handleSaveCampaign = () => {
-    setView("list");
-    setEditingCampaign(null);
-  };
-
-  const handleCancelForm = () => {
-    setView("list");
-    setEditingCampaign(null);
-  };
+  const handleNewCampaign    = () => { setEditingCampaign(null); setView("new"); };
+  const handleEditCampaign   = (c: Campaign) => { setEditingCampaign(c); setView("edit"); };
+  const handleSaveCampaign   = () => { setView("list"); setEditingCampaign(null); };
+  const handleCancelForm     = () => { setView("list"); setEditingCampaign(null); };
 
   return (
-    <div style={styles.page}>
+    <div style={s.page}>
+
+      {/* ── Header (list only) ─────────────────────────────────────── */}
       {view === "list" && (
-        <header style={styles.header}>
-          <div style={styles.breadcrumb}>
+        <header style={s.header}>
+
+          {/* Breadcrumb */}
+          <div style={s.breadcrumb}>
             <span style={{ color: ORANGE }}>Backoffice</span>
-            <span style={{ color: MUTED, margin: "0 6px" }}>/</span>
-            <span style={{ color: TEXT, fontWeight: 700 }}>
-              Email Marketing
-            </span>
+            <span style={s.slash}>/</span>
+            <span style={{ color: TEXT }}>Email Marketing</span>
           </div>
 
-          <div style={styles.headerRow}>
-            <div style={styles.headerLeft}>
-              <div style={styles.iconBadge}>
-                <Mail size={22} color={ORANGE} />
+          {/* Title row */}
+          <div style={s.titleRow}>
+            <div style={s.titleLeft}>
+              <div style={s.iconBadge}>
+                <Mail size={20} color={ORANGE} />
               </div>
-
               <div>
-                <h1 style={styles.h1}>Email Marketing</h1>
-                <p style={styles.subtitle}>
-                  Contacts, groupes et campagnes email
-                </p>
+                <h1 style={s.h1}>Email Marketing</h1>
+                <p style={s.subtitle}>Contacts, groupes et campagnes email</p>
               </div>
             </div>
           </div>
 
-          <nav style={styles.tabsBar} role="tablist">
+          {/* Tabs */}
+          <nav style={s.tabsBar} role="tablist">
             {tabs.map((tab) => {
-              const isActive = activeTab === tab.id;
-
+              const active = activeTab === tab.id;
               return (
                 <button
                   key={tab.id}
                   type="button"
                   role="tab"
-                  aria-selected={isActive}
+                  aria-selected={active}
                   onClick={() => setActiveTab(tab.id)}
-                  style={{
-                    ...styles.tabBtn,
-                    ...(isActive ? styles.tabBtnActive : {}),
-                  }}
+                  style={{ ...s.tabBtn, ...(active ? s.tabBtnActive : {}) }}
                 >
                   {tab.icon}
                   {tab.label}
@@ -117,7 +97,10 @@ export default function EmailMarketingPage() {
         </header>
       )}
 
-      <main style={view === "list" ? styles.content : styles.formContent}>
+      {/* ── Main ───────────────────────────────────────────────────── */}
+      <main style={view === "list" ? s.content : s.formContent}>
+
+        {/* Form views */}
         {(view === "new" || view === "edit") && (
           <CampaignForm
             campaign={editingCampaign}
@@ -126,79 +109,55 @@ export default function EmailMarketingPage() {
           />
         )}
 
+        {/* List views */}
         {view === "list" && (
           <>
+            {/* ── Campaigns ── */}
             {activeTab === "campaigns" && (
-              <>
-                <div style={styles.toolbar}>
-                  <div>
-                    <div style={styles.sectionLabel}>Campagnes</div>
-                    <p style={styles.contentSubtitle}>
-                      Gérez vos campagnes, brouillons et envois programmés.
-                    </p>
-                  </div>
-
-                  <button
-                    type="button"
-                    style={styles.btnPrimary}
-                    onClick={handleNewCampaign}
-                  >
-                    <Send size={14} />
+              <TabSection
+                label="Campagnes"
+                subtitle="Gérez vos campagnes, brouillons et envois programmés."
+                action={
+                  <button type="button" style={s.btnPrimary} onClick={handleNewCampaign}>
+                    <Send size={13} />
                     Nouvelle campagne
                   </button>
-                </div>
-
-                <div style={styles.panel}>
-                  <CampaignsList
-                    onNew={handleNewCampaign}
-                    onEdit={handleEditCampaign}
-                  />
-                </div>
-              </>
+                }
+              >
+                <CampaignsList onNew={handleNewCampaign} onEdit={handleEditCampaign} />
+              </TabSection>
             )}
 
+            {/* ── Contacts ── */}
             {activeTab === "contacts" && (
-              <>
-                <div style={styles.toolbar}>
-                  <div>
-                    <div style={styles.sectionLabel}>Contacts</div>
-                    <p style={styles.contentSubtitle}>
-                      Gérez vos abonnés et leurs informations.
-                    </p>
-                  </div>
-
-                  <button type="button" style={styles.btnSecondary}>
-                    <UserPlus size={14} />
-                    Ajouter
+              <TabSection
+                label="Contacts"
+                subtitle="Gérez vos abonnés et leurs informations."
+                action={
+                  <button type="button" style={s.btnSecondary}>
+                    <UserPlus size={13} />
+                    Ajouter un contact
                   </button>
-                </div>
-
-                <div style={styles.panel}>
-                  <ContactsTable />
-                </div>
-              </>
+                }
+              >
+                <ContactsTable />
+              </TabSection>
             )}
 
+            {/* ── Groups ── */}
             {activeTab === "groups" && (
-              <>
-                <div style={styles.toolbar}>
-                  <div>
-                    <div style={styles.sectionLabel}>Groupes</div>
-                    <p style={styles.contentSubtitle}>
-                      Organisez vos contacts par segments.
-                    </p>
-                  </div>
-
-                  <button type="button" style={styles.btnSecondary}>
-                    <Plus size={14} />
+              <TabSection
+                label="Groupes"
+                subtitle="Organisez vos contacts par segments."
+                action={
+                  <button type="button" style={s.btnSecondary}>
+                    <Plus size={13} />
                     Nouveau groupe
                   </button>
-                </div>
-
-                <div style={styles.panel}>
-                  <GroupsManager />
-                </div>
-              </>
+                }
+              >
+                <GroupsManager />
+              </TabSection>
             )}
           </>
         )}
@@ -207,23 +166,41 @@ export default function EmailMarketingPage() {
   );
 }
 
-// ─── Styles blancs simples ───────────────────────────────────────────────────
+// ---------------------------------------------------------------------------
+// TabSection — wraps the toolbar + panel for each tab
+// ---------------------------------------------------------------------------
 
-const ORANGE = "#EF9F27";
-const ORANGE_SOFT = "rgba(239,159,39,0.10)";
-const ORANGE_BORDER = "rgba(239,159,39,0.24)";
+function TabSection({
+  label,
+  subtitle,
+  action,
+  children,
+}: {
+  label: string;
+  subtitle: string;
+  action: ReactNode;
+  children: ReactNode;
+}) {
+  return (
+    <>
+      <div style={s.toolbar}>
+        <div>
+          <div style={s.sectionLabel}>{label}</div>
+          <p style={s.sectionSubtitle}>{subtitle}</p>
+        </div>
+        {action}
+      </div>
 
-const BG = "#F8FAFC";
-const SURFACE = "#FFFFFF";
-const BORDER = "#E5E7EB";
+      <div style={s.panel}>{children}</div>
+    </>
+  );
+}
 
-const TEXT = "#111827";
-const MUTED = "#6B7280";
-const SOFT_TEXT = "#9CA3AF";
+// ---------------------------------------------------------------------------
+// Styles
+// ---------------------------------------------------------------------------
 
-const FONT = "'Sora', 'DM Sans', system-ui, sans-serif";
-
-const styles: Record<string, React.CSSProperties> = {
+const s: Record<string, React.CSSProperties> = {
   page: {
     minHeight: "100vh",
     background: BG,
@@ -231,48 +208,54 @@ const styles: Record<string, React.CSSProperties> = {
     fontFamily: FONT,
   },
 
+  // ── Header ──────────────────────────────────────────────────────────────
+
   header: {
-    maxWidth: 1200,
-    margin: "0 auto",
-    paddingTop: 28,
-    paddingRight: 28,
+    // Full width — no max-width constraint
+    width: "100%",
+    paddingTop: 24,
+    paddingRight: 32,
     paddingBottom: 0,
-    paddingLeft: 28,
+    paddingLeft: 32,
+    boxSizing: "border-box",
   },
 
   breadcrumb: {
     display: "flex",
     alignItems: "center",
-    marginBottom: 20,
+    marginBottom: 18,
     fontSize: 11,
-    fontWeight: 700,
+    fontWeight: 600,
     color: MUTED,
     letterSpacing: "0.08em",
     textTransform: "uppercase",
   },
 
-  headerRow: {
+  slash: {
+    color: SOFT_TEXT,
+    margin: "0 7px",
+  },
+
+  titleRow: {
     display: "flex",
     alignItems: "flex-end",
     justifyContent: "space-between",
-    gap: 20,
-    flexWrap: "wrap",
+    gap: 16,
+    flexWrap: "wrap" as const,
   },
 
-  headerLeft: {
+  titleLeft: {
     display: "flex",
     alignItems: "center",
-    gap: 16,
+    gap: 14,
   },
 
   iconBadge: {
-    width: 52,
-    height: 52,
-    borderRadius: 16,
+    width: 48,
+    height: 48,
+    borderRadius: 14,
     background: ORANGE_SOFT,
-    borderWidth: 1,
-    borderStyle: "solid",
-    borderColor: ORANGE_BORDER,
+    border: `1px solid ${ORANGE_BORDER}`,
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
@@ -281,68 +264,46 @@ const styles: Record<string, React.CSSProperties> = {
 
   h1: {
     margin: 0,
-    fontSize: 26,
-    fontWeight: 800,
-    letterSpacing: "-0.04em",
-    lineHeight: 1.1,
+    fontSize: 22,
+    fontWeight: 500,
+    letterSpacing: "-0.03em",
+    lineHeight: 1.2,
     color: TEXT,
   },
 
   subtitle: {
-    marginTop: 5,
-    marginRight: 0,
-    marginBottom: 0,
-    marginLeft: 0,
+    margin: "5px 0 0",
     fontSize: 13,
     color: MUTED,
     fontWeight: 400,
   },
 
   tabsBar: {
-    marginTop: 24,
-    borderBottomWidth: 1,
-    borderBottomStyle: "solid",
-    borderBottomColor: BORDER,
+    marginTop: 22,
+    borderBottom: `1px solid ${BORDER}`,
     display: "flex",
     alignItems: "stretch",
     gap: 0,
-    overflowX: "auto",
+    overflowX: "auto" as const,
   },
 
   tabBtn: {
     display: "inline-flex",
     alignItems: "center",
-    gap: 7,
-    paddingTop: 0,
-    paddingRight: 18,
-    paddingBottom: 0,
-    paddingLeft: 18,
-    height: 44,
+    gap: 6,
+    padding: "0 18px",
+    height: 42,
     fontSize: 13,
-    fontWeight: 700,
+    fontWeight: 500,
     color: MUTED,
     background: "transparent",
-
-    borderTopWidth: 0,
-    borderRightWidth: 0,
-    borderLeftWidth: 0,
-    borderBottomWidth: 2,
-    borderTopStyle: "solid",
-    borderRightStyle: "solid",
-    borderLeftStyle: "solid",
-    borderBottomStyle: "solid",
-    borderTopColor: "transparent",
-    borderRightColor: "transparent",
-    borderLeftColor: "transparent",
-    borderBottomColor: "transparent",
-
+    border: "none",
+    borderBottom: "2px solid transparent",
     cursor: "pointer",
-    whiteSpace: "nowrap",
+    whiteSpace: "nowrap" as const,
     marginBottom: -1,
     fontFamily: FONT,
-    transitionProperty: "color, border-color, background",
-    transitionDuration: "0.15s",
-    transitionTimingFunction: "ease",
+    transition: "color 0.15s ease, border-color 0.15s ease",
   },
 
   tabBtnActive: {
@@ -350,13 +311,16 @@ const styles: Record<string, React.CSSProperties> = {
     borderBottomColor: ORANGE,
   },
 
+  // ── Main ────────────────────────────────────────────────────────────────
+
   content: {
-    maxWidth: 1200,
-    margin: "0 auto",
+    // Full width — no max-width constraint
+    width: "100%",
     paddingTop: 24,
-    paddingRight: 28,
+    paddingRight: 32,
     paddingBottom: 48,
-    paddingLeft: 28,
+    paddingLeft: 32,
+    boxSizing: "border-box",
   },
 
   formContent: {
@@ -364,80 +328,75 @@ const styles: Record<string, React.CSSProperties> = {
     background: BG,
   },
 
+  // ── Tab section ─────────────────────────────────────────────────────────
+
   toolbar: {
     display: "flex",
     alignItems: "center",
     justifyContent: "space-between",
     gap: 14,
-    marginBottom: 16,
-    flexWrap: "wrap",
+    marginBottom: 14,
+    flexWrap: "wrap" as const,
   },
 
   sectionLabel: {
-    fontSize: 11,
-    fontWeight: 800,
+    fontSize: 10,
+    fontWeight: 600,
     color: SOFT_TEXT,
     letterSpacing: "0.1em",
-    textTransform: "uppercase",
-    marginBottom: 4,
+    textTransform: "uppercase" as const,
+    marginBottom: 3,
   },
 
-  contentSubtitle: {
+  sectionSubtitle: {
     margin: 0,
     fontSize: 13,
     color: MUTED,
   },
 
   panel: {
+    width: "97%",
     background: SURFACE,
-    borderWidth: 1,
-    borderStyle: "solid",
-    borderColor: BORDER,
+    border: `0.5px solid ${BORDER}`,
     borderRadius: 14,
-    overflow: "hidden",
-    boxShadow: "0 10px 30px rgba(15,23,42,0.04)",
+    boxSizing: "border-box",
+  },
+
+  // ── Buttons ─────────────────────────────────────────────────────────────
+
+  btnPrimary: {
+    height: 36,
+    padding: "0 14px",
+    borderRadius: 10,
+    border: `1px solid ${ORANGE_BORDER}`,
+    background: ORANGE,
+    color: "#1a0d00",
+    fontSize: 12,
+    fontWeight: 500,
+    fontFamily: FONT,
+    display: "inline-flex",
+    alignItems: "center",
+    gap: 6,
+    cursor: "pointer",
+    whiteSpace: "nowrap" as const,
+    flexShrink: 0,
   },
 
   btnSecondary: {
-    height: 38,
-    paddingTop: 0,
-    paddingRight: 14,
-    paddingBottom: 0,
-    paddingLeft: 14,
+    height: 36,
+    padding: "0 14px",
     borderRadius: 10,
-    borderWidth: 1,
-    borderStyle: "solid",
-    borderColor: BORDER,
+    border: `0.5px solid ${BORDER}`,
     background: SURFACE,
     color: TEXT,
-    fontSize: 13,
-    fontWeight: 700,
+    fontSize: 12,
+    fontWeight: 500,
     fontFamily: FONT,
     display: "inline-flex",
     alignItems: "center",
-    gap: 7,
+    gap: 6,
     cursor: "pointer",
-  },
-
-  btnPrimary: {
-    height: 38,
-    paddingTop: 0,
-    paddingRight: 16,
-    paddingBottom: 0,
-    paddingLeft: 16,
-    borderRadius: 10,
-    borderWidth: 1,
-    borderStyle: "solid",
-    borderColor: ORANGE_BORDER,
-    background: ORANGE,
-    color: "#1a0d00",
-    fontSize: 13,
-    fontWeight: 800,
-    fontFamily: FONT,
-    display: "inline-flex",
-    alignItems: "center",
-    gap: 7,
-    cursor: "pointer",
-    letterSpacing: "0.01em",
+    whiteSpace: "nowrap" as const,
+    flexShrink: 0,
   },
 };

@@ -1,233 +1,361 @@
-// lib/email/sender.ts
-// Logique d'envoi des campagnes avec Resend
-// Gestion : rate limiting, erreurs individuelles, logs
+// src/app/lib/email/sender.ts
 
 import { Resend } from "resend";
-import { prisma } from "@/app/lib/prisma"; // Adapte le chemin à ton projet
+import { prisma } from "@/app/lib/prisma";
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
-// ─── Utilitaire : exécute N tâches en parallèle max ───────────────────────────
-async function pLimit<T>(
-  tasks: (() => Promise<T>)[],
-  concurrency: number
-): Promise<T[]> {
-  const results: T[] = [];
-  let index = 0;
-
-  async function worker() {
-    while (index < tasks.length) {
-      const currentIndex = index++;
-      results[currentIndex] = await tasks[currentIndex]();
-    }
-  }
-
-  const workers = Array.from({ length: Math.min(concurrency, tasks.length) }, worker);
-  await Promise.all(workers);
-  return results;
-}
-
-// ─── Délai entre batches ───────────────────────────────────────────────────────
-const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
-
-// ─── Remplacement de variables dans le HTML ───────────────────────────────────
-function personalizeHtml(html: string, contact: {
-  email: string;
-  firstName?: string | null;
-  lastName?: string | null;
-}): string {
-  return html
-    .replace(/\{\{firstName\}\}/g, contact.firstName || "")
-    .replace(/\{\{lastName\}\}/g, contact.lastName || "")
-    .replace(/\{\{email\}\}/g, contact.email)
-    .replace(/\{\{fullName\}\}/g, [contact.firstName, contact.lastName].filter(Boolean).join(" ") || contact.email);
-}
-
-// ─── Envoi d'un seul email ────────────────────────────────────────────────────
-async function sendSingleEmail(params: {
+type SendTestEmailParams = {
   to: string;
   subject: string;
   html: string;
-  fromName: string;
-  fromEmail: string;
-  replyTo?: string;
-}): Promise<{ success: boolean; error?: string; messageId?: string }> {
-  try {
-    const result = await resend.emails.send({
-      from: `${params.fromName} <${params.fromEmail}>`,
-      to: params.to,
-      subject: params.subject,
-      html: params.html,
-      ...(params.replyTo ? { replyTo: params.replyTo } : {}),
-    });
+  fromName?: string | null;
+  fromEmail?: string | null;
+  replyTo?: string | null;
+};
 
-    if (result.error) {
-      return { success: false, error: result.error.message };
+type NormalizedRecipient = {
+  email: string;
+  firstName?: string | null;
+  lastName?: string | null;
+  contactId?: string | null;
+};
+
+function getVerifiedFrom(fromName?: string | null) {
+  const emailFrom = process.env.EMAIL_FROM?.trim();
+
+  if (!emailFrom) {
+    throw new Error("EMAIL_FROM manquant dans .env");
+  }
+
+  // Si EMAIL_FROM contient déjà : "MD2I <newsletter@domaine.com>"
+  if (emailFrom.includes("<") && emailFrom.includes(">")) {
+    return emailFrom;
+  }
+
+  const safeName = fromName?.trim() || process.env.EMAIL_FROM_NAME?.trim();
+
+  if (!safeName) {
+    return emailFrom;
+  }
+
+  return `${safeName} <${emailFrom}>`;
+}
+
+function getReplyTo(replyTo?: string | null, fromEmail?: string | null) {
+  const value = replyTo?.trim() || fromEmail?.trim() || "";
+
+  if (!value) return undefined;
+
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) {
+    return undefined;
+  }
+
+  return value;
+}
+
+function replaceVariables(
+  html: string,
+  recipient: NormalizedRecipient
+) {
+  const firstName = recipient.firstName || "";
+  const lastName = recipient.lastName || "";
+  const email = recipient.email || "";
+  const fullName = [firstName, lastName].filter(Boolean).join(" ");
+
+  return html
+    .replaceAll("{{firstName}}", firstName)
+    .replaceAll("{{lastName}}", lastName)
+    .replaceAll("{{email}}", email)
+    .replaceAll("{{fullName}}", fullName);
+}
+
+async function writeCampaignLog(params: {
+  campaignId: string;
+  email: string;
+  status: "sent" | "failed";
+  message?: string;
+}) {
+  const db = prisma as any;
+
+  const delegate =
+    db.campaignLog ||
+    db.campaignEmailLog ||
+    db.emailLog ||
+    db.campaignSendLog;
+
+  if (!delegate?.create) {
+    return;
+  }
+
+  const payloads = [
+    {
+      campaignId: params.campaignId,
+      email: params.email,
+      status: params.status,
+      message: params.message || null,
+    },
+    {
+      campaignId: params.campaignId,
+      recipientEmail: params.email,
+      status: params.status,
+      error: params.message || null,
+    },
+  ];
+
+  for (const data of payloads) {
+    try {
+      await delegate.create({ data });
+      return;
+    } catch {
+      // On tente l'autre forme si ton modèle de log utilise d'autres noms de champs.
     }
-
-    return { success: true, messageId: result.data?.id };
-  } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : "Unknown error";
-    return { success: false, error: message };
   }
 }
 
-// ─── FONCTION PRINCIPALE : sendCampaign ───────────────────────────────────────
-export async function sendCampaign(campaignId: string): Promise<void> {
-  // 1. Récupérer la campagne
-  const campaign = await prisma.campaign.findUnique({
-    where: { id: campaignId },
-    include: { group: true },
-  });
-
-  if (!campaign) throw new Error(`Campaign ${campaignId} not found`);
-  if (campaign.status === "SENDING") throw new Error("Campaign already sending");
-  if (campaign.status === "SENT") throw new Error("Campaign already sent");
-
-  // 2. Marquer comme SENDING
-  await prisma.campaign.update({
-    where: { id: campaignId },
-    data: { status: "SENDING" },
-  });
-
+export async function sendTestEmail({
+  to,
+  subject,
+  html,
+  fromName,
+  fromEmail,
+  replyTo,
+}: SendTestEmailParams) {
   try {
-    // 3. Récupérer les destinataires
-    // Si groupId défini → tous les contacts du groupe actifs et non désabonnés
-    // Sinon → les CampaignRecipients déjà créés (sélection manuelle)
-    let recipients: { id: string; email: string; firstName?: string | null; lastName?: string | null }[] = [];
-
-    if (campaign.groupId) {
-      const contacts = await prisma.contact.findMany({
-        where: {
-          groupId: campaign.groupId,
-          userId: campaign.userId,
-          isActive: true,
-          unsubscribed: false,
-        },
-        select: { id: true, email: true, firstName: true, lastName: true },
-      });
-      recipients = contacts;
-
-      // Créer les CampaignRecipient en bulk
-      await prisma.campaignRecipient.createMany({
-        data: contacts.map((c) => ({
-          campaignId,
-          contactId: c.id,
-          email: c.email,
-        })),
-        skipDuplicates: true,
-      });
-    } else {
-      // Sélection manuelle : les recipients existent déjà
-      const existing = await prisma.campaignRecipient.findMany({
-        where: { campaignId, sent: false },
-        include: { contact: { select: { id: true, email: true, firstName: true, lastName: true } } },
-      });
-      recipients = existing.map((r) => r.contact);
+    if (!process.env.RESEND_API_KEY) {
+      return {
+        success: false,
+        error: "RESEND_API_KEY manquant dans .env",
+      };
     }
 
-    // 4. Mettre à jour le total
-    await prisma.campaign.update({
-      where: { id: campaignId },
-      data: { totalRecipients: recipients.length },
+    const verifiedFrom = getVerifiedFrom(fromName);
+    const safeReplyTo = getReplyTo(replyTo, fromEmail);
+
+    const { data, error } = await resend.emails.send({
+      from: verifiedFrom,
+      to: [to],
+      subject,
+      html,
+      ...(safeReplyTo ? { replyTo: safeReplyTo } : {}),
     });
 
-    let sentCount = 0;
-    let failedCount = 0;
+    if (error) {
+      console.error("[sendTestEmail] Resend error:", error);
 
-    // 5. Créer les tâches d'envoi
-    // RATE LIMIT : 5 emails en parallèle, pause 200ms entre chaque batch de 10
-    const CONCURRENCY = 5;
-    const BATCH_SIZE = 10;
-    const BATCH_DELAY_MS = 200; // 200ms entre batches → ~50 emails/sec max
-
-    const batches: (typeof recipients)[] = [];
-    for (let i = 0; i < recipients.length; i += BATCH_SIZE) {
-      batches.push(recipients.slice(i, i + BATCH_SIZE));
+      return {
+        success: false,
+        error:
+          typeof error === "object" && "message" in error
+            ? String(error.message)
+            : JSON.stringify(error),
+      };
     }
 
-    for (const batch of batches) {
-      const tasks = batch.map((contact) => async () => {
-        const personalizedHtml = personalizeHtml(campaign.htmlContent, contact);
+    return {
+      success: true,
+      data,
+    };
+  } catch (error) {
+    console.error("[sendTestEmail] Fatal error:", error);
 
-        const result = await sendSingleEmail({
-          to: contact.email,
-          subject: campaign.subject,
-          html: personalizedHtml,
-          fromName: campaign.fromName,
-          fromEmail: campaign.fromEmail,
-          replyTo: campaign.replyTo ?? undefined,
-        });
+    return {
+      success: false,
+      error:
+        error instanceof Error
+          ? error.message
+          : "Erreur inconnue pendant l'envoi du test",
+    };
+  }
+}
 
-        // Mettre à jour le recipient
-        await prisma.campaignRecipient.updateMany({
-          where: { campaignId, contactId: contact.id },
-          data: {
-            sent: result.success,
-            sentAt: result.success ? new Date() : null,
-            error: result.error ?? null,
-          },
-        });
+async function getCampaignRecipients(campaign: {
+  id: string;
+  userId: string;
+  groupId: string | null;
+}) {
+  if (campaign.groupId) {
+    const contacts = await prisma.contact.findMany({
+      where: {
+        groupId: campaign.groupId,
+        userId: campaign.userId,
+      },
+      select: {
+        id: true,
+        email: true,
+        firstName: true,
+        lastName: true,
+      },
+    });
 
-        // Log
-        await prisma.emailLog.create({
-          data: {
-            campaignId,
-            email: contact.email,
-            status: result.success ? "sent" : "failed",
-            message: result.error ?? result.messageId ?? null,
-            provider: "resend",
-          },
-        });
+    return contacts
+      .filter((contact) => Boolean(contact.email))
+      .map((contact) => ({
+        email: contact.email,
+        firstName: contact.firstName,
+        lastName: contact.lastName,
+        contactId: contact.id,
+      })) as NormalizedRecipient[];
+  }
 
-        if (result.success) sentCount++;
-        else failedCount++;
+  const recipients = await prisma.campaignRecipient.findMany({
+    where: {
+      campaignId: campaign.id,
+    },
+    include: {
+      contact: {
+        select: {
+          id: true,
+          email: true,
+          firstName: true,
+          lastName: true,
+        },
+      },
+    },
+  });
 
-        return result;
+  return recipients
+    .map((recipient: any) => {
+      const contact = recipient.contact;
+
+      return {
+        email: recipient.email || contact?.email || "",
+        firstName: recipient.firstName || contact?.firstName || "",
+        lastName: recipient.lastName || contact?.lastName || "",
+        contactId: recipient.contactId || contact?.id || null,
+      };
+    })
+    .filter((recipient) => Boolean(recipient.email)) as NormalizedRecipient[];
+}
+
+export async function sendCampaign(campaignId: string) {
+  if (!process.env.RESEND_API_KEY) {
+    throw new Error("RESEND_API_KEY manquant dans .env");
+  }
+
+  if (!process.env.EMAIL_FROM) {
+    throw new Error("EMAIL_FROM manquant dans .env");
+  }
+
+  const campaign = await prisma.campaign.findUnique({
+    where: {
+      id: campaignId,
+    },
+  });
+
+  if (!campaign) {
+    throw new Error("Campagne introuvable");
+  }
+
+  const recipients = await getCampaignRecipients({
+    id: campaign.id,
+    userId: campaign.userId,
+    groupId: campaign.groupId,
+  });
+
+  if (recipients.length === 0) {
+    throw new Error("Aucun destinataire trouvé pour cette campagne");
+  }
+
+  const verifiedFrom = getVerifiedFrom(campaign.fromName);
+  const safeReplyTo = getReplyTo(campaign.replyTo, campaign.fromEmail);
+
+  await prisma.campaign.update({
+    where: {
+      id: campaign.id,
+    },
+    data: {
+      status: "SENDING",
+      totalRecipients: recipients.length,
+      sentCount: 0,
+      failedCount: 0,
+    },
+  });
+
+  let sentCount = 0;
+  let failedCount = 0;
+
+  for (const recipient of recipients) {
+    try {
+      const html = replaceVariables(campaign.htmlContent, recipient);
+
+      const { error } = await resend.emails.send({
+        from: verifiedFrom,
+        to: [recipient.email],
+        subject: campaign.subject,
+        html,
+        ...(safeReplyTo ? { replyTo: safeReplyTo } : {}),
       });
 
-      // Exécuter le batch avec concurrence limitée
-      await pLimit(tasks, CONCURRENCY);
+      if (error) {
+        failedCount += 1;
 
-      // Pause inter-batch
-      await sleep(BATCH_DELAY_MS);
+        const errorMessage =
+          typeof error === "object" && "message" in error
+            ? String(error.message)
+            : JSON.stringify(error);
 
-      // Mise à jour progressive du compteur
-      await prisma.campaign.update({
-        where: { id: campaignId },
-        data: { sentCount, failedCount },
+        await writeCampaignLog({
+          campaignId: campaign.id,
+          email: recipient.email,
+          status: "failed",
+          message: errorMessage,
+        });
+      } else {
+        sentCount += 1;
+
+        await writeCampaignLog({
+          campaignId: campaign.id,
+          email: recipient.email,
+          status: "sent",
+          message: "Email envoyé",
+        });
+      }
+    } catch (error) {
+      failedCount += 1;
+
+      await writeCampaignLog({
+        campaignId: campaign.id,
+        email: recipient.email,
+        status: "failed",
+        message:
+          error instanceof Error
+            ? error.message
+            : "Erreur inconnue pendant l'envoi",
       });
     }
 
-    // 6. Marquer la campagne comme terminée
     await prisma.campaign.update({
-      where: { id: campaignId },
+      where: {
+        id: campaign.id,
+      },
       data: {
-        status: "SENT",
-        sentAt: new Date(),
         sentCount,
         failedCount,
       },
     });
-  } catch (err: unknown) {
-    // Erreur globale → marquer FAILED
-    await prisma.campaign.update({
-      where: { id: campaignId },
-      data: { status: "FAILED" },
-    });
-    const message = err instanceof Error ? err.message : "Unknown error";
-    console.error(`[sendCampaign] Fatal error for campaign ${campaignId}:`, message);
-    throw err;
   }
-}
 
-// ─── Envoi de test ────────────────────────────────────────────────────────────
-export async function sendTestEmail(params: {
-  to: string;
-  subject: string;
-  html: string;
-  fromName: string;
-  fromEmail: string;
-}): Promise<{ success: boolean; error?: string }> {
-  return sendSingleEmail(params);
+  const finalStatus = sentCount > 0 ? "SENT" : "FAILED";
+
+  const updatedCampaign = await prisma.campaign.update({
+    where: {
+      id: campaign.id,
+    },
+    data: {
+      status: finalStatus,
+      sentCount,
+      failedCount,
+      totalRecipients: recipients.length,
+      sentAt: new Date(),
+    },
+  });
+
+  return {
+    success: finalStatus === "SENT",
+    campaign: updatedCampaign,
+    sentCount,
+    failedCount,
+    totalRecipients: recipients.length,
+  };
 }

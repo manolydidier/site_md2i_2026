@@ -1,30 +1,101 @@
-// components/email-marketing/CampaignsList.tsx
+// src/app/components/email-marketing/CampaignsList.tsx
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { useCampaigns, useCampaignStatus } from "@/app/hooks/useEmailMarketing";
 import type { Campaign } from "@/app/types/email-marketing";
+
 import {
-  Trash2,
-  Copy,
-  Send,
-  Eye,
+  AlertCircle,
+  BarChart2,
+  CheckCircle,
   ChevronLeft,
   ChevronRight,
-  CheckCircle,
   Clock,
-  AlertCircle,
-  Loader2,
+  Copy,
+  Eye,
   FileEdit,
-  BarChart2,
+  Loader2,
+  Mail,
+  Plus,
+  RefreshCw,
+  Send,
+  Trash2,
   X,
-  Mail
 } from "lucide-react";
+
+import styles from "./CampaignsList.module.css";
+
+// ---------------------------------------------------------------------------
+// Types
+// ---------------------------------------------------------------------------
 
 interface CampaignsListProps {
   onNew: () => void;
   onEdit: (campaign: Campaign) => void;
 }
+
+type StatusKey = "DRAFT" | "SENDING" | "SENT" | "FAILED" | "SCHEDULED";
+
+type CampaignStatusConfig = {
+  label: string;
+  icon: ReactNode;
+  className: string;
+};
+
+// ---------------------------------------------------------------------------
+// Config
+// ---------------------------------------------------------------------------
+
+const STATUS_CONFIG: Record<StatusKey, CampaignStatusConfig> = {
+  DRAFT: {
+    label: "Brouillon",
+    icon: <FileEdit size={13} />,
+    className: styles.statusDraft,
+  },
+  SENDING: {
+    label: "En cours",
+    icon: <Loader2 size={13} className={styles.spin} />,
+    className: styles.statusSending,
+  },
+  SENT: {
+    label: "Envoyée",
+    icon: <CheckCircle size={13} />,
+    className: styles.statusSent,
+  },
+  FAILED: {
+    label: "Échouée",
+    icon: <AlertCircle size={13} />,
+    className: styles.statusFailed,
+  },
+  SCHEDULED: {
+    label: "Planifiée",
+    icon: <Clock size={13} />,
+    className: styles.statusScheduled,
+  },
+};
+
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+
+function cn(...classes: Array<string | false | null | undefined>) {
+  return classes.filter(Boolean).join(" ");
+}
+
+function formatDate(value?: string | Date | null, withLabel?: string) {
+  if (!value) return null;
+  const formatted = new Date(value).toLocaleDateString("fr-FR", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+  });
+  return { formatted, label: withLabel };
+}
+
+// ---------------------------------------------------------------------------
+// Root component
+// ---------------------------------------------------------------------------
 
 export function CampaignsList({ onNew, onEdit }: CampaignsListProps) {
   const {
@@ -42,331 +113,197 @@ export function CampaignsList({ onNew, onEdit }: CampaignsListProps) {
   const [previewCampaign, setPreviewCampaign] = useState<Campaign | null>(null);
   const [statsId, setStatsId] = useState<string | null>(null);
 
-  const totalPages = Math.ceil(total / 10);
+  const totalPages = Math.max(1, Math.ceil(total / 10));
+  const hasCampaigns = campaigns.length > 0;
+
+  // -------------------------------------------------------------------------
+  // Handlers
+  // -------------------------------------------------------------------------
 
   const handleSend = async (campaign: Campaign) => {
-    const target = campaign.group?.name ?? "tous les destinataires";
-
-    if (!confirm(`Envoyer "${campaign.name}" à ${target} ?`)) return;
+    const target = campaign.group?.name ?? "les destinataires de la campagne";
+    const confirmed = confirm(
+      `Envoyer définitivement « ${campaign.name} » à ${target} ?`
+    );
+    if (!confirmed) return;
 
     try {
       const res = await fetch(`/api/campaigns/${campaign.id}/send`, {
         method: "POST",
       });
-
       const data = await res.json();
 
       if (!res.ok) {
-        alert(data.error || "Erreur pendant l'envoi");
+        alert(data.error || "Erreur pendant l'envoi.");
         return;
       }
 
       setSendingId(campaign.id);
       refetch();
     } catch {
-      alert("Erreur réseau");
+      alert("Erreur réseau.");
     }
   };
 
-  return (
-    <div className="campaign-list">
-      <div className="campaign-list__meta">
-        <span>{total} campagne(s)</span>
-      </div>
+  const handleDelete = async (campaign: Campaign) => {
+    const confirmed = confirm(`Supprimer « ${campaign.name} » ?`);
+    if (!confirmed) return;
+    await deleteCampaign(campaign.id);
+    refetch();
+  };
 
-      <div className="campaign-list__box">
-        {loading ? (
-          <div className="campaign-empty">
-            <Loader2 className="h-6 w-6 animate-spin text-gray-400" />
-            <p>Chargement des campagnes...</p>
-          </div>
-        ) : campaigns.length === 0 ? (
-          <div className="campaign-empty">
-            <div className="campaign-empty__icon">
-              <FileEdit className="h-7 w-7" />
-            </div>
-            <h3>Aucune campagne</h3>
-            <p>Créez votre première campagne pour commencer.</p>
-            <button type="button" onClick={onNew} className="primary-btn">
-              <Send className="h-4 w-4" />
-              Nouvelle campagne
-            </button>
-          </div>
-        ) : (
-          <div className="campaign-rows">
-            {campaigns.map((campaign) => (
-              <CampaignRow
-                key={campaign.id}
-                campaign={campaign}
-                isSending={sendingId === campaign.id}
-                onEdit={() => onEdit(campaign)}
-                onDelete={() => {
-                  if (confirm(`Supprimer "${campaign.name}" ?`)) {
-                    deleteCampaign(campaign.id).then(refetch);
-                  }
-                }}
-                onDuplicate={() => duplicateCampaign(campaign.id).then(refetch)}
-                onSend={() => handleSend(campaign)}
-                onPreview={() => setPreviewCampaign(campaign)}
-                onStats={() =>
-                  setStatsId(statsId === campaign.id ? null : campaign.id)
-                }
-                showStats={statsId === campaign.id}
-              />
-            ))}
-          </div>
+  const handleDuplicate = async (campaign: Campaign) => {
+    await duplicateCampaign(campaign.id);
+    refetch();
+  };
+
+  // -------------------------------------------------------------------------
+  // Render
+  // -------------------------------------------------------------------------
+
+  return (
+    <section className={styles.wrapper}>
+      {/* Header */}
+      <header className={styles.header}>
+        <div>
+          <span className={styles.kicker}>Email marketing</span>
+          <h2 className={styles.title}>Campagnes</h2>
+          <p className={styles.description}>
+            Créez, modifiez, prévisualisez et envoyez vos campagnes email.
+          </p>
+        </div>
+
+        <button type="button" onClick={onNew} className={styles.primaryButton}>
+          <Plus size={15} />
+          Nouvelle campagne
+        </button>
+      </header>
+
+      {/* Toolbar */}
+      <div className={styles.toolbar}>
+        <div className={styles.count}>
+          <strong>{total}</strong>
+          <span>{total > 1 ? "campagnes" : "campagne"}</span>
+        </div>
+
+        {hasCampaigns && (
+          <button
+            type="button"
+            onClick={refetch}
+            className={styles.secondaryButton}
+          >
+            <RefreshCw size={13} />
+            Actualiser
+          </button>
         )}
       </div>
 
-      {totalPages > 1 && (
-        <div className="pagination">
-          <p>
-            Page {page} sur {totalPages}
-          </p>
-
-          <div className="pagination__actions">
-            <button
-              type="button"
-              onClick={() => setPage(Math.max(1, page - 1))}
-              disabled={page === 1}
-              className="page-btn"
-            >
-              <ChevronLeft className="h-4 w-4" />
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setPage(Math.min(totalPages, page + 1))}
-              disabled={page === totalPages}
-              className="page-btn"
-            >
-              <ChevronRight className="h-4 w-4" />
-            </button>
-          </div>
-        </div>
-      )}
-
-      {previewCampaign && (
-        <div className="preview-backdrop">
-          <div className="preview-modal">
-            <div className="preview-header">
-              <div>
-                <h3>{previewCampaign.name}</h3>
-                <p>Sujet : {previewCampaign.subject}</p>
-              </div>
-
-              <button
-                type="button"
-                onClick={() => setPreviewCampaign(null)}
-                className="icon-btn"
-              >
-                <X className="h-4 w-4" />
-              </button>
+      {/* Table panel */}
+      <div className={styles.panel}>
+        {loading ? (
+          <LoadingState />
+        ) : !hasCampaigns ? (
+          <EmptyState onNew={onNew} />
+        ) : (
+          <>
+            <div className={styles.tableHead}>
+              <span>Campagne</span>
+              <span>Groupe</span>
+              <span>Statut</span>
+              <span>Résultat</span>
+              <span>Date</span>
+              <span className={styles.actionsHead}>Actions</span>
             </div>
 
-            <iframe
-              srcDoc={previewCampaign.htmlContent}
-              className="preview-frame"
-              sandbox="allow-same-origin"
-            />
-          </div>
-        </div>
+            <div className={styles.rows}>
+              {campaigns.map((campaign) => (
+                <CampaignRow
+                  key={campaign.id}
+                  campaign={campaign}
+                  isSending={sendingId === campaign.id}
+                  onEdit={() => onEdit(campaign)}
+                  onDelete={() => handleDelete(campaign)}
+                  onDuplicate={() => handleDuplicate(campaign)}
+                  onSend={() => handleSend(campaign)}
+                  onPreview={() => setPreviewCampaign(campaign)}
+                  onStats={() =>
+                    setStatsId((curr) =>
+                      curr === campaign.id ? null : campaign.id
+                    )
+                  }
+                  showStats={statsId === campaign.id}
+                />
+              ))}
+            </div>
+          </>
+        )}
+      </div>
+
+      {/* Pagination */}
+      {totalPages > 1 && (
+        <Pagination
+          page={page}
+          totalPages={totalPages}
+          onPrevious={() => setPage(Math.max(1, page - 1))}
+          onNext={() => setPage(Math.min(totalPages, page + 1))}
+        />
       )}
 
-      <style jsx>{`
-        .campaign-list {
-          padding: 18px;
-          background: #ffffff;
-        }
+      {/* Preview modal */}
+      {previewCampaign && (
+        <PreviewModal
+          campaign={previewCampaign}
+          onClose={() => setPreviewCampaign(null)}
+        />
+      )}
+    </section>
+  );
+}
 
-        .campaign-list__meta {
-          display: flex;
-          justify-content: flex-end;
-          margin-bottom: 12px;
-          color: #6b7280;
-          font-size: 13px;
-          font-weight: 600;
-        }
+// ---------------------------------------------------------------------------
+// Sub-components
+// ---------------------------------------------------------------------------
 
-        .campaign-list__box {
-          border: 1px solid #e5e7eb;
-          border-radius: 14px;
-          background: #ffffff;
-          overflow: hidden;
-        }
-
-        .campaign-rows {
-          display: flex;
-          flex-direction: column;
-        }
-
-        .campaign-empty {
-          min-height: 280px;
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-          justify-content: center;
-          gap: 10px;
-          padding: 40px 20px;
-          text-align: center;
-          color: #6b7280;
-        }
-
-        .campaign-empty__icon {
-          width: 52px;
-          height: 52px;
-          border-radius: 16px;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          color: #ef9f27;
-          background: rgba(239, 159, 39, 0.1);
-          border: 1px solid rgba(239, 159, 39, 0.22);
-        }
-
-        .campaign-empty h3 {
-          margin: 4px 0 0;
-          color: #111827;
-          font-size: 16px;
-          font-weight: 800;
-        }
-
-        .campaign-empty p {
-          margin: 0;
-          font-size: 13px;
-        }
-
-        .primary-btn {
-          margin-top: 8px;
-          height: 38px;
-          padding: 0 15px;
-          border: 1px solid rgba(239, 159, 39, 0.28);
-          border-radius: 10px;
-          background: #ef9f27;
-          color: #1a0d00;
-          display: inline-flex;
-          align-items: center;
-          gap: 7px;
-          font-size: 13px;
-          font-weight: 800;
-          cursor: pointer;
-        }
-
-        .pagination {
-          display: flex;
-          align-items: center;
-          justify-content: space-between;
-          gap: 12px;
-          margin-top: 14px;
-        }
-
-        .pagination p {
-          margin: 0;
-          color: #6b7280;
-          font-size: 13px;
-          font-weight: 600;
-        }
-
-        .pagination__actions {
-          display: flex;
-          gap: 6px;
-        }
-
-        .page-btn {
-          width: 36px;
-          height: 36px;
-          border-radius: 10px;
-          border: 1px solid #e5e7eb;
-          background: #ffffff;
-          color: #374151;
-          display: inline-flex;
-          align-items: center;
-          justify-content: center;
-          cursor: pointer;
-        }
-
-        .page-btn:hover:not(:disabled) {
-          background: #f9fafb;
-        }
-
-        .page-btn:disabled {
-          opacity: 0.4;
-          cursor: not-allowed;
-        }
-
-        .preview-backdrop {
-          position: fixed;
-          inset: 0;
-          z-index: 50;
-          padding: 24px;
-          background: rgba(15, 23, 42, 0.55);
-          display: flex;
-          align-items: center;
-          justify-content: center;
-        }
-
-        .preview-modal {
-          width: min(900px, 100%);
-          height: min(720px, calc(100vh - 48px));
-          border-radius: 18px;
-          background: #ffffff;
-          border: 1px solid #e5e7eb;
-          box-shadow: 0 24px 70px rgba(15, 23, 42, 0.28);
-          overflow: hidden;
-          display: flex;
-          flex-direction: column;
-        }
-
-        .preview-header {
-          min-height: 70px;
-          padding: 15px 18px;
-          border-bottom: 1px solid #e5e7eb;
-          display: flex;
-          align-items: center;
-          justify-content: space-between;
-          gap: 12px;
-        }
-
-        .preview-header h3 {
-          margin: 0;
-          color: #111827;
-          font-size: 15px;
-          font-weight: 800;
-        }
-
-        .preview-header p {
-          margin: 4px 0 0;
-          color: #6b7280;
-          font-size: 12px;
-        }
-
-        .preview-frame {
-          flex: 1;
-          width: 100%;
-          border: 0;
-          background: #ffffff;
-        }
-
-        .icon-btn {
-          width: 34px;
-          height: 34px;
-          border-radius: 10px;
-          border: 1px solid #e5e7eb;
-          background: #ffffff;
-          color: #6b7280;
-          display: inline-flex;
-          align-items: center;
-          justify-content: center;
-          cursor: pointer;
-        }
-
-        .icon-btn:hover {
-          background: #f9fafb;
-          color: #111827;
-        }
-      `}</style>
+function LoadingState() {
+  return (
+    <div className={styles.state}>
+      <Loader2 size={28} className={cn(styles.spin, styles.stateIconMuted)} />
+      <h3>Chargement des campagnes…</h3>
+      <p>Veuillez patienter pendant la récupération des données.</p>
     </div>
   );
+}
+
+function EmptyState({ onNew }: { onNew: () => void }) {
+  return (
+    <div className={styles.state}>
+      <div className={styles.emptyIcon}>
+        <FileEdit size={26} />
+      </div>
+      <h3>Aucune campagne</h3>
+      <p>Créez votre première campagne pour commencer.</p>
+      <button type="button" onClick={onNew} className={styles.primaryButton}>
+        <Plus size={15} />
+        Nouvelle campagne
+      </button>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// CampaignRow
+// ---------------------------------------------------------------------------
+
+interface CampaignRowProps {
+  campaign: Campaign;
+  isSending: boolean;
+  onEdit: () => void;
+  onDelete: () => void;
+  onDuplicate: () => void;
+  onSend: () => void;
+  onPreview: () => void;
+  onStats: () => void;
+  showStats: boolean;
 }
 
 function CampaignRow({
@@ -379,545 +316,376 @@ function CampaignRow({
   onPreview,
   onStats,
   showStats,
-}: {
-  campaign: Campaign;
-  isSending: boolean;
-  onEdit: () => void;
-  onDelete: () => void;
-  onDuplicate: () => void;
-  onSend: () => void;
-  onPreview: () => void;
-  onStats: () => void;
-  showStats: boolean;
-}) {
+}: CampaignRowProps) {
   const isActivelySending = isSending || campaign.status === "SENDING";
   const status = useCampaignStatus(campaign.id, isActivelySending);
+
   const progress = status?.progress ?? 0;
+  const displayStatus: StatusKey =
+    isActivelySending && status
+      ? "SENDING"
+      : (campaign.status as StatusKey);
 
-  const statusConfig: Record<
-    string,
-    {
-      label: string;
-      icon: React.ReactNode;
-      className: string;
-    }
-  > = {
-    DRAFT: {
-      label: "Brouillon",
-      icon: <FileEdit className="h-3.5 w-3.5" />,
-      className: "status status--draft",
-    },
-    SENDING: {
-      label: "En cours",
-      icon: <Loader2 className="h-3.5 w-3.5 animate-spin" />,
-      className: "status status--sending",
-    },
-    SENT: {
-      label: "Envoyée",
-      icon: <CheckCircle className="h-3.5 w-3.5" />,
-      className: "status status--sent",
-    },
-    FAILED: {
-      label: "Échouée",
-      icon: <AlertCircle className="h-3.5 w-3.5" />,
-      className: "status status--failed",
-    },
-    SCHEDULED: {
-      label: "Planifiée",
-      icon: <Clock className="h-3.5 w-3.5" />,
-      className: "status status--scheduled",
-    },
-  };
+  const displayConfig = STATUS_CONFIG[displayStatus] ?? STATUS_CONFIG.DRAFT;
 
-  const displayStatus = isActivelySending && status ? "SENDING" : campaign.status;
-  const displayConfig = statusConfig[displayStatus] || statusConfig.DRAFT;
+  const sentCount = status?.sentCount ?? campaign.sentCount ?? 0;
+  const failedCount = status?.failedCount ?? campaign.failedCount ?? 0;
+
+  const canEdit = campaign.status === "DRAFT" || campaign.status === "FAILED";
+  const canSend = campaign.status === "DRAFT" || campaign.status === "FAILED";
+  const canDelete = campaign.status !== "SENDING";
+  const canShowStats = campaign.status === "SENT";
+
+  // Date display: prefer sentAt, fall back to createdAt
+  const dateInfo = campaign.sentAt
+    ? formatDate(campaign.sentAt, "Envoyée")
+    : formatDate(campaign.createdAt, "Créée");
 
   return (
-    <div className="campaign-row-wrap">
-      <div className="campaign-row">
-        <div className="campaign-main">
-          <div className="campaign-icon">
-            <Mail className="h-4 w-4" />
+    <article className={styles.rowWrap}>
+      <div className={styles.row}>
+        {/* Campaign name + subject */}
+        <div className={styles.campaignMain}>
+          <div className={styles.campaignIcon}>
+            <Mail size={17} />
           </div>
-
-          <div className="campaign-title">
+          <div className={styles.campaignText}>
             <h3>{campaign.name}</h3>
-            <p>{campaign.subject}</p>
+            <p>{campaign.subject || "Sujet non renseigné"}</p>
           </div>
         </div>
 
-        <div className="campaign-group">
+        {/* Group badge */}
+        <div className={styles.groupCell}>
           {campaign.group ? (
-            <span>{campaign.group.name}</span>
+            <span className={styles.groupBadge}>{campaign.group.name}</span>
           ) : (
-            <span className="muted">—</span>
+            <span className={styles.muted}>—</span>
           )}
         </div>
 
-        <div className="campaign-status">
-          <span className={displayConfig.className}>
+        {/* Status + progress */}
+        <div className={styles.statusCell}>
+          <span className={cn(styles.status, displayConfig.className)}>
             {displayConfig.icon}
             {displayConfig.label}
           </span>
 
           {isActivelySending && status && (
-            <div className="progress">
-              <div className="progress-bar">
-                <div style={{ width: `${progress}%` }} />
+            <div className={styles.progressWrap}>
+              <div className={styles.progressTrack}>
+                <div
+                  className={styles.progressBar}
+                  style={{ width: `${progress}%` }}
+                />
               </div>
               <small>{progress}%</small>
             </div>
           )}
         </div>
 
-        <div className="campaign-results">
+        {/* Sent / failed counts */}
+        <div className={styles.resultCell}>
           {campaign.status === "SENT" || campaign.status === "SENDING" ? (
             <>
-              <strong>{status?.sentCount ?? campaign.sentCount}</strong>
+              <strong>{sentCount.toLocaleString("fr-FR")}</strong>
               <span>envoyés</span>
-              {(status?.failedCount ?? campaign.failedCount) > 0 && (
-                <small>
-                  {status?.failedCount ?? campaign.failedCount} échec(s)
-                </small>
+              {failedCount > 0 && <small>{failedCount} échec(s)</small>}
+            </>
+          ) : (
+            <span className={styles.muted}>—</span>
+          )}
+        </div>
+
+        {/* Date */}
+        <div className={styles.dateCell}>
+          {dateInfo ? (
+            <>
+              <span>{dateInfo.formatted}</span>
+              {dateInfo.label && (
+                <span className={styles.dateLabel}>{dateInfo.label}</span>
               )}
             </>
           ) : (
-            <span className="muted">—</span>
+            <span className={styles.muted}>—</span>
           )}
         </div>
 
-        <div className="campaign-date">
-          {campaign.sentAt
-            ? new Date(campaign.sentAt).toLocaleDateString("fr-FR")
-            : new Date(campaign.createdAt).toLocaleDateString("fr-FR")}
-        </div>
+        {/* Action buttons */}
+        <div className={styles.actions}>
+          <ActionButton label="Prévisualiser" onClick={onPreview}>
+            <Eye size={15} />
+          </ActionButton>
 
-        <div className="campaign-actions">
-          <button type="button" onClick={onPreview} title="Prévisualiser">
-            <Eye className="h-4 w-4" />
-          </button>
-
-          {campaign.status === "SENT" && (
-            <button type="button" onClick={onStats} title="Statistiques">
-              <BarChart2 className="h-4 w-4" />
-            </button>
+          {canShowStats && (
+            <ActionButton label="Statistiques" onClick={onStats}>
+              <BarChart2 size={15} />
+            </ActionButton>
           )}
 
-          {(campaign.status === "DRAFT" || campaign.status === "FAILED") && (
-            <>
-              <button type="button" onClick={onEdit} title="Modifier">
-                <FileEdit className="h-4 w-4" />
-              </button>
-
-              <button type="button" onClick={onSend} title="Envoyer">
-                <Send className="h-4 w-4" />
-              </button>
-            </>
+          {canEdit && (
+            <ActionButton label="Modifier" onClick={onEdit}>
+              <FileEdit size={15} />
+            </ActionButton>
           )}
 
-          <button type="button" onClick={onDuplicate} title="Dupliquer">
-            <Copy className="h-4 w-4" />
-          </button>
-
-          {campaign.status !== "SENDING" && (
-            <button
-              type="button"
-              onClick={onDelete}
-              title="Supprimer"
-              className="danger"
+          {canSend && (
+            <ActionButton
+              label="Envoyer"
+              onClick={onSend}
+              disabled={isActivelySending}
             >
-              <Trash2 className="h-4 w-4" />
-            </button>
+              {isActivelySending ? (
+                <Loader2 size={15} className={styles.spin} />
+              ) : (
+                <Send size={15} />
+              )}
+            </ActionButton>
+          )}
+
+          <ActionButton label="Dupliquer" onClick={onDuplicate}>
+            <Copy size={15} />
+          </ActionButton>
+
+          {canDelete && (
+            <ActionButton label="Supprimer" onClick={onDelete} danger>
+              <Trash2 size={15} />
+            </ActionButton>
           )}
         </div>
       </div>
 
-      {showStats && campaign.status === "SENT" && (
-        <div className="stats-row">
+      {/* Expandable stats panel */}
+      {showStats && canShowStats && (
+        <div className={styles.statsContainer}>
           <CampaignStats campaignId={campaign.id} />
         </div>
       )}
+    </article>
+  );
+}
 
-      <style jsx>{`
-        .campaign-row-wrap {
-          border-bottom: 1px solid #f1f5f9;
-        }
+// ---------------------------------------------------------------------------
+// ActionButton
+// ---------------------------------------------------------------------------
 
-        .campaign-row-wrap:last-child {
-          border-bottom: none;
-        }
+function ActionButton({
+  children,
+  label,
+  onClick,
+  danger = false,
+  disabled = false,
+}: {
+  children: ReactNode;
+  label: string;
+  onClick: () => void;
+  danger?: boolean;
+  disabled?: boolean;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      title={label}
+      aria-label={label}
+      disabled={disabled}
+      className={cn(
+        styles.actionButton,
+        danger && styles.actionButtonDanger
+      )}
+    >
+      {children}
+    </button>
+  );
+}
 
-        .campaign-row {
-          display: grid;
-          grid-template-columns: minmax(260px, 1.8fr) minmax(120px, 0.8fr) minmax(120px, 0.8fr) minmax(110px, 0.7fr) 100px auto;
-          gap: 16px;
-          align-items: center;
-          padding: 16px 18px;
-          background: #ffffff;
-          transition: background 0.15s ease;
-        }
+// ---------------------------------------------------------------------------
+// Pagination
+// ---------------------------------------------------------------------------
 
-        .campaign-row:hover {
-          background: #fafafa;
-        }
+function Pagination({
+  page,
+  totalPages,
+  onPrevious,
+  onNext,
+}: {
+  page: number;
+  totalPages: number;
+  onPrevious: () => void;
+  onNext: () => void;
+}) {
+  return (
+    <footer className={styles.pagination}>
+      <p>
+        Page <strong>{page}</strong> sur <strong>{totalPages}</strong>
+      </p>
+      <div className={styles.paginationActions}>
+        <button
+          type="button"
+          onClick={onPrevious}
+          disabled={page === 1}
+          className={styles.pageButton}
+          aria-label="Page précédente"
+        >
+          <ChevronLeft size={15} />
+        </button>
+        <button
+          type="button"
+          onClick={onNext}
+          disabled={page === totalPages}
+          className={styles.pageButton}
+          aria-label="Page suivante"
+        >
+          <ChevronRight size={15} />
+        </button>
+      </div>
+    </footer>
+  );
+}
 
-        .campaign-main {
-          min-width: 0;
-          display: flex;
-          align-items: center;
-          gap: 12px;
-        }
+// ---------------------------------------------------------------------------
+// PreviewModal
+// ---------------------------------------------------------------------------
 
-        .campaign-icon {
-          width: 36px;
-          height: 36px;
-          border-radius: 11px;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          flex-shrink: 0;
-          color: #ef9f27;
-          background: rgba(239, 159, 39, 0.1);
-          border: 1px solid rgba(239, 159, 39, 0.2);
-        }
+function PreviewModal({
+  campaign,
+  onClose,
+}: {
+  campaign: Campaign;
+  onClose: () => void;
+}) {
+  // Close on Escape key
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    document.addEventListener("keydown", handler);
+    return () => document.removeEventListener("keydown", handler);
+  }, [onClose]);
 
-        .campaign-title {
-          min-width: 0;
-        }
+  return (
+    <div
+      className={styles.previewBackdrop}
+      onClick={(e) => {
+        if (e.target === e.currentTarget) onClose();
+      }}
+    >
+      <div className={styles.previewModal} role="dialog" aria-modal="true">
+        <header className={styles.previewHeader}>
+          <div>
+            <h3>{campaign.name}</h3>
+            <p>Sujet : {campaign.subject || "Non renseigné"}</p>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className={styles.closeButton}
+            aria-label="Fermer la prévisualisation"
+          >
+            <X size={15} />
+          </button>
+        </header>
 
-        .campaign-title h3 {
-          margin: 0;
-          color: #111827;
-          font-size: 14px;
-          font-weight: 800;
-          white-space: nowrap;
-          overflow: hidden;
-          text-overflow: ellipsis;
-        }
-
-        .campaign-title p {
-          margin: 3px 0 0;
-          color: #6b7280;
-          font-size: 12px;
-          white-space: nowrap;
-          overflow: hidden;
-          text-overflow: ellipsis;
-        }
-
-        .campaign-group span {
-          display: inline-flex;
-          max-width: 140px;
-          padding: 5px 9px;
-          border-radius: 999px;
-          color: #374151;
-          background: #f3f4f6;
-          font-size: 12px;
-          font-weight: 700;
-          white-space: nowrap;
-          overflow: hidden;
-          text-overflow: ellipsis;
-        }
-
-        .muted {
-          color: #9ca3af !important;
-          background: transparent !important;
-          padding: 0 !important;
-          font-size: 13px !important;
-        }
-
-        .campaign-status {
-          display: flex;
-          flex-direction: column;
-          align-items: flex-start;
-          gap: 7px;
-        }
-
-        :global(.status) {
-          display: inline-flex;
-          align-items: center;
-          gap: 5px;
-          padding: 5px 9px;
-          border-radius: 999px;
-          font-size: 11px;
-          font-weight: 800;
-        }
-
-        :global(.status--draft) {
-          color: #475569;
-          background: #f1f5f9;
-        }
-
-        :global(.status--sending) {
-          color: #2563eb;
-          background: #dbeafe;
-        }
-
-        :global(.status--sent) {
-          color: #16a34a;
-          background: #dcfce7;
-        }
-
-        :global(.status--failed) {
-          color: #dc2626;
-          background: #fee2e2;
-        }
-
-        :global(.status--scheduled) {
-          color: #b45309;
-          background: #fef3c7;
-        }
-
-        .progress {
-          width: 110px;
-        }
-
-        .progress-bar {
-          height: 5px;
-          border-radius: 999px;
-          background: #e5e7eb;
-          overflow: hidden;
-        }
-
-        .progress-bar div {
-          height: 100%;
-          border-radius: inherit;
-          background: #2563eb;
-          transition: width 0.35s ease;
-        }
-
-        .progress small {
-          display: block;
-          margin-top: 2px;
-          color: #6b7280;
-          font-size: 11px;
-        }
-
-        .campaign-results {
-          color: #6b7280;
-          font-size: 12px;
-        }
-
-        .campaign-results strong {
-          display: block;
-          color: #111827;
-          font-size: 14px;
-          font-weight: 800;
-        }
-
-        .campaign-results span {
-          display: block;
-        }
-
-        .campaign-results small {
-          display: block;
-          margin-top: 2px;
-          color: #dc2626;
-        }
-
-        .campaign-date {
-          color: #6b7280;
-          font-size: 12px;
-          font-weight: 600;
-          white-space: nowrap;
-        }
-
-        .campaign-actions {
-          display: flex;
-          justify-content: flex-end;
-          gap: 4px;
-        }
-
-        .campaign-actions button {
-          width: 32px;
-          height: 32px;
-          border-radius: 9px;
-          border: 1px solid transparent;
-          background: transparent;
-          color: #9ca3af;
-          display: inline-flex;
-          align-items: center;
-          justify-content: center;
-          cursor: pointer;
-          transition: 0.15s ease;
-        }
-
-        .campaign-actions button:hover {
-          color: #111827;
-          background: #f3f4f6;
-          border-color: #e5e7eb;
-        }
-
-        .campaign-actions button.danger:hover {
-          color: #dc2626;
-          background: #fef2f2;
-          border-color: #fecaca;
-        }
-
-        .stats-row {
-          padding: 16px 18px;
-          background: #f9fafb;
-          border-top: 1px solid #f1f5f9;
-        }
-
-        @media (max-width: 1100px) {
-          .campaign-row {
-            grid-template-columns: 1fr;
-            gap: 12px;
-          }
-
-          .campaign-actions {
-            justify-content: flex-start;
-          }
-        }
-      `}</style>
+        <iframe
+          srcDoc={campaign.htmlContent}
+          className={styles.previewFrame}
+          sandbox="allow-same-origin"
+          title={`Prévisualisation de ${campaign.name}`}
+        />
+      </div>
     </div>
   );
 }
 
-function CampaignStats({ campaignId }: { campaignId: string }) {
-  const [logs, setLogs] = useState<
-    { email: string; status: string; message?: string; createdAt: string }[]
-  >([]);
+// ---------------------------------------------------------------------------
+// CampaignStats
+// ---------------------------------------------------------------------------
 
+type LogEntry = {
+  email: string;
+  status: string;
+  message?: string;
+  createdAt: string;
+};
+
+function CampaignStats({ campaignId }: { campaignId: string }) {
+  const [logs, setLogs] = useState<LogEntry[]>([]);
   const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {
+    let mounted = true;
+
     fetch(`/api/campaigns/${campaignId}`)
-      .then((r) => r.json())
+      .then((res) => res.json())
       .then((data) => {
-        setLogs(data.logs || []);
+        if (!mounted) return;
+        setLogs(data.logs ?? []);
+        setLoaded(true);
+      })
+      .catch(() => {
+        if (!mounted) return;
+        setLogs([]);
         setLoaded(true);
       });
+
+    return () => {
+      mounted = false;
+    };
   }, [campaignId]);
 
+  const stats = useMemo(() => {
+    const sent = logs.filter((l) => l.status?.toLowerCase() === "sent").length;
+    return { sent, failed: logs.length - sent, total: logs.length };
+  }, [logs]);
+
   if (!loaded) {
-    return <div className="stats-loading">Chargement des logs...</div>;
+    return (
+      <div className={styles.statsLoading}>
+        <Loader2 size={14} className={styles.spin} />
+        Chargement du journal…
+      </div>
+    );
   }
 
   return (
-    <div className="stats">
-      <h4>Journal d&apos;envoi</h4>
+    <div className={styles.statsBox}>
+      <header className={styles.statsHeader}>
+        <h4>Journal d&apos;envoi</h4>
+        <p>
+          {stats.total} entrée(s) — {stats.sent} envoyé(s),{" "}
+          {stats.failed} échec(s)
+        </p>
+      </header>
 
-      <div className="stats-list">
+      <div className={styles.statsList}>
         {logs.length === 0 ? (
-          <p>Aucun log</p>
+          <p className={styles.emptyLog}>Aucun log disponible.</p>
         ) : (
-          logs.map((log, i) => (
-            <div key={i} className="stats-item">
-              <span
-                className={
-                  log.status === "sent" ? "status-dot sent" : "status-dot failed"
-                }
-              />
-
-              <span className="email">{log.email}</span>
-
-              <span className={log.status === "sent" ? "sent-text" : "fail-text"}>
-                {log.status}
-              </span>
-
-              {log.message && <span className="message">{log.message}</span>}
-
-              <span className="time">
-                {new Date(log.createdAt).toLocaleTimeString("fr-FR")}
-              </span>
-            </div>
-          ))
+          logs.map((log, i) => {
+            const isSent = log.status?.toLowerCase() === "sent";
+            return (
+              <div key={`${log.email}-${i}`} className={styles.statsItem}>
+                <span
+                  className={cn(
+                    styles.statusDot,
+                    isSent ? styles.statusDotSent : styles.statusDotFailed
+                  )}
+                />
+                <span className={styles.statsEmail}>{log.email}</span>
+                <span className={isSent ? styles.sentText : styles.failedText}>
+                  {log.status}
+                </span>
+                <span className={styles.statsMessage}>
+                  {log.message || "—"}
+                </span>
+                <span className={styles.statsTime}>
+                  {new Date(log.createdAt).toLocaleTimeString("fr-FR")}
+                </span>
+              </div>
+            );
+          })
         )}
       </div>
-
-      <style jsx>{`
-        .stats h4 {
-          margin: 0 0 10px;
-          color: #64748b;
-          font-size: 11px;
-          font-weight: 800;
-          text-transform: uppercase;
-          letter-spacing: 0.08em;
-        }
-
-        .stats-loading {
-          color: #9ca3af;
-          font-size: 12px;
-        }
-
-        .stats-list {
-          max-height: 190px;
-          overflow-y: auto;
-          display: flex;
-          flex-direction: column;
-          gap: 6px;
-        }
-
-        .stats-list p {
-          margin: 0;
-          color: #9ca3af;
-          font-size: 12px;
-        }
-
-        .stats-item {
-          display: grid;
-          grid-template-columns: 10px minmax(160px, 1fr) 80px minmax(120px, 1fr) auto;
-          gap: 10px;
-          align-items: center;
-          color: #6b7280;
-          font-size: 12px;
-        }
-
-        .status-dot {
-          width: 7px;
-          height: 7px;
-          border-radius: 999px;
-        }
-
-        .status-dot.sent {
-          background: #22c55e;
-        }
-
-        .status-dot.failed {
-          background: #ef4444;
-        }
-
-        .email {
-          color: #374151;
-          font-weight: 700;
-          overflow: hidden;
-          text-overflow: ellipsis;
-          white-space: nowrap;
-        }
-
-        .sent-text {
-          color: #16a34a;
-          font-weight: 700;
-        }
-
-        .fail-text {
-          color: #dc2626;
-          font-weight: 700;
-        }
-
-        .message {
-          overflow: hidden;
-          text-overflow: ellipsis;
-          white-space: nowrap;
-        }
-
-        .time {
-          color: #9ca3af;
-          white-space: nowrap;
-        }
-
-        @media (max-width: 800px) {
-          .stats-item {
-            grid-template-columns: 10px 1fr;
-          }
-
-          .time,
-          .message {
-            display: none;
-          }
-        }
-      `}</style>
     </div>
   );
 }

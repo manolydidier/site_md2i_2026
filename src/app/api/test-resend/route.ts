@@ -7,7 +7,7 @@ export async function GET() {
   try {
     const { data, error } = await resend.emails.send({
       from: process.env.EMAIL_FROM!,
-      to: ['ton-email-personnel@example.com'],
+      to: ['lyravelojaona@gmail.com'],
       subject: 'Test Resend MD2I',
       html: '<h1>Test OK</h1><p>Resend fonctionne dans Next.js.</p>',
     });

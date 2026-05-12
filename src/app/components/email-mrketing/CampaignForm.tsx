@@ -855,50 +855,62 @@ export function CampaignForm({
   };
 
   const sendTestEmail = async () => {
-    syncFormHtml();
+  const htmlContent = syncFormHtml();
+  const values = getValues();
 
-    if (!campaign?.id) {
-      alert("Sauvegardez d'abord la campagne avant d'envoyer un test.");
-      return;
-    }
+  if (!campaign?.id) {
+    alert("Sauvegardez d'abord la campagne avant d'envoyer un test.");
+    return;
+  }
 
-    if (!testEmail) {
-      alert("Entrez un email de test.");
-      return;
-    }
+  if (!testEmail.trim()) {
+    alert("Entrez un email de test.");
+    return;
+  }
 
-    setTestLoading(true);
-    setTestMessage(null);
+  setTestLoading(true);
+  setTestMessage(null);
 
-    try {
-      const res = await fetch(`/api/campaigns/${campaign.id}/test`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ testEmail }),
-      });
+  try {
+    const res = await fetch(`/api/campaigns/${campaign.id}/test`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        testEmail: testEmail.trim(),
+        subject: values.subject,
+        htmlContent,
+        fromName: values.fromName,
+        fromEmail: values.fromEmail,
+        replyTo: values.replyTo,
+      }),
+    });
 
-      const data = await res.json();
+    const data = await res.json();
 
-      if (!res.ok) {
-        setTestMessage({
-          type: "error",
-          text: data.error || "Erreur envoi",
-        });
-      } else {
-        setTestMessage({
-          type: "success",
-          text: data.message,
-        });
-      }
-    } catch {
+    if (!res.ok) {
       setTestMessage({
         type: "error",
-        text: "Erreur réseau",
+        text: data.error || "Erreur envoi",
       });
-    } finally {
-      setTestLoading(false);
+      return;
     }
-  };
+
+    setTestMessage({
+      type: "success",
+      text: data.message || `Email de test envoyé à ${testEmail}`,
+    });
+  } catch (error) {
+    setTestMessage({
+      type: "error",
+      text:
+        error instanceof Error
+          ? error.message
+          : "Erreur réseau",
+    });
+  } finally {
+    setTestLoading(false);
+  }
+};
 
   useEffect(() => {
     if (!mountRef.current || gjsRef.current) return;
