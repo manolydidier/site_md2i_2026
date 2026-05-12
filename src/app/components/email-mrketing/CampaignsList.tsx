@@ -1,7 +1,7 @@
 // src/app/components/email-marketing/CampaignsList.tsx
 "use client";
 
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useState, useCallback, type ReactNode } from "react";
 import { useCampaigns, useCampaignStatus } from "@/app/hooks/useEmailMarketing";
 import type { Campaign } from "@/app/types/email-marketing";
 
@@ -22,6 +22,11 @@ import {
   Send,
   Trash2,
   X,
+  AlertTriangle,
+  Rocket,
+  Users,
+  TrendingUp,
+  XCircle,
 } from "lucide-react";
 
 import styles from "./CampaignsList.module.css";
@@ -42,6 +47,19 @@ type CampaignStatusConfig = {
   icon: ReactNode;
   className: string;
 };
+
+// Popup d'envoi : confirmation → sending → done/error
+type SendPopupState =
+  | { phase: "idle" }
+  | { phase: "confirm"; campaign: Campaign }
+  | { phase: "sending"; campaign: Campaign }
+  | { phase: "success"; campaign: Campaign; sentCount: number; failedCount: number }
+  | { phase: "error"; campaign: Campaign; message: string };
+
+// Popup suppression
+type DeletePopupState =
+  | { phase: "idle" }
+  | { phase: "confirm"; campaign: Campaign };
 
 // ---------------------------------------------------------------------------
 // Config
@@ -109,7 +127,8 @@ export function CampaignsList({ onNew, onEdit }: CampaignsListProps) {
     duplicateCampaign,
   } = useCampaigns();
 
-  const [sendingId, setSendingId] = useState<string | null>(null);
+  const [sendPopup, setSendPopup] = useState<SendPopupState>({ phase: "idle" });
+  const [deletePopup, setDeletePopup] = useState<DeletePopupState>({ phase: "idle" });
   const [previewCampaign, setPreviewCampaign] = useState<Campaign | null>(null);
   const [statsId, setStatsId] = useState<string | null>(null);
 
@@ -117,49 +136,95 @@ export function CampaignsList({ onNew, onEdit }: CampaignsListProps) {
   const hasCampaigns = campaigns.length > 0;
 
   // -------------------------------------------------------------------------
+  // Polling status quand en phase sending
+  // -------------------------------------------------------------------------
+  const sendingCampaignId =
+    sendPopup.phase === "sending" ? sendPopup.campaign.id : null;
+  const pollStatus = useCampaignStatus(sendingCampaignId, sendPopup.phase === "sending");
+
+  // Quand le poll indique que c'est terminé → passer à success ou error
+  useEffect(() => {
+    if (sendPopup.phase !== "sending" || !pollStatus) return;
+
+    if (pollStatus.status === "SENT") {
+      setSendPopup({
+        phase: "success",
+        campaign: sendPopup.campaign,
+        sentCount: pollStatus.sentCount,
+        failedCount: pollStatus.failedCount,
+      });
+      refetch();
+    } else if (pollStatus.status === "FAILED") {
+      setSendPopup({
+        phase: "error",
+        campaign: sendPopup.campaign,
+        message: "L'envoi a échoué. Vérifiez vos paramètres SMTP et réessayez.",
+      });
+      refetch();
+    }
+  }, [pollStatus, sendPopup, refetch]);
+
+  // -------------------------------------------------------------------------
   // Handlers
   // -------------------------------------------------------------------------
 
-  const handleSend = async (campaign: Campaign) => {
-    const target = campaign.group?.name ?? "les destinataires de la campagne";
-    const confirmed = confirm(
-      `Envoyer définitivement « ${campaign.name} » à ${target} ?`
-    );
-    if (!confirmed) return;
+  const handleSendRequest = useCallback((campaign: Campaign) => {
+    setSendPopup({ phase: "confirm", campaign });
+  }, []);
+
+  const handleSendConfirm = useCallback(async () => {
+    if (sendPopup.phase !== "confirm") return;
+    const { campaign } = sendPopup;
+
+    setSendPopup({ phase: "sending", campaign });
 
     try {
-      const res = await fetch(`/api/campaigns/${campaign.id}/send`, {
-        method: "POST",
-      });
+      const res = await fetch(`/api/campaigns/${campaign.id}/send`, { method: "POST" });
       const data = await res.json();
 
       if (!res.ok) {
-        alert(data.error || "Erreur pendant l'envoi.");
-        return;
+        setSendPopup({
+          phase: "error",
+          campaign,
+          message: data.error || "Une erreur est survenue lors du démarrage de l'envoi.",
+        });
       }
-
-      setSendingId(campaign.id);
-      refetch();
+      // Si OK → le polling prend le relais via useCampaignStatus
     } catch {
-      alert("Erreur réseau.");
+      setSendPopup({
+        phase: "error",
+        campaign,
+        message: "Erreur réseau. Vérifiez votre connexion et réessayez.",
+      });
     }
-  };
+  }, [sendPopup]);
 
-  const handleDelete = async (campaign: Campaign) => {
-    const confirmed = confirm(`Supprimer « ${campaign.name} » ?`);
-    if (!confirmed) return;
-    await deleteCampaign(campaign.id);
+  const handleSendCancel = useCallback(() => {
+    setSendPopup({ phase: "idle" });
+  }, []);
+
+  const handleDeleteRequest = useCallback((campaign: Campaign) => {
+    setDeletePopup({ phase: "confirm", campaign });
+  }, []);
+
+  const handleDeleteConfirm = useCallback(async () => {
+    if (deletePopup.phase !== "confirm") return;
+    await deleteCampaign(deletePopup.campaign.id);
+    setDeletePopup({ phase: "idle" });
     refetch();
-  };
+  }, [deletePopup, deleteCampaign, refetch]);
 
-  const handleDuplicate = async (campaign: Campaign) => {
+  const handleDuplicate = useCallback(async (campaign: Campaign) => {
     await duplicateCampaign(campaign.id);
     refetch();
-  };
+  }, [duplicateCampaign, refetch]);
 
   // -------------------------------------------------------------------------
   // Render
   // -------------------------------------------------------------------------
+
+  const isSendingCampaignId =
+    sendPopup.phase === "sending" ? sendPopup.campaign.id : null;
 
   return (
     <section className={styles.wrapper}>
@@ -172,7 +237,6 @@ export function CampaignsList({ onNew, onEdit }: CampaignsListProps) {
             Créez, modifiez, prévisualisez et envoyez vos campagnes email.
           </p>
         </div>
-
         <button type="button" onClick={onNew} className={styles.primaryButton}>
           <Plus size={15} />
           Nouvelle campagne
@@ -185,13 +249,8 @@ export function CampaignsList({ onNew, onEdit }: CampaignsListProps) {
           <strong>{total}</strong>
           <span>{total > 1 ? "campagnes" : "campagne"}</span>
         </div>
-
         {hasCampaigns && (
-          <button
-            type="button"
-            onClick={refetch}
-            className={styles.secondaryButton}
-          >
+          <button type="button" onClick={refetch} className={styles.secondaryButton}>
             <RefreshCw size={13} />
             Actualiser
           </button>
@@ -220,16 +279,17 @@ export function CampaignsList({ onNew, onEdit }: CampaignsListProps) {
                 <CampaignRow
                   key={campaign.id}
                   campaign={campaign}
-                  isSending={sendingId === campaign.id}
+                  isSending={isSendingCampaignId === campaign.id}
+                  sendProgress={
+                    isSendingCampaignId === campaign.id ? pollStatus : null
+                  }
                   onEdit={() => onEdit(campaign)}
-                  onDelete={() => handleDelete(campaign)}
+                  onDelete={() => handleDeleteRequest(campaign)}
                   onDuplicate={() => handleDuplicate(campaign)}
-                  onSend={() => handleSend(campaign)}
+                  onSend={() => handleSendRequest(campaign)}
                   onPreview={() => setPreviewCampaign(campaign)}
                   onStats={() =>
-                    setStatsId((curr) =>
-                      curr === campaign.id ? null : campaign.id
-                    )
+                    setStatsId((curr) => (curr === campaign.id ? null : campaign.id))
                   }
                   showStats={statsId === campaign.id}
                 />
@@ -256,12 +316,351 @@ export function CampaignsList({ onNew, onEdit }: CampaignsListProps) {
           onClose={() => setPreviewCampaign(null)}
         />
       )}
+
+      {/* ── SEND POPUP ── */}
+      {sendPopup.phase !== "idle" && (
+        <SendPopup
+          state={sendPopup}
+          pollStatus={pollStatus}
+          onConfirm={handleSendConfirm}
+          onCancel={handleSendCancel}
+          onClose={() => setSendPopup({ phase: "idle" })}
+        />
+      )}
+
+      {/* ── DELETE POPUP ── */}
+      {deletePopup.phase === "confirm" && (
+        <DeletePopup
+          campaign={deletePopup.campaign}
+          onConfirm={handleDeleteConfirm}
+          onCancel={() => setDeletePopup({ phase: "idle" })}
+        />
+      )}
     </section>
   );
 }
 
 // ---------------------------------------------------------------------------
-// Sub-components
+// SendPopup — confirmation → loading → résultat
+// ---------------------------------------------------------------------------
+
+interface SendPopupProps {
+  state: SendPopupState;
+  pollStatus: ReturnType<typeof useCampaignStatus>;
+  onConfirm: () => void;
+  onCancel: () => void;
+  onClose: () => void;
+}
+
+function SendPopup({ state, pollStatus, onConfirm, onCancel, onClose }: SendPopupProps) {
+  // Fermer sur Escape (sauf pendant l'envoi)
+  useEffect(() => {
+    if (state.phase === "sending") return;
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        if (state.phase === "confirm") onCancel();
+        else onClose();
+      }
+    };
+    document.addEventListener("keydown", handler);
+    return () => document.removeEventListener("keydown", handler);
+  }, [state.phase, onCancel, onClose]);
+
+  const progress = pollStatus?.progress ?? 0;
+  const sentCount = pollStatus?.sentCount ?? 0;
+  const failedCount = pollStatus?.failedCount ?? 0;
+  const totalRecipients = pollStatus?.totalRecipients ?? 0;
+
+  return (
+    <div
+      className={styles.popupBackdrop}
+      onClick={(e) => {
+        if (e.target !== e.currentTarget) return;
+        if (state.phase === "sending") return;
+        if (state.phase === "confirm") onCancel();
+        else onClose();
+      }}
+    >
+      <div className={styles.popupCard} role="dialog" aria-modal="true">
+
+        {/* ── CONFIRM ── */}
+        {state.phase === "confirm" && (
+          <>
+            <div className={styles.popupIconWrap} data-color="orange">
+              <Rocket size={26} />
+            </div>
+            <h3 className={styles.popupTitle}>Confirmer l&apos;envoi</h3>
+            <p className={styles.popupSubtitle}>
+              Vous êtes sur le point d&apos;envoyer{" "}
+              <strong>« {state.campaign.name} »</strong>
+              {state.campaign.group && (
+                <>
+                  {" "}au groupe{" "}
+                  <strong>{state.campaign.group.name}</strong>
+                </>
+              )}.
+            </p>
+
+            <div className={styles.popupInfoRow}>
+              <div className={styles.popupInfoItem}>
+                <Mail size={14} />
+                <span>Sujet : <strong>{state.campaign.subject || "—"}</strong></span>
+              </div>
+              {state.campaign.group && (
+                <div className={styles.popupInfoItem}>
+                  <Users size={14} />
+                  <span>Destinataires : groupe <strong>{state.campaign.group.name}</strong></span>
+                </div>
+              )}
+            </div>
+
+            <p className={styles.popupWarning}>
+              <AlertTriangle size={13} />
+              Cette action est irréversible. Les emails seront envoyés immédiatement.
+            </p>
+
+            <div className={styles.popupActions}>
+              <button
+                type="button"
+                onClick={onCancel}
+                className={styles.popupCancelBtn}
+              >
+                Annuler
+              </button>
+              <button
+                type="button"
+                onClick={onConfirm}
+                className={styles.popupConfirmBtn}
+              >
+                <Send size={15} />
+                Lancer l&apos;envoi
+              </button>
+            </div>
+          </>
+        )}
+
+        {/* ── SENDING ── */}
+        {state.phase === "sending" && (
+          <>
+            <div className={styles.popupIconWrap} data-color="blue">
+              <Loader2 size={26} className={styles.spin} />
+            </div>
+            <h3 className={styles.popupTitle}>Envoi en cours…</h3>
+            <p className={styles.popupSubtitle}>
+              <strong>« {state.campaign.name} »</strong> est en cours d&apos;envoi.
+              Ne fermez pas cette fenêtre.
+            </p>
+
+            {/* Barre de progression */}
+            <div className={styles.sendingProgressWrap}>
+              <div className={styles.sendingProgressTrack}>
+                <div
+                  className={styles.sendingProgressBar}
+                  style={{ width: `${progress}%` }}
+                />
+              </div>
+              <div className={styles.sendingProgressMeta}>
+                <span className={styles.sendingProgressPct}>{progress}%</span>
+                {totalRecipients > 0 && (
+                  <span className={styles.sendingProgressCount}>
+                    {sentCount + failedCount} / {totalRecipients} traités
+                  </span>
+                )}
+              </div>
+            </div>
+
+            {/* Stats en temps réel */}
+            {totalRecipients > 0 && (
+              <div className={styles.sendingStats}>
+                <div className={styles.sendingStatItem} data-type="sent">
+                  <CheckCircle size={14} />
+                  <strong>{sentCount}</strong>
+                  <span>envoyés</span>
+                </div>
+                {failedCount > 0 && (
+                  <div className={styles.sendingStatItem} data-type="failed">
+                    <XCircle size={14} />
+                    <strong>{failedCount}</strong>
+                    <span>échecs</span>
+                  </div>
+                )}
+                <div className={styles.sendingStatItem} data-type="total">
+                  <Users size={14} />
+                  <strong>{totalRecipients}</strong>
+                  <span>destinataires</span>
+                </div>
+              </div>
+            )}
+
+            <p className={styles.sendingNote}>
+              L&apos;envoi continue en arrière-plan même si vous fermez cette fenêtre.
+            </p>
+
+            <button
+              type="button"
+              onClick={onClose}
+              className={styles.popupCancelBtn}
+              style={{ marginTop: "4px" }}
+            >
+              Fermer et continuer en arrière-plan
+            </button>
+          </>
+        )}
+
+        {/* ── SUCCESS ── */}
+        {state.phase === "success" && (
+          <>
+            <div className={styles.popupIconWrap} data-color="green">
+              <CheckCircle size={26} />
+            </div>
+            <h3 className={styles.popupTitle}>Envoi terminé !</h3>
+            <p className={styles.popupSubtitle}>
+              La campagne <strong>« {state.campaign.name} »</strong> a été envoyée avec succès.
+            </p>
+
+            <div className={styles.successStats}>
+              <div className={styles.successStatItem}>
+                <TrendingUp size={18} className={styles.successStatIcon} />
+                <strong>{state.sentCount.toLocaleString("fr-FR")}</strong>
+                <span>emails envoyés</span>
+              </div>
+              {state.failedCount > 0 && (
+                <div className={styles.successStatItem} data-failed>
+                  <AlertCircle size={18} className={styles.failedStatIcon} />
+                  <strong>{state.failedCount}</strong>
+                  <span>échecs</span>
+                </div>
+              )}
+            </div>
+
+            <button
+              type="button"
+              onClick={onClose}
+              className={styles.popupConfirmBtn}
+              data-success
+            >
+              <CheckCircle size={15} />
+              Parfait, fermer
+            </button>
+          </>
+        )}
+
+        {/* ── ERROR ── */}
+        {state.phase === "error" && (
+          <>
+            <div className={styles.popupIconWrap} data-color="red">
+              <AlertCircle size={26} />
+            </div>
+            <h3 className={styles.popupTitle}>Erreur d&apos;envoi</h3>
+            <p className={styles.popupSubtitle}>
+              L&apos;envoi de <strong>« {state.campaign.name} »</strong> a échoué.
+            </p>
+
+            <div className={styles.errorBox}>
+              <AlertTriangle size={13} />
+              <span>{state.message}</span>
+            </div>
+
+            <div className={styles.popupActions}>
+              <button
+                type="button"
+                onClick={onClose}
+                className={styles.popupCancelBtn}
+              >
+                Fermer
+              </button>
+              <button
+                type="button"
+                onClick={onClose}
+                className={cn(styles.popupConfirmBtn, styles.popupConfirmBtnRed)}
+              >
+                Réessayer plus tard
+              </button>
+            </div>
+          </>
+        )}
+
+        {/* Bouton X en haut à droite (sauf pendant sending) */}
+        {state.phase !== "sending" && (
+          <button
+            type="button"
+            className={styles.popupClose}
+            onClick={state.phase === "confirm" ? onCancel : onClose}
+            aria-label="Fermer"
+          >
+            <X size={14} />
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// DeletePopup
+// ---------------------------------------------------------------------------
+
+function DeletePopup({
+  campaign,
+  onConfirm,
+  onCancel,
+}: {
+  campaign: Campaign;
+  onConfirm: () => void;
+  onCancel: () => void;
+}) {
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onCancel();
+    };
+    document.addEventListener("keydown", handler);
+    return () => document.removeEventListener("keydown", handler);
+  }, [onCancel]);
+
+  return (
+    <div
+      className={styles.popupBackdrop}
+      onClick={(e) => { if (e.target === e.currentTarget) onCancel(); }}
+    >
+      <div className={styles.popupCard} role="dialog" aria-modal="true">
+        <button
+          type="button"
+          className={styles.popupClose}
+          onClick={onCancel}
+          aria-label="Fermer"
+        >
+          <X size={14} />
+        </button>
+
+        <div className={styles.popupIconWrap} data-color="red">
+          <Trash2 size={26} />
+        </div>
+        <h3 className={styles.popupTitle}>Supprimer la campagne</h3>
+        <p className={styles.popupSubtitle}>
+          Êtes-vous sûr de vouloir supprimer <strong>« {campaign.name} »</strong> ?
+          Cette action est définitive.
+        </p>
+
+        <div className={styles.popupActions}>
+          <button type="button" onClick={onCancel} className={styles.popupCancelBtn}>
+            Annuler
+          </button>
+          <button
+            type="button"
+            onClick={onConfirm}
+            className={cn(styles.popupConfirmBtn, styles.popupConfirmBtnRed)}
+          >
+            <Trash2 size={15} />
+            Supprimer définitivement
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Sub-components (inchangés dans leur logique)
 // ---------------------------------------------------------------------------
 
 function LoadingState() {
@@ -297,6 +696,7 @@ function EmptyState({ onNew }: { onNew: () => void }) {
 interface CampaignRowProps {
   campaign: Campaign;
   isSending: boolean;
+  sendProgress: ReturnType<typeof useCampaignStatus>;
   onEdit: () => void;
   onDelete: () => void;
   onDuplicate: () => void;
@@ -309,6 +709,7 @@ interface CampaignRowProps {
 function CampaignRow({
   campaign,
   isSending,
+  sendProgress,
   onEdit,
   onDelete,
   onDuplicate,
@@ -318,25 +719,20 @@ function CampaignRow({
   showStats,
 }: CampaignRowProps) {
   const isActivelySending = isSending || campaign.status === "SENDING";
-  const status = useCampaignStatus(campaign.id, isActivelySending);
+  const progress = sendProgress?.progress ?? 0;
 
-  const progress = status?.progress ?? 0;
   const displayStatus: StatusKey =
-    isActivelySending && status
-      ? "SENDING"
-      : (campaign.status as StatusKey);
-
+    isActivelySending ? "SENDING" : (campaign.status as StatusKey);
   const displayConfig = STATUS_CONFIG[displayStatus] ?? STATUS_CONFIG.DRAFT;
 
-  const sentCount = status?.sentCount ?? campaign.sentCount ?? 0;
-  const failedCount = status?.failedCount ?? campaign.failedCount ?? 0;
+  const sentCount = sendProgress?.sentCount ?? campaign.sentCount ?? 0;
+  const failedCount = sendProgress?.failedCount ?? campaign.failedCount ?? 0;
 
   const canEdit = campaign.status === "DRAFT" || campaign.status === "FAILED";
   const canSend = campaign.status === "DRAFT" || campaign.status === "FAILED";
   const canDelete = campaign.status !== "SENDING";
   const canShowStats = campaign.status === "SENT";
 
-  // Date display: prefer sentAt, fall back to createdAt
   const dateInfo = campaign.sentAt
     ? formatDate(campaign.sentAt, "Envoyée")
     : formatDate(campaign.createdAt, "Créée");
@@ -370,8 +766,7 @@ function CampaignRow({
             {displayConfig.icon}
             {displayConfig.label}
           </span>
-
-          {isActivelySending && status && (
+          {isActivelySending && sendProgress && (
             <div className={styles.progressWrap}>
               <div className={styles.progressTrack}>
                 <div
@@ -402,16 +797,14 @@ function CampaignRow({
           {dateInfo ? (
             <>
               <span>{dateInfo.formatted}</span>
-              {dateInfo.label && (
-                <span className={styles.dateLabel}>{dateInfo.label}</span>
-              )}
+              {dateInfo.label && <span className={styles.dateLabel}>{dateInfo.label}</span>}
             </>
           ) : (
             <span className={styles.muted}>—</span>
           )}
         </div>
 
-        {/* Action buttons */}
+        {/* Actions */}
         <div className={styles.actions}>
           <ActionButton label="Prévisualiser" onClick={onPreview}>
             <Eye size={15} />
@@ -489,10 +882,7 @@ function ActionButton({
       title={label}
       aria-label={label}
       disabled={disabled}
-      className={cn(
-        styles.actionButton,
-        danger && styles.actionButtonDanger
-      )}
+      className={cn(styles.actionButton, danger && styles.actionButtonDanger)}
     >
       {children}
     </button>
@@ -547,18 +937,9 @@ function Pagination({
 // PreviewModal
 // ---------------------------------------------------------------------------
 
-function PreviewModal({
-  campaign,
-  onClose,
-}: {
-  campaign: Campaign;
-  onClose: () => void;
-}) {
-  // Close on Escape key
+function PreviewModal({ campaign, onClose }: { campaign: Campaign; onClose: () => void }) {
   useEffect(() => {
-    const handler = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
-    };
+    const handler = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
     document.addEventListener("keydown", handler);
     return () => document.removeEventListener("keydown", handler);
   }, [onClose]);
@@ -566,9 +947,7 @@ function PreviewModal({
   return (
     <div
       className={styles.previewBackdrop}
-      onClick={(e) => {
-        if (e.target === e.currentTarget) onClose();
-      }}
+      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
     >
       <div className={styles.previewModal} role="dialog" aria-modal="true">
         <header className={styles.previewHeader}>
@@ -585,7 +964,6 @@ function PreviewModal({
             <X size={15} />
           </button>
         </header>
-
         <iframe
           srcDoc={campaign.htmlContent}
           className={styles.previewFrame}
@@ -614,7 +992,6 @@ function CampaignStats({ campaignId }: { campaignId: string }) {
 
   useEffect(() => {
     let mounted = true;
-
     fetch(`/api/campaigns/${campaignId}`)
       .then((res) => res.json())
       .then((data) => {
@@ -627,10 +1004,7 @@ function CampaignStats({ campaignId }: { campaignId: string }) {
         setLogs([]);
         setLoaded(true);
       });
-
-    return () => {
-      mounted = false;
-    };
+    return () => { mounted = false; };
   }, [campaignId]);
 
   const stats = useMemo(() => {
@@ -652,11 +1026,9 @@ function CampaignStats({ campaignId }: { campaignId: string }) {
       <header className={styles.statsHeader}>
         <h4>Journal d&apos;envoi</h4>
         <p>
-          {stats.total} entrée(s) — {stats.sent} envoyé(s),{" "}
-          {stats.failed} échec(s)
+          {stats.total} entrée(s) — {stats.sent} envoyé(s), {stats.failed} échec(s)
         </p>
       </header>
-
       <div className={styles.statsList}>
         {logs.length === 0 ? (
           <p className={styles.emptyLog}>Aucun log disponible.</p>
@@ -675,9 +1047,7 @@ function CampaignStats({ campaignId }: { campaignId: string }) {
                 <span className={isSent ? styles.sentText : styles.failedText}>
                   {log.status}
                 </span>
-                <span className={styles.statsMessage}>
-                  {log.message || "—"}
-                </span>
+                <span className={styles.statsMessage}>{log.message || "—"}</span>
                 <span className={styles.statsTime}>
                   {new Date(log.createdAt).toLocaleTimeString("fr-FR")}
                 </span>

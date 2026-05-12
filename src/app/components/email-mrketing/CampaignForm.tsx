@@ -265,6 +265,7 @@ export function CampaignForm({
   );
 
   const [activeTab, setActiveTab] = useState<PanelTab | null>("blocks");
+  const [leftPanelOpen, setLeftPanelOpen] = useState(true);
   const [inspectorTab, setInspectorTab] = useState<InspectorTab>("styles");
   const [device, setDevice] = useState<Device>("desktop");
   const [saveStatus, setSaveStatus] = useState<SaveStatus>("idle");
@@ -336,6 +337,7 @@ export function CampaignForm({
   const groupId = watch("groupId");
 
   const selectedGroup = groups.find((group) => group.id === groupId);
+  const isLeftPanelVisible = leftPanelOpen && activeTab !== null;
 
   const registerLive = useCallback(
     (field: keyof CampaignFormData) =>
@@ -558,13 +560,24 @@ export function CampaignForm({
   }, []);
 
   const openTab = (tab: PanelTab) => {
-    if (tab === "code") syncCodeFieldsSilently();
+    if (tab === "code") {
+      syncCodeFieldsSilently();
+    }
 
     if (tab === "media" && mediaItems.length === 0 && !mediaLoading) {
       fetchMediaLibrary();
     }
 
-    setActiveTab((prev) => (prev === tab ? null : tab));
+    setActiveTab(tab);
+    setLeftPanelOpen(true);
+  };
+
+  const hideLeftPanel = () => {
+    setLeftPanelOpen(false);
+  };
+
+  const toggleLeftPanel = () => {
+    setLeftPanelOpen((prev) => !prev);
   };
 
   const applyCodeBundle = () => {
@@ -748,39 +761,42 @@ export function CampaignForm({
     }
   }, []);
 
-  const insertMediaIntoEditor = useCallback((item: UploadItem) => {
-    const editor = gjsRef.current;
-    if (!editor) return;
+  const insertMediaIntoEditor = useCallback(
+    (item: UploadItem) => {
+      const editor = gjsRef.current;
+      if (!editor) return;
 
-    const safeUrl = escapeHtml(item.url);
-    const safeName = escapeHtml(item.name);
+      const safeUrl = escapeHtml(item.url);
+      const safeName = escapeHtml(item.name);
 
-    if (item.kind === "image") {
-      editor.addComponents(`
+      if (item.kind === "image") {
+        editor.addComponents(`
         <img src="${safeUrl}" alt="${safeName}" style="max-width:100%;height:auto;display:block;border-radius:16px;" />
       `);
-      syncFormHtml();
-      return;
-    }
+        syncFormHtml();
+        return;
+      }
 
-    if (item.kind === "video") {
-      editor.addComponents(`
+      if (item.kind === "video") {
+        editor.addComponents(`
         <a href="${safeUrl}" target="_blank" rel="noopener noreferrer" style="color:${ORANGE};text-decoration:none;font-weight:700;">
           Voir la vidéo : ${safeName}
         </a>
       `);
-      syncFormHtml();
-      return;
-    }
+        syncFormHtml();
+        return;
+      }
 
-    editor.addComponents(`
+      editor.addComponents(`
       <a href="${safeUrl}" download="${safeName}" style="color:${ORANGE};text-decoration:none;font-weight:700;">
         Télécharger ${safeName}
       </a>
     `);
 
-    syncFormHtml();
-  }, [syncFormHtml]);
+      syncFormHtml();
+    },
+    [syncFormHtml]
+  );
 
   const filteredMediaItems = mediaItems.filter((item) => {
     const okSearch = item.name.toLowerCase().includes(mediaSearch.toLowerCase());
@@ -855,62 +871,59 @@ export function CampaignForm({
   };
 
   const sendTestEmail = async () => {
-  const htmlContent = syncFormHtml();
-  const values = getValues();
+    const htmlContent = syncFormHtml();
+    const values = getValues();
 
-  if (!campaign?.id) {
-    alert("Sauvegardez d'abord la campagne avant d'envoyer un test.");
-    return;
-  }
-
-  if (!testEmail.trim()) {
-    alert("Entrez un email de test.");
-    return;
-  }
-
-  setTestLoading(true);
-  setTestMessage(null);
-
-  try {
-    const res = await fetch(`/api/campaigns/${campaign.id}/test`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        testEmail: testEmail.trim(),
-        subject: values.subject,
-        htmlContent,
-        fromName: values.fromName,
-        fromEmail: values.fromEmail,
-        replyTo: values.replyTo,
-      }),
-    });
-
-    const data = await res.json();
-
-    if (!res.ok) {
-      setTestMessage({
-        type: "error",
-        text: data.error || "Erreur envoi",
-      });
+    if (!campaign?.id) {
+      alert("Sauvegardez d'abord la campagne avant d'envoyer un test.");
       return;
     }
 
-    setTestMessage({
-      type: "success",
-      text: data.message || `Email de test envoyé à ${testEmail}`,
-    });
-  } catch (error) {
-    setTestMessage({
-      type: "error",
-      text:
-        error instanceof Error
-          ? error.message
-          : "Erreur réseau",
-    });
-  } finally {
-    setTestLoading(false);
-  }
-};
+    if (!testEmail.trim()) {
+      alert("Entrez un email de test.");
+      return;
+    }
+
+    setTestLoading(true);
+    setTestMessage(null);
+
+    try {
+      const res = await fetch(`/api/campaigns/${campaign.id}/test`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          testEmail: testEmail.trim(),
+          subject: values.subject,
+          htmlContent,
+          fromName: values.fromName,
+          fromEmail: values.fromEmail,
+          replyTo: values.replyTo,
+        }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        setTestMessage({
+          type: "error",
+          text: data.error || "Erreur envoi",
+        });
+        return;
+      }
+
+      setTestMessage({
+        type: "success",
+        text: data.message || `Email de test envoyé à ${testEmail}`,
+      });
+    } catch (error) {
+      setTestMessage({
+        type: "error",
+        text: error instanceof Error ? error.message : "Erreur réseau",
+      });
+    } finally {
+      setTestLoading(false);
+    }
+  };
 
   useEffect(() => {
     if (!mountRef.current || gjsRef.current) return;
@@ -1576,23 +1589,33 @@ export function CampaignForm({
           </div>
         </header>
 
-        <div className="ed-body">
+        <div className={`ed-body ${isLeftPanelVisible ? "" : "is-left-panel-collapsed"}`}>
           <aside className="ed-left-rail">
             <div className="ed-left-rail__top">
               <button
                 type="button"
-                className={`ed-rail-code ${activeTab === "code" ? "is-active" : ""}`}
+                className={`ed-rail-code ${activeTab === "code" && isLeftPanelVisible ? "is-active" : ""}`}
                 onClick={() => openTab("code")}
+                title="Code HTML / CSS"
               >
                 <span>{"</>"}</span>
                 <small>Code</small>
+              </button>
+
+              <button
+                type="button"
+                className={`ed-rail-btn ed-rail-toggle ${isLeftPanelVisible ? "is-active" : ""}`}
+                onClick={toggleLeftPanel}
+                title={isLeftPanelVisible ? "Masquer le panneau" : "Afficher le panneau"}
+              >
+                {isLeftPanelVisible ? "⇤" : "⇥"}
               </button>
             </div>
 
             <div className="ed-rail-stack">
               <button
                 type="button"
-                className={`ed-rail-btn ${activeTab === "blocks" ? "is-active" : ""}`}
+                className={`ed-rail-btn ${activeTab === "blocks" && isLeftPanelVisible ? "is-active" : ""}`}
                 onClick={() => openTab("blocks")}
                 title="Blocs"
               >
@@ -1601,7 +1624,7 @@ export function CampaignForm({
 
               <button
                 type="button"
-                className={`ed-rail-btn ${activeTab === "layers" ? "is-active" : ""}`}
+                className={`ed-rail-btn ${activeTab === "layers" && isLeftPanelVisible ? "is-active" : ""}`}
                 onClick={() => openTab("layers")}
                 title="Calques"
               >
@@ -1610,7 +1633,7 @@ export function CampaignForm({
 
               <button
                 type="button"
-                className={`ed-rail-btn ${activeTab === "media" ? "is-active" : ""}`}
+                className={`ed-rail-btn ${activeTab === "media" && isLeftPanelVisible ? "is-active" : ""}`}
                 onClick={() => openTab("media")}
                 title="Média"
               >
@@ -1630,193 +1653,221 @@ export function CampaignForm({
             </div>
           </aside>
 
-          <aside className={`ed-left-panel ${activeTab ? "is-open" : ""}`}>
-            {activeTab === "blocks" && (
-              <div className="ed-panel-section">
-                <div className="ed-panel-head">
-                  <div>
-                    <h2>Blocs</h2>
-                    <p>Texte, images, liens, colonnes et éléments de base</p>
-                  </div>
+          <aside className={`ed-left-panel ${isLeftPanelVisible ? "is-open" : "is-hidden"}`}>
+            <div className={`ed-panel-section ${activeTab === "blocks" ? "" : "is-panel-hidden"}`}>
+              <div className="ed-panel-head">
+                <div>
+                  <h2>Blocs</h2>
+                  <p>Texte, images, liens, colonnes et éléments de base</p>
                 </div>
 
-                <div id="ed-blocks" className="ed-blocks-host" />
+                <button
+                  type="button"
+                  className="ed-panel-close"
+                  onClick={hideLeftPanel}
+                  title="Masquer le panneau"
+                >
+                  ×
+                </button>
               </div>
-            )}
 
-            {activeTab === "layers" && (
-              <div className="ed-panel-section">
-                <div className="ed-panel-head">
-                  <div>
-                    <h2>Calques</h2>
-                    <p>Structure de l’email</p>
-                  </div>
+              <div id="ed-blocks" className="ed-blocks-host" />
+            </div>
+
+            <div className={`ed-panel-section ${activeTab === "layers" ? "" : "is-panel-hidden"}`}>
+              <div className="ed-panel-head">
+                <div>
+                  <h2>Calques</h2>
+                  <p>Structure de l’email</p>
                 </div>
 
-                <div id="ed-layers" className="ed-manager-host" />
+                <button
+                  type="button"
+                  className="ed-panel-close"
+                  onClick={hideLeftPanel}
+                  title="Masquer le panneau"
+                >
+                  ×
+                </button>
               </div>
-            )}
 
-            {activeTab === "code" && (
-              <div className="ed-panel-section">
-                <div className="ed-panel-head">
-                  <div>
-                    <h2>Code</h2>
-                    <p>Importer ou modifier HTML / CSS</p>
-                  </div>
+              <div id="ed-layers" className="ed-manager-host" />
+            </div>
+
+            <div className={`ed-panel-section ${activeTab === "code" ? "" : "is-panel-hidden"}`}>
+              <div className="ed-panel-head">
+                <div>
+                  <h2>Code</h2>
+                  <p>Importer ou modifier HTML / CSS</p>
                 </div>
 
-                <div className="ed-code-panel">
-                  <div className="ed-code-card">
-                    <div className="ed-code-toolbar">
+                <button
+                  type="button"
+                  className="ed-panel-close"
+                  onClick={hideLeftPanel}
+                  title="Masquer le panneau"
+                >
+                  ×
+                </button>
+              </div>
+
+              <div className="ed-code-panel">
+                <div className="ed-code-card">
+                  <div className="ed-code-toolbar">
+                    <button
+                      type="button"
+                      className="ed-code-sync"
+                      onClick={syncCodeFieldsFromEditor}
+                    >
+                      Synchroniser
+                    </button>
+
+                    <div className="ed-switch">
                       <button
                         type="button"
-                        className="ed-code-sync"
-                        onClick={syncCodeFieldsFromEditor}
+                        className={`ed-switch-btn ${importMode === "append" ? "is-active" : ""}`}
+                        onClick={() => setImportMode("append")}
                       >
-                        Synchroniser
-                      </button>
-
-                      <div className="ed-switch">
-                        <button
-                          type="button"
-                          className={`ed-switch-btn ${importMode === "append" ? "is-active" : ""}`}
-                          onClick={() => setImportMode("append")}
-                        >
-                          Ajouter
-                        </button>
-                        <button
-                          type="button"
-                          className={`ed-switch-btn ${importMode === "replace" ? "is-active" : ""}`}
-                          onClick={() => setImportMode("replace")}
-                        >
-                          Remplacer
-                        </button>
-                      </div>
-                    </div>
-
-                    <div className="ed-code-field">
-                      <label>HTML</label>
-                      <textarea
-                        value={codeHtml}
-                        onChange={(e) => setCodeHtml(e.target.value)}
-                        placeholder="<section>...</section>"
-                        rows={12}
-                      />
-                    </div>
-
-                    <div className="ed-code-field">
-                      <label>CSS</label>
-                      <textarea
-                        value={codeCss}
-                        onChange={(e) => setCodeCss(e.target.value)}
-                        placeholder="body { margin: 0; }"
-                        rows={12}
-                      />
-                    </div>
-
-                    <div className="ed-code-actions">
-                      <button
-                        type="button"
-                        className="ed-code-primary"
-                        onClick={applyCodeBundle}
-                      >
-                        Appliquer le code
+                        Ajouter
                       </button>
 
                       <button
                         type="button"
-                        className="ed-code-secondary"
-                        onClick={() => {
-                          setCodeHtml("");
-                          setCodeCss("");
-                          setCodeNotice("");
-                        }}
+                        className={`ed-switch-btn ${importMode === "replace" ? "is-active" : ""}`}
+                        onClick={() => setImportMode("replace")}
                       >
-                        Vider
+                        Remplacer
                       </button>
                     </div>
-
-                    {codeNotice && <p className="ed-code-notice">{codeNotice}</p>}
                   </div>
+
+                  <div className="ed-code-field">
+                    <label>HTML</label>
+                    <textarea
+                      value={codeHtml}
+                      onChange={(e) => setCodeHtml(e.target.value)}
+                      placeholder="<section>...</section>"
+                      rows={12}
+                    />
+                  </div>
+
+                  <div className="ed-code-field">
+                    <label>CSS</label>
+                    <textarea
+                      value={codeCss}
+                      onChange={(e) => setCodeCss(e.target.value)}
+                      placeholder="body { margin: 0; }"
+                      rows={12}
+                    />
+                  </div>
+
+                  <div className="ed-code-actions">
+                    <button
+                      type="button"
+                      className="ed-code-primary"
+                      onClick={applyCodeBundle}
+                    >
+                      Appliquer le code
+                    </button>
+
+                    <button
+                      type="button"
+                      className="ed-code-secondary"
+                      onClick={() => {
+                        setCodeHtml("");
+                        setCodeCss("");
+                        setCodeNotice("");
+                      }}
+                    >
+                      Vider
+                    </button>
+                  </div>
+
+                  {codeNotice && <p className="ed-code-notice">{codeNotice}</p>}
                 </div>
               </div>
-            )}
+            </div>
 
-            {activeTab === "media" && (
-              <div className="ed-panel-section">
-                <div className="ed-panel-head">
-                  <div>
-                    <h2>Média</h2>
-                    <p>Images et fichiers</p>
-                  </div>
+            <div className={`ed-panel-section ${activeTab === "media" ? "" : "is-panel-hidden"}`}>
+              <div className="ed-panel-head">
+                <div>
+                  <h2>Média</h2>
+                  <p>Images et fichiers</p>
                 </div>
 
-                <div className="ed-media-panel">
+                <button
+                  type="button"
+                  className="ed-panel-close"
+                  onClick={hideLeftPanel}
+                  title="Masquer le panneau"
+                >
+                  ×
+                </button>
+              </div>
+
+              <div className="ed-media-panel">
+                <input
+                  ref={mediaInputRef}
+                  type="file"
+                  hidden
+                  onChange={(e) => handleMediaUpload(e.target.files?.[0] || null)}
+                />
+
+                <button
+                  type="button"
+                  className="ed-media-upload"
+                  onClick={() => mediaInputRef.current?.click()}
+                  disabled={uploadingMedia}
+                >
+                  <span>＋</span>
+                  {uploadingMedia ? "Upload…" : "Uploader un fichier"}
+                </button>
+
+                <div className="ed-media-filters">
                   <input
-                    ref={mediaInputRef}
-                    type="file"
-                    hidden
-                    onChange={(e) =>
-                      handleMediaUpload(e.target.files?.[0] || null)
-                    }
+                    value={mediaSearch}
+                    onChange={(e) => setMediaSearch(e.target.value)}
+                    placeholder="Rechercher…"
                   />
 
-                  <button
-                    type="button"
-                    className="ed-media-upload"
-                    onClick={() => mediaInputRef.current?.click()}
-                    disabled={uploadingMedia}
+                  <select
+                    value={mediaFilter}
+                    onChange={(e) =>
+                      setMediaFilter(e.target.value as "all" | MediaKind)
+                    }
                   >
-                    <span>＋</span>
-                    {uploadingMedia ? "Upload…" : "Uploader un fichier"}
-                  </button>
+                    <option value="all">Tous</option>
+                    <option value="image">Images</option>
+                    <option value="video">Vidéos</option>
+                    <option value="file">Fichiers</option>
+                  </select>
+                </div>
 
-                  <div className="ed-media-filters">
-                    <input
-                      value={mediaSearch}
-                      onChange={(e) => setMediaSearch(e.target.value)}
-                      placeholder="Rechercher…"
-                    />
+                {mediaLoading && <p className="ed-media-state">Chargement…</p>}
+                {mediaError && <p className="ed-media-error">{mediaError}</p>}
+                {mediaNotice && <p className="ed-media-notice">{mediaNotice}</p>}
 
-                    <select
-                      value={mediaFilter}
-                      onChange={(e) =>
-                        setMediaFilter(e.target.value as "all" | MediaKind)
-                      }
+                <div className="ed-media-grid">
+                  {filteredMediaItems.map((item) => (
+                    <button
+                      key={item.id}
+                      type="button"
+                      className="ed-media-item"
+                      onClick={() => insertMediaIntoEditor(item)}
+                      title={item.name}
                     >
-                      <option value="all">Tous</option>
-                      <option value="image">Images</option>
-                      <option value="video">Vidéos</option>
-                      <option value="file">Fichiers</option>
-                    </select>
-                  </div>
+                      {item.kind === "image" ? (
+                        <img src={item.url} alt={item.name} />
+                      ) : (
+                        <span className="ed-media-file">📎</span>
+                      )}
 
-                  {mediaLoading && <p className="ed-media-state">Chargement…</p>}
-                  {mediaError && <p className="ed-media-error">{mediaError}</p>}
-                  {mediaNotice && <p className="ed-media-notice">{mediaNotice}</p>}
-
-                  <div className="ed-media-grid">
-                    {filteredMediaItems.map((item) => (
-                      <button
-                        key={item.id}
-                        type="button"
-                        className="ed-media-item"
-                        onClick={() => insertMediaIntoEditor(item)}
-                        title={item.name}
-                      >
-                        {item.kind === "image" ? (
-                          <img src={item.url} alt={item.name} />
-                        ) : (
-                          <span className="ed-media-file">📎</span>
-                        )}
-                        <span>{item.name}</span>
-                      </button>
-                    ))}
-                  </div>
+                      <span>{item.name}</span>
+                    </button>
+                  ))}
                 </div>
               </div>
-            )}
+            </div>
           </aside>
 
           <main className="ed-canvas-area">
@@ -1862,6 +1913,7 @@ export function CampaignForm({
                 >
                   Styles
                 </button>
+
                 <button
                   type="button"
                   className={inspectorTab === "properties" ? "is-active" : ""}
@@ -1872,121 +1924,125 @@ export function CampaignForm({
               </div>
             </div>
 
-            {inspectorTab === "styles" && (
-              <div className="ed-inspector-body">
-                <div id="ed-style-selectors" className="ed-selectors-host" />
-                <div id="ed-styles-fields" className="ed-styles-host" />
-              </div>
-            )}
+            <div
+              className={`ed-inspector-body ${
+                inspectorTab === "styles" ? "" : "is-panel-hidden"
+              }`}
+            >
+              <div id="ed-style-selectors" className="ed-selectors-host" />
+              <div id="ed-styles-fields" className="ed-styles-host" />
+            </div>
 
-            {inspectorTab === "properties" && (
-              <div className="ed-inspector-body">
-                <div className="ed-link-card">
-                  <div className="ed-link-card__head">
-                    <h3 className="ed-link-card__title">Lien rapide</h3>
-                    <p className="ed-link-card__subtitle">
-                      Rends n'importe quel élément cliquable.
-                    </p>
-                  </div>
-
-                  <div className="ed-link-field">
-                    <label>URL / ancre</label>
-                    <input
-                      value={linkConfig.href}
-                      onChange={(e) =>
-                        setLinkConfig((prev) => ({
-                          ...prev,
-                          href: e.target.value,
-                        }))
-                      }
-                      placeholder="https://... ou #section"
-                    />
-                  </div>
-
-                  <div className="ed-link-field">
-                    <label>Titre du lien</label>
-                    <input
-                      value={linkConfig.title}
-                      onChange={(e) =>
-                        setLinkConfig((prev) => ({
-                          ...prev,
-                          title: e.target.value,
-                        }))
-                      }
-                      placeholder="Texte d'aide facultatif"
-                    />
-                  </div>
-
-                  <label className="ed-link-check">
-                    <input
-                      type="checkbox"
-                      checked={linkConfig.targetBlank}
-                      onChange={(e) =>
-                        setLinkConfig((prev) => ({
-                          ...prev,
-                          targetBlank: e.target.checked,
-                        }))
-                      }
-                    />
-                    <span>Ouvrir dans un nouvel onglet</span>
-                  </label>
-
-                  <label className="ed-link-check">
-                    <input
-                      type="checkbox"
-                      checked={linkConfig.noFollow}
-                      onChange={(e) =>
-                        setLinkConfig((prev) => ({
-                          ...prev,
-                          noFollow: e.target.checked,
-                        }))
-                      }
-                    />
-                    <span>
-                      Ajouter <code>nofollow</code>
-                    </span>
-                  </label>
-
-                  <label className="ed-link-check">
-                    <input
-                      type="checkbox"
-                      checked={linkConfig.download}
-                      onChange={(e) =>
-                        setLinkConfig((prev) => ({
-                          ...prev,
-                          download: e.target.checked,
-                        }))
-                      }
-                    />
-                    <span>Forcer le téléchargement</span>
-                  </label>
-
-                  <div className="ed-link-actions">
-                    <button
-                      type="button"
-                      className="ed-link-primary"
-                      onClick={applyLinkToSelected}
-                    >
-                      Rendre cliquable
-                    </button>
-
-                    <button
-                      type="button"
-                      className="ed-link-secondary"
-                      onClick={removeLinkFromSelected}
-                    >
-                      Retirer le lien
-                    </button>
-                  </div>
-
-                  <p className="ed-link-help">
-                    Sélectionne un texte, une image, un bouton ou une carte.
+            <div
+              className={`ed-inspector-body ${
+                inspectorTab === "properties" ? "" : "is-panel-hidden"
+              }`}
+            >
+              <div className="ed-link-card">
+                <div className="ed-link-card__head">
+                  <h3 className="ed-link-card__title">Lien rapide</h3>
+                  <p className="ed-link-card__subtitle">
+                    Rends n&apos;importe quel élément cliquable.
                   </p>
                 </div>
 
-                <div id="ed-traits" className="ed-props-host" />
+                <div className="ed-link-field">
+                  <label>URL / ancre</label>
+                  <input
+                    value={linkConfig.href}
+                    onChange={(e) =>
+                      setLinkConfig((prev) => ({
+                        ...prev,
+                        href: e.target.value,
+                      }))
+                    }
+                    placeholder="https://... ou #section"
+                  />
+                </div>
+
+                <div className="ed-link-field">
+                  <label>Titre du lien</label>
+                  <input
+                    value={linkConfig.title}
+                    onChange={(e) =>
+                      setLinkConfig((prev) => ({
+                        ...prev,
+                        title: e.target.value,
+                      }))
+                    }
+                    placeholder="Texte d'aide facultatif"
+                  />
+                </div>
+
+                <label className="ed-link-check">
+                  <input
+                    type="checkbox"
+                    checked={linkConfig.targetBlank}
+                    onChange={(e) =>
+                      setLinkConfig((prev) => ({
+                        ...prev,
+                        targetBlank: e.target.checked,
+                      }))
+                    }
+                  />
+                  <span>Ouvrir dans un nouvel onglet</span>
+                </label>
+
+                <label className="ed-link-check">
+                  <input
+                    type="checkbox"
+                    checked={linkConfig.noFollow}
+                    onChange={(e) =>
+                      setLinkConfig((prev) => ({
+                        ...prev,
+                        noFollow: e.target.checked,
+                      }))
+                    }
+                  />
+                  <span>
+                    Ajouter <code>nofollow</code>
+                  </span>
+                </label>
+
+                <label className="ed-link-check">
+                  <input
+                    type="checkbox"
+                    checked={linkConfig.download}
+                    onChange={(e) =>
+                      setLinkConfig((prev) => ({
+                        ...prev,
+                        download: e.target.checked,
+                      }))
+                    }
+                  />
+                  <span>Forcer le téléchargement</span>
+                </label>
+
+                <div className="ed-link-actions">
+                  <button
+                    type="button"
+                    className="ed-link-primary"
+                    onClick={applyLinkToSelected}
+                  >
+                    Rendre cliquable
+                  </button>
+
+                  <button
+                    type="button"
+                    className="ed-link-secondary"
+                    onClick={removeLinkFromSelected}
+                  >
+                    Retirer le lien
+                  </button>
+                </div>
+
+                <p className="ed-link-help">
+                  Sélectionne un texte, une image, un bouton ou une carte.
+                </p>
               </div>
-            )}
+
+              <div id="ed-traits" className="ed-props-host" />
+            </div>
           </aside>
         </div>
       </div>
@@ -2270,6 +2326,11 @@ export function CampaignForm({
           grid-template-columns: 60px 320px minmax(0, 1fr) 360px;
           background: var(--ed-canvas);
           overflow: hidden;
+          transition: grid-template-columns 0.2s ease;
+        }
+
+        .ed-body.is-left-panel-collapsed {
+          grid-template-columns: 60px 0 minmax(0, 1fr) 360px;
         }
 
         .ed-left-rail {
@@ -2294,6 +2355,11 @@ export function CampaignForm({
           width: 42px;
           height: 42px;
           border-radius: 13px;
+        }
+
+        .ed-rail-toggle {
+          font-size: 16px;
+          font-weight: 900;
         }
 
         .ed-rail-code {
@@ -2321,11 +2387,22 @@ export function CampaignForm({
         }
 
         .ed-left-panel {
+          min-width: 0;
           border-right: 1px solid var(--ed-border);
           background: var(--ed-panel);
           overflow: hidden;
           display: flex;
           flex-direction: column;
+          opacity: 1;
+          visibility: visible;
+          transition: opacity 0.18s ease, visibility 0.18s ease;
+        }
+
+        .ed-left-panel.is-hidden {
+          opacity: 0;
+          visibility: hidden;
+          pointer-events: none;
+          border-right: 0;
         }
 
         .ed-panel-section {
@@ -2335,6 +2412,10 @@ export function CampaignForm({
           min-height: 0;
         }
 
+        .is-panel-hidden {
+          display: none !important;
+        }
+
         .ed-panel-head {
           min-height: 68px;
           padding: 14px 16px;
@@ -2342,6 +2423,7 @@ export function CampaignForm({
           display: flex;
           align-items: center;
           justify-content: space-between;
+          gap: 12px;
           background: var(--ed-panel);
         }
 
@@ -2356,6 +2438,28 @@ export function CampaignForm({
           margin: 4px 0 0;
           font-size: 12px;
           color: var(--ed-text-mute);
+        }
+
+        .ed-panel-close {
+          width: 30px;
+          height: 30px;
+          border-radius: 10px;
+          border: 1px solid var(--ed-border);
+          background: var(--ed-shell-soft);
+          color: var(--ed-text-soft);
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          cursor: pointer;
+          font-size: 18px;
+          line-height: 1;
+          transition: 0.15s ease;
+        }
+
+        .ed-panel-close:hover {
+          color: var(--ed-accent);
+          border-color: var(--ed-accent-soft-border);
+          background: var(--ed-accent-soft);
         }
 
         .ed-blocks-host,
@@ -2473,7 +2577,9 @@ export function CampaignForm({
         }
 
         @keyframes spin {
-          to { transform: rotate(360deg); }
+          to {
+            transform: rotate(360deg);
+          }
         }
 
         .ed-inspector {
@@ -3192,6 +3298,10 @@ export function CampaignForm({
             grid-template-columns: 60px 300px minmax(0, 1fr);
           }
 
+          .ed-body.is-left-panel-collapsed {
+            grid-template-columns: 60px 0 minmax(0, 1fr);
+          }
+
           .ed-inspector {
             display: none;
           }
@@ -3211,7 +3321,8 @@ export function CampaignForm({
             flex-wrap: wrap;
           }
 
-          .ed-body {
+          .ed-body,
+          .ed-body.is-left-panel-collapsed {
             grid-template-columns: 56px minmax(0, 1fr);
           }
 
@@ -3223,6 +3334,15 @@ export function CampaignForm({
             width: 310px;
             z-index: 40;
             box-shadow: 18px 0 38px rgba(15,23,42,.16);
+            transform: translateX(0);
+            transition: transform 0.22s ease, opacity 0.18s ease, visibility 0.18s ease;
+          }
+
+          .ed-left-panel.is-hidden {
+            transform: translateX(-110%);
+            opacity: 0;
+            visibility: hidden;
+            pointer-events: none;
           }
         }
 

@@ -308,7 +308,7 @@ const s: Record<string, React.CSSProperties> = {
 
   tabBtnActive: {
     color: ORANGE,
-    borderBottomColor: ORANGE,
+    borderBottom: ORANGE,
   },
 
   // ── Main ────────────────────────────────────────────────────────────────
