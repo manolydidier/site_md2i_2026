@@ -1,0 +1,365 @@
+.groupsManager {
+  padding: 18px;
+  background: #ffffff;
+}
+
+.groupsHead {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+  margin-bottom: 16px;
+}
+
+.sectionLabel {
+  margin-bottom: 4px;
+  color: #9ca3af;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.groupsHead p {
+  margin: 0;
+  color: #6b7280;
+  font-size: 13px;
+}
+
+.primaryBtn {
+  height: 38px;
+  padding: 0 15px;
+  border-radius: 10px;
+  border: 1px solid rgba(239, 159, 39, 0.28);
+  background: #ef9f27;
+  color: #1a0d00;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 13px;
+  font-weight: 800;
+  cursor: pointer;
+  transition: 0.15s ease;
+  white-space: nowrap;
+}
+
+.primaryBtn:hover {
+  background: #e8911f;
+}
+
+.formSlot {
+  margin-bottom: 14px;
+}
+
+.groupsGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.skeletonCard {
+  height: 150px;
+  border-radius: 14px;
+  background: linear-gradient(
+    90deg,
+    #f3f4f6 0%,
+    #f9fafb 50%,
+    #f3f4f6 100%
+  );
+  background-size: 200% 100%;
+  animation: pulse 1.2s ease-in-out infinite;
+  border: 1px solid #e5e7eb;
+}
+
+@keyframes pulse {
+  0% {
+    background-position: 200% 0;
+  }
+
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+.emptyState {
+  grid-column: 1 / -1;
+  min-height: 260px;
+  padding: 40px 20px;
+  border: 1px dashed #e5e7eb;
+  border-radius: 14px;
+  background: #ffffff;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  color: #6b7280;
+}
+
+.emptyIcon {
+  width: 52px;
+  height: 52px;
+  border-radius: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #ef9f27;
+  background: rgba(239, 159, 39, 0.1);
+  border: 1px solid rgba(239, 159, 39, 0.22);
+  margin-bottom: 10px;
+}
+
+.emptyState h3 {
+  margin: 0;
+  color: #111827;
+  font-size: 16px;
+  font-weight: 800;
+}
+
+.emptyState p {
+  margin: 4px 0 0;
+  color: #6b7280;
+  font-size: 13px;
+}
+
+.groupCard {
+  min-height: 150px;
+  padding: 16px;
+  border-radius: 14px;
+  border: 1px solid #e5e7eb;
+  background: #ffffff;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  transition:
+    border-color 0.15s ease,
+    box-shadow 0.15s ease,
+    transform 0.15s ease;
+}
+
+.groupCard:hover {
+  border-color: rgba(239, 159, 39, 0.28);
+  box-shadow: 0 12px 30px rgba(15, 23, 42, 0.06);
+  transform: translateY(-1px);
+}
+
+.groupCardTop {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.groupIcon {
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #ef9f27;
+  background: rgba(239, 159, 39, 0.1);
+  border: 1px solid rgba(239, 159, 39, 0.22);
+  flex-shrink: 0;
+}
+
+.groupActions {
+  display: flex;
+  gap: 5px;
+}
+
+.groupActions button {
+  width: 30px;
+  height: 30px;
+  border-radius: 9px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: #9ca3af;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: 0.15s ease;
+}
+
+.groupActions button:hover {
+  color: #111827;
+  background: #f3f4f6;
+  border-color: #e5e7eb;
+}
+
+.groupActions button.danger:hover,
+.groupActions .danger:hover {
+  color: #dc2626;
+  background: #fef2f2;
+  border-color: #fecaca;
+}
+
+.groupCardBody {
+  min-width: 0;
+}
+
+.groupCardBody h3 {
+  margin: 0;
+  color: #111827;
+  font-size: 15px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.groupCardBody p {
+  margin: 5px 0 0;
+  color: #6b7280;
+  font-size: 13px;
+  line-height: 1.45;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.groupCardBody .muted,
+.muted {
+  color: #9ca3af;
+}
+
+.groupCount {
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid #f1f5f9;
+  color: #6b7280;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.groupCount span {
+  margin-right: 5px;
+  color: #111827;
+  font-size: 15px;
+  font-weight: 900;
+}
+
+.groupFormCard {
+  min-height: 150px;
+  padding: 16px;
+  border-radius: 14px;
+  border: 1px solid rgba(239, 159, 39, 0.28);
+  background: rgba(239, 159, 39, 0.06);
+}
+
+.groupFormCard form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.fieldGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+.fieldGroup label {
+  color: #374151;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.fieldGroup input {
+  width: 100%;
+  height: 40px;
+  padding: 0 12px;
+  border-radius: 10px;
+  border: 1px solid #e5e7eb;
+  background: #ffffff;
+  color: #111827;
+  outline: none;
+  font-size: 14px;
+  transition: 0.15s ease;
+}
+
+.fieldGroup input::placeholder {
+  color: #9ca3af;
+}
+
+.fieldGroup input:focus {
+  border-color: rgba(239, 159, 39, 0.55);
+  box-shadow: 0 0 0 4px rgba(239, 159, 39, 0.1);
+}
+
+.error {
+  margin: 0;
+  color: #ef4444;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.formActions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 9px;
+  margin-top: 2px;
+}
+
+.cancelBtn,
+.saveBtn {
+  height: 40px;
+  border-radius: 10px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  font-size: 13px;
+  font-weight: 800;
+  cursor: pointer;
+  transition: 0.15s ease;
+}
+
+.cancelBtn {
+  border: 1px solid #e5e7eb;
+  background: #ffffff;
+  color: #374151;
+}
+
+.cancelBtn:hover {
+  background: #f9fafb;
+}
+
+.saveBtn {
+  border: 1px solid rgba(239, 159, 39, 0.28);
+  background: #ef9f27;
+  color: #1a0d00;
+}
+
+.saveBtn:hover {
+  background: #e8911f;
+}
+
+.saveBtn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+@media (max-width: 1024px) {
+  .groupsGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 640px) {
+  .groupsHead {
+    flex-direction: column;
+  }
+
+  .groupsGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .formActions {
+    grid-template-columns: 1fr;
+  }
+}

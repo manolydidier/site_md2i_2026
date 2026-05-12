@@ -13,6 +13,7 @@
     "seed": "dotenv -e tsx prisma/seeds.ts"
   },
   "dependencies": {
+    "@hookform/resolvers": "^5.2.2",
     "@prisma/adapter-pg": "^7.5.0",
     "@prisma/client": "^7.5.0",
     "axios": "^1.13.6",
@@ -28,15 +29,20 @@
     "grapesjs-tooltip": "^0.1.8",
     "grapesjs-typed": "^2.0.1",
     "leaflet": "^1.9.4",
+    "lucide-react": "^1.14.0",
     "next": "16.1.6",
     "next-auth": "^5.0.0-beta.30",
     "nodemailer": "^7.0.13",
+    "papaparse": "^5.5.3",
     "pg": "^8.20.0",
     "prisma": "^7.5.0",
     "react": "18.2.0",
     "react-dom": "18.2.0",
+    "react-hook-form": "^7.75.0",
     "resend": "^6.12.3",
-    "three": "^0.183.2"
+    "three": "^0.183.2",
+    "xlsx": "^0.18.5",
+    "zod": "^4.4.3"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
