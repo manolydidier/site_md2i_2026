@@ -5,6 +5,113 @@ import { prisma } from "@/app/lib/prisma";
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
+const EMAIL_BASE_CSS = `
+/* MD2I_EMAIL_BASE */
+body {
+  margin: 0;
+  padding: 0;
+  background: #f5f7fa;
+  color: #181818;
+  font-family: Inter, Arial, sans-serif;
+}
+
+.email-shell {
+  max-width: 680px;
+  margin: 0 auto;
+  background: #ffffff;
+}
+
+.email-hero {
+  padding: 42px 28px;
+  background: linear-gradient(135deg, rgba(239,159,39,.14), rgba(239,159,39,.04));
+  border-radius: 0 0 24px 24px;
+}
+
+.email-eyebrow {
+  display: inline-block;
+  margin-bottom: 12px;
+  padding: 7px 12px;
+  border-radius: 999px;
+  background: rgba(239,159,39,.12);
+  color: #ef9f27;
+  border: 1px solid rgba(239,159,39,.22);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+
+.email-title {
+  margin: 0 0 12px;
+  font-size: 32px;
+  line-height: 1.08;
+  letter-spacing: -.04em;
+}
+
+.email-text {
+  margin: 0;
+  color: rgba(15,23,42,.68);
+  font-size: 15px;
+  line-height: 1.7;
+}
+
+.email-section {
+  padding: 32px 28px;
+}
+
+.email-card {
+  padding: 22px;
+  border: 1px solid rgba(15,23,42,.08);
+  border-radius: 18px;
+  background: #ffffff;
+  box-shadow: 0 14px 34px rgba(15,23,42,.06);
+}
+
+.email-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  margin-top: 22px;
+  padding: 0 18px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #ef9f27, #c97d15);
+  color: #ffffff !important;
+  text-decoration: none;
+  font-weight: 800;
+}
+
+.email-divider {
+  height: 1px;
+  background: rgba(15,23,42,.10);
+  margin: 24px 0;
+}
+
+.email-footer {
+  padding: 24px 28px;
+  color: rgba(15,23,42,.52);
+  font-size: 12px;
+  line-height: 1.6;
+  text-align: center;
+  background: #f8fafc;
+}
+
+@media (max-width: 620px) {
+  .email-shell {
+    width: 100% !important;
+  }
+
+  .email-section,
+  .email-hero {
+    padding: 26px 20px;
+  }
+
+  .email-title {
+    font-size: 26px;
+  }
+}
+`;
+
 type SendTestEmailParams = {
   to: string;
   subject: string;
@@ -21,6 +128,10 @@ type NormalizedRecipient = {
   contactId?: string | null;
 };
 
+function wait(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
 function getVerifiedFrom(fromName?: string | null) {
   const emailFrom = process.env.EMAIL_FROM?.trim();
 
@@ -28,7 +139,6 @@ function getVerifiedFrom(fromName?: string | null) {
     throw new Error("EMAIL_FROM manquant dans .env");
   }
 
-  // Si EMAIL_FROM contient déjà : "MD2I <newsletter@domaine.com>"
   if (emailFrom.includes("<") && emailFrom.includes(">")) {
     return emailFrom;
   }
@@ -54,10 +164,7 @@ function getReplyTo(replyTo?: string | null, fromEmail?: string | null) {
   return value;
 }
 
-function replaceVariables(
-  html: string,
-  recipient: NormalizedRecipient
-) {
+function replaceVariables(html: string, recipient: NormalizedRecipient) {
   const firstName = recipient.firstName || "";
   const lastName = recipient.lastName || "";
   const email = recipient.email || "";
@@ -70,47 +177,208 @@ function replaceVariables(
     .replaceAll("{{fullName}}", fullName);
 }
 
+function hasStyleTag(html: string) {
+  return /<style[\s>]/i.test(html);
+}
+
+function hasHtmlDocument(html: string) {
+  return /<html[\s>]/i.test(html) || /<body[\s>]/i.test(html);
+}
+
+function ensureEmailHasCss(html: string) {
+  const safeHtml = html || "";
+
+  if (hasStyleTag(safeHtml)) {
+    return safeHtml;
+  }
+
+  if (hasHtmlDocument(safeHtml)) {
+    return safeHtml.replace(
+      /<head[^>]*>/i,
+      (headTag) => `${headTag}
+<style data-md2i-email-css="fallback">
+${EMAIL_BASE_CSS}
+</style>`
+    );
+  }
+
+  return `<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <style data-md2i-email-css="fallback">
+${EMAIL_BASE_CSS}
+  </style>
+</head>
+<body>
+${safeHtml}
+</body>
+</html>`;
+}
+
+function prepareEmailHtml(html: string, recipient?: NormalizedRecipient) {
+  const withVariables = recipient ? replaceVariables(html, recipient) : html;
+  const finalHtml = ensureEmailHasCss(withVariables);
+
+  return finalHtml;
+}
+
 async function writeCampaignLog(params: {
   campaignId: string;
   email: string;
   status: "sent" | "failed";
   message?: string;
+  provider?: string;
 }) {
+  try {
+    await prisma.emailLog.create({
+      data: {
+        campaignId: params.campaignId,
+        email: params.email,
+        status: params.status,
+        message: params.message || null,
+        provider: params.provider || "resend",
+      },
+    });
+  } catch (error) {
+    console.error("[writeCampaignLog] error", error);
+  }
+}
+
+function addRecipientToMap(
+  map: Map<string, NormalizedRecipient>,
+  recipient: NormalizedRecipient
+) {
+  const email = recipient.email.trim().toLowerCase();
+
+  if (!email) return;
+
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return;
+
+  if (!map.has(email)) {
+    map.set(email, {
+      ...recipient,
+      email,
+    });
+  }
+}
+
+async function getCampaignGroupIds(campaignId: string) {
   const db = prisma as any;
 
-  const delegate =
-    db.campaignLog ||
-    db.campaignEmailLog ||
-    db.emailLog ||
-    db.campaignSendLog;
+  if (!db.campaignGroup?.findMany) {
+    console.warn(
+      "[getCampaignGroupIds] prisma.campaignGroup indisponible. Lancez npx prisma generate et vérifiez src/app/lib/prisma.ts."
+    );
 
-  if (!delegate?.create) {
-    return;
+    return [] as string[];
   }
 
-  const payloads = [
-    {
-      campaignId: params.campaignId,
-      email: params.email,
-      status: params.status,
-      message: params.message || null,
-    },
-    {
-      campaignId: params.campaignId,
-      recipientEmail: params.email,
-      status: params.status,
-      error: params.message || null,
-    },
-  ];
+  try {
+    const campaignGroups = await db.campaignGroup.findMany({
+      where: {
+        campaignId,
+      },
+      select: {
+        groupId: true,
+      },
+    });
 
-  for (const data of payloads) {
-    try {
-      await delegate.create({ data });
-      return;
-    } catch {
-      // On tente l'autre forme si ton modèle de log utilise d'autres noms de champs.
+    return campaignGroups
+      .map((item: { groupId?: string | null }) => item.groupId)
+      .filter(Boolean) as string[];
+  } catch (error) {
+    console.error("[getCampaignGroupIds] error", error);
+    return [];
+  }
+}
+
+async function getCampaignRecipients(campaign: {
+  id: string;
+  userId: string;
+  groupId: string | null;
+}) {
+  const uniqueRecipients = new Map<string, NormalizedRecipient>();
+
+  const campaignGroupIds = await getCampaignGroupIds(campaign.id);
+
+  const groupIds = Array.from(
+    new Set([
+      ...campaignGroupIds,
+      ...(campaign.groupId ? [campaign.groupId] : []),
+    ])
+  );
+
+  console.log("[sendCampaign] groupes ciblés", {
+    campaignId: campaign.id,
+    groupId: campaign.groupId,
+    campaignGroupIds,
+    finalGroupIds: groupIds,
+  });
+
+  if (groupIds.length > 0) {
+    const contacts = await prisma.contact.findMany({
+      where: {
+        userId: campaign.userId,
+        groupId: {
+          in: groupIds,
+        },
+        isActive: true,
+        unsubscribed: false,
+      },
+      select: {
+        id: true,
+        email: true,
+        firstName: true,
+        lastName: true,
+      },
+    });
+
+    for (const contact of contacts) {
+      addRecipientToMap(uniqueRecipients, {
+        email: contact.email,
+        firstName: contact.firstName,
+        lastName: contact.lastName,
+        contactId: contact.id,
+      });
     }
   }
+
+  const manualRecipients = await prisma.campaignRecipient.findMany({
+    where: {
+      campaignId: campaign.id,
+    },
+    include: {
+      contact: {
+        select: {
+          id: true,
+          email: true,
+          firstName: true,
+          lastName: true,
+          isActive: true,
+          unsubscribed: true,
+        },
+      },
+    },
+  });
+
+  for (const recipient of manualRecipients) {
+    const contact = recipient.contact;
+
+    if (contact && (!contact.isActive || contact.unsubscribed)) {
+      continue;
+    }
+
+    addRecipientToMap(uniqueRecipients, {
+      email: recipient.email || contact?.email || "",
+      firstName: contact?.firstName || "",
+      lastName: contact?.lastName || "",
+      contactId: recipient.contactId || contact?.id || null,
+    });
+  }
+
+  return Array.from(uniqueRecipients.values());
 }
 
 export async function sendTestEmail({
@@ -131,12 +399,20 @@ export async function sendTestEmail({
 
     const verifiedFrom = getVerifiedFrom(fromName);
     const safeReplyTo = getReplyTo(replyTo, fromEmail);
+    const finalHtml = prepareEmailHtml(html);
+
+    console.log("[sendTestEmail] html check", {
+      to,
+      htmlLength: finalHtml.length,
+      hasStyle: hasStyleTag(finalHtml),
+      hasBaseCss: finalHtml.includes("MD2I_EMAIL_BASE"),
+    });
 
     const { data, error } = await resend.emails.send({
       from: verifiedFrom,
       to: [to],
       subject,
-      html,
+      html: finalHtml,
       ...(safeReplyTo ? { replyTo: safeReplyTo } : {}),
     });
 
@@ -169,65 +445,6 @@ export async function sendTestEmail({
   }
 }
 
-async function getCampaignRecipients(campaign: {
-  id: string;
-  userId: string;
-  groupId: string | null;
-}) {
-  if (campaign.groupId) {
-    const contacts = await prisma.contact.findMany({
-      where: {
-        groupId: campaign.groupId,
-        userId: campaign.userId,
-      },
-      select: {
-        id: true,
-        email: true,
-        firstName: true,
-        lastName: true,
-      },
-    });
-
-    return contacts
-      .filter((contact) => Boolean(contact.email))
-      .map((contact) => ({
-        email: contact.email,
-        firstName: contact.firstName,
-        lastName: contact.lastName,
-        contactId: contact.id,
-      })) as NormalizedRecipient[];
-  }
-
-  const recipients = await prisma.campaignRecipient.findMany({
-    where: {
-      campaignId: campaign.id,
-    },
-    include: {
-      contact: {
-        select: {
-          id: true,
-          email: true,
-          firstName: true,
-          lastName: true,
-        },
-      },
-    },
-  });
-
-  return recipients
-    .map((recipient: any) => {
-      const contact = recipient.contact;
-
-      return {
-        email: recipient.email || contact?.email || "",
-        firstName: recipient.firstName || contact?.firstName || "",
-        lastName: recipient.lastName || contact?.lastName || "",
-        contactId: recipient.contactId || contact?.id || null,
-      };
-    })
-    .filter((recipient) => Boolean(recipient.email)) as NormalizedRecipient[];
-}
-
 export async function sendCampaign(campaignId: string) {
   if (!process.env.RESEND_API_KEY) {
     throw new Error("RESEND_API_KEY manquant dans .env");
@@ -247,6 +464,13 @@ export async function sendCampaign(campaignId: string) {
     throw new Error("Campagne introuvable");
   }
 
+  console.log("[sendCampaign] campaign html before send", {
+    campaignId: campaign.id,
+    htmlLength: campaign.htmlContent?.length || 0,
+    hasStyle: hasStyleTag(campaign.htmlContent || ""),
+    hasBaseCss: campaign.htmlContent?.includes("MD2I_EMAIL_BASE"),
+  });
+
   const recipients = await getCampaignRecipients({
     id: campaign.id,
     userId: campaign.userId,
@@ -254,6 +478,18 @@ export async function sendCampaign(campaignId: string) {
   });
 
   if (recipients.length === 0) {
+    await prisma.campaign.update({
+      where: {
+        id: campaign.id,
+      },
+      data: {
+        status: "FAILED",
+        totalRecipients: 0,
+        sentCount: 0,
+        failedCount: 0,
+      },
+    });
+
     throw new Error("Aucun destinataire trouvé pour cette campagne");
   }
 
@@ -277,7 +513,15 @@ export async function sendCampaign(campaignId: string) {
 
   for (const recipient of recipients) {
     try {
-      const html = replaceVariables(campaign.htmlContent, recipient);
+      const html = prepareEmailHtml(campaign.htmlContent, recipient);
+
+      console.log("[sendCampaign] sending recipient", {
+        campaignId: campaign.id,
+        to: recipient.email,
+        htmlLength: html.length,
+        hasStyle: hasStyleTag(html),
+        hasBaseCss: html.includes("MD2I_EMAIL_BASE"),
+      });
 
       const { error } = await resend.emails.send({
         from: verifiedFrom,
@@ -334,6 +578,8 @@ export async function sendCampaign(campaignId: string) {
         failedCount,
       },
     });
+
+    await wait(250);
   }
 
   const finalStatus = sentCount > 0 ? "SENT" : "FAILED";

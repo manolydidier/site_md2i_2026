@@ -1,76 +1,277 @@
-// app/api/campaigns/route.ts
-// GET (liste) + POST (créer)
+// src/app/api/campaigns/route.ts
+// GET liste + POST créer une campagne
+// Compatible ancien groupId + nouveau multi-groupes CampaignGroup
 
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { prisma } from "@/app/lib/prisma";
 import { campaignSchema } from "@/app/lib/email/schemas";
 
-export async function GET(req: NextRequest) {
-  const session = await auth();
+type CampaignWithOptionalGroups = Awaited<
+  ReturnType<typeof prisma.campaign.findMany>
+>[number] & {
+  campaignGroups?: unknown[];
+};
 
-  if (!session?.user?.id) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+async function attachCampaignGroups<T extends { id: string }>(
+  campaigns: T[]
+): Promise<Array<T & { campaignGroups: any[] }>> {
+  if (campaigns.length === 0) {
+    return campaigns.map((campaign) => ({
+      ...campaign,
+      campaignGroups: [],
+    }));
   }
 
-  const { searchParams } = req.nextUrl;
-  const page = Math.max(1, Number(searchParams.get("page") || 1));
-  const pageSize = Math.min(50, Number(searchParams.get("pageSize") || 10));
+  const db = prisma as any;
 
-  const [campaigns, total] = await Promise.all([
-    prisma.campaign.findMany({
-      where: { userId: session.user.id },
-      include: {
-        group: { select: { id: true, name: true } },
-        _count: { select: { recipients: true } },
+  // Si Prisma Client n'est pas encore régénéré, campaignGroup peut être undefined.
+  if (!db.campaignGroup?.findMany) {
+    console.warn(
+      "[/api/campaigns] prisma.campaignGroup indisponible. Lancez npx prisma generate."
+    );
+
+    return campaigns.map((campaign) => ({
+      ...campaign,
+      campaignGroups: [],
+    }));
+  }
+
+  try {
+    const campaignIds = campaigns.map((campaign) => campaign.id);
+
+    const links = await db.campaignGroup.findMany({
+      where: {
+        campaignId: {
+          in: campaignIds,
+        },
       },
-      orderBy: { createdAt: "desc" },
-      skip: (page - 1) * pageSize,
-      take: pageSize,
-    }),
+      include: {
+        group: {
+          select: {
+            id: true,
+            name: true,
+            description: true,
+            userId: true,
+            createdAt: true,
+            updatedAt: true,
+            _count: {
+              select: {
+                contacts: true,
+              },
+            },
+          },
+        },
+      },
+      orderBy: {
+        createdAt: "asc",
+      },
+    });
 
-    prisma.campaign.count({
-      where: { userId: session.user.id },
-    }),
-  ]);
+    const byCampaignId = new Map<string, any[]>();
 
-  return NextResponse.json({
-    data: campaigns,
-    total,
-    page,
-    pageSize,
-    totalPages: Math.ceil(total / pageSize),
-  });
+    for (const link of links) {
+      const current = byCampaignId.get(link.campaignId) || [];
+      current.push(link);
+      byCampaignId.set(link.campaignId, current);
+    }
+
+    return campaigns.map((campaign) => ({
+      ...campaign,
+      campaignGroups: byCampaignId.get(campaign.id) || [],
+    }));
+  } catch (error) {
+    console.error("[/api/campaigns] attachCampaignGroups error:", error);
+
+    return campaigns.map((campaign) => ({
+      ...campaign,
+      campaignGroups: [],
+    }));
+  }
+}
+
+export async function GET(req: NextRequest) {
+  try {
+    const session = await auth();
+
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const { searchParams } = req.nextUrl;
+
+    const page = Math.max(1, Number(searchParams.get("page") || 1));
+    const pageSize = Math.min(50, Number(searchParams.get("pageSize") || 10));
+
+    const [baseCampaigns, total] = await Promise.all([
+      prisma.campaign.findMany({
+        where: {
+          userId: session.user.id,
+        },
+        include: {
+          group: {
+            select: {
+              id: true,
+              name: true,
+            },
+          },
+          _count: {
+            select: {
+              recipients: true,
+            },
+          },
+        },
+        orderBy: {
+          createdAt: "desc",
+        },
+        skip: (page - 1) * pageSize,
+        take: pageSize,
+      }),
+
+      prisma.campaign.count({
+        where: {
+          userId: session.user.id,
+        },
+      }),
+    ]);
+
+    const campaigns = await attachCampaignGroups(baseCampaigns);
+
+    return NextResponse.json({
+      data: campaigns,
+      total,
+      page,
+      pageSize,
+      totalPages: Math.ceil(total / pageSize),
+    });
+  } catch (error) {
+    console.error("[GET /api/campaigns] error:", error);
+
+    return NextResponse.json(
+      {
+        error:
+          error instanceof Error
+            ? error.message
+            : "Erreur serveur pendant le chargement des campagnes",
+      },
+      { status: 500 }
+    );
+  }
 }
 
 export async function POST(req: NextRequest) {
-  const session = await auth();
+  try {
+    const session = await auth();
 
-  if (!session?.user?.id) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
 
-  const body = await req.json();
+    const body = await req.json();
 
-  const parsed = campaignSchema.safeParse(body);
+    const parsed = campaignSchema.safeParse(body);
 
-  if (!parsed.success) {
+    if (!parsed.success) {
+      return NextResponse.json(
+        { error: parsed.error.flatten() },
+        { status: 400 }
+      );
+    }
+
+    const { groupIds = [], groupId, ...campaignData } = parsed.data;
+
+    const requestedGroupIds = Array.from(
+      new Set(
+        [
+          ...(Array.isArray(groupIds) ? groupIds : []),
+          ...(groupId ? [groupId] : []),
+        ]
+          .filter(Boolean)
+          .map((id) => id.trim())
+      )
+    );
+
+    const validGroups =
+      requestedGroupIds.length > 0
+        ? await prisma.contactGroup.findMany({
+            where: {
+              id: {
+                in: requestedGroupIds,
+              },
+              userId: session.user.id,
+            },
+            select: {
+              id: true,
+            },
+          })
+        : [];
+
+    const validGroupIds = validGroups.map((group) => group.id);
+
+    if (requestedGroupIds.length !== validGroupIds.length) {
+      return NextResponse.json(
+        {
+          error:
+            "Un ou plusieurs groupes sont invalides ou n'appartiennent pas à cet utilisateur.",
+        },
+        { status: 400 }
+      );
+    }
+
+    const primaryGroupId = validGroupIds[0] || null;
+
+    const campaign = await prisma.campaign.create({
+      data: {
+        ...campaignData,
+        userId: session.user.id,
+        groupId: primaryGroupId,
+        status: "DRAFT",
+      },
+      include: {
+        group: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
+        _count: {
+          select: {
+            recipients: true,
+          },
+        },
+      },
+    });
+
+    const db = prisma as any;
+
+    if (validGroupIds.length > 0 && db.campaignGroup?.createMany) {
+      await db.campaignGroup.createMany({
+        data: validGroupIds.map((targetGroupId: string) => ({
+          campaignId: campaign.id,
+          groupId: targetGroupId,
+        })),
+        skipDuplicates: true,
+      });
+    } else if (validGroupIds.length > 0) {
+      console.warn(
+        "[POST /api/campaigns] campaignGroup indisponible. Lancez npx prisma generate."
+      );
+    }
+
+    const [campaignWithGroups] = await attachCampaignGroups([campaign]);
+
+    return NextResponse.json(campaignWithGroups, { status: 201 });
+  } catch (error) {
+    console.error("[POST /api/campaigns] error:", error);
+
     return NextResponse.json(
-      { error: parsed.error.flatten() },
-      { status: 400 }
+      {
+        error:
+          error instanceof Error
+            ? error.message
+            : "Erreur serveur pendant la création de la campagne",
+      },
+      { status: 500 }
     );
   }
-
-  const campaign = await prisma.campaign.create({
-    data: {
-      ...parsed.data,
-      userId: session.user.id,
-      status: "DRAFT",
-    },
-    include: {
-      group: { select: { id: true, name: true } },
-    },
-  });
-
-  return NextResponse.json(campaign, { status: 201 });
 }

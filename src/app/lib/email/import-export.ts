@@ -81,7 +81,7 @@ export async function importContactsToDB(
   groupId?: string
 ): Promise<ImportResult> {
   // Import dynamique de prisma pour éviter les soucis SSR
-  const { prisma } = await import("@/lib/prisma");
+  const { prisma } = await import("@/app/lib/prisma");
 
   const result: ImportResult = { success: 0, failed: 0, errors: [] };
 

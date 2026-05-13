@@ -80,22 +80,23 @@ model PermissionResource {
 }
 
 model RolePermission {
-  id                String             @id @default(uuid()) @db.Uuid
-  roleId            String             @db.Uuid
-  resourceId        String             @db.Uuid
-  canRead           Boolean            @default(false)
-  canCreate         Boolean            @default(false)
-  canUpdate         Boolean            @default(false)
-  canDelete         Boolean            @default(false)
-  canList           Boolean            @default(false)
-  canExport         Boolean            @default(false)
-  canApprove        Boolean            @default(false)
-  canManage         Boolean            @default(false)
-  specialPermission SpecialPermission  @default(NONE)
-  createdAt         DateTime           @default(now())
-  updatedAt         DateTime           @updatedAt
-  resource          PermissionResource @relation(fields: [resourceId], references: [id], onDelete: Cascade)
-  role              Role               @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  id                String            @id @default(uuid()) @db.Uuid
+  roleId            String            @db.Uuid
+  resourceId        String            @db.Uuid
+  canRead           Boolean           @default(false)
+  canCreate         Boolean           @default(false)
+  canUpdate         Boolean           @default(false)
+  canDelete         Boolean           @default(false)
+  canList           Boolean           @default(false)
+  canExport         Boolean           @default(false)
+  canApprove        Boolean           @default(false)
+  canManage         Boolean           @default(false)
+  specialPermission SpecialPermission @default(NONE)
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+
+  resource PermissionResource @relation(fields: [resourceId], references: [id], onDelete: Cascade)
+  role     Role               @relation(fields: [roleId], references: [id], onDelete: Cascade)
 
   @@unique([roleId, resourceId])
   @@index([roleId])
@@ -110,9 +111,10 @@ model UserRole {
   roleId       String   @db.Uuid
   assignedById String?  @db.Uuid
   assignedAt   DateTime @default(now())
-  assignedBy   User?    @relation("UserRoleAssignedBy", fields: [assignedById], references: [id])
-  role         Role     @relation(fields: [roleId], references: [id], onDelete: Cascade)
-  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  assignedBy User? @relation("UserRoleAssignedBy", fields: [assignedById], references: [id])
+  role       Role  @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  user       User  @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([userId, roleId])
   @@index([userId])
@@ -130,7 +132,8 @@ model Session {
   expiresAt    DateTime
   revokedAt    DateTime?
   createdAt    DateTime  @default(now())
-  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
   @@index([expiresAt])
@@ -145,7 +148,8 @@ model AuthToken {
   expiresAt DateTime
   usedAt    DateTime?
   createdAt DateTime  @default(now())
-  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
   @@index([type])
@@ -163,7 +167,8 @@ model AuditLog {
   ipAddress String?  @db.VarChar(64)
   userAgent String?
   createdAt DateTime @default(now())
-  actor     User?    @relation("AuditActor", fields: [actorId], references: [id])
+
+  actor User? @relation("AuditActor", fields: [actorId], references: [id])
 
   @@index([actorId])
   @@index([action])
@@ -185,7 +190,8 @@ model Page {
   authorId      String     @db.Uuid
   createdAt     DateTime   @default(now())
   updatedAt     DateTime   @updatedAt
-  author        User       @relation(fields: [authorId], references: [id])
+
+  author User @relation(fields: [authorId], references: [id])
 
   @@index([slug])
   @@index([status])
@@ -199,7 +205,8 @@ model Category {
   description String?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
-  posts       Post[]
+
+  posts Post[]
 
   @@index([slug])
   @@map("categories")
@@ -221,9 +228,10 @@ model Post {
   createdAt     DateTime   @default(now())
   updatedAt     DateTime   @updatedAt
   gjsJs         String?
-  tags          PostTag[]
-  author        User       @relation(fields: [authorId], references: [id])
-  category      Category?  @relation(fields: [categoryId], references: [id])
+
+  tags     PostTag[]
+  author   User      @relation(fields: [authorId], references: [id])
+  category Category? @relation(fields: [categoryId], references: [id])
 
   @@index([slug])
   @@index([status])
@@ -233,11 +241,12 @@ model Post {
 }
 
 model Tag {
-  id        String    @id @default(uuid()) @db.Uuid
-  name      String    @unique @db.VarChar(100)
-  slug      String    @unique @db.VarChar(100)
-  createdAt DateTime  @default(now())
-  posts     PostTag[]
+  id        String   @id @default(uuid()) @db.Uuid
+  name      String   @unique @db.VarChar(100)
+  slug      String   @unique @db.VarChar(100)
+  createdAt DateTime @default(now())
+
+  posts PostTag[]
 
   @@index([slug])
   @@map("tags")
@@ -246,8 +255,9 @@ model Tag {
 model PostTag {
   postId String @db.Uuid
   tagId  String @db.Uuid
-  post   Post   @relation(fields: [postId], references: [id], onDelete: Cascade)
-  tag    Tag    @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  post Post @relation(fields: [postId], references: [id], onDelete: Cascade)
+  tag  Tag  @relation(fields: [tagId], references: [id], onDelete: Cascade)
 
   @@id([postId, tagId])
   @@map("post_tags")
@@ -271,7 +281,8 @@ model Project {
   gjsHtml       String?
   createdAt     DateTime      @default(now())
   updatedAt     DateTime      @updatedAt
-  author        User          @relation(fields: [authorId], references: [id])
+
+  author User @relation(fields: [authorId], references: [id])
 
   @@index([slug])
   @@index([status])
@@ -280,38 +291,40 @@ model Project {
 }
 
 model ProductCategory {
-  id          String    @id @default(uuid()) @db.Uuid
-  name        String    @unique @db.VarChar(100)
-  slug        String    @unique @db.VarChar(100)
+  id          String   @id @default(uuid()) @db.Uuid
+  name        String   @unique @db.VarChar(100)
+  slug        String   @unique @db.VarChar(100)
   description String?
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
-  products    Product[]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  products Product[]
 
   @@index([slug])
   @@map("product_categories")
 }
 
 model Product {
-  id            String           @id @default(uuid()) @db.Uuid
-  name          String           @db.VarChar(255)
-  slug          String           @unique @db.VarChar(255)
+  id            String        @id @default(uuid()) @db.Uuid
+  name          String        @db.VarChar(255)
+  slug          String        @unique @db.VarChar(255)
   excerpt       String?
-  price         Decimal?         @db.Decimal(10, 2)
+  price         Decimal?      @db.Decimal(10, 2)
   coverImage    String?
   images        String[]
-  status        ProductStatus    @default(DRAFT)
+  status        ProductStatus @default(DRAFT)
   publishedAt   DateTime?
-  authorId      String           @db.Uuid
-  categoryId    String?          @db.Uuid
+  authorId      String        @db.Uuid
+  categoryId    String?       @db.Uuid
   gjsComponents Json?
   gjsStyles     Json?
   gjsHtml       String?
-  gjsJs         String?          @db.Text
-  createdAt     DateTime         @default(now())
-  updatedAt     DateTime         @updatedAt
-  author        User             @relation(fields: [authorId], references: [id])
-  category      ProductCategory? @relation(fields: [categoryId], references: [id])
+  gjsJs         String?       @db.Text
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  author   User             @relation(fields: [authorId], references: [id])
+  category ProductCategory? @relation(fields: [categoryId], references: [id])
 
   @@index([slug])
   @@index([status])
@@ -336,6 +349,174 @@ model ContactMessage {
   @@index([status])
   @@index([createdAt])
   @@map("contact_messages")
+}
+
+model Reference {
+  id            String          @id @default(uuid()) @db.Uuid
+  country       String          @db.VarChar(100)
+  code          String          @db.VarChar(10)
+  lat           Decimal         @db.Decimal(10, 6)
+  lng           Decimal         @db.Decimal(10, 6)
+  title         String          @db.VarChar(500)
+  slug          String          @unique @db.VarChar(500)
+  excerpt       String          @db.Text
+  image         String          @db.VarChar(500)
+  details       String          @db.Text
+  date          String          @db.VarChar(10)
+  client        String          @db.VarChar(200)
+  category      String          @db.VarChar(100)
+  tags          String[]
+  impact        String?         @db.VarChar(200)
+  technologies  String[]
+  team          String?         @db.VarChar(100)
+  duration      String?         @db.VarChar(50)
+  budget        String?         @db.VarChar(50)
+  status        ReferenceStatus @default(PUBLISHED)
+  publishedAt   DateTime?
+  authorId      String?         @db.Uuid
+  gjsComponents Json?
+  gjsStyles     Json?
+  gjsHtml       String?
+  gjsJs         String?
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+
+  @@index([country])
+  @@index([category])
+  @@index([date])
+  @@index([client])
+  @@index([status])
+  @@index([slug])
+  @@map("references")
+}
+
+// ============================================================
+// EXTENSION DU SCHÉMA PRISMA — Module Email Marketing
+// ============================================================
+
+model ContactGroup {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  userId      String   @db.Uuid
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  contacts       Contact[]
+  campaigns      Campaign[]
+  campaignGroups CampaignGroup[]
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("contact_groups")
+}
+
+model Contact {
+  id           String   @id @default(cuid())
+  email        String
+  firstName    String?
+  lastName     String?
+  phone        String?
+  metadata     Json?
+  isActive     Boolean  @default(true)
+  unsubscribed Boolean  @default(false)
+  groupId      String?
+  userId       String   @db.Uuid
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  group      ContactGroup?       @relation(fields: [groupId], references: [id], onDelete: SetNull)
+  user       User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  recipients CampaignRecipient[]
+
+  @@unique([email, userId])
+  @@index([userId])
+  @@index([groupId])
+  @@map("contacts")
+}
+
+model Campaign {
+  id              String         @id @default(cuid())
+  name            String
+  subject         String
+  htmlContent     String         @db.Text
+  fromName        String         @default("Mon App")
+  fromEmail       String
+  replyTo         String?
+  groupId         String?
+  status          CampaignStatus @default(DRAFT)
+  userId          String         @db.Uuid
+  sentAt          DateTime?
+  scheduledAt     DateTime?
+  totalRecipients Int            @default(0)
+  sentCount       Int            @default(0)
+  failedCount     Int            @default(0)
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+
+  group          ContactGroup?       @relation(fields: [groupId], references: [id], onDelete: SetNull)
+  user           User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  recipients     CampaignRecipient[]
+  logs           EmailLog[]
+  campaignGroups CampaignGroup[]
+
+  @@index([userId])
+  @@index([status])
+  @@index([groupId])
+  @@map("campaigns")
+}
+
+model CampaignGroup {
+  id         String   @id @default(cuid())
+  campaignId String
+  groupId    String
+  createdAt  DateTime @default(now())
+
+  campaign Campaign     @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  group    ContactGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)
+
+  @@unique([campaignId, groupId])
+  @@index([campaignId])
+  @@index([groupId])
+  @@map("campaign_groups")
+}
+
+model CampaignRecipient {
+  id         String    @id @default(cuid())
+  campaignId String
+  contactId  String
+  email      String
+  sent       Boolean   @default(false)
+  delivered  Boolean   @default(false)
+  openedAt   DateTime?
+  clickedAt  DateTime?
+  error      String?
+  sentAt     DateTime?
+  createdAt  DateTime  @default(now())
+
+  campaign Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  contact  Contact  @relation(fields: [contactId], references: [id], onDelete: Cascade)
+
+  @@unique([campaignId, contactId])
+  @@index([campaignId])
+  @@index([contactId])
+  @@map("campaign_recipients")
+}
+
+model EmailLog {
+  id         String   @id @default(cuid())
+  campaignId String
+  email      String
+  status     String
+  message    String?
+  provider   String?
+  createdAt  DateTime @default(now())
+
+  campaign Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+
+  @@index([campaignId])
+  @@map("email_logs")
 }
 
 enum UserStatus {
@@ -387,128 +568,10 @@ enum ContactStatus {
   ARCHIVED
 }
 
-// Modèle Reference autonome (sans lien avec User et Tag existants)
-model Reference {
-  id            String          @id @default(uuid()) @db.Uuid
-  country       String          @db.VarChar(100)
-  code          String          @db.VarChar(10)
-  lat           Decimal         @db.Decimal(10, 6)
-  lng           Decimal         @db.Decimal(10, 6)
-  title         String          @db.VarChar(500)
-  slug          String          @unique @db.VarChar(500)
-  excerpt       String          @db.Text
-  image         String          @db.VarChar(500)
-  details       String          @db.Text
-  date          String          @db.VarChar(10)
-  client        String          @db.VarChar(200)
-  category      String          @db.VarChar(100)
-  tags          String[] // Stocké comme tableau de strings
-  impact        String?         @db.VarChar(200)
-  technologies  String[] // Stocké comme tableau de strings
-  team          String?         @db.VarChar(100)
-  duration      String?         @db.VarChar(50)
-  budget        String?         @db.VarChar(50)
-  status        ReferenceStatus @default(PUBLISHED)
-  publishedAt   DateTime?
-  authorId      String?         @db.Uuid
-  gjsComponents Json?
-  gjsStyles     Json?
-  gjsHtml       String?
-  gjsJs         String?
-  createdAt     DateTime        @default(now())
-  updatedAt     DateTime        @updatedAt
-
-  @@index([country])
-  @@index([category])
-  @@index([date])
-  @@index([client])
-  @@index([status])
-  @@index([slug])
-  @@map("references")
-}
-
 enum ReferenceStatus {
   DRAFT
   PUBLISHED
   ARCHIVED
-}
-
-// ============================================================
-// EXTENSION DU SCHÉMA PRISMA — Module Email Marketing
-// ============================================================
-
-// Groupe de contacts, ex: "Newsletter", "Clients VIP"
-model ContactGroup {
-  id          String   @id @default(cuid())
-  name        String
-  description String?
-  userId      String   @db.Uuid
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-
-  contacts  Contact[]
-  campaigns Campaign[]
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@index([userId])
-  @@map("contact_groups")
-}
-
-// Contact individuel
-model Contact {
-  id           String   @id @default(cuid())
-  email        String
-  firstName    String?
-  lastName     String?
-  phone        String?
-  metadata     Json?
-  isActive     Boolean  @default(true)
-  unsubscribed Boolean  @default(false)
-  groupId      String?
-  userId       String   @db.Uuid
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
-
-  group      ContactGroup?       @relation(fields: [groupId], references: [id], onDelete: SetNull)
-  user       User                @relation(fields: [userId], references: [id], onDelete: Cascade)
-  recipients CampaignRecipient[]
-
-  @@unique([email, userId])
-  @@index([userId])
-  @@index([groupId])
-  @@map("contacts")
-}
-
-// Campagne email
-model Campaign {
-  id              String         @id @default(cuid())
-  name            String
-  subject         String
-  htmlContent     String         @db.Text
-  fromName        String         @default("Mon App")
-  fromEmail       String
-  replyTo         String?
-  groupId         String?
-  status          CampaignStatus @default(DRAFT)
-  userId          String         @db.Uuid
-  sentAt          DateTime?
-  scheduledAt     DateTime?
-  totalRecipients Int            @default(0)
-  sentCount       Int            @default(0)
-  failedCount     Int            @default(0)
-  createdAt       DateTime       @default(now())
-  updatedAt       DateTime       @updatedAt
-
-  group      ContactGroup?       @relation(fields: [groupId], references: [id], onDelete: SetNull)
-  user       User                @relation(fields: [userId], references: [id], onDelete: Cascade)
-  recipients CampaignRecipient[]
-  logs       EmailLog[]
-
-  @@index([userId])
-  @@index([status])
-  @@index([groupId])
-  @@map("campaigns")
 }
 
 enum CampaignStatus {
@@ -517,43 +580,4 @@ enum CampaignStatus {
   SENT
   FAILED
   SCHEDULED
-}
-
-// Destinataire d'une campagne : 1 ligne = 1 contact x 1 campagne
-model CampaignRecipient {
-  id         String    @id @default(cuid())
-  campaignId String
-  contactId  String
-  email      String
-  sent       Boolean   @default(false)
-  delivered  Boolean   @default(false)
-  openedAt   DateTime?
-  clickedAt  DateTime?
-  error      String?
-  sentAt     DateTime?
-  createdAt  DateTime  @default(now())
-
-  campaign Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
-  contact  Contact  @relation(fields: [contactId], references: [id], onDelete: Cascade)
-
-  @@unique([campaignId, contactId])
-  @@index([campaignId])
-  @@index([contactId])
-  @@map("campaign_recipients")
-}
-
-// Log détaillé pour debug
-model EmailLog {
-  id         String   @id @default(cuid())
-  campaignId String
-  email      String
-  status     String
-  message    String?
-  provider   String?
-  createdAt  DateTime @default(now())
-
-  campaign Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
-
-  @@index([campaignId])
-  @@map("email_logs")
 }

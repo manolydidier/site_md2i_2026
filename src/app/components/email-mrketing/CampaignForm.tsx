@@ -9,6 +9,7 @@ import {
   useForm,
   type FieldErrors,
   type UseFormRegister,
+  type UseFormSetValue,
 } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 
@@ -179,6 +180,98 @@ const DEFAULT_EMAIL_HTML = `
 
 const VARIABLES = ["{{firstName}}", "{{lastName}}", "{{email}}", "{{fullName}}"];
 
+const EMAIL_SAFE_RULES = [
+  'Pas de CSS externe <link rel="stylesheet"> dans le HTML envoyé.',
+  'Pas de balise <script>.',
+  'Pas d’animations CSS : @keyframes, animation, transition.',
+  'Pas d’animations SVG : <animate>, <animateTransform>, <animateMotion>.',
+  'Pas de balises <meta>, <title>, <html>, <head>, <body> dans le canvas GrapesJS.',
+  'Préférer un HTML statique, léger, avec CSS simple.',
+];
+
+function sanitizeEmailHtmlForGmail(rawHtml: string) {
+  return String(rawHtml || "")
+    .replace(/<!doctype[^>]*>/gi, "")
+    .replace(/<html[^>]*>/gi, "")
+    .replace(/<\/html>/gi, "")
+    .replace(/<head[^>]*>[\s\S]*?<\/head>/gi, "")
+    .replace(/<body[^>]*>/gi, "")
+    .replace(/<\/body>/gi, "")
+    .replace(/<meta[^>]*>/gi, "")
+    .replace(/<title[^>]*>[\s\S]*?<\/title>/gi, "")
+    .replace(/<link\b[^>]*rel=["']?stylesheet["']?[^>]*>/gi, "")
+    .replace(/<link\b[^>]*>/gi, "")
+    .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, "")
+    .replace(/<animate\b[^>]*>([\s\S]*?<\/animate>)?/gi, "")
+    .replace(/<animateTransform\b[^>]*>([\s\S]*?<\/animateTransform>)?/gi, "")
+    .replace(/<animateMotion\b[^>]*>([\s\S]*?<\/animateMotion>)?/gi, "")
+    .trim();
+}
+
+function sanitizeEmailCssForGmail(rawCss: string) {
+  return String(rawCss || "")
+    .replace(/@import\s+[^;]+;/gi, "")
+    .replace(/@keyframes\s+[^{]+\{(?:[^{}]|\{[^{}]*\})*\}/gi, "")
+    .replace(/\banimation(?:-[a-z-]+)?\s*:[^;{}]+;?/gi, "")
+    .replace(/\btransition(?:-[a-z-]+)?\s*:[^;{}]+;?/gi, "")
+    .replace(/:root\s*\{(?:[^{}]|\{[^{}]*\})*\}/gi, "")
+    .replace(/--[a-zA-Z0-9-_]+\s*:[^;{}]+;?/g, "")
+    .trim();
+}
+
+function getEmailSafetyWarnings(html: string, css: string) {
+  const warnings: string[] = [];
+  const source = `${html || ""}\n${css || ""}`;
+
+  if (/<link\b[^>]*rel=["']?stylesheet["']?/i.test(source)) {
+    warnings.push(
+      "CSS externe supprimé : Gmail ne charge pas les fichiers CSS externes."
+    );
+  }
+
+  if (/<script\b/i.test(source)) {
+    warnings.push(
+      "Script supprimé : les emails ne doivent pas contenir de JavaScript."
+    );
+  }
+
+  if (/<animate\b|<animateTransform\b|<animateMotion\b/i.test(source)) {
+    warnings.push(
+      "Animation SVG supprimée : Gmail peut bloquer ou mal rendre ces animations."
+    );
+  }
+
+  if (
+    /@keyframes\b|\banimation(?:-[a-z-]+)?\s*:|\btransition(?:-[a-z-]+)?\s*:/i.test(
+      source
+    )
+  ) {
+    warnings.push(
+      "Animation CSS supprimée : rendu instable dans Gmail et Outlook."
+    );
+  }
+
+  if (/\bdisplay\s*:\s*(flex|grid)/i.test(css)) {
+    warnings.push(
+      "Attention : flex/grid peut être instable dans certains clients email."
+    );
+  }
+
+  if (/\bposition\s*:\s*(absolute|fixed|sticky)/i.test(css)) {
+    warnings.push(
+      "Attention : les positionnements complexes peuvent être instables en email."
+    );
+  }
+
+  if (/\bclamp\s*\(/i.test(css)) {
+    warnings.push(
+      "Attention : clamp() peut être ignoré dans certains clients email."
+    );
+  }
+
+  return warnings;
+}
+
 function extractHtmlAndCss(raw: string) {
   if (!raw) {
     return {
@@ -202,23 +295,36 @@ function extractHtmlAndCss(raw: string) {
   const html = bodyMatch ? bodyMatch[1].trim() : withoutStyleAndScript.trim();
 
   return {
-    html: html || DEFAULT_EMAIL_HTML,
-    css: `${EMAIL_BASE_CSS}\n\n${css || ""}`,
+    html: sanitizeEmailHtmlForGmail(html || DEFAULT_EMAIL_HTML),
+    css: normalizeEmailCss(sanitizeEmailCssForGmail(css || "")),
   };
 }
 
+function normalizeEmailCss(css: string) {
+  const cleanCss = sanitizeEmailCssForGmail(css?.trim() || "");
+
+  if (cleanCss.includes("MD2I_EMAIL_BASE")) {
+    return cleanCss;
+  }
+
+  return `${EMAIL_BASE_CSS}\n\n${cleanCss}`;
+}
+
 function compileEmailHtml(html: string, css: string) {
+  const safeHtml = sanitizeEmailHtmlForGmail(html);
+  const finalCss = normalizeEmailCss(css);
+
   return `<!doctype html>
 <html>
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <style>
-${css || ""}
+  <style data-md2i-email-css="true">
+${finalCss}
   </style>
 </head>
 <body>
-${html || ""}
+${safeHtml || ""}
 </body>
 </html>`;
 }
@@ -276,6 +382,7 @@ export function CampaignForm({
   const [codeHtml, setCodeHtml] = useState("");
   const [codeCss, setCodeCss] = useState("");
   const [codeNotice, setCodeNotice] = useState("");
+  const [emailRulesNotice, setEmailRulesNotice] = useState("");
   const [importMode, setImportMode] = useState<"append" | "replace">("append");
 
   const [linkConfig, setLinkConfig] = useState({
@@ -327,16 +434,28 @@ export function CampaignForm({
         "MD2I",
       fromEmail: campaign?.fromEmail || process.env.NEXT_PUBLIC_EMAIL_FROM || "",
       replyTo: campaign?.replyTo || "",
+
+      // Ancien champ conservé pour compatibilité.
       groupId: campaign?.groupId || "",
+
+      // Nouveau champ : plusieurs groupes.
+      groupIds:
+        campaign?.campaignGroups?.map((item) => item.groupId) ||
+        (campaign?.groupId ? [campaign.groupId] : []),
     },
   });
 
   const name = watch("name");
   const subject = watch("subject");
   const fromName = watch("fromName");
-  const groupId = watch("groupId");
+  const groupIds = watch("groupIds") || [];
 
-  const selectedGroup = groups.find((group) => group.id === groupId);
+  const selectedGroups = groups.filter((group) => groupIds.includes(group.id));
+  const selectedGroupName =
+    selectedGroups.length > 0
+      ? selectedGroups.map((group) => group.name).join(", ")
+      : "";
+
   const isLeftPanelVisible = leftPanelOpen && activeTab !== null;
 
   const registerLive = useCallback(
@@ -391,26 +510,56 @@ export function CampaignForm({
     accentSoftBorder: "rgba(242,140,24,.28)",
   };
 
-  const getCompiledHtml = useCallback(() => {
-    const editor = gjsRef.current;
+const updateEmailRulesNotice = useCallback((html: string, css: string) => {
+  const warnings = getEmailSafetyWarnings(html, css);
 
-    if (!editor) {
-      return getValues("htmlContent") || "";
-    }
+  if (warnings.length === 0) {
+    setEmailRulesNotice("");
+    return;
+  }
 
-    return compileEmailHtml(editor.getHtml() || "", editor.getCss() || "");
-  }, [getValues]);
+  setEmailRulesNotice(warnings.join(" "));
+}, []);
 
-  const syncFormHtml = useCallback(() => {
-    const html = getCompiledHtml();
+const getCompiledHtml = useCallback(() => {
+  const editor = gjsRef.current;
 
-    setValue("htmlContent", html, {
-      shouldDirty: true,
-      shouldValidate: true,
-    });
+  if (!editor) {
+    const currentHtml = getValues("htmlContent") || "";
+    const parsed = extractHtmlAndCss(currentHtml);
 
-    return html;
-  }, [getCompiledHtml, setValue]);
+    updateEmailRulesNotice(parsed.html, parsed.css);
+
+    return compileEmailHtml(parsed.html, parsed.css);
+  }
+
+  const editorHtml = editor.getHtml() || "";
+  const editorCss = editor.getCss() || "";
+
+  updateEmailRulesNotice(editorHtml, editorCss);
+
+  return compileEmailHtml(editorHtml, editorCss);
+}, [getValues, updateEmailRulesNotice]);
+
+const syncFormHtml = useCallback(() => {
+  const html = getCompiledHtml();
+  const currentGroupIds = getValues("groupIds") || [];
+
+  setValue("htmlContent", html, {
+    shouldDirty: true,
+    shouldTouch: true,
+    shouldValidate: true,
+  });
+
+  console.log("[CampaignForm] htmlContent synchronisé", {
+    length: html.length,
+    hasStyle: /<style[\s>]/i.test(html),
+    hasBaseCss: html.includes("MD2I_EMAIL_BASE"),
+    groupIds: currentGroupIds,
+  });
+
+  return html;
+}, [getCompiledHtml, getValues, setValue]);
 
   const syncCodeFieldsSilently = useCallback(() => {
     const editor = gjsRef.current;
@@ -585,20 +734,29 @@ export function CampaignForm({
     if (!editor) return;
 
     try {
-      if (importMode === "replace") {
-        editor.setComponents(codeHtml.trim() || `<main></main>`);
-        editor.setStyle(codeCss.trim() || EMAIL_BASE_CSS);
-      } else {
-        if (codeHtml.trim()) editor.addComponents(codeHtml);
+      const safeHtml = sanitizeEmailHtmlForGmail(codeHtml);
+      const safeCss = sanitizeEmailCssForGmail(codeCss);
 
-        if (codeCss.trim()) {
+      updateEmailRulesNotice(codeHtml, codeCss);
+
+      if (importMode === "replace") {
+        editor.setComponents(safeHtml.trim() || `<main></main>`);
+        editor.setStyle(safeCss.trim() || EMAIL_BASE_CSS);
+      } else {
+        if (safeHtml.trim()) editor.addComponents(safeHtml);
+
+        if (safeCss.trim()) {
           const currentCss = editor.getCss() || "";
-          editor.setStyle(`${currentCss}\n\n${codeCss}`);
+          editor.setStyle(`${currentCss}
+
+${safeCss}`);
         }
       }
 
       syncFormHtml();
-      setCodeNotice("Code importé dans l'éditeur.");
+      setCodeNotice(
+        "Code importé dans l'éditeur. Les règles email-safe ont été appliquées."
+      );
       setTimeout(() => setCodeNotice(""), 2500);
     } catch (error) {
       console.error(error);
@@ -826,47 +984,102 @@ export function CampaignForm({
     setPreviewOpen(true);
   };
 
-  const handleSave = async (data: CampaignFormData) => {
-    const htmlContent = syncFormHtml();
+const handleSave = async (data: CampaignFormData) => {
+  const compiledHtmlContent = getCompiledHtml();
 
-    const payload: CampaignFormData = {
-      ...data,
-      htmlContent,
-    };
+  setValue("htmlContent", compiledHtmlContent, {
+    shouldDirty: true,
+    shouldTouch: true,
+    shouldValidate: true,
+  });
 
-    setSaveStatus("saving");
+  const currentGroupIds = getValues("groupIds") || [];
 
-    try {
-      const url =
-        isEdit && campaign ? `/api/campaigns/${campaign.id}` : "/api/campaigns";
+  const cleanGroupIds = Array.from(
+    new Set(currentGroupIds.filter(Boolean))
+  );
 
-      const method = isEdit ? "PUT" : "POST";
+  const payload: CampaignFormData = {
+    ...data,
 
-      const res = await fetch(url, {
-        method,
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
+    // IMPORTANT :
+    // On force toujours le HTML compilé depuis GrapesJS.
+    // On ne reprend jamais data.htmlContent ici, car il peut être ancien.
+    htmlContent: compiledHtmlContent,
 
-      const saved = await res.json();
+    // Nouveau système multi-groupes.
+    groupIds: cleanGroupIds,
 
-      if (!res.ok) {
-        throw new Error(saved?.error || "Erreur serveur");
-      }
-
-      setSaveStatus("saved");
-      setTimeout(() => setSaveStatus("idle"), 2600);
-
-      onSave(saved);
-    } catch (error) {
-      setSaveStatus("error");
-      setTimeout(() => setSaveStatus("idle"), 4000);
-      alert(error instanceof Error ? error.message : "Erreur de sauvegarde");
-    }
+    // Compatibilité ancien groupId.
+    groupId: cleanGroupIds[0] || data.groupId || "",
   };
 
+  console.log("[CampaignForm] payload sauvegarde", {
+    name: payload.name,
+    groupId: payload.groupId,
+    groupIds: payload.groupIds,
+    htmlLength: payload.htmlContent?.length || 0,
+    hasStyle: /<style[\s>]/i.test(payload.htmlContent || ""),
+    hasBaseCss: payload.htmlContent?.includes("MD2I_EMAIL_BASE"),
+  });
+
+  if (!payload.htmlContent || !/<style[\s>]/i.test(payload.htmlContent)) {
+    alert("Erreur : le CSS n'a pas été compilé dans le HTML.");
+    return;
+  }
+
+  setSaveStatus("saving");
+
+  try {
+    const url =
+      isEdit && campaign ? `/api/campaigns/${campaign.id}` : "/api/campaigns";
+
+    const method = isEdit ? "PUT" : "POST";
+
+    const res = await fetch(url, {
+      method,
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(payload),
+    });
+
+    const text = await res.text();
+    const saved = text ? JSON.parse(text) : null;
+
+    if (!res.ok) {
+      console.error("[CampaignForm] erreur sauvegarde", {
+        status: res.status,
+        response: saved,
+      });
+
+      throw new Error(
+        typeof saved?.error === "string"
+          ? saved.error
+          : "Erreur serveur"
+      );
+    }
+
+    console.log("[CampaignForm] sauvegarde OK", {
+      id: saved?.id,
+      htmlLength: saved?.htmlContent?.length || 0,
+      hasStyle: /<style[\s>]/i.test(saved?.htmlContent || ""),
+      hasBaseCss: saved?.htmlContent?.includes("MD2I_EMAIL_BASE"),
+    });
+
+    setSaveStatus("saved");
+    setTimeout(() => setSaveStatus("idle"), 2600);
+
+    onSave(saved);
+  } catch (error) {
+    setSaveStatus("error");
+    setTimeout(() => setSaveStatus("idle"), 4000);
+
+    alert(error instanceof Error ? error.message : "Erreur de sauvegarde");
+  }
+};
+
   const submitCampaign = () => {
-    syncFormHtml();
     void handleSubmit(handleSave)();
   };
 
@@ -1540,7 +1753,11 @@ export function CampaignForm({
               👁
             </button>
 
-            <button type="button" className="ed-icon-btn" onClick={openPreviewModal}>
+            <button
+              type="button"
+              className="ed-icon-btn"
+              onClick={openPreviewModal}
+            >
               ✉
             </button>
 
@@ -1741,6 +1958,15 @@ export function CampaignForm({
                     </div>
                   </div>
 
+                  <div className="ed-email-rules-box">
+                    <strong>Règles Gmail / email-safe</strong>
+                    <ul>
+                      {EMAIL_SAFE_RULES.map((rule) => (
+                        <li key={rule}>{rule}</li>
+                      ))}
+                    </ul>
+                  </div>
+
                   <div className="ed-code-field">
                     <label>HTML</label>
                     <textarea
@@ -1784,6 +2010,12 @@ export function CampaignForm({
                   </div>
 
                   {codeNotice && <p className="ed-code-notice">{codeNotice}</p>}
+
+                  {emailRulesNotice && (
+                    <p className="ed-code-warning">
+                      Règles email appliquées : {emailRulesNotice}
+                    </p>
+                  )}
                 </div>
               </div>
             </div>
@@ -2053,10 +2285,12 @@ export function CampaignForm({
         registerLive={registerLive}
         errors={errors}
         groups={groups}
+        groupIds={groupIds}
+        setValue={setValue}
         name={name}
         subject={subject}
         fromName={fromName}
-        selectedGroupName={selectedGroup?.name || ""}
+        selectedGroupName={selectedGroupName}
         testEmail={testEmail}
         setTestEmail={setTestEmail}
         testLoading={testLoading}
@@ -2674,6 +2908,34 @@ export function CampaignForm({
           gap: 12px;
         }
 
+        .ed-email-rules-box {
+          padding: 11px 12px;
+          border: 1px solid var(--ed-border);
+          border-radius: 13px;
+          background: var(--ed-shell);
+          color: var(--ed-text-soft);
+        }
+
+        .ed-email-rules-box strong {
+          display: block;
+          margin-bottom: 7px;
+          color: var(--ed-text);
+          font-size: 12px;
+          font-weight: 900;
+        }
+
+        .ed-email-rules-box ul {
+          margin: 0;
+          padding-left: 18px;
+        }
+
+        .ed-email-rules-box li {
+          margin: 0 0 5px;
+          font-size: 11.5px;
+          line-height: 1.45;
+          font-weight: 700;
+        }
+
         .ed-code-toolbar,
         .ed-code-actions,
         .ed-link-actions {
@@ -2781,6 +3043,18 @@ export function CampaignForm({
           color: var(--ed-accent);
           font-size: 12px;
           font-weight: 700;
+        }
+
+        .ed-code-warning {
+          margin: 0;
+          padding: 10px 12px;
+          color: #92400e;
+          background: rgba(251, 191, 36, 0.14);
+          border: 1px solid rgba(251, 191, 36, 0.35);
+          border-radius: 12px;
+          font-size: 12px;
+          font-weight: 800;
+          line-height: 1.5;
         }
 
         .ed-media-error {
@@ -3053,6 +3327,71 @@ export function CampaignForm({
           box-shadow: 0 0 0 4px rgba(242,140,24,.1);
         }
 
+        .group-check-list {
+          display: flex;
+          flex-direction: column;
+          gap: 8px;
+          max-height: 230px;
+          overflow-y: auto;
+          padding-right: 2px;
+        }
+
+        .group-empty {
+          margin: 0;
+          color: var(--ed-text-mute);
+          font-size: 12px;
+          font-weight: 700;
+        }
+
+        .group-check-item {
+          display: flex;
+          align-items: center;
+          gap: 10px;
+          padding: 10px 11px;
+          border: 1px solid var(--ed-border);
+          border-radius: 13px;
+          background: var(--ed-shell);
+          color: var(--ed-text-soft);
+          cursor: pointer;
+          transition: 0.15s ease;
+        }
+
+        .group-check-item:hover,
+        .group-check-item--active {
+          border-color: var(--ed-accent-soft-border);
+          background: var(--ed-accent-soft);
+          color: var(--ed-accent);
+        }
+
+        .group-check-item input {
+          width: 15px;
+          height: 15px;
+          accent-color: var(--ed-accent);
+          flex-shrink: 0;
+        }
+
+        .group-check-text {
+          min-width: 0;
+          display: flex;
+          flex-direction: column;
+          gap: 2px;
+        }
+
+        .group-check-text strong {
+          color: inherit;
+          font-size: 13px;
+          font-weight: 900;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          white-space: nowrap;
+        }
+
+        .group-check-text small {
+          color: var(--ed-text-mute);
+          font-size: 11px;
+          font-weight: 700;
+        }
+
         .field-hint {
           margin: 0;
           font-size: 12px;
@@ -3097,6 +3436,7 @@ export function CampaignForm({
           overflow: hidden;
           text-overflow: ellipsis;
           white-space: nowrap;
+          max-width: 180px;
         }
 
         .test-field {
@@ -3377,6 +3717,8 @@ function CampaignSettingsSidebar({
   registerLive,
   errors,
   groups,
+  groupIds,
+  setValue,
   name,
   subject,
   fromName,
@@ -3391,9 +3733,13 @@ function CampaignSettingsSidebar({
 }: {
   open: boolean;
   onClose: () => void;
-  registerLive: (field: keyof CampaignFormData) => ReturnType<UseFormRegister<CampaignFormData>>;
+  registerLive: (
+    field: keyof CampaignFormData
+  ) => ReturnType<UseFormRegister<CampaignFormData>>;
   errors: FieldErrors<CampaignFormData>;
   groups: { id: string; name: string; _count?: { contacts: number } }[];
+  groupIds: string[];
+  setValue: UseFormSetValue<CampaignFormData>;
   name: string;
   subject: string;
   fromName: string;
@@ -3523,15 +3869,59 @@ function CampaignSettingsSidebar({
           </div>
 
           <div className="field-group">
-            <label className="field-label">Groupe cible</label>
-            <select className="field-select" {...registerLive("groupId")}>
-              <option value="">— Sélectionner un groupe —</option>
-              {groups.map((g) => (
-                <option key={g.id} value={g.id}>
-                  {g.name} ({g._count?.contacts ?? 0} contacts)
-                </option>
-              ))}
-            </select>
+            <label className="field-label">Groupes cibles</label>
+
+            <div className="group-check-list">
+              {groups.length === 0 ? (
+                <p className="group-empty">Aucun groupe disponible.</p>
+              ) : (
+                groups.map((group) => {
+                  const checked = groupIds.includes(group.id);
+
+                  return (
+                    <label
+                      key={group.id}
+                      className={`group-check-item ${
+                        checked ? "group-check-item--active" : ""
+                      }`}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={checked}
+                        onChange={(e) => {
+                          const nextGroupIds = e.target.checked
+                            ? Array.from(new Set([...groupIds, group.id]))
+                            : groupIds.filter((id) => id !== group.id);
+
+                          setValue("groupIds", nextGroupIds, {
+                            shouldDirty: true,
+                            shouldTouch: true,
+                            shouldValidate: true,
+                          });
+
+                          setValue("groupId", nextGroupIds[0] || "", {
+                            shouldDirty: true,
+                            shouldTouch: true,
+                            shouldValidate: true,
+                          });
+                        }}
+                      />
+
+                      <span className="group-check-text">
+                        <strong>{group.name}</strong>
+                        <small>{group._count?.contacts ?? 0} contact(s)</small>
+                      </span>
+                    </label>
+                  );
+                })
+              )}
+            </div>
+
+            {errors.groupIds && (
+              <p className="field-hint field-hint--error">
+                {String(errors.groupIds.message || "Groupes invalides")}
+              </p>
+            )}
           </div>
 
           <div className="summary-card">
@@ -3553,7 +3943,7 @@ function CampaignSettingsSidebar({
             </div>
 
             <div className="summary-card__row">
-              <span>Groupe</span>
+              <span>Groupes</span>
               <strong>{selectedGroupName || "Aucun"}</strong>
             </div>
           </div>
@@ -3563,7 +3953,14 @@ function CampaignSettingsSidebar({
               <label className="field-label">Email de test</label>
 
               <div className="test-field">
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <svg
+                  width="15"
+                  height="15"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                >
                   <rect x="3" y="5" width="18" height="14" rx="2" />
                   <path d="M3 7l9 6 9-6" />
                 </svg>
