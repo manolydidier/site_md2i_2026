@@ -1,4 +1,3 @@
-// components/email-marketing/ContactModal.tsx
 "use client";
 
 import { useEffect } from "react";
@@ -14,6 +13,29 @@ interface ContactModalProps {
   onClose: () => void;
   onSave: () => void;
 }
+
+const CRM_STATUSES = [
+  { value: "NEW", label: "Nouveau" },
+  { value: "PROSPECT", label: "Prospect" },
+  { value: "HOT_PROSPECT", label: "Prospect chaud" },
+  { value: "CUSTOMER", label: "Client" },
+  { value: "PARTNER", label: "Partenaire" },
+  { value: "INACTIVE", label: "Inactif" },
+  { value: "LOST", label: "Perdu" },
+];
+
+const CRM_SOURCES = [
+  { value: "MANUAL", label: "Manuel" },
+  { value: "WEBSITE", label: "Site web" },
+  { value: "FACEBOOK", label: "Facebook" },
+  { value: "LINKEDIN", label: "LinkedIn" },
+  { value: "EMAIL_CAMPAIGN", label: "Campagne email" },
+  { value: "GOOGLE", label: "Google" },
+  { value: "DIRECT", label: "Direct" },
+  { value: "TENDER", label: "Appel d’offre" },
+  { value: "REFERRAL", label: "Recommandation" },
+  { value: "OTHER", label: "Autre" },
+];
 
 export function ContactModal({ contact, onClose, onSave }: ContactModalProps) {
   const { groups } = useGroups();
@@ -33,17 +55,41 @@ export function ContactModal({ contact, onClose, onSave }: ContactModalProps) {
       lastName: contact?.lastName || "",
       phone: contact?.phone || "",
       groupId: contact?.groupId || "",
+
+      jobTitle: contact?.jobTitle || "",
+      companyName: contact?.companyName || "",
+      country: contact?.country || "",
+      city: contact?.city || "",
+      notes: contact?.notes || "",
+
+      crmStatus: contact?.crmStatus || "NEW",
+      crmSource: contact?.crmSource || "MANUAL",
+
+      isActive: contact?.isActive ?? true,
+      unsubscribed: contact?.unsubscribed ?? false,
     },
   });
 
   useEffect(() => {
     if (contact) {
       reset({
-        email: contact.email,
+        email: contact.email || "",
         firstName: contact.firstName || "",
         lastName: contact.lastName || "",
         phone: contact.phone || "",
         groupId: contact.groupId || "",
+
+        jobTitle: contact.jobTitle || "",
+        companyName: contact.companyName || "",
+        country: contact.country || "",
+        city: contact.city || "",
+        notes: contact.notes || "",
+
+        crmStatus: contact.crmStatus || "NEW",
+        crmSource: contact.crmSource || "MANUAL",
+
+        isActive: contact.isActive ?? true,
+        unsubscribed: contact.unsubscribed ?? false,
       });
     }
   }, [contact, reset]);
@@ -75,8 +121,8 @@ export function ContactModal({ contact, onClose, onSave }: ContactModalProps) {
               <h3>{isEdit ? "Modifier le contact" : "Ajouter un contact"}</h3>
               <p>
                 {isEdit
-                  ? "Mettez à jour les informations du contact."
-                  : "Ajoutez un nouveau destinataire à votre liste."}
+                  ? "Mettez à jour les informations commerciales et CRM."
+                  : "Ajoutez un contact avec ses informations CRM."}
               </p>
             </div>
           </div>
@@ -87,60 +133,157 @@ export function ContactModal({ contact, onClose, onSave }: ContactModalProps) {
         </div>
 
         <form onSubmit={handleSubmit(onSubmit)} className="modal-form">
-          <div className="field-group">
-            <label>
-              Email <span>*</span>
-            </label>
+          <div className="form-section">
+            <p className="section-title">Identité</p>
 
-            <input
-              type="email"
-              {...register("email")}
-              placeholder="contact@exemple.com"
-            />
+            <div className="field-group">
+              <label>
+                Email <span>*</span>
+              </label>
 
-            {errors.email && <p className="error">{errors.email.message}</p>}
+              <input
+                type="email"
+                {...register("email")}
+                placeholder="contact@exemple.com"
+              />
+
+              {errors.email && <p className="error">{errors.email.message}</p>}
+            </div>
+
+            <div className="field-grid">
+              <div className="field-group">
+                <label>Prénom</label>
+                <input type="text" {...register("firstName")} placeholder="Jean" />
+              </div>
+
+              <div className="field-group">
+                <label>Nom</label>
+                <input type="text" {...register("lastName")} placeholder="Dupont" />
+              </div>
+            </div>
+
+            <div className="field-grid">
+              <div className="field-group">
+                <label>Téléphone</label>
+                <input
+                  type="tel"
+                  {...register("phone")}
+                  placeholder="+261 34 00 000 00"
+                />
+              </div>
+
+              <div className="field-group">
+                <label>Fonction</label>
+                <input
+                  type="text"
+                  {...register("jobTitle")}
+                  placeholder="Responsable RH, DAF..."
+                />
+              </div>
+            </div>
           </div>
 
-          <div className="field-grid">
+          <div className="form-section">
+            <p className="section-title">Entreprise & localisation</p>
+
             <div className="field-group">
-              <label>Prénom</label>
+              <label>Entreprise</label>
               <input
                 type="text"
-                {...register("firstName")}
-                placeholder="Jean"
+                {...register("companyName")}
+                placeholder="Nom de l’entreprise"
               />
             </div>
 
-            <div className="field-group">
-              <label>Nom</label>
-              <input
-                type="text"
-                {...register("lastName")}
-                placeholder="Dupont"
-              />
+            <div className="field-grid">
+              <div className="field-group">
+                <label>Pays</label>
+                <input
+                  type="text"
+                  {...register("country")}
+                  placeholder="Madagascar, France..."
+                />
+              </div>
+
+              <div className="field-group">
+                <label>Ville</label>
+                <input
+                  type="text"
+                  {...register("city")}
+                  placeholder="Antananarivo..."
+                />
+              </div>
             </div>
           </div>
 
-          <div className="field-group">
-            <label>Téléphone</label>
-            <input
-              type="tel"
-              {...register("phone")}
-              placeholder="+33 6 00 00 00 00"
-            />
+          <div className="form-section">
+            <p className="section-title">CRM & segmentation</p>
+
+            <div className="field-grid">
+              <div className="field-group">
+                <label>Statut CRM</label>
+
+                <select {...register("crmStatus")}>
+                  {CRM_STATUSES.map((status) => (
+                    <option key={status.value} value={status.value}>
+                      {status.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="field-group">
+                <label>Source</label>
+
+                <select {...register("crmSource")}>
+                  {CRM_SOURCES.map((source) => (
+                    <option key={source.value} value={source.value}>
+                      {source.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            <div className="field-group">
+              <label>Groupe email marketing</label>
+
+              <select {...register("groupId")}>
+                <option value="">Sans groupe</option>
+                {groups.map((g) => (
+                  <option key={g.id} value={g.id}>
+                    {g.name}
+                  </option>
+                ))}
+              </select>
+            </div>
           </div>
 
-          <div className="field-group">
-            <label>Groupe</label>
+          <div className="form-section">
+            <p className="section-title">Préférences email</p>
 
-            <select {...register("groupId")}>
-              <option value="">Sans groupe</option>
-              {groups.map((g) => (
-                <option key={g.id} value={g.id}>
-                  {g.name}
-                </option>
-              ))}
-            </select>
+            <div className="checkbox-grid">
+              <label className="check-row">
+                <input type="checkbox" {...register("isActive")} />
+                <span>Contact actif</span>
+              </label>
+
+              <label className="check-row">
+                <input type="checkbox" {...register("unsubscribed")} />
+                <span>Désabonné des emails</span>
+              </label>
+            </div>
+          </div>
+
+          <div className="form-section">
+            <p className="section-title">Notes internes</p>
+
+            <div className="field-group">
+              <textarea
+                {...register("notes")}
+                placeholder="Informations commerciales, historique, contexte du contact..."
+              />
+            </div>
           </div>
 
           <div className="modal-actions">
@@ -173,12 +316,15 @@ export function ContactModal({ contact, onClose, onSave }: ContactModalProps) {
 
         .contact-modal {
           width: 100%;
-          max-width: 460px;
+          max-width: 760px;
+          max-height: calc(100vh - 40px);
           border-radius: 18px;
           background: #ffffff;
           border: 1px solid #e5e7eb;
           box-shadow: 0 24px 70px rgba(15, 23, 42, 0.22);
           overflow: hidden;
+          display: flex;
+          flex-direction: column;
         }
 
         .modal-header {
@@ -189,6 +335,7 @@ export function ContactModal({ contact, onClose, onSave }: ContactModalProps) {
           align-items: center;
           justify-content: space-between;
           gap: 14px;
+          flex-shrink: 0;
         }
 
         .modal-title-row {
@@ -247,9 +394,26 @@ export function ContactModal({ contact, onClose, onSave }: ContactModalProps) {
 
         .modal-form {
           padding: 20px;
+          overflow-y: auto;
           display: flex;
           flex-direction: column;
-          gap: 14px;
+          gap: 16px;
+        }
+
+        .form-section {
+          padding: 16px;
+          border: 1px solid #f1f5f9;
+          background: #ffffff;
+          border-radius: 14px;
+        }
+
+        .section-title {
+          margin: 0 0 14px;
+          color: #92400e;
+          font-size: 11px;
+          font-weight: 900;
+          letter-spacing: 0.1em;
+          text-transform: uppercase;
         }
 
         .field-grid {
@@ -262,6 +426,11 @@ export function ContactModal({ contact, onClose, onSave }: ContactModalProps) {
           display: flex;
           flex-direction: column;
           gap: 7px;
+          margin-bottom: 12px;
+        }
+
+        .field-group:last-child {
+          margin-bottom: 0;
         }
 
         .field-group label {
@@ -275,10 +444,9 @@ export function ContactModal({ contact, onClose, onSave }: ContactModalProps) {
         }
 
         .field-group input,
-        .field-group select {
+        .field-group select,
+        .field-group textarea {
           width: 100%;
-          height: 42px;
-          padding: 0 12px;
           border-radius: 11px;
           border: 1px solid #e5e7eb;
           background: #ffffff;
@@ -286,16 +454,56 @@ export function ContactModal({ contact, onClose, onSave }: ContactModalProps) {
           outline: none;
           font-size: 14px;
           transition: 0.15s ease;
+          font-family: Arial, Helvetica, sans-serif;
         }
 
-        .field-group input::placeholder {
+        .field-group input,
+        .field-group select {
+          height: 42px;
+          padding: 0 12px;
+        }
+
+        .field-group textarea {
+          min-height: 96px;
+          padding: 12px;
+          resize: vertical;
+        }
+
+        .field-group input::placeholder,
+        .field-group textarea::placeholder {
           color: #9ca3af;
         }
 
         .field-group input:focus,
-        .field-group select:focus {
+        .field-group select:focus,
+        .field-group textarea:focus {
           border-color: rgba(239, 159, 39, 0.55);
           box-shadow: 0 0 0 4px rgba(239, 159, 39, 0.1);
+        }
+
+        .checkbox-grid {
+          display: grid;
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+          gap: 10px;
+        }
+
+        .check-row {
+          min-height: 42px;
+          padding: 0 12px;
+          border: 1px solid #e5e7eb;
+          border-radius: 11px;
+          display: flex;
+          align-items: center;
+          gap: 9px;
+          color: #374151;
+          font-size: 13px;
+          font-weight: 800;
+        }
+
+        .check-row input {
+          width: 15px;
+          height: 15px;
+          accent-color: #ef9f27;
         }
 
         .error {
@@ -347,7 +555,7 @@ export function ContactModal({ contact, onClose, onSave }: ContactModalProps) {
           cursor: not-allowed;
         }
 
-        @media (max-width: 520px) {
+        @media (max-width: 720px) {
           .contact-backdrop {
             align-items: flex-end;
             padding: 12px;
@@ -355,10 +563,12 @@ export function ContactModal({ contact, onClose, onSave }: ContactModalProps) {
 
           .contact-modal {
             max-width: none;
+            max-height: calc(100vh - 24px);
             border-radius: 18px;
           }
 
           .field-grid,
+          .checkbox-grid,
           .modal-actions {
             grid-template-columns: 1fr;
           }

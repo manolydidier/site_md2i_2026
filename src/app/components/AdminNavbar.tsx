@@ -51,9 +51,19 @@ const MENU_SECTIONS = [
         children: [
           { href: '/admin/posts', label: 'Tous les articles', exact: true },
           { href: '/admin/posts/new', label: 'Nouvel article' },
-          { href: '/admin/categories', label: 'Catégories' },
+          { href: '/admin/categories', label: 'Catégories blog' },
           { href: '/admin/tags', label: 'Tags' },
         ],
+      },
+      {
+        href: '/admin/references',
+        label: 'Références',
+        icon: (
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+            <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" />
+            <path d="M4 4.5A2.5 2.5 0 0 1 6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5z" />
+          </svg>
+        ),
       },
       {
         href: '/admin/projects',
@@ -89,7 +99,88 @@ const MENU_SECTIONS = [
         children: [
           { href: '/admin/products', label: 'Tous les produits', exact: true },
           { href: '/admin/products/new', label: 'Nouveau produit' },
+          { href: '/admin/product-categories', label: 'Catégories produits' },
+          { href: '/admin/produits', label: 'Produits FR' },
+          { href: '/produits', label: 'Catalogue public' },
         ],
+      },
+      {
+        href: '/admin/product-categories',
+        label: 'Catégories produits',
+        icon: (
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+            <path d="M4 4h7v7H4z" />
+            <path d="M13 4h7v7h-7z" />
+            <path d="M4 13h7v7H4z" />
+            <path d="M13 13h7v7h-7z" />
+          </svg>
+        ),
+      },
+      {
+        href: '/admin/produits',
+        label: 'Produits FR',
+        icon: (
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+            <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" />
+            <path d="M3.27 6.96 12 12.01l8.73-5.05" />
+            <path d="M12 22.08V12" />
+          </svg>
+        ),
+      },
+    ],
+  },
+  {
+    title: 'CRM',
+    items: [
+      {
+        href: '/admin/crm',
+        label: 'Dashboard CRM',
+        exact: true,
+        icon: (
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+            <path d="M3 3v18h18" />
+            <path d="M7 15l4-4 3 3 6-7" />
+          </svg>
+        ),
+        children: [
+          { href: '/admin/crm', label: 'Vue d’ensemble', exact: true },
+          { href: '/admin/crm/contacts', label: 'Contacts CRM' },
+          { href: '/admin/crm/opportunities', label: 'Opportunités' },
+          { href: '/admin/crm/tasks', label: 'Tâches & relances' },
+        ],
+      },
+   
+     
+    ],
+  },
+  {
+    title: 'Marketing',
+    items: [
+      {
+        href: '/admin/email-marketing',
+        label: 'Email marketing',
+        icon: (
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+            <path d="M4 4h16a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z" />
+            <path d="m22 6-10 7L2 6" />
+          </svg>
+        ),
+        children: [
+          { href: '/admin/email-marketing', label: 'Tableau marketing', exact: true },
+          { href: '/admin/email-marketing/contacts', label: 'Contacts marketing' },
+          { href: '/admin/email-marketing/groups', label: 'Groupes de contacts' },
+          { href: '/admin/email-marketing/campaigns', label: 'Campagnes' },
+          { href: '/admin/email-marketing/campaigns/new', label: 'Nouvelle campagne' },
+        ],
+      },
+      {
+        href: '/admin/contact-comm',
+        label: 'Contact communication',
+        icon: (
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+            <path d="M21 15a2 2 0 0 1-2 2H8l-5 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+          </svg>
+        ),
       },
     ],
   },
@@ -121,6 +212,7 @@ const MENU_SECTIONS = [
         children: [
           { href: '/admin/users', label: 'Tous les utilisateurs', exact: true },
           { href: '/admin/users/new', label: 'Nouvel utilisateur' },
+          { href: '/admin/roles', label: 'Rôles' },
           { href: '/admin/permissions', label: 'Permissions' },
         ],
       },
@@ -136,7 +228,18 @@ const MENU_SECTIONS = [
         children: [
           { href: '/admin/roles', label: 'Tous les rôles', exact: true },
           { href: '/admin/roles?action=new', label: 'Nouveau rôle' },
+          { href: '/admin/permissions', label: 'Permissions' },
         ],
+      },
+      {
+        href: '/admin/permissions',
+        label: 'Permissions',
+        icon: (
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+            <rect x="3" y="11" width="18" height="10" rx="2" />
+            <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+          </svg>
+        ),
       },
     ],
   },

@@ -19,16 +19,30 @@ export async function GET(req: NextRequest) {
   const { searchParams } = req.nextUrl;
   const format = searchParams.get("format") || "csv";
   const groupId = searchParams.get("groupId") || undefined;
+  const crmStatus = searchParams.get("crmStatus") || undefined;
+  const crmSource = searchParams.get("crmSource") || undefined;
 
   const contacts = await prisma.contact.findMany({
     where: {
       userId: session.user.id,
       ...(groupId ? { groupId } : {}),
+      ...(crmStatus ? { crmStatus: crmStatus as any } : {}),
+      ...(crmSource ? { crmSource: crmSource as any } : {}),
     },
     include: {
       group: {
         select: {
+          id: true,
           name: true,
+        },
+      },
+      crmCompany: {
+        select: {
+          id: true,
+          name: true,
+          type: true,
+          country: true,
+          city: true,
         },
       },
     },

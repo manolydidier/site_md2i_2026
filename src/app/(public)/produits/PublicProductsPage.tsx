@@ -61,6 +61,7 @@ function useScroll() {
     const fn = () => {
       const y = window.scrollY
       const h = document.documentElement.scrollHeight - window.innerHeight
+
       setProg(h > 0 ? (y / h) * 100 : 0)
       setTop(y > 400)
     }
@@ -75,52 +76,121 @@ function useScroll() {
 }
 
 function formatPrice(value: Product['price']) {
-  if (value === null || value === undefined || value === '') return 'Sur devis'
+  if (value === null || value === undefined || value === '') {
+    return 'Sur devis'
+  }
+
   const numeric = Number(value)
-  if (!Number.isFinite(numeric)) return String(value)
+
+  if (!Number.isFinite(numeric)) {
+    return String(value)
+  }
+
   return `${new Intl.NumberFormat('fr-FR').format(numeric)} Ar`
 }
 
+function getProductIdentifier(product: Product) {
+  return product.slug || product.id
+}
+
+function getProductDetailHref(product: Product) {
+  return `/produits/${getProductIdentifier(product)}`
+}
+
+function getProductLeadHref(product: Product) {
+  return `/produits/${getProductIdentifier(product)}/lead`
+}
+
 // ─── Icons ──────────────────────────────────────────────────────────────────
+
 const IconSearch = () => (
-  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+  <svg
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="1.8"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
     <circle cx="11" cy="11" r="7.5" />
     <path d="M22 22l-4.35-4.35" />
   </svg>
 )
 
 const IconX = () => (
-  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+  <svg
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
     <path d="M18 6 6 18M6 6l12 12" />
   </svg>
 )
 
 const IconArrow = () => (
-  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+  <svg
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2.2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
     <path d="M5 12h14M12 5l7 7-7 7" />
   </svg>
 )
 
 const IconUp = () => (
-  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+  <svg
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
     <path d="M12 19V5M5 12l7-7 7 7" />
   </svg>
 )
 
 const IconFilter = () => (
-  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+  <svg
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="1.8"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
     <path d="M22 3H2l8 9.46V19l4 2v-8.54L22 3z" />
   </svg>
 )
 
 const IconSort = () => (
-  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+  <svg
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="1.8"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
     <path d="M3 6h18M7 12h10M11 18h2" />
   </svg>
 )
 
 const IconCal = () => (
-  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+  <svg
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="1.8"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
     <path d="M8 2v4M16 2v4M3 10h18" />
     <rect x="3" y="4" width="18" height="18" rx="3" />
   </svg>
@@ -153,8 +223,10 @@ const SORT_OPTIONS: { key: SortKey; label: string }[] = [
 ]
 
 // ─── ExcerptBlock ────────────────────────────────────────────────────────────
+
 function ExcerptBlock({ text }: { text: string | null }) {
   const [expanded, setExpanded] = useState(false)
+
   const raw = text?.trim() || 'Aucune description disponible.'
   const isLong = raw.length > EXCERPT_LIMIT
 
@@ -166,6 +238,7 @@ function ExcerptBlock({ text }: { text: string | null }) {
 
       {isLong && (
         <button
+          type="button"
           className={s.excerptToggle}
           onClick={(e) => {
             e.stopPropagation()
@@ -173,6 +246,7 @@ function ExcerptBlock({ text }: { text: string | null }) {
           }}
         >
           <span>{expanded ? 'Réduire' : 'Lire plus'}</span>
+
           <svg
             viewBox="0 0 24 24"
             fill="none"
@@ -194,6 +268,7 @@ function ExcerptBlock({ text }: { text: string | null }) {
 }
 
 // ─── ProductCard ─────────────────────────────────────────────────────────────
+
 function ProductCard({
   product,
   index,
@@ -209,11 +284,15 @@ function ProductCard({
   const glowRef = useRef<HTMLDivElement>(null)
   const prefersReducedMotion = useReducedMotion()
 
+  const detailHref = getProductDetailHref(product)
+  const leadHref = getProductLeadHref(product)
+
   const onMouseMove = (e: React.MouseEvent<HTMLElement>) => {
     if (prefersReducedMotion) return
 
     const el = cardRef.current
     const glow = glowRef.current
+
     if (!el || !glow) return
 
     const rect = el.getBoundingClientRect()
@@ -232,15 +311,22 @@ function ProductCard({
   const onMouseLeave = () => {
     const el = cardRef.current
     const glow = glowRef.current
+
     if (!el || !glow) return
+
     el.style.transform = ''
     glow.style.opacity = '0'
   }
 
-  const href = `/produits/${product.slug || product.id}`
-  const initial = (product.category?.name ?? product.name ?? 'P').charAt(0).toUpperCase()
+  const initial = (product.category?.name ?? product.name ?? 'P')
+    .charAt(0)
+    .toUpperCase()
+
   const publishedValue = product.publishedAt || product.createdAt
-  const publishedLabel = publishedValue ? fmt.format(new Date(publishedValue)) : null
+  const publishedLabel = publishedValue
+    ? fmt.format(new Date(publishedValue))
+    : null
+
   const categoryLabel = product.category?.name || 'Catalogue'
 
   return (
@@ -249,7 +335,7 @@ function ProductCard({
       className={s.card}
       onMouseMove={onMouseMove}
       onMouseLeave={onMouseLeave}
-      onClick={() => onNavigate(href)}
+      onClick={() => onNavigate(detailHref)}
       initial={prefersReducedMotion ? false : { opacity: 0, y: 34, scale: 0.988 }}
       whileInView={prefersReducedMotion ? {} : { opacity: 1, y: 0, scale: 1 }}
       viewport={{ once: true, amount: 0.2 }}
@@ -286,7 +372,8 @@ function ProductCard({
       <div className={s.body}>
         <div className={s.cardHeader}>
           <div className={s.cardTopRow}>
-            <span className={s.cardEyebrow}>Solution premium</span>
+            <span className={s.cardEyebrow}>Solution MD2I</span>
+
             {publishedLabel && (
               <div className={s.dateLine}>
                 <IconCal />
@@ -329,15 +416,30 @@ function ProductCard({
                 : 'Fiche produit'}
             </span>
 
-            <button
-              className={s.readBtn}
-              onClick={(e) => {
-                e.stopPropagation()
-                onNavigate(href)
-              }}
-            >
-              Voir la solution <IconArrow />
-            </button>
+            <div className={s.cardButtons}>
+              <button
+                type="button"
+                className={s.secondaryBtn}
+                onClick={(e) => {
+                  e.stopPropagation()
+                  onNavigate(detailHref)
+                }}
+              >
+                Voir la fiche
+              </button>
+
+              <button
+                type="button"
+                className={s.leadBtn}
+                onClick={(e) => {
+                  e.stopPropagation()
+                  onNavigate(leadHref)
+                }}
+              >
+                Demander une démo
+                <IconArrow />
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -346,6 +448,7 @@ function ProductCard({
 }
 
 // ─── Page ────────────────────────────────────────────────────────────────────
+
 export default function PublicProductsPage({ router }: PublicProductsPageProps) {
   const nextRouter = useRouter()
   const nav = router ?? nextRouter
@@ -397,8 +500,9 @@ export default function PublicProductsPage({ router }: PublicProductsPageProps) 
   }, [])
 
   useEffect(() => {
-    const t = setTimeout(() => setDebSearch(search), 350)
-    return () => clearTimeout(t)
+    const timer = setTimeout(() => setDebSearch(search), 350)
+
+    return () => clearTimeout(timer)
   }, [search])
 
   const clearAutoClose = useCallback(() => {
@@ -438,14 +542,16 @@ export default function PublicProductsPage({ router }: PublicProductsPageProps) 
     }
 
     document.addEventListener('mousedown', fn)
+
     return () => document.removeEventListener('mousedown', fn)
   }, [clearAutoClose])
 
   const fetchCats = useCallback(async () => {
     setCatsLoading(true)
+
     try {
-      const r = await api.get('/api/product-categories')
-      setCategories(r.data.data)
+      const response = await api.get('/api/product-categories')
+      setCategories(response.data.data)
     } catch {
       setCategories([])
     } finally {
@@ -465,10 +571,16 @@ export default function PublicProductsPage({ router }: PublicProductsPageProps) 
     ) => {
       setLoading(true)
       setError(null)
+
       const id = ++reqId.current
 
       try {
-        const q = new URLSearchParams({ page: String(nextPage), limit: '9', sort: nextSort })
+        const q = new URLSearchParams({
+          page: String(nextPage),
+          limit: '9',
+          sort: nextSort,
+        })
+
         if (kw.trim()) q.set('search', kw.trim())
         if (categoryId) q.set('category', categoryId)
         if (nextMinPrice.trim()) q.set('minPrice', nextMinPrice.trim())
@@ -476,21 +588,28 @@ export default function PublicProductsPage({ router }: PublicProductsPageProps) 
         if (nextImageMode === 'with-image') q.set('hasImage', 'true')
         if (nextImageMode === 'without-image') q.set('hasImage', 'false')
 
-        const r = await api.get<ProductsResponse>(`/api/products/public?${q.toString()}`)
+        const response = await api.get<ProductsResponse>(
+          `/api/products/public?${q.toString()}`,
+        )
 
         if (id !== reqId.current) return
 
-        setProducts(r.data.data ?? [])
-        setTotalPages(r.data.pagination?.totalPages ?? 1)
-        setTotalItems(r.data.pagination?.total ?? r.data.data?.length ?? 0)
+        setProducts(response.data.data ?? [])
+        setTotalPages(response.data.pagination?.totalPages ?? 1)
+        setTotalItems(
+          response.data.pagination?.total ?? response.data.data?.length ?? 0,
+        )
       } catch {
         if (id !== reqId.current) return
+
         setError('Impossible de charger les produits.')
         setProducts([])
         setTotalPages(1)
         setTotalItems(0)
       } finally {
-        if (id === reqId.current) setLoading(false)
+        if (id === reqId.current) {
+          setLoading(false)
+        }
       }
     },
     [],
@@ -506,40 +625,59 @@ export default function PublicProductsPage({ router }: PublicProductsPageProps) 
 
   const goPage = (n: number) => {
     if (n < 1 || n > totalPages || n === page || loading) return
+
     setPage(n)
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }
 
   const onSearch = (value: string) => {
     setSearch(value)
-    if (page !== 1) setPage(1)
+
+    if (page !== 1) {
+      setPage(1)
+    }
   }
 
   const onCat = (value: string) => {
     setSelCat(value === selCat ? '' : value)
-    if (page !== 1) setPage(1)
+
+    if (page !== 1) {
+      setPage(1)
+    }
   }
 
   const onSort = (value: SortKey) => {
     setSort(value)
     setSortOpen(false)
     clearAutoClose()
-    if (page !== 1) setPage(1)
+
+    if (page !== 1) {
+      setPage(1)
+    }
   }
 
   const onImageMode = (value: ImageMode) => {
     setImageMode(value)
-    if (page !== 1) setPage(1)
+
+    if (page !== 1) {
+      setPage(1)
+    }
   }
 
   const onMinPrice = (value: string) => {
     setMinPrice(value.replace(/[^\d]/g, ''))
-    if (page !== 1) setPage(1)
+
+    if (page !== 1) {
+      setPage(1)
+    }
   }
 
   const onMaxPrice = (value: string) => {
     setMaxPrice(value.replace(/[^\d]/g, ''))
-    if (page !== 1) setPage(1)
+
+    if (page !== 1) {
+      setPage(1)
+    }
   }
 
   const clear = () => {
@@ -576,14 +714,31 @@ export default function PublicProductsPage({ router }: PublicProductsPageProps) 
     const ps: (number | '…')[] = []
 
     if (totalPages <= 7) {
-      for (let i = 1; i <= totalPages; i++) ps.push(i)
+      for (let i = 1; i <= totalPages; i++) {
+        ps.push(i)
+      }
+
       return ps
     }
 
     ps.push(1)
-    if (page > 3) ps.push('…')
-    for (let i = Math.max(2, page - 1); i <= Math.min(totalPages - 1, page + 1); i++) ps.push(i)
-    if (page < totalPages - 2) ps.push('…')
+
+    if (page > 3) {
+      ps.push('…')
+    }
+
+    for (
+      let i = Math.max(2, page - 1);
+      i <= Math.min(totalPages - 1, page + 1);
+      i++
+    ) {
+      ps.push(i)
+    }
+
+    if (page < totalPages - 2) {
+      ps.push('…')
+    }
+
     ps.push(totalPages)
 
     return ps
@@ -612,8 +767,9 @@ export default function PublicProductsPage({ router }: PublicProductsPageProps) 
             </h1>
 
             <p className={s.heroSub}>
-              Logiciels, modules et outils métier conçus pour des équipes exigeantes.
-              Explorez notre catalogue, comparez les tarifs et accédez aux fiches produits détaillées.
+              Logiciels, modules et outils métier conçus pour des équipes
+              exigeantes. Explorez notre catalogue, comparez les tarifs et
+              demandez directement une démonstration.
             </p>
           </div>
 
@@ -634,6 +790,7 @@ export default function PublicProductsPage({ router }: PublicProductsPageProps) 
           <div className={s.stickyBar}>
             <div className={s.searchField}>
               <IconSearch />
+
               <input
                 ref={searchRef}
                 type="text"
@@ -642,8 +799,14 @@ export default function PublicProductsPage({ router }: PublicProductsPageProps) 
                 placeholder="Rechercher une solution…"
                 className={s.searchInput}
               />
+
               {search && (
-                <button className={s.iconBtn} onClick={() => onSearch('')} aria-label="Effacer">
+                <button
+                  type="button"
+                  className={s.iconBtn}
+                  onClick={() => onSearch('')}
+                  aria-label="Effacer"
+                >
                   <IconX />
                 </button>
               )}
@@ -652,23 +815,36 @@ export default function PublicProductsPage({ router }: PublicProductsPageProps) 
             <div className={s.stickyRight}>
               <div className={s.dropdown} ref={filterRef}>
                 <button
-                  className={`${s.dropBtn} ${filterOpen || activeFilterCount ? s.dropBtnActive : ''}`}
+                  type="button"
+                  className={`${s.dropBtn} ${
+                    filterOpen || activeFilterCount ? s.dropBtnActive : ''
+                  }`}
                   onClick={() => {
                     const next = !filterOpen
+
                     setFilterOpen(next)
                     setSortOpen(false)
                     clearAutoClose()
-                    if (next) startAutoClose('filter')
+
+                    if (next) {
+                      startAutoClose('filter')
+                    }
                   }}
                 >
                   <IconFilter />
                   <span>{filterOpen ? 'Fermer filtres' : 'Afficher filtres'}</span>
-                  {activeFilterCount > 0 && <span className={s.dropBadge}>{activeFilterCount}</span>}
+
+                  {activeFilterCount > 0 && (
+                    <span className={s.dropBadge}>{activeFilterCount}</span>
+                  )}
+
                   <IconChevron open={filterOpen} />
                 </button>
 
                 <div
-                  className={`${s.dropPanel} ${filterOpen ? s.dropPanelOpen : ''}`}
+                  className={`${s.dropPanel} ${
+                    filterOpen ? s.dropPanelOpen : ''
+                  }`}
                   onMouseEnter={clearAutoClose}
                   onMouseLeave={() => filterOpen && startAutoClose('filter')}
                 >
@@ -676,7 +852,9 @@ export default function PublicProductsPage({ router }: PublicProductsPageProps) 
                     <div className={s.dropPanelHeader}>
                       <div>
                         <div className={s.dropPanelTitle}>Filtres</div>
-                        <div className={s.dropPanelHint}>Fermeture automatique après 6 secondes</div>
+                        <div className={s.dropPanelHint}>
+                          Fermeture automatique après 6 secondes
+                        </div>
                       </div>
 
                       <button
@@ -693,9 +871,13 @@ export default function PublicProductsPage({ router }: PublicProductsPageProps) 
                     </div>
 
                     <div className={s.dropLabel}>Catégories</div>
+
                     <div className={s.catList}>
                       <button
-                        className={`${s.catPill} ${!selCat ? s.catPillActive : ''}`}
+                        type="button"
+                        className={`${s.catPill} ${
+                          !selCat ? s.catPillActive : ''
+                        }`}
                         onClick={() => onCat('')}
                       >
                         Toutes
@@ -704,8 +886,11 @@ export default function PublicProductsPage({ router }: PublicProductsPageProps) 
                       {!catsLoading &&
                         categories.map((c) => (
                           <button
+                            type="button"
                             key={c.id}
-                            className={`${s.catPill} ${selCat === c.id ? s.catPillActive : ''}`}
+                            className={`${s.catPill} ${
+                              selCat === c.id ? s.catPillActive : ''
+                            }`}
                             onClick={() => onCat(c.id)}
                           >
                             {c.name}
@@ -713,13 +898,21 @@ export default function PublicProductsPage({ router }: PublicProductsPageProps) 
                         ))}
 
                       {catsLoading &&
-                        Array.from({ length: 4 }).map((_, i) => <span key={i} className={s.catSk} />)}
+                        Array.from({ length: 4 }).map((_, i) => (
+                          <span key={i} className={s.catSk} />
+                        ))}
                     </div>
 
-                    <div className={s.dropLabel} style={{ marginTop: 16 }}>Prix</div>
+                    <div className={s.dropLabel} style={{ marginTop: 16 }}>
+                      Prix
+                    </div>
+
                     <div className={s.fieldGrid}>
                       <div className={s.field}>
-                        <label className={s.fieldLabel} htmlFor="min-price">Prix min</label>
+                        <label className={s.fieldLabel} htmlFor="min-price">
+                          Prix min
+                        </label>
+
                         <input
                           id="min-price"
                           className={s.fieldInput}
@@ -732,7 +925,10 @@ export default function PublicProductsPage({ router }: PublicProductsPageProps) 
                       </div>
 
                       <div className={s.field}>
-                        <label className={s.fieldLabel} htmlFor="max-price">Prix max</label>
+                        <label className={s.fieldLabel} htmlFor="max-price">
+                          Prix max
+                        </label>
+
                         <input
                           id="max-price"
                           className={s.fieldInput}
@@ -745,24 +941,38 @@ export default function PublicProductsPage({ router }: PublicProductsPageProps) 
                       </div>
                     </div>
 
-                    <div className={s.dropLabel} style={{ marginTop: 16 }}>Visuel</div>
+                    <div className={s.dropLabel} style={{ marginTop: 16 }}>
+                      Visuel
+                    </div>
+
                     <div className={s.switchRow}>
                       <button
-                        className={`${s.switchBtn} ${imageMode === 'all' ? s.switchBtnActive : ''}`}
+                        type="button"
+                        className={`${s.switchBtn} ${
+                          imageMode === 'all' ? s.switchBtnActive : ''
+                        }`}
                         onClick={() => onImageMode('all')}
                       >
                         Tous
                       </button>
 
                       <button
-                        className={`${s.switchBtn} ${imageMode === 'with-image' ? s.switchBtnActive : ''}`}
+                        type="button"
+                        className={`${s.switchBtn} ${
+                          imageMode === 'with-image' ? s.switchBtnActive : ''
+                        }`}
                         onClick={() => onImageMode('with-image')}
                       >
                         Avec image
                       </button>
 
                       <button
-                        className={`${s.switchBtn} ${imageMode === 'without-image' ? s.switchBtnActive : ''}`}
+                        type="button"
+                        className={`${s.switchBtn} ${
+                          imageMode === 'without-image'
+                            ? s.switchBtnActive
+                            : ''
+                        }`}
                         onClick={() => onImageMode('without-image')}
                       >
                         Sans image
@@ -774,13 +984,20 @@ export default function PublicProductsPage({ router }: PublicProductsPageProps) 
 
               <div className={s.dropdown} ref={sortRef}>
                 <button
-                  className={`${s.dropBtn} ${sortOpen || sort !== 'date-desc' ? s.dropBtnActive : ''}`}
+                  type="button"
+                  className={`${s.dropBtn} ${
+                    sortOpen || sort !== 'date-desc' ? s.dropBtnActive : ''
+                  }`}
                   onClick={() => {
                     const next = !sortOpen
+
                     setSortOpen(next)
                     setFilterOpen(false)
                     clearAutoClose()
-                    if (next) startAutoClose('sort')
+
+                    if (next) {
+                      startAutoClose('sort')
+                    }
                   }}
                 >
                   <IconSort />
@@ -789,7 +1006,9 @@ export default function PublicProductsPage({ router }: PublicProductsPageProps) 
                 </button>
 
                 <div
-                  className={`${s.dropPanel} ${s.dropPanelRight} ${sortOpen ? s.dropPanelOpen : ''}`}
+                  className={`${s.dropPanel} ${s.dropPanelRight} ${
+                    sortOpen ? s.dropPanelOpen : ''
+                  }`}
                   onMouseEnter={clearAutoClose}
                   onMouseLeave={() => sortOpen && startAutoClose('sort')}
                 >
@@ -797,7 +1016,9 @@ export default function PublicProductsPage({ router }: PublicProductsPageProps) 
                     <div className={s.dropPanelHeader}>
                       <div>
                         <div className={s.dropPanelTitle}>Tri</div>
-                        <div className={s.dropPanelHint}>Fermeture automatique après 6 secondes</div>
+                        <div className={s.dropPanelHint}>
+                          Fermeture automatique après 6 secondes
+                        </div>
                       </div>
 
                       <button
@@ -814,14 +1035,21 @@ export default function PublicProductsPage({ router }: PublicProductsPageProps) 
                     </div>
 
                     <div className={s.dropLabel}>Trier par</div>
-                    {SORT_OPTIONS.map((o) => (
+
+                    {SORT_OPTIONS.map((option) => (
                       <button
-                        key={o.key}
-                        className={`${s.sortOpt} ${sort === o.key ? s.sortOptActive : ''}`}
-                        onClick={() => onSort(o.key)}
+                        type="button"
+                        key={option.key}
+                        className={`${s.sortOpt} ${
+                          sort === option.key ? s.sortOptActive : ''
+                        }`}
+                        onClick={() => onSort(option.key)}
                       >
-                        {o.label}
-                        {sort === o.key && <span className={s.sortCheck}>✓</span>}
+                        {option.label}
+
+                        {sort === option.key && (
+                          <span className={s.sortCheck}>✓</span>
+                        )}
                       </button>
                     ))}
                   </div>
@@ -829,7 +1057,7 @@ export default function PublicProductsPage({ router }: PublicProductsPageProps) 
               </div>
 
               {hasFilters && (
-                <button className={s.clearBtn} onClick={clear}>
+                <button type="button" className={s.clearBtn} onClick={clear}>
                   Tout effacer
                 </button>
               )}
@@ -841,7 +1069,8 @@ export default function PublicProductsPage({ router }: PublicProductsPageProps) 
               {activeCat && (
                 <span className={s.chip}>
                   {activeCat.name}
-                  <button onClick={() => onCat('')}>
+
+                  <button type="button" onClick={() => onCat('')}>
                     <IconX />
                   </button>
                 </span>
@@ -849,8 +1078,9 @@ export default function PublicProductsPage({ router }: PublicProductsPageProps) 
 
               {search.trim() && (
                 <span className={s.chip}>
-                  "{search.trim()}"
-                  <button onClick={() => onSearch('')}>
+                  &quot;{search.trim()}&quot;
+
+                  <button type="button" onClick={() => onSearch('')}>
                     <IconX />
                   </button>
                 </span>
@@ -859,7 +1089,8 @@ export default function PublicProductsPage({ router }: PublicProductsPageProps) 
               {minPrice.trim() && (
                 <span className={s.chip}>
                   Min {formatPrice(minPrice)}
-                  <button onClick={() => onMinPrice('')}>
+
+                  <button type="button" onClick={() => onMinPrice('')}>
                     <IconX />
                   </button>
                 </span>
@@ -868,7 +1099,8 @@ export default function PublicProductsPage({ router }: PublicProductsPageProps) 
               {maxPrice.trim() && (
                 <span className={s.chip}>
                   Max {formatPrice(maxPrice)}
-                  <button onClick={() => onMaxPrice('')}>
+
+                  <button type="button" onClick={() => onMaxPrice('')}>
                     <IconX />
                   </button>
                 </span>
@@ -877,7 +1109,8 @@ export default function PublicProductsPage({ router }: PublicProductsPageProps) 
               {imageMode === 'with-image' && (
                 <span className={s.chip}>
                   Avec image
-                  <button onClick={() => onImageMode('all')}>
+
+                  <button type="button" onClick={() => onImageMode('all')}>
                     <IconX />
                   </button>
                 </span>
@@ -886,7 +1119,8 @@ export default function PublicProductsPage({ router }: PublicProductsPageProps) 
               {imageMode === 'without-image' && (
                 <span className={s.chip}>
                   Sans image
-                  <button onClick={() => onImageMode('all')}>
+
+                  <button type="button" onClick={() => onImageMode('all')}>
                     <IconX />
                   </button>
                 </span>
@@ -897,12 +1131,16 @@ export default function PublicProductsPage({ router }: PublicProductsPageProps) 
           <div className={s.resultsMeta}>
             <span className={s.resultsCount}>
               {!loading
-                ? `${totalItems} solution${totalItems > 1 ? 's' : ''} disponible${totalItems > 1 ? 's' : ''}`
+                ? `${totalItems} solution${totalItems > 1 ? 's' : ''} disponible${
+                    totalItems > 1 ? 's' : ''
+                  }`
                 : 'Chargement…'}
             </span>
 
             {totalPages > 1 && !loading && (
-              <span className={s.pagePill}>Page {page} / {totalPages}</span>
+              <span className={s.pagePill}>
+                Page {page} / {totalPages}
+              </span>
             )}
           </div>
         </div>
@@ -914,6 +1152,7 @@ export default function PublicProductsPage({ router }: PublicProductsPageProps) 
             {Array.from({ length: 6 }).map((_, i) => (
               <div key={i} className={s.skCard}>
                 <div className={`${s.sk} ${s.skImg}`} />
+
                 <div className={s.skBody}>
                   <div className={`${s.sk} ${s.skChip}`} />
                   <div className={`${s.sk} ${s.skTitle}`} />
@@ -925,11 +1164,18 @@ export default function PublicProductsPage({ router }: PublicProductsPageProps) 
           </div>
         ) : products.length === 0 ? (
           <div className={s.empty}>
-            <div className={s.emptyIcon}><IconSearch /></div>
+            <div className={s.emptyIcon}>
+              <IconSearch />
+            </div>
+
             <h2>Aucune solution trouvée</h2>
-            <p>Essayez un autre mot-clé ou réinitialisez les filtres actifs.</p>
+
+            <p>
+              Essayez un autre mot-clé ou réinitialisez les filtres actifs.
+            </p>
+
             {hasFilters && (
-              <button className={s.resetBtn} onClick={clear}>
+              <button type="button" className={s.resetBtn} onClick={clear}>
                 Réinitialiser les filtres
               </button>
             )}
@@ -951,6 +1197,7 @@ export default function PublicProductsPage({ router }: PublicProductsPageProps) 
             {totalPages > 1 && (
               <nav className={s.pagination}>
                 <button
+                  type="button"
                   className={s.pBtn}
                   onClick={() => goPage(page - 1)}
                   disabled={page <= 1 || loading}
@@ -960,9 +1207,12 @@ export default function PublicProductsPage({ router }: PublicProductsPageProps) 
 
                 {pages.map((p, i) =>
                   p === '…' ? (
-                    <span key={`e${i}`} className={s.pEll}>…</span>
+                    <span key={`e${i}`} className={s.pEll}>
+                      …
+                    </span>
                   ) : (
                     <button
+                      type="button"
                       key={p}
                       className={`${s.pBtn} ${p === page ? s.pActive : ''}`}
                       onClick={() => goPage(p as number)}
@@ -974,6 +1224,7 @@ export default function PublicProductsPage({ router }: PublicProductsPageProps) 
                 )}
 
                 <button
+                  type="button"
                   className={s.pBtn}
                   onClick={() => goPage(page + 1)}
                   disabled={page >= totalPages || loading}
@@ -987,6 +1238,7 @@ export default function PublicProductsPage({ router }: PublicProductsPageProps) 
       </div>
 
       <button
+        type="button"
         className={`${s.scrollTop} ${top ? s.scrollTopShow : ''}`}
         onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
         aria-label="Retour en haut"

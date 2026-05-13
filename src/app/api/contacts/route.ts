@@ -1,13 +1,86 @@
 // app/api/contacts/route.ts
 // CRUD contacts
-// GET    /api/contacts          → liste paginée avec recherche
-// POST   /api/contacts          → créer un contact
-// DELETE /api/contacts          → suppression en masse (body: { ids: [] })
+// GET    /api/contacts
+// POST   /api/contacts
+// DELETE /api/contacts
 
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { prisma } from "@/app/lib/prisma";
 import { contactSchema } from "@/app/lib/email/schemas";
+
+function cleanString(value?: string | null) {
+  const cleaned = String(value || "").trim();
+  return cleaned.length > 0 ? cleaned : null;
+}
+
+function normalizeEmail(email: string) {
+  return email.trim().toLowerCase();
+}
+
+function getContactInclude() {
+  return {
+    group: {
+      select: {
+        id: true,
+        name: true,
+      },
+    },
+    crmCompany: {
+      select: {
+        id: true,
+        name: true,
+        type: true,
+        country: true,
+        city: true,
+      },
+    },
+  };
+}
+
+async function ensureGroupBelongsToUser(groupId: string | null, userId: string) {
+  if (!groupId) return null;
+
+  const group = await prisma.contactGroup.findFirst({
+    where: {
+      id: groupId,
+      userId,
+    },
+    select: {
+      id: true,
+    },
+  });
+
+  if (!group) {
+    throw new Error("Groupe introuvable ou non autorisé.");
+  }
+
+  return group.id;
+}
+
+async function syncPrimaryGroupMembership(contactId: string, groupId: string | null) {
+  await prisma.contactGroupMember.deleteMany({
+    where: {
+      contactId,
+    },
+  });
+
+  if (!groupId) return;
+
+  await prisma.contactGroupMember.upsert({
+    where: {
+      contactId_groupId: {
+        contactId,
+        groupId,
+      },
+    },
+    update: {},
+    create: {
+      contactId,
+      groupId,
+    },
+  });
+}
 
 // ─── GET /api/contacts ────────────────────────────────────────────────────────
 export async function GET(req: NextRequest) {
@@ -23,16 +96,30 @@ export async function GET(req: NextRequest) {
   const pageSize = Math.min(100, Number(searchParams.get("pageSize") || 20));
   const search = searchParams.get("search") || "";
   const groupId = searchParams.get("groupId") || undefined;
+  const crmStatus = searchParams.get("crmStatus") || undefined;
+  const crmSource = searchParams.get("crmSource") || undefined;
 
   const where = {
     userId: session.user.id,
     ...(groupId ? { groupId } : {}),
+    ...(crmStatus ? { crmStatus: crmStatus as any } : {}),
+    ...(crmSource ? { crmSource: crmSource as any } : {}),
     ...(search
       ? {
           OR: [
             { email: { contains: search, mode: "insensitive" as const } },
             { firstName: { contains: search, mode: "insensitive" as const } },
             { lastName: { contains: search, mode: "insensitive" as const } },
+            { phone: { contains: search, mode: "insensitive" as const } },
+            { jobTitle: { contains: search, mode: "insensitive" as const } },
+            { companyName: { contains: search, mode: "insensitive" as const } },
+            { country: { contains: search, mode: "insensitive" as const } },
+            { city: { contains: search, mode: "insensitive" as const } },
+            {
+              crmCompany: {
+                name: { contains: search, mode: "insensitive" as const },
+              },
+            },
           ],
         }
       : {}),
@@ -41,14 +128,7 @@ export async function GET(req: NextRequest) {
   const [contacts, total] = await Promise.all([
     prisma.contact.findMany({
       where,
-      include: {
-        group: {
-          select: {
-            id: true,
-            name: true,
-          },
-        },
-      },
+      include: getContactInclude(),
       orderBy: {
         createdAt: "desc",
       },
@@ -89,20 +169,55 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    const contact = await prisma.contact.create({
-      data: {
-        ...parsed.data,
-        email: parsed.data.email.toLowerCase(),
-        userId: session.user.id,
-      },
-      include: {
-        group: {
-          select: {
-            id: true,
-            name: true,
-          },
+    const data = parsed.data;
+    const groupId = await ensureGroupBelongsToUser(
+      cleanString(data.groupId),
+      session.user.id
+    );
+
+    const contact = await prisma.$transaction(async (tx) => {
+      const created = await tx.contact.create({
+        data: {
+          email: normalizeEmail(data.email),
+          firstName: cleanString(data.firstName),
+          lastName: cleanString(data.lastName),
+          phone: cleanString(data.phone),
+          groupId,
+
+          jobTitle: cleanString(data.jobTitle),
+          companyName: cleanString(data.companyName),
+          country: cleanString(data.country),
+          city: cleanString(data.city),
+          notes: cleanString(data.notes),
+
+          crmStatus: data.crmStatus || "NEW",
+          crmSource: data.crmSource || "MANUAL",
+
+          isActive: data.isActive ?? true,
+          unsubscribed: data.unsubscribed ?? false,
+
+          userId: session.user.id,
         },
-      },
+        include: getContactInclude(),
+      });
+
+      if (groupId) {
+        await tx.contactGroupMember.upsert({
+          where: {
+            contactId_groupId: {
+              contactId: created.id,
+              groupId,
+            },
+          },
+          update: {},
+          create: {
+            contactId: created.id,
+            groupId,
+          },
+        });
+      }
+
+      return created;
     });
 
     return NextResponse.json(contact, { status: 201 });
@@ -112,6 +227,10 @@ export async function POST(req: NextRequest) {
         { error: "Cet email existe déjà" },
         { status: 409 }
       );
+    }
+
+    if (err instanceof Error) {
+      return NextResponse.json({ error: err.message }, { status: 400 });
     }
 
     throw err;

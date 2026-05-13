@@ -1,4 +1,3 @@
-// components/email-marketing/ContactsTable.tsx
 "use client";
 
 import { useState } from "react";
@@ -20,6 +19,46 @@ import {
 } from "lucide-react";
 
 import styles from "./ContactsTable.module.css";
+
+function getContactName(contact: Contact) {
+  const name = [contact.firstName, contact.lastName]
+    .filter(Boolean)
+    .join(" ")
+    .trim();
+
+  return name || "Sans nom";
+}
+
+function getCrmStatusLabel(status?: string | null) {
+  const labels: Record<string, string> = {
+    NEW: "Nouveau",
+    PROSPECT: "Prospect",
+    HOT_PROSPECT: "Chaud",
+    CUSTOMER: "Client",
+    PARTNER: "Partenaire",
+    INACTIVE: "Inactif",
+    LOST: "Perdu",
+  };
+
+  return labels[status || ""] || status || "—";
+}
+
+function getCrmSourceLabel(source?: string | null) {
+  const labels: Record<string, string> = {
+    WEBSITE: "Site web",
+    FACEBOOK: "Facebook",
+    LINKEDIN: "LinkedIn",
+    EMAIL_CAMPAIGN: "Email",
+    GOOGLE: "Google",
+    DIRECT: "Direct",
+    TENDER: "Appel d’offre",
+    REFERRAL: "Recommandation",
+    MANUAL: "Manuel",
+    OTHER: "Autre",
+  };
+
+  return labels[source || ""] || source || "—";
+}
 
 export function ContactsTable() {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -112,7 +151,7 @@ export function ContactsTable() {
     <div className={styles.contactsTable}>
       <div className={styles.contactsHead}>
         <div>
-          <div className={styles.sectionLabel}>Contacts</div>
+          <div className={styles.sectionLabel}>Contacts CRM</div>
           <p>{total.toLocaleString("fr-FR")} contact(s) au total</p>
         </div>
 
@@ -161,7 +200,7 @@ export function ContactsTable() {
           <Search size={16} className={styles.inputIcon} />
           <input
             type="text"
-            placeholder="Rechercher par email, prénom, nom..."
+            placeholder="Rechercher par email, prénom, nom, entreprise..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />
@@ -208,11 +247,12 @@ export function ContactsTable() {
                   className={styles.checkbox}
                 />
               </th>
-              <th>Email</th>
-              <th>Prénom</th>
-              <th>Nom</th>
+              <th>Contact</th>
+              <th>Entreprise</th>
+              <th>Localisation</th>
+              <th>CRM</th>
               <th>Groupe</th>
-              <th>Statut</th>
+              <th>Emailing</th>
               <th>Ajouté le</th>
               <th />
             </tr>
@@ -221,7 +261,7 @@ export function ContactsTable() {
           <tbody>
             {loading ? (
               <tr>
-                <td colSpan={8}>
+                <td colSpan={9}>
                   <div className={styles.emptyState}>
                     <div className={styles.spinner} />
                     <p>Chargement des contacts...</p>
@@ -230,7 +270,7 @@ export function ContactsTable() {
               </tr>
             ) : contacts.length === 0 ? (
               <tr>
-                <td colSpan={8}>
+                <td colSpan={9}>
                   <div className={styles.emptyState}>
                     <div className={styles.emptyIcon}>
                       <Users size={28} />
@@ -253,11 +293,63 @@ export function ContactsTable() {
                   </td>
 
                   <td>
-                    <span className={styles.email}>{contact.email}</span>
+                    <div className={styles.contactBlock}>
+                      <span className={styles.contactName}>
+                        {getContactName(contact)}
+                      </span>
+
+                      <span className={styles.email}>{contact.email}</span>
+
+                      {contact.phone && (
+                        <span className={styles.muted}>{contact.phone}</span>
+                      )}
+
+                      {contact.jobTitle && (
+                        <span className={styles.jobTitle}>
+                          {contact.jobTitle}
+                        </span>
+                      )}
+                    </div>
                   </td>
 
-                  <td>{contact.firstName || "—"}</td>
-                  <td>{contact.lastName || "—"}</td>
+                  <td>
+                    {contact.companyName ? (
+                      <div className={styles.companyBlock}>
+                        <span>{contact.companyName}</span>
+                      </div>
+                    ) : contact.crmCompany?.name ? (
+                      <div className={styles.companyBlock}>
+                        <span>{contact.crmCompany.name}</span>
+                      </div>
+                    ) : (
+                      <span className={styles.muted}>—</span>
+                    )}
+                  </td>
+
+                  <td>
+                    {contact.city || contact.country ? (
+                      <div className={styles.locationBlock}>
+                        {contact.city && <span>{contact.city}</span>}
+                        {contact.country && (
+                          <span className={styles.muted}>{contact.country}</span>
+                        )}
+                      </div>
+                    ) : (
+                      <span className={styles.muted}>—</span>
+                    )}
+                  </td>
+
+                  <td>
+                    <div className={styles.crmMeta}>
+                      <span className={`${styles.status} ${styles.statusBlue}`}>
+                        {getCrmStatusLabel(contact.crmStatus)}
+                      </span>
+
+                      <span className={styles.sourcePill}>
+                        {getCrmSourceLabel(contact.crmSource)}
+                      </span>
+                    </div>
+                  </td>
 
                   <td>
                     {contact.group ? (

@@ -19,12 +19,110 @@ const optionalEmail = z.preprocess(
   z.string().email("Email invalide").optional().nullable()
 );
 
+const optionalText = (max = 500) =>
+  z.preprocess(
+    (value) => {
+      if (typeof value === "string") {
+        const cleaned = value.trim();
+        return cleaned.length > 0 ? cleaned : null;
+      }
+
+      if (value === undefined || value === null) {
+        return null;
+      }
+
+      return value;
+    },
+    z.string().max(max).optional().nullable()
+  );
+
+const optionalBooleanDefault = (defaultValue: boolean) =>
+  z.preprocess((value) => {
+    if (value === undefined || value === null || value === "") {
+      return defaultValue;
+    }
+
+    if (typeof value === "boolean") {
+      return value;
+    }
+
+    if (typeof value === "string") {
+      const normalized = value.trim().toLowerCase();
+
+      if (["true", "1", "yes", "on"].includes(normalized)) {
+        return true;
+      }
+
+      if (["false", "0", "no", "off"].includes(normalized)) {
+        return false;
+      }
+    }
+
+    return value;
+  }, z.boolean());
+
+const crmContactStatusSchema = z.preprocess(
+  (value) => {
+    if (value === undefined || value === null || value === "") {
+      return "NEW";
+    }
+
+    return value;
+  },
+  z.enum([
+    "NEW",
+    "PROSPECT",
+    "HOT_PROSPECT",
+    "CUSTOMER",
+    "PARTNER",
+    "INACTIVE",
+    "LOST",
+  ])
+);
+
+const crmLeadSourceSchema = z.preprocess(
+  (value) => {
+    if (value === undefined || value === null || value === "") {
+      return "MANUAL";
+    }
+
+    return value;
+  },
+  z.enum([
+    "WEBSITE",
+    "FACEBOOK",
+    "LINKEDIN",
+    "EMAIL_CAMPAIGN",
+    "GOOGLE",
+    "DIRECT",
+    "TENDER",
+    "REFERRAL",
+    "MANUAL",
+    "OTHER",
+  ])
+);
+
 export const contactSchema = z.object({
-  email: z.string().email("Email invalide"),
-  firstName: z.string().max(100).optional().nullable(),
-  lastName: z.string().max(100).optional().nullable(),
-  phone: z.string().max(30).optional().nullable(),
+  email: z.string().trim().email("Email invalide"),
+
+  firstName: optionalText(100),
+  lastName: optionalText(100),
+  phone: optionalText(30),
+
   groupId: optionalCuid,
+
+  // Champs CRM ajoutés au modèle Contact
+  jobTitle: optionalText(150),
+  companyName: optionalText(200),
+  country: optionalText(100),
+  city: optionalText(100),
+  notes: optionalText(5000),
+
+  crmStatus: crmContactStatusSchema.default("NEW"),
+  crmSource: crmLeadSourceSchema.default("MANUAL"),
+
+  isActive: optionalBooleanDefault(true).default(true),
+  unsubscribed: optionalBooleanDefault(false).default(false),
 });
 
 export const groupSchema = z.object({

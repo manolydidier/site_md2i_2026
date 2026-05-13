@@ -66,6 +66,7 @@ function formatPrice(value: Product['price']) {
   }
 
   const numeric = Number(value)
+
   if (!Number.isFinite(numeric)) return String(value)
 
   return `${new Intl.NumberFormat('fr-FR').format(numeric)} Ar`
@@ -85,19 +86,29 @@ function formatDate(value?: string | null) {
   }
 }
 
+function getProductLeadHref(product: Product) {
+  const identifier = product.slug || product.id
+  return `/produits/${encodeURIComponent(identifier)}/lead`
+}
+
 function normalizeProductImages(images: unknown, coverImage?: string | null) {
   const urls: string[] = []
 
   if (Array.isArray(images)) {
     for (const item of images) {
-      if (typeof item === 'string' && item.trim()) urls.push(item.trim())
+      if (typeof item === 'string' && item.trim()) {
+        urls.push(item.trim())
+      }
     }
   } else if (typeof images === 'string' && images.trim()) {
     try {
       const parsed = JSON.parse(images)
+
       if (Array.isArray(parsed)) {
         for (const item of parsed) {
-          if (typeof item === 'string' && item.trim()) urls.push(item.trim())
+          if (typeof item === 'string' && item.trim()) {
+            urls.push(item.trim())
+          }
         }
       } else {
         urls.push(images.trim())
@@ -116,13 +127,17 @@ function normalizeProductImages(images: unknown, coverImage?: string | null) {
 
 function syncEmbeddedTheme(editor: Editor, dark: boolean) {
   const canvasDoc = editor.Canvas?.getDocument()
+
   if (!canvasDoc) return
 
   const theme = dark ? 'dark' : 'light'
   const pageBg = dark ? '#000000' : '#ffffff'
   const pageText = dark ? '#f5f7fb' : '#181818'
 
-  let baseStyle = canvasDoc.getElementById('viewer-base-style') as HTMLStyleElement | null
+  let baseStyle = canvasDoc.getElementById(
+    'viewer-base-style',
+  ) as HTMLStyleElement | null
+
   if (!baseStyle) {
     baseStyle = canvasDoc.createElement('style')
     baseStyle.id = 'viewer-base-style'
@@ -155,6 +170,7 @@ function syncEmbeddedTheme(editor: Editor, dark: boolean) {
   }
 
   const wrapper = editor.getWrapper() as any
+
   if (wrapper) {
     wrapper.addStyle({
       'background-color': pageBg,
@@ -169,9 +185,13 @@ function syncEmbeddedTheme(editor: Editor, dark: boolean) {
   editor.refresh()
 }
 
-function measureCanvasHeight(editor: Editor, setCanvasHeight: (height: number) => void) {
+function measureCanvasHeight(
+  editor: Editor,
+  setCanvasHeight: (height: number) => void,
+) {
   try {
     const iframeEl = editor.Canvas.getFrameEl()
+
     if (iframeEl?.contentDocument) {
       const body = iframeEl.contentDocument.body
       const html = iframeEl.contentDocument.documentElement
@@ -184,6 +204,7 @@ function measureCanvasHeight(editor: Editor, setCanvasHeight: (height: number) =
           html.offsetHeight,
           window.innerHeight,
         )
+
         setCanvasHeight(h)
       }
     }
@@ -200,7 +221,9 @@ export default function ProductDetailClient() {
 
   const mountRef = useRef<HTMLDivElement>(null)
   const gjsRef = useRef<Editor | null>(null)
-  const detailTimerRef = useRef<ReturnType<typeof window.setTimeout> | null>(null)
+  const detailTimerRef = useRef<ReturnType<typeof window.setTimeout> | null>(
+    null,
+  )
 
   const [product, setProduct] = useState<Product | null>(null)
   const [loading, setLoading] = useState(true)
@@ -209,6 +232,7 @@ export default function ProductDetailClient() {
   const [detailVisible, setDetailVisible] = useState(true)
 
   const ui = useMemo(() => getUiColors(dark), [dark])
+
   const gallery = useMemo(
     () => normalizeProductImages(product?.images, product?.coverImage),
     [product?.images, product?.coverImage],
@@ -225,6 +249,7 @@ export default function ProductDetailClient() {
 
   const startDetailAutoClose = useCallback(() => {
     clearDetailTimer()
+
     detailTimerRef.current = window.setTimeout(() => {
       setDetailVisible(false)
     }, 6000)
@@ -261,6 +286,7 @@ export default function ProductDetailClient() {
 
   useEffect(() => {
     if (!product) return
+
     setDetailVisible(true)
     startDetailAutoClose()
   }, [product, startDetailAutoClose])
@@ -279,7 +305,9 @@ export default function ProductDetailClient() {
       width: '100%',
       fromElement: false,
       storageManager: false,
-      panels: { defaults: [] },
+      panels: {
+        defaults: [],
+      },
       plugins: [],
       canvas: {
         styles: [
@@ -316,13 +344,27 @@ export default function ProductDetailClient() {
           { id: 'core:component:clone', run: () => {} },
         ],
       },
-      dragManager: { disable: true },
-      selectorManager: { disable: true },
-      traitManager: { disable: true },
-      styleManager: { disable: true },
-      layerManager: { disable: true },
-      blockManager: { disable: true },
-      deviceManager: { disable: true },
+      dragManager: {
+        disable: true,
+      },
+      selectorManager: {
+        disable: true,
+      },
+      traitManager: {
+        disable: true,
+      },
+      styleManager: {
+        disable: true,
+      },
+      layerManager: {
+        disable: true,
+      },
+      blockManager: {
+        disable: true,
+      },
+      deviceManager: {
+        disable: true,
+      },
       allowScripts: true,
     })
 
@@ -373,7 +415,9 @@ export default function ProductDetailClient() {
           component.set('badge', null)
 
           if (component.components && component.components().length > 0) {
-            component.components().forEach((child: any) => disableComponent(child))
+            component.components().forEach((child: any) =>
+              disableComponent(child),
+            )
           }
         }
       }
@@ -383,12 +427,16 @@ export default function ProductDetailClient() {
       const setupCanvas = () => {
         try {
           const canvasDoc = editor.Canvas?.getDocument()
+
           if (!canvasDoc) {
             setTimeout(setupCanvas, 50)
             return
           }
 
-          let readonlyStyle = canvasDoc.getElementById('readonly-styles') as HTMLStyleElement | null
+          let readonlyStyle = canvasDoc.getElementById(
+            'readonly-styles',
+          ) as HTMLStyleElement | null
+
           if (!readonlyStyle) {
             readonlyStyle = canvasDoc.createElement('style')
             readonlyStyle.id = 'readonly-styles'
@@ -406,17 +454,34 @@ export default function ProductDetailClient() {
               -webkit-tap-highlight-color: transparent !important;
               cursor: default !important;
             }
-            *:active, *:focus { outline: none !important; }
-            a, button, [role="button"], input, select, textarea {
+
+            *:active,
+            *:focus {
+              outline: none !important;
+            }
+
+            a,
+            button,
+            [role="button"],
+            input,
+            select,
+            textarea {
               user-select: text !important;
               -webkit-user-select: text !important;
               cursor: pointer !important;
             }
-            img, svg, canvas {
+
+            img,
+            svg,
+            canvas {
               pointer-events: none !important;
               user-select: none !important;
             }
-            ::selection, ::-moz-selection { background: transparent !important; }
+
+            ::selection,
+            ::-moz-selection {
+              background: transparent !important;
+            }
           `
 
           const preventDrag = (e: Event) => {
@@ -432,6 +497,7 @@ export default function ProductDetailClient() {
 
           const preventSelectStart = (e: Event) => {
             const target = e.target as HTMLElement
+
             if (
               !target.closest('input') &&
               !target.closest('textarea') &&
@@ -443,6 +509,7 @@ export default function ProductDetailClient() {
 
           const preventCopy = (e: Event) => {
             const target = e.target as HTMLElement
+
             if (!target.closest('input') && !target.closest('textarea')) {
               e.preventDefault()
               return false
@@ -451,6 +518,7 @@ export default function ProductDetailClient() {
 
           const preventPaste = (e: Event) => {
             const target = e.target as HTMLElement
+
             if (!target.closest('input') && !target.closest('textarea')) {
               e.preventDefault()
               return false
@@ -460,12 +528,14 @@ export default function ProductDetailClient() {
           const handleAnchorClick = (e: Event) => {
             const target = e.target as HTMLElement | null
             const link = target?.closest?.('a[href]') as HTMLAnchorElement | null
+
             if (!link) return
 
             e.preventDefault()
             e.stopPropagation()
 
             const href = link.getAttribute('href')
+
             if (!href) return
 
             const absoluteHref = new URL(href, window.location.origin).toString()
@@ -477,11 +547,16 @@ export default function ProductDetailClient() {
               const tempLink = window.document.createElement('a')
               tempLink.href = absoluteHref
               tempLink.style.display = 'none'
-              if (downloadName) tempLink.setAttribute('download', downloadName)
+
+              if (downloadName) {
+                tempLink.setAttribute('download', downloadName)
+              }
+
               tempLink.setAttribute('rel', 'noopener noreferrer')
               window.document.body.appendChild(tempLink)
               tempLink.click()
               tempLink.remove()
+
               return
             }
 
@@ -515,7 +590,10 @@ export default function ProductDetailClient() {
 
           if (product.gjsJs?.trim()) {
             const existing = canvasDoc.querySelector('script[data-product-js]')
-            if (existing) existing.remove()
+
+            if (existing) {
+              existing.remove()
+            }
 
             const script = canvasDoc.createElement('script')
             script.setAttribute('data-product-js', 'true')
@@ -544,19 +622,43 @@ export default function ProductDetailClient() {
 
         try {
           const canvasDoc = currentEditor.Canvas?.getDocument()
-          const handlers = (currentEditor as any).__eventHandlers as CanvasEventHandlers | undefined
+          const handlers = (currentEditor as any).__eventHandlers as
+            | CanvasEventHandlers
+            | undefined
 
           if (canvasDoc && handlers) {
-            canvasDoc.body.removeEventListener('dragstart', handlers.preventDrag)
+            canvasDoc.body.removeEventListener(
+              'dragstart',
+              handlers.preventDrag,
+            )
             canvasDoc.body.removeEventListener('drop', handlers.preventDrag)
-            canvasDoc.body.removeEventListener('dragenter', handlers.preventDrag)
-            canvasDoc.body.removeEventListener('dragover', handlers.preventDrag)
-            canvasDoc.body.removeEventListener('dragend', handlers.preventDrag)
-            canvasDoc.body.removeEventListener('contextmenu', handlers.preventContextMenu)
-            canvasDoc.body.removeEventListener('selectstart', handlers.preventSelectStart)
+            canvasDoc.body.removeEventListener(
+              'dragenter',
+              handlers.preventDrag,
+            )
+            canvasDoc.body.removeEventListener(
+              'dragover',
+              handlers.preventDrag,
+            )
+            canvasDoc.body.removeEventListener(
+              'dragend',
+              handlers.preventDrag,
+            )
+            canvasDoc.body.removeEventListener(
+              'contextmenu',
+              handlers.preventContextMenu,
+            )
+            canvasDoc.body.removeEventListener(
+              'selectstart',
+              handlers.preventSelectStart,
+            )
             canvasDoc.body.removeEventListener('copy', handlers.preventCopy)
             canvasDoc.body.removeEventListener('paste', handlers.preventPaste)
-            canvasDoc.body.removeEventListener('click', handlers.handleAnchorClick, true)
+            canvasDoc.body.removeEventListener(
+              'click',
+              handlers.handleAnchorClick,
+              true,
+            )
           }
         } catch {}
 
@@ -568,6 +670,7 @@ export default function ProductDetailClient() {
 
   useEffect(() => {
     const editor = gjsRef.current
+
     if (!editor || !hasGjsContent) return
 
     syncEmbeddedTheme(editor, dark)
@@ -590,9 +693,16 @@ export default function ProductDetailClient() {
     return (
       <div
         className="flex min-h-screen items-center justify-center"
-        style={{ background: ui.appBg }}
+        style={{
+          background: ui.appBg,
+        }}
       >
-        <div className="text-sm" style={{ color: ui.mutedText }}>
+        <div
+          className="text-sm"
+          style={{
+            color: ui.mutedText,
+          }}
+        >
           Chargement…
         </div>
       </div>
@@ -603,9 +713,16 @@ export default function ProductDetailClient() {
     return (
       <div
         className="flex min-h-screen flex-col items-center justify-center gap-4 px-6"
-        style={{ background: ui.appBg }}
+        style={{
+          background: ui.appBg,
+        }}
       >
-        <p className="text-sm" style={{ color: ui.mutedText }}>
+        <p
+          className="text-sm"
+          style={{
+            color: ui.mutedText,
+          }}
+        >
           {error || 'Produit introuvable.'}
         </p>
 
@@ -629,6 +746,8 @@ export default function ProductDetailClient() {
       </div>
     )
   }
+
+  const leadHref = getProductLeadHref(product)
 
   if (!hasGjsContent) {
     return (
@@ -668,7 +787,14 @@ export default function ProductDetailClient() {
               marginBottom: '24px',
             }}
           >
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
+            <svg
+              width="16"
+              height="16"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2.2"
+            >
               <path d="M19 12H5M12 5l-7 7 7 7" />
             </svg>
             Retour
@@ -677,7 +803,9 @@ export default function ProductDetailClient() {
           <div
             style={{
               display: 'grid',
-              gridTemplateColumns: gallery.length ? 'minmax(0, 1.1fr) minmax(320px, .9fr)' : '1fr',
+              gridTemplateColumns: gallery.length
+                ? 'minmax(0, 1.1fr) minmax(320px, .9fr)'
+                : '1fr',
               gap: '24px',
             }}
           >
@@ -772,7 +900,9 @@ export default function ProductDetailClient() {
                     border: `1px solid ${ui.cardBorder}`,
                     borderRadius: '18px',
                     padding: '16px',
-                    background: dark ? 'rgba(255,255,255,.03)' : 'rgba(15,23,42,.03)',
+                    background: dark
+                      ? 'rgba(255,255,255,.03)'
+                      : 'rgba(15,23,42,.03)',
                   }}
                 >
                   <div
@@ -787,6 +917,7 @@ export default function ProductDetailClient() {
                   >
                     Prix
                   </div>
+
                   <div
                     style={{
                       fontSize: '20px',
@@ -804,7 +935,9 @@ export default function ProductDetailClient() {
                     border: `1px solid ${ui.cardBorder}`,
                     borderRadius: '18px',
                     padding: '16px',
-                    background: dark ? 'rgba(255,255,255,.03)' : 'rgba(15,23,42,.03)',
+                    background: dark
+                      ? 'rgba(255,255,255,.03)'
+                      : 'rgba(15,23,42,.03)',
                   }}
                 >
                   <div
@@ -819,6 +952,7 @@ export default function ProductDetailClient() {
                   >
                     Publication
                   </div>
+
                   <div
                     style={{
                       fontSize: '14px',
@@ -829,6 +963,65 @@ export default function ProductDetailClient() {
                     {formatDate(product.publishedAt || product.createdAt)}
                   </div>
                 </div>
+              </div>
+
+              <div
+                style={{
+                  marginTop: '24px',
+                  display: 'flex',
+                  flexWrap: 'wrap',
+                  gap: '12px',
+                }}
+              >
+                <button
+                  onClick={() => router.push(leadHref)}
+                  style={{
+                    minHeight: '46px',
+                    padding: '0 20px',
+                    borderRadius: '14px',
+                    border: 'none',
+                    background: `linear-gradient(135deg, ${ui.accent1} 0%, ${ui.accent2} 100%)`,
+                    color: '#fff',
+                    fontSize: '14px',
+                    fontWeight: 800,
+                    cursor: 'pointer',
+                    boxShadow: '0 14px 30px rgba(239,159,39,.30)',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '10px',
+                  }}
+                >
+                  Demander une démo / un devis
+                  <svg
+                    width="16"
+                    height="16"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2.2"
+                  >
+                    <path d="M5 12h14M12 5l7 7-7 7" />
+                  </svg>
+                </button>
+
+                <button
+                  onClick={() => router.push('/produits')}
+                  style={{
+                    minHeight: '46px',
+                    padding: '0 18px',
+                    borderRadius: '14px',
+                    border: `1px solid ${ui.cardBorder}`,
+                    background: dark
+                      ? 'rgba(255,255,255,.03)'
+                      : 'rgba(15,23,42,.03)',
+                    color: ui.panelText,
+                    fontSize: '14px',
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                  }}
+                >
+                  Voir tous les produits
+                </button>
               </div>
 
               {gallery.length > 1 && (
@@ -874,7 +1067,11 @@ export default function ProductDetailClient() {
   return (
     <>
       <style jsx global>{`
-        * { margin: 0; padding: 0; box-sizing: border-box; }
+        * {
+          margin: 0;
+          padding: 0;
+          box-sizing: border-box;
+        }
 
         .gjs-pn-panel,
         .gjs-pn-panels,
@@ -927,8 +1124,13 @@ export default function ProductDetailClient() {
           height: 100% !important;
         }
 
-        .gjs-cv-canvas * { pointer-events: none !important; }
-        .gjs-cv-canvas__frames iframe * { pointer-events: auto !important; }
+        .gjs-cv-canvas * {
+          pointer-events: none !important;
+        }
+
+        .gjs-cv-canvas__frames iframe * {
+          pointer-events: auto !important;
+        }
       `}</style>
 
       <div
@@ -954,7 +1156,13 @@ export default function ProductDetailClient() {
               minHeight: '100vh',
             }}
           >
-            <div ref={mountRef} style={{ width: '100%', height: '100%' }} />
+            <div
+              ref={mountRef}
+              style={{
+                width: '100%',
+                height: '100%',
+              }}
+            />
           </div>
         </div>
 
@@ -964,6 +1172,10 @@ export default function ProductDetailClient() {
             top: '90px',
             left: '16px',
             zIndex: 9999,
+            display: 'flex',
+            alignItems: 'center',
+            gap: '10px',
+            flexWrap: 'wrap',
           }}
         >
           <button
@@ -996,10 +1208,60 @@ export default function ProductDetailClient() {
               e.currentTarget.style.transform = 'translateY(0)'
             }}
           >
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
+            <svg
+              width="16"
+              height="16"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2.2"
+            >
               <path d="M19 12H5M12 5l-7 7 7 7" />
             </svg>
             Retour
+          </button>
+
+          <button
+            onClick={() => router.push(leadHref)}
+            aria-label="Demander une démonstration ou un devis"
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '10px',
+              height: '46px',
+              padding: '0 18px',
+              borderRadius: '16px',
+              border: 'none',
+              background: `linear-gradient(135deg, ${ui.accent1} 0%, ${ui.accent2} 100%)`,
+              color: '#fff',
+              fontSize: '14px',
+              fontWeight: 800,
+              cursor: 'pointer',
+              backdropFilter: 'blur(14px)',
+              WebkitBackdropFilter: 'blur(14px)',
+              boxShadow: '0 14px 30px rgba(239,159,39,.30)',
+              transition: 'all .22s ease',
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.transform = 'translateY(-2px)'
+              e.currentTarget.style.filter = 'brightness(1.05)'
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.transform = 'translateY(0)'
+              e.currentTarget.style.filter = 'none'
+            }}
+          >
+            Demander une démo
+            <svg
+              width="16"
+              height="16"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2.2"
+            >
+              <path d="M5 12h14M12 5l7 7-7 7" />
+            </svg>
           </button>
         </div>
 
@@ -1045,7 +1307,14 @@ export default function ProductDetailClient() {
                 e.currentTarget.style.transform = 'translateY(0)'
               }}
             >
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
+              <svg
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2.2"
+              >
                 <path d="M12 5v14M5 12h14" />
               </svg>
               Afficher les détails
@@ -1099,6 +1368,7 @@ export default function ProductDetailClient() {
                   >
                     Détails produit
                   </div>
+
                   <div
                     style={{
                       marginTop: '4px',
@@ -1140,7 +1410,14 @@ export default function ProductDetailClient() {
                     e.currentTarget.style.transform = 'scale(1)'
                   }}
                 >
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <svg
+                    width="14"
+                    height="14"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                  >
                     <path d="M18 6 6 18M6 6l12 12" />
                   </svg>
                 </button>
@@ -1222,6 +1499,39 @@ export default function ProductDetailClient() {
                   {formatDate(product.publishedAt || product.createdAt)}
                 </div>
               </div>
+
+              <button
+                onClick={() => router.push(leadHref)}
+                style={{
+                  width: '100%',
+                  marginTop: '14px',
+                  minHeight: '42px',
+                  borderRadius: '14px',
+                  border: 'none',
+                  background: `linear-gradient(135deg, ${ui.accent1} 0%, ${ui.accent2} 100%)`,
+                  color: '#fff',
+                  fontSize: '13px',
+                  fontWeight: 800,
+                  cursor: 'pointer',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '9px',
+                  boxShadow: '0 12px 26px rgba(239,159,39,.28)',
+                }}
+              >
+                Demander une démo / un devis
+                <svg
+                  width="15"
+                  height="15"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2.2"
+                >
+                  <path d="M5 12h14M12 5l7 7-7 7" />
+                </svg>
+              </button>
             </div>
           </div>
         )}

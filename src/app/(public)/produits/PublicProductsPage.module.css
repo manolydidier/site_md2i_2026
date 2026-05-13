@@ -63,6 +63,7 @@
 }
 
 /* ─── Progress bar ─────────────────────────────────────────────────────────── */
+
 .progress {
   position: fixed;
   top: 0;
@@ -80,6 +81,7 @@
 }
 
 /* ─── Layout ───────────────────────────────────────────────────────────────── */
+
 .wrap {
   max-width: 1240px;
   margin: 0 auto;
@@ -87,6 +89,7 @@
 }
 
 /* ─── Hero ─────────────────────────────────────────────────────────────────── */
+
 .hero {
   padding: 72px 0 56px;
   display: grid;
@@ -195,23 +198,38 @@
 }
 
 @keyframes blink {
-  0%, 100% { opacity: 1; }
-  50% { opacity: .22; }
+  0%, 100% {
+    opacity: 1;
+  }
+
+  50% {
+    opacity: .22;
+  }
 }
 
 @keyframes heroEyebrowReveal {
-  to { opacity: 1; transform: translateY(0); }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 @keyframes heroTitleReveal {
-  to { opacity: 1; transform: translateY(0); }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 @keyframes heroSubReveal {
-  to { opacity: 1; transform: translateY(0); }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 /* ─── Sticky toolbar ───────────────────────────────────────────────────────── */
+
 .sticky {
   position: sticky;
   top: 0;
@@ -353,7 +371,10 @@
 }
 
 /* ─── Dropdowns ────────────────────────────────────────────────────────────── */
-.dropdown { position: relative; }
+
+.dropdown {
+  position: relative;
+}
 
 .dropBtn {
   display: inline-flex;
@@ -447,7 +468,9 @@
   pointer-events: auto;
 }
 
-.dropPanelInner { padding: 14px; }
+.dropPanelInner {
+  padding: 14px;
+}
 
 .dropPanelHeader {
   display: flex;
@@ -684,6 +707,7 @@
 }
 
 /* ─── Active chips ─────────────────────────────────────────────────────────── */
+
 .chips {
   display: flex;
   align-items: center;
@@ -746,7 +770,9 @@
   margin-top: 8px;
 }
 
-.resultsCount { color: var(--t3); }
+.resultsCount {
+  color: var(--t3);
+}
 
 .pagePill {
   font-size: 10px;
@@ -759,6 +785,7 @@
 }
 
 /* ─── Grid ─────────────────────────────────────────────────────────────────── */
+
 .grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -767,6 +794,7 @@
 }
 
 /* ─── Card — product layout ────────────────────────────────────────────────── */
+
 .card {
   position: relative;
   background: var(--card);
@@ -813,7 +841,8 @@
   background: transparent;
 }
 
-/* ─── Card media (thumbnail area) ─────────────────────────────────────────── */
+/* ─── Card media ─────────────────────────────────────────────────────────── */
+
 .media {
   position: relative;
   height: 196px;
@@ -842,7 +871,6 @@
   z-index: 2;
 }
 
-/* Placeholder when no image: monogram on gradient */
 .placeholder {
   width: 100%;
   height: 100%;
@@ -873,7 +901,6 @@
   z-index: 1;
 }
 
-/* Category label, top-left */
 .badgeCat {
   position: absolute;
   top: 12px;
@@ -901,6 +928,7 @@
 }
 
 /* ─── Card body ─────────────────────────────────────────────────────────────── */
+
 .body {
   padding: 18px 20px 20px;
   display: flex;
@@ -910,7 +938,9 @@
   z-index: 5;
 }
 
-.cardHeader { margin-bottom: 12px; }
+.cardHeader {
+  margin-bottom: 12px;
+}
 
 .cardTopRow {
   display: flex;
@@ -960,7 +990,9 @@
   transition: color .22s;
 }
 
-.card:hover .cardTitle { color: var(--acc); }
+.card:hover .cardTitle {
+  color: var(--acc);
+}
 
 .excerptWrap {
   margin-top: 6px;
@@ -1004,7 +1036,9 @@
   align-self: flex-start;
 }
 
-.excerptToggle:hover { color: var(--acc); }
+.excerptToggle:hover {
+  color: var(--acc);
+}
 
 .excerptToggle svg {
   width: 10px;
@@ -1085,7 +1119,7 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 10px;
+  gap: 12px;
 }
 
 .cardCategoryInline {
@@ -1098,6 +1132,72 @@
   overflow: hidden;
   text-overflow: ellipsis;
   max-width: 120px;
+}
+
+.cardButtons {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  flex-wrap: wrap;
+  flex-shrink: 0;
+}
+
+.secondaryBtn,
+.leadBtn {
+  min-height: 36px;
+  border-radius: 999px;
+  padding: 0 14px;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 11px;
+  font-weight: 800;
+  cursor: pointer;
+  white-space: nowrap;
+  transition:
+    transform .22s cubic-bezier(.22, .61, .36, 1),
+    opacity .18s ease,
+    background .18s ease,
+    border-color .18s ease,
+    box-shadow .22s cubic-bezier(.22, .61, .36, 1);
+}
+
+.secondaryBtn {
+  color: var(--t2);
+  background: transparent;
+  border: 1px solid var(--line2);
+}
+
+.secondaryBtn:hover {
+  color: var(--t1);
+  background: var(--bg2);
+  transform: translateY(-1px);
+}
+
+.leadBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  color: #fff;
+  border: none;
+  background: linear-gradient(135deg, #EF9F27 0%, #F7C060 100%);
+  box-shadow: 0 6px 20px rgba(239, 159, 39, .30);
+}
+
+.leadBtn svg {
+  width: 11px;
+  height: 11px;
+  transition: transform .22s;
+}
+
+.leadBtn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 28px rgba(239, 159, 39, .42);
+  filter: brightness(1.05);
+}
+
+.leadBtn:hover svg {
+  transform: translateX(3px);
 }
 
 .readBtn {
@@ -1138,6 +1238,7 @@
 }
 
 /* ─── Skeleton cards ────────────────────────────────────────────────────────── */
+
 .skCard {
   background: var(--card);
   border: 1px solid var(--card-border);
@@ -1153,8 +1254,13 @@
 }
 
 @keyframes sk {
-  0% { background-position: -400px 0; }
-  100% { background-position: 400px 0; }
+  0% {
+    background-position: -400px 0;
+  }
+
+  100% {
+    background-position: 400px 0;
+  }
 }
 
 .skImg {
@@ -1169,12 +1275,27 @@
   gap: 9px;
 }
 
-.skChip { height: 10px; width: 60px; border-radius: 100px; }
-.skTitle { height: 14px; width: 82%; }
-.skLine { height: 10px; }
-.skShort { width: 55%; }
+.skChip {
+  height: 10px;
+  width: 60px;
+  border-radius: 100px;
+}
+
+.skTitle {
+  height: 14px;
+  width: 82%;
+}
+
+.skLine {
+  height: 10px;
+}
+
+.skShort {
+  width: 55%;
+}
 
 /* ─── Empty state ───────────────────────────────────────────────────────────── */
+
 .empty {
   display: flex;
   flex-direction: column;
@@ -1199,7 +1320,10 @@
   margin-bottom: 18px;
 }
 
-.emptyIcon svg { width: 20px; height: 20px; }
+.emptyIcon svg {
+  width: 20px;
+  height: 20px;
+}
 
 .empty h2 {
   margin: 0;
@@ -1240,6 +1364,7 @@
 }
 
 /* ─── Error ─────────────────────────────────────────────────────────────────── */
+
 .error {
   padding: 12px 16px;
   border-radius: 10px;
@@ -1251,6 +1376,7 @@
 }
 
 /* ─── Pagination ─────────────────────────────────────────────────────────────── */
+
 .pagination {
   margin-top: 60px;
   display: flex;
@@ -1301,6 +1427,7 @@
 }
 
 /* ─── Scroll to top ─────────────────────────────────────────────────────────── */
+
 .scrollTop {
   position: fixed;
   bottom: 28px;
@@ -1323,7 +1450,10 @@
   box-shadow: var(--card-sh);
 }
 
-.scrollTop svg { width: 15px; height: 15px; }
+.scrollTop svg {
+  width: 15px;
+  height: 15px;
+}
 
 .scrollTopShow {
   opacity: 1;
@@ -1340,12 +1470,36 @@
 }
 
 /* ─── Responsive ─────────────────────────────────────────────────────────────── */
+
 @media (max-width: 1040px) {
-  .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .cardActionRow {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .cardCategoryInline {
+    max-width: 100%;
+  }
+
+  .cardButtons {
+    width: 100%;
+    justify-content: stretch;
+  }
+
+  .secondaryBtn,
+  .leadBtn {
+    flex: 1;
+  }
 }
 
 @media (max-width: 768px) {
-  .wrap { padding: 0 20px 80px; }
+  .wrap {
+    padding: 0 20px 80px;
+  }
 
   .hero {
     grid-template-columns: 1fr;
@@ -1359,8 +1513,14 @@
     gap: 24px;
   }
 
-  .heroStat { padding: 0; border-bottom: none; }
-  .heroStatNum { font-size: 40px; }
+  .heroStat {
+    padding: 0;
+    border-bottom: none;
+  }
+
+  .heroStatNum {
+    font-size: 40px;
+  }
 
   .sticky {
     margin: 0 -20px;
@@ -1385,7 +1545,9 @@
     gap: 8px;
   }
 
-  .dropdown { flex: 1 1 auto; }
+  .dropdown {
+    flex: 1 1 auto;
+  }
 
   .dropBtn {
     width: 100%;
@@ -1401,7 +1563,9 @@
     transform-origin: top center;
   }
 
-  .fieldGrid { grid-template-columns: 1fr; }
+  .fieldGrid {
+    grid-template-columns: 1fr;
+  }
 
   .clearBtn {
     width: 100%;
@@ -1410,7 +1574,9 @@
 }
 
 @media (max-width: 540px) {
-  .grid { grid-template-columns: 1fr; }
+  .grid {
+    grid-template-columns: 1fr;
+  }
 
   .heroTitle {
     font-size: clamp(32px, 8vw, 46px);
@@ -1422,15 +1588,39 @@
     line-height: 1.72;
   }
 
-  .heroLeft { padding-left: 16px; }
+  .heroLeft {
+    padding-left: 16px;
+  }
 
-  .media { height: 180px; }
+  .media {
+    height: 180px;
+  }
 
   .cardMetaRow {
     flex-direction: row;
     align-items: flex-end;
   }
 
-  .cardActionRow { flex-direction: column; align-items: flex-start; gap: 8px; }
-  .readBtn { width: 100%; justify-content: center; }
+  .cardActionRow {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+  }
+
+  .cardCategoryInline {
+    max-width: 100%;
+  }
+
+  .cardButtons {
+    width: 100%;
+    justify-content: stretch;
+    gap: 8px;
+  }
+
+  .secondaryBtn,
+  .leadBtn {
+    flex: 1;
+    min-width: 0;
+    padding: 0 10px;
+  }
 }
