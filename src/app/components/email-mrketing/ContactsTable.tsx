@@ -16,6 +16,7 @@ import {
   Pencil,
   Users,
   Filter,
+  RotateCcw,
 } from "lucide-react";
 
 import styles from "./ContactsTable.module.css";
@@ -60,12 +61,38 @@ function getCrmSourceLabel(source?: string | null) {
   return labels[source || ""] || source || "—";
 }
 
+const CRM_STATUS_OPTIONS = [
+  { value: "NEW", label: "Nouveau" },
+  { value: "PROSPECT", label: "Prospect" },
+  { value: "HOT_PROSPECT", label: "Prospect chaud" },
+  { value: "CUSTOMER", label: "Client" },
+  { value: "PARTNER", label: "Partenaire" },
+  { value: "INACTIVE", label: "Inactif" },
+  { value: "LOST", label: "Perdu" },
+];
+
+const CRM_SOURCE_OPTIONS = [
+  { value: "WEBSITE", label: "Site web" },
+  { value: "FACEBOOK", label: "Facebook" },
+  { value: "LINKEDIN", label: "LinkedIn" },
+  { value: "EMAIL_CAMPAIGN", label: "Email" },
+  { value: "GOOGLE", label: "Google" },
+  { value: "DIRECT", label: "Direct" },
+  { value: "TENDER", label: "Appel d’offre" },
+  { value: "REFERRAL", label: "Recommandation" },
+  { value: "MANUAL", label: "Manuel" },
+  { value: "OTHER", label: "Autre" },
+];
+
 export function ContactsTable() {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [editingContact, setEditingContact] = useState<Contact | null>(null);
   const [showAddModal, setShowAddModal] = useState(false);
   const [showImportModal, setShowImportModal] = useState(false);
+
   const [filterGroupId, setFilterGroupId] = useState<string>("");
+  const [filterCrmStatus, setFilterCrmStatus] = useState<string>("");
+  const [filterCrmSource, setFilterCrmSource] = useState<string>("");
 
   const { groups } = useGroups();
 
@@ -78,10 +105,63 @@ export function ContactsTable() {
     search,
     setSearch,
     loading,
+    error,
     deleteContact,
     deleteMany,
     refetch,
-  } = useContacts({ groupId: filterGroupId || undefined });
+  } = useContacts({
+    groupId: filterGroupId || undefined,
+    crmStatus: filterCrmStatus || undefined,
+    crmSource: filterCrmSource || undefined,
+  });
+
+  const hasActiveFilters =
+    Boolean(search) ||
+    Boolean(filterGroupId) ||
+    Boolean(filterCrmStatus) ||
+    Boolean(filterCrmSource);
+
+  const selectedVisibleCount = contacts.filter((contact) =>
+    selectedIds.has(contact.id)
+  ).length;
+
+  const handleSearchChange = (value: string) => {
+    setSearch(value);
+    setPage(1);
+    setSelectedIds(new Set());
+  };
+
+  const handleGroupChange = (value: string) => {
+    setFilterGroupId(value);
+    setPage(1);
+    setSelectedIds(new Set());
+  };
+
+  const handleStatusChange = (value: string) => {
+    setFilterCrmStatus(value);
+    setPage(1);
+    setSelectedIds(new Set());
+  };
+
+  const handleSourceChange = (value: string) => {
+    setFilterCrmSource(value);
+    setPage(1);
+    setSelectedIds(new Set());
+  };
+
+  const resetFilters = () => {
+    setSearch("");
+    setFilterGroupId("");
+    setFilterCrmStatus("");
+    setFilterCrmSource("");
+    setPage(1);
+    setSelectedIds(new Set());
+  };
+
+  const handlePageChange = (nextPage: number) => {
+    setPage(nextPage);
+    setSelectedIds(new Set());
+  };
 
   const toggleSelect = (id: string) => {
     setSelectedIds((prev) => {
@@ -98,18 +178,30 @@ export function ContactsTable() {
   };
 
   const toggleAll = () => {
-    if (selectedIds.size === contacts.length) {
-      setSelectedIds(new Set());
-    } else {
-      setSelectedIds(new Set(contacts.map((contact) => contact.id)));
-    }
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+
+      if (selectedVisibleCount === contacts.length && contacts.length > 0) {
+        contacts.forEach((contact) => {
+          next.delete(contact.id);
+        });
+      } else {
+        contacts.forEach((contact) => {
+          next.add(contact.id);
+        });
+      }
+
+      return next;
+    });
   };
 
   const handleDeleteMany = async () => {
     if (selectedIds.size === 0) return;
+
     if (!confirm(`Supprimer ${selectedIds.size} contact(s) ?`)) return;
 
     await deleteMany([...selectedIds]);
+
     setSelectedIds(new Set());
     refetch();
   };
@@ -131,10 +223,25 @@ export function ContactsTable() {
   const handleExport = (format: "csv" | "xlsx") => {
     const params = new URLSearchParams({
       format,
-      ...(filterGroupId ? { groupId: filterGroupId } : {}),
     });
 
-    window.open(`/api/contacts/export?${params}`);
+    if (search.trim()) {
+      params.set("search", search.trim());
+    }
+
+    if (filterGroupId) {
+      params.set("groupId", filterGroupId);
+    }
+
+    if (filterCrmStatus) {
+      params.set("crmStatus", filterCrmStatus);
+    }
+
+    if (filterCrmSource) {
+      params.set("crmSource", filterCrmSource);
+    }
+
+    window.open(`/api/contacts/export?${params.toString()}`);
   };
 
   const startPage = Math.max(
@@ -152,7 +259,12 @@ export function ContactsTable() {
       <div className={styles.contactsHead}>
         <div>
           <div className={styles.sectionLabel}>Contacts CRM</div>
-          <p>{total.toLocaleString("fr-FR")} contact(s) au total</p>
+
+          <p>
+            {hasActiveFilters
+              ? `${total.toLocaleString("fr-FR")} contact(s) trouvé(s)`
+              : `${total.toLocaleString("fr-FR")} contact(s) au total`}
+          </p>
         </div>
 
         <div className={styles.actions}>
@@ -178,6 +290,7 @@ export function ContactsTable() {
               <button type="button" onClick={() => handleExport("csv")}>
                 CSV
               </button>
+
               <button type="button" onClick={() => handleExport("xlsx")}>
                 Excel (.xlsx)
               </button>
@@ -198,21 +311,24 @@ export function ContactsTable() {
       <div className={styles.filters}>
         <div className={styles.searchBox}>
           <Search size={16} className={styles.inputIcon} />
+
           <input
             type="text"
             placeholder="Rechercher par email, prénom, nom, entreprise..."
             value={search}
-            onChange={(e) => setSearch(e.target.value)}
+            onChange={(e) => handleSearchChange(e.target.value)}
           />
         </div>
 
         <div className={styles.selectBox}>
           <Filter size={16} className={styles.inputIcon} />
+
           <select
             value={filterGroupId}
-            onChange={(e) => setFilterGroupId(e.target.value)}
+            onChange={(e) => handleGroupChange(e.target.value)}
           >
             <option value="">Tous les groupes</option>
+
             {groups.map((group) => (
               <option key={group.id} value={group.id}>
                 {group.name} ({group._count?.contacts ?? 0})
@@ -220,6 +336,51 @@ export function ContactsTable() {
             ))}
           </select>
         </div>
+
+        <div className={styles.selectBox}>
+          <Filter size={16} className={styles.inputIcon} />
+
+          <select
+            value={filterCrmStatus}
+            onChange={(e) => handleStatusChange(e.target.value)}
+          >
+            <option value="">Tous les statuts</option>
+
+            {CRM_STATUS_OPTIONS.map((status) => (
+              <option key={status.value} value={status.value}>
+                {status.label}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <div className={styles.selectBox}>
+          <Filter size={16} className={styles.inputIcon} />
+
+          <select
+            value={filterCrmSource}
+            onChange={(e) => handleSourceChange(e.target.value)}
+          >
+            <option value="">Toutes les sources</option>
+
+            {CRM_SOURCE_OPTIONS.map((source) => (
+              <option key={source.value} value={source.value}>
+                {source.label}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        {hasActiveFilters && (
+          <button
+            type="button"
+            onClick={resetFilters}
+            className={`${styles.btn} ${styles.btnSecondary} ${styles.resetBtn}`}
+          >
+            <RotateCcw size={15} />
+            Réinitialiser
+          </button>
+        )}
       </div>
 
       {selectedIds.size > 0 && (
@@ -233,6 +394,12 @@ export function ContactsTable() {
         </div>
       )}
 
+      {error && (
+        <div className={styles.selectionBar}>
+          <span>{error}</span>
+        </div>
+      )}
+
       <div className={styles.tableWrap}>
         <table>
           <thead>
@@ -241,12 +408,14 @@ export function ContactsTable() {
                 <input
                   type="checkbox"
                   checked={
-                    selectedIds.size === contacts.length && contacts.length > 0
+                    selectedVisibleCount === contacts.length &&
+                    contacts.length > 0
                   }
                   onChange={toggleAll}
                   className={styles.checkbox}
                 />
               </th>
+
               <th>Contact</th>
               <th>Entreprise</th>
               <th>Localisation</th>
@@ -275,8 +444,14 @@ export function ContactsTable() {
                     <div className={styles.emptyIcon}>
                       <Users size={28} />
                     </div>
+
                     <h3>Aucun contact trouvé</h3>
-                    <p>Ajoutez ou importez vos premiers contacts.</p>
+
+                    <p>
+                      {hasActiveFilters
+                        ? "Aucun contact ne correspond aux filtres sélectionnés."
+                        : "Ajoutez ou importez vos premiers contacts."}
+                    </p>
                   </div>
                 </td>
               </tr>
@@ -330,8 +505,11 @@ export function ContactsTable() {
                     {contact.city || contact.country ? (
                       <div className={styles.locationBlock}>
                         {contact.city && <span>{contact.city}</span>}
+
                         {contact.country && (
-                          <span className={styles.muted}>{contact.country}</span>
+                          <span className={styles.muted}>
+                            {contact.country}
+                          </span>
                         )}
                       </div>
                     ) : (
@@ -415,14 +593,14 @@ export function ContactsTable() {
       {totalPages > 1 && (
         <div className={styles.pagination}>
           <p>
-            Page {page} sur {totalPages} ·{" "}
-            {total.toLocaleString("fr-FR")} contacts
+            Page {page} sur {totalPages} · {total.toLocaleString("fr-FR")}{" "}
+            contacts
           </p>
 
           <div className={styles.paginationActions}>
             <button
               type="button"
-              onClick={() => setPage(Math.max(1, page - 1))}
+              onClick={() => handlePageChange(Math.max(1, page - 1))}
               disabled={page === 1}
               className={styles.pageBtn}
             >
@@ -433,7 +611,7 @@ export function ContactsTable() {
               <button
                 key={p}
                 type="button"
-                onClick={() => setPage(p)}
+                onClick={() => handlePageChange(p)}
                 className={`${styles.pageNumber} ${
                   p === page ? styles.active : ""
                 }`}
@@ -444,7 +622,7 @@ export function ContactsTable() {
 
             <button
               type="button"
-              onClick={() => setPage(Math.min(totalPages, page + 1))}
+              onClick={() => handlePageChange(Math.min(totalPages, page + 1))}
               disabled={page === totalPages}
               className={styles.pageBtn}
             >

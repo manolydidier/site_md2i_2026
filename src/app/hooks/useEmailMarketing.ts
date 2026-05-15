@@ -2,15 +2,28 @@
 // Hook React pour gérer les contacts avec pagination, recherche, CRUD
 
 import { useState, useCallback, useEffect } from "react";
-import type { Contact, PaginatedResponse } from "@/app/types/email-marketing";
-import type { ContactFormData } from "@/app/types/email-marketing";
+import type {
+  Contact,
+  PaginatedResponse,
+  ContactFormData,
+  ContactGroup,
+  GroupFormData,
+  Campaign,
+} from "@/app/types/email-marketing";
 
 interface UseContactsOptions {
   pageSize?: number;
   groupId?: string;
+  crmStatus?: string;
+  crmSource?: string;
 }
 
-export function useContacts({ pageSize = 20, groupId }: UseContactsOptions = {}) {
+export function useContacts({
+  pageSize = 20,
+  groupId,
+  crmStatus,
+  crmSource,
+}: UseContactsOptions = {}) {
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [total, setTotal] = useState(0);
   const [totalPages, setTotalPages] = useState(0);
@@ -22,16 +35,37 @@ export function useContacts({ pageSize = 20, groupId }: UseContactsOptions = {})
   const fetchContacts = useCallback(async () => {
     setLoading(true);
     setError(null);
+
     try {
       const params = new URLSearchParams({
         page: String(page),
         pageSize: String(pageSize),
-        ...(search ? { search } : {}),
-        ...(groupId ? { groupId } : {}),
       });
-      const res = await fetch(`/api/contacts?${params}`);
-      if (!res.ok) throw new Error("Erreur lors du chargement");
+
+      if (search.trim()) {
+        params.set("search", search.trim());
+      }
+
+      if (groupId) {
+        params.set("groupId", groupId);
+      }
+
+      if (crmStatus) {
+        params.set("crmStatus", crmStatus);
+      }
+
+      if (crmSource) {
+        params.set("crmSource", crmSource);
+      }
+
+      const res = await fetch(`/api/contacts?${params.toString()}`);
+
+      if (!res.ok) {
+        throw new Error("Erreur lors du chargement des contacts");
+      }
+
       const data: PaginatedResponse<Contact> = await res.json();
+
       setContacts(data.data);
       setTotal(data.total);
       setTotalPages(data.totalPages);
@@ -40,56 +74,94 @@ export function useContacts({ pageSize = 20, groupId }: UseContactsOptions = {})
     } finally {
       setLoading(false);
     }
-  }, [page, pageSize, search, groupId]);
+  }, [page, pageSize, search, groupId, crmStatus, crmSource]);
 
   useEffect(() => {
     fetchContacts();
   }, [fetchContacts]);
 
-  // Reset page quand la recherche change
+  // Reset page quand les filtres changent
   useEffect(() => {
     setPage(1);
-  }, [search, groupId]);
+  }, [search, groupId, crmStatus, crmSource]);
 
-  const createContact = useCallback(async (data: ContactFormData) => {
-    const res = await fetch("/api/contacts", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(data),
-    });
-    if (!res.ok) {
-      const err = await res.json();
-      throw new Error(err.error?.message || "Erreur création");
-    }
-    await fetchContacts();
-    return res.json();
-  }, [fetchContacts]);
+  const createContact = useCallback(
+    async (data: ContactFormData) => {
+      const res = await fetch("/api/contacts", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(data),
+      });
 
-  const updateContact = useCallback(async (id: string, data: ContactFormData) => {
-    const res = await fetch(`/api/contacts/${id}`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(data),
-    });
-    if (!res.ok) throw new Error("Erreur mise à jour");
-    await fetchContacts();
-  }, [fetchContacts]);
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.error?.message || err.error || "Erreur création");
+      }
 
-  const deleteContact = useCallback(async (id: string) => {
-    const res = await fetch(`/api/contacts/${id}`, { method: "DELETE" });
-    if (!res.ok) throw new Error("Erreur suppression");
-    await fetchContacts();
-  }, [fetchContacts]);
+      await fetchContacts();
 
-  const deleteMany = useCallback(async (ids: string[]) => {
-    const res = await fetch("/api/contacts", {
-      method: "DELETE",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ ids }),
-    });
-    if (!res.ok) throw new Error("Erreur suppression");
-    await fetchContacts();
-  }, [fetchContacts]);
+      return res.json();
+    },
+    [fetchContacts]
+  );
+
+  const updateContact = useCallback(
+    async (id: string, data: ContactFormData) => {
+      const res = await fetch(`/api/contacts/${id}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(data),
+      });
+
+      if (!res.ok) {
+        const err = await res.json().catch(() => null);
+        throw new Error(err?.error?.message || err?.error || "Erreur mise à jour");
+      }
+
+      await fetchContacts();
+
+      return res.json().catch(() => null);
+    },
+    [fetchContacts]
+  );
+
+  const deleteContact = useCallback(
+    async (id: string) => {
+      const res = await fetch(`/api/contacts/${id}`, {
+        method: "DELETE",
+      });
+
+      if (!res.ok) {
+        throw new Error("Erreur suppression");
+      }
+
+      await fetchContacts();
+    },
+    [fetchContacts]
+  );
+
+  const deleteMany = useCallback(
+    async (ids: string[]) => {
+      const res = await fetch("/api/contacts", {
+        method: "DELETE",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ ids }),
+      });
+
+      if (!res.ok) {
+        throw new Error("Erreur suppression");
+      }
+
+      await fetchContacts();
+    },
+    [fetchContacts]
+  );
 
   return {
     contacts,
@@ -110,7 +182,6 @@ export function useContacts({ pageSize = 20, groupId }: UseContactsOptions = {})
 }
 
 // ─── Hook pour les groupes ────────────────────────────────────────────────────
-import type { ContactGroup, GroupFormData } from "@/app/types/email-marketing";
 
 export function useGroups() {
   const [groups, setGroups] = useState<ContactGroup[]>([]);
@@ -118,47 +189,92 @@ export function useGroups() {
 
   const fetchGroups = useCallback(async () => {
     setLoading(true);
+
     try {
       const res = await fetch("/api/groups");
+
+      if (!res.ok) {
+        throw new Error("Erreur lors du chargement des groupes");
+      }
+
       const data = await res.json();
+
       setGroups(data);
     } finally {
       setLoading(false);
     }
   }, []);
 
-  useEffect(() => { fetchGroups(); }, [fetchGroups]);
-
-  const createGroup = useCallback(async (data: GroupFormData) => {
-    const res = await fetch("/api/groups", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(data),
-    });
-    if (!res.ok) throw new Error("Erreur création groupe");
-    await fetchGroups();
-    return res.json();
+  useEffect(() => {
+    fetchGroups();
   }, [fetchGroups]);
 
-  const updateGroup = useCallback(async (id: string, data: GroupFormData) => {
-    await fetch(`/api/groups/${id}`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(data),
-    });
-    await fetchGroups();
-  }, [fetchGroups]);
+  const createGroup = useCallback(
+    async (data: GroupFormData) => {
+      const res = await fetch("/api/groups", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(data),
+      });
 
-  const deleteGroup = useCallback(async (id: string) => {
-    await fetch(`/api/groups/${id}`, { method: "DELETE" });
-    await fetchGroups();
-  }, [fetchGroups]);
+      if (!res.ok) {
+        throw new Error("Erreur création groupe");
+      }
 
-  return { groups, loading, refetch: fetchGroups, createGroup, updateGroup, deleteGroup };
+      await fetchGroups();
+
+      return res.json();
+    },
+    [fetchGroups]
+  );
+
+  const updateGroup = useCallback(
+    async (id: string, data: GroupFormData) => {
+      const res = await fetch(`/api/groups/${id}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(data),
+      });
+
+      if (!res.ok) {
+        throw new Error("Erreur mise à jour groupe");
+      }
+
+      await fetchGroups();
+    },
+    [fetchGroups]
+  );
+
+  const deleteGroup = useCallback(
+    async (id: string) => {
+      const res = await fetch(`/api/groups/${id}`, {
+        method: "DELETE",
+      });
+
+      if (!res.ok) {
+        throw new Error("Erreur suppression groupe");
+      }
+
+      await fetchGroups();
+    },
+    [fetchGroups]
+  );
+
+  return {
+    groups,
+    loading,
+    refetch: fetchGroups,
+    createGroup,
+    updateGroup,
+    deleteGroup,
+  };
 }
 
 // ─── Hook pour les campagnes ──────────────────────────────────────────────────
-import type { Campaign } from "@/app/types/email-marketing";
 
 export function useCampaigns() {
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
@@ -168,9 +284,16 @@ export function useCampaigns() {
 
   const fetchCampaigns = useCallback(async () => {
     setLoading(true);
+
     try {
       const res = await fetch(`/api/campaigns?page=${page}&pageSize=10`);
+
+      if (!res.ok) {
+        throw new Error("Erreur lors du chargement des campagnes");
+      }
+
       const data = await res.json();
+
       setCampaigns(data.data);
       setTotal(data.total);
     } finally {
@@ -178,24 +301,56 @@ export function useCampaigns() {
     }
   }, [page]);
 
-  useEffect(() => { fetchCampaigns(); }, [fetchCampaigns]);
-
-  const deleteCampaign = useCallback(async (id: string) => {
-    await fetch(`/api/campaigns/${id}`, { method: "DELETE" });
-    await fetchCampaigns();
+  useEffect(() => {
+    fetchCampaigns();
   }, [fetchCampaigns]);
 
-  const duplicateCampaign = useCallback(async (id: string) => {
-    const res = await fetch(`/api/campaigns/${id}?action=duplicate`, { method: "POST" });
-    if (!res.ok) throw new Error("Erreur duplication");
-    await fetchCampaigns();
-    return res.json();
-  }, [fetchCampaigns]);
+  const deleteCampaign = useCallback(
+    async (id: string) => {
+      const res = await fetch(`/api/campaigns/${id}`, {
+        method: "DELETE",
+      });
 
-  return { campaigns, total, loading, page, setPage, refetch: fetchCampaigns, deleteCampaign, duplicateCampaign };
+      if (!res.ok) {
+        throw new Error("Erreur suppression campagne");
+      }
+
+      await fetchCampaigns();
+    },
+    [fetchCampaigns]
+  );
+
+  const duplicateCampaign = useCallback(
+    async (id: string) => {
+      const res = await fetch(`/api/campaigns/${id}?action=duplicate`, {
+        method: "POST",
+      });
+
+      if (!res.ok) {
+        throw new Error("Erreur duplication");
+      }
+
+      await fetchCampaigns();
+
+      return res.json();
+    },
+    [fetchCampaigns]
+  );
+
+  return {
+    campaigns,
+    total,
+    loading,
+    page,
+    setPage,
+    refetch: fetchCampaigns,
+    deleteCampaign,
+    duplicateCampaign,
+  };
 }
 
 // ─── Hook pour le polling du statut d'envoi ───────────────────────────────────
+
 export function useCampaignStatus(campaignId: string | null, active: boolean) {
   const [status, setStatus] = useState<{
     status: string;
@@ -211,9 +366,13 @@ export function useCampaignStatus(campaignId: string | null, active: boolean) {
     const poll = async () => {
       try {
         const res = await fetch(`/api/campaigns/${campaignId}/status`);
+
+        if (!res.ok) return;
+
         const data = await res.json();
+
         setStatus(data);
-        // Arrêter le polling si terminé
+
         if (data.status === "SENT" || data.status === "FAILED") {
           clearInterval(interval);
         }
@@ -222,8 +381,10 @@ export function useCampaignStatus(campaignId: string | null, active: boolean) {
       }
     };
 
-    poll(); // Poll immédiat
-    const interval = setInterval(poll, 2000); // Poll toutes les 2s
+    poll();
+
+    const interval = setInterval(poll, 2000);
+
     return () => clearInterval(interval);
   }, [campaignId, active]);
 
