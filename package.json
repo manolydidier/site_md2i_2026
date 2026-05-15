@@ -7,10 +7,11 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "seed": "dotenv -e .env tsx prisma/seeds.ts"
+    "seed": "dotenv -e .env -- tsx prisma/seeds.ts",
+    "email:cron": "node scripts/run-email-cron-local.js"
   },
   "prisma": {
-    "seed": "dotenv -e tsx prisma/seeds.ts"
+    "seed": "dotenv -e .env -- tsx prisma/seeds.ts"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",

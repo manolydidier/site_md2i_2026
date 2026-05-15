@@ -167,7 +167,7 @@ const MENU_SECTIONS = [
         ),
         children: [
           { href: '/admin/email-marketing', label: 'Tableau marketing', exact: true },
-          { href: '/admin/email-marketing/contacts', label: 'Contacts marketing' },
+          { href: '/admin/email-marketing/welcome-email', label: 'Emails de bienvenue' },
           { href: '/admin/email-marketing/groups', label: 'Groupes de contacts' },
           { href: '/admin/email-marketing/campaigns', label: 'Campagnes' },
           { href: '/admin/email-marketing/campaigns/new', label: 'Nouvelle campagne' },

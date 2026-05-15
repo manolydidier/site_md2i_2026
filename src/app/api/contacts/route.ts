@@ -5,9 +5,18 @@
 // DELETE /api/contacts
 
 import { NextRequest, NextResponse } from "next/server";
+
 import { auth } from "@/auth";
 import { prisma } from "@/app/lib/prisma";
 import { contactSchema } from "@/app/lib/email/schemas";
+import {
+  cancelActiveAutomationsForContacts,
+  processPendingAutomationEmails,
+  startContactAutomation,
+} from "@/app/lib/email/automation-engine";
+
+export const dynamic = "force-dynamic";
+export const runtime = "nodejs";
 
 function cleanString(value?: string | null) {
   const cleaned = String(value || "").trim();
@@ -16,6 +25,24 @@ function cleanString(value?: string | null) {
 
 function normalizeEmail(email: string) {
   return email.trim().toLowerCase();
+}
+
+function maskEmail(email?: string | null) {
+  if (!email) return null;
+
+  const [name, domain] = email.split("@");
+
+  if (!name || !domain) return email;
+
+  return `${name.slice(0, 2)}***@${domain}`;
+}
+
+function logInfo(label: string, data?: Record<string, unknown>) {
+  console.log(`[contacts-api][${label}]`, data || {});
+}
+
+function logError(label: string, data?: Record<string, unknown>) {
+  console.error(`[contacts-api][${label}]`, data || {});
 }
 
 function getContactInclude() {
@@ -38,8 +65,29 @@ function getContactInclude() {
   };
 }
 
+function getTriggerFromCrmStatus(status: string | null | undefined) {
+  if (status === "NEW") return "CONTACT_STATUS_NEW";
+  if (status === "PROSPECT") return "CONTACT_STATUS_PROSPECT";
+  if (status === "HOT_PROSPECT") return "CONTACT_STATUS_HOT_PROSPECT";
+  if (status === "CUSTOMER") return "CONTACT_STATUS_CUSTOMER";
+  if (status === "INACTIVE") return "CONTACT_STATUS_INACTIVE";
+
+  return null;
+}
+
 async function ensureGroupBelongsToUser(groupId: string | null, userId: string) {
-  if (!groupId) return null;
+  if (!groupId) {
+    logInfo("GROUP_SKIPPED", {
+      reason: "Aucun groupId fourni",
+    });
+
+    return null;
+  }
+
+  logInfo("GROUP_CHECK_START", {
+    groupId,
+    userId,
+  });
 
   const group = await prisma.contactGroup.findFirst({
     where: {
@@ -48,45 +96,122 @@ async function ensureGroupBelongsToUser(groupId: string | null, userId: string) 
     },
     select: {
       id: true,
+      name: true,
     },
   });
 
   if (!group) {
+    logError("GROUP_CHECK_FAILED", {
+      groupId,
+      userId,
+      reason: "Groupe introuvable ou non autorisé",
+    });
+
     throw new Error("Groupe introuvable ou non autorisé.");
   }
+
+  logInfo("GROUP_CHECK_SUCCESS", {
+    groupId: group.id,
+    groupName: group.name,
+  });
 
   return group.id;
 }
 
-async function syncPrimaryGroupMembership(contactId: string, groupId: string | null) {
-  await prisma.contactGroupMember.deleteMany({
+async function logWelcomeAutomationDiagnostic(userId: string, contactId?: string) {
+  const automations = await prisma.emailAutomation.findMany({
     where: {
-      contactId,
+      userId,
+      trigger: "CONTACT_CREATED",
+    },
+    include: {
+      steps: {
+        orderBy: {
+          position: "asc",
+        },
+        include: {
+          campaign: {
+            select: {
+              id: true,
+              name: true,
+              status: true,
+              subject: true,
+              fromName: true,
+              fromEmail: true,
+              replyTo: true,
+            },
+          },
+        },
+      },
     },
   });
 
-  if (!groupId) return;
+  const pendingForContact = contactId
+    ? await prisma.emailAutomationEmail.count({
+        where: {
+          contactId,
+          status: "PENDING",
+        },
+      })
+    : null;
 
-  await prisma.contactGroupMember.upsert({
-    where: {
-      contactId_groupId: {
-        contactId,
-        groupId,
-      },
-    },
-    update: {},
-    create: {
-      contactId,
-      groupId,
-    },
+  const duePendingForContact = contactId
+    ? await prisma.emailAutomationEmail.count({
+        where: {
+          contactId,
+          status: "PENDING",
+          scheduledAt: {
+            lte: new Date(),
+          },
+        },
+      })
+    : null;
+
+  logInfo("WELCOME_AUTOMATION_DIAGNOSTIC", {
+    userId,
+    contactId: contactId || null,
+    automationCount: automations.length,
+    activeAutomationCount: automations.filter((a) => a.isActive).length,
+    pendingForContact,
+    duePendingForContact,
+    automations: automations.map((automation) => ({
+      id: automation.id,
+      name: automation.name,
+      trigger: automation.trigger,
+      isActive: automation.isActive,
+      stepCount: automation.steps.length,
+      activeStepCount: automation.steps.filter((step) => step.isActive).length,
+      steps: automation.steps.map((step) => ({
+        id: step.id,
+        position: step.position,
+        isActive: step.isActive,
+        delayValue: step.delayValue,
+        delayUnit: step.delayUnit,
+        campaignId: step.campaignId,
+        campaignName: step.campaign?.name || null,
+        campaignStatus: step.campaign?.status || null,
+        campaignSubject: step.campaign?.subject || null,
+        campaignFromName: step.campaign?.fromName || null,
+        campaignFromEmail: step.campaign?.fromEmail || null,
+        campaignReplyTo: step.campaign?.replyTo || null,
+      })),
+    })),
   });
 }
 
 // ─── GET /api/contacts ────────────────────────────────────────────────────────
 export async function GET(req: NextRequest) {
+  logInfo("GET_START", {
+    url: req.nextUrl.toString(),
+  });
+
   const session = await auth();
 
   if (!session?.user?.id) {
+    logError("GET_UNAUTHORIZED", {
+      reason: "Session manquante",
+    });
+
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
@@ -99,25 +224,92 @@ export async function GET(req: NextRequest) {
   const crmStatus = searchParams.get("crmStatus") || undefined;
   const crmSource = searchParams.get("crmSource") || undefined;
 
+  logInfo("GET_FILTERS", {
+    userId: session.user.id,
+    page,
+    pageSize,
+    search,
+    groupId: groupId || null,
+    crmStatus: crmStatus || null,
+    crmSource: crmSource || null,
+  });
+
   const where = {
     userId: session.user.id,
+
     ...(groupId ? { groupId } : {}),
-    ...(crmStatus ? { crmStatus: crmStatus as any } : {}),
-    ...(crmSource ? { crmSource: crmSource as any } : {}),
+
+    ...(crmStatus
+      ? {
+          crmStatus: crmStatus as any,
+        }
+      : {}),
+
+    ...(crmSource
+      ? {
+          crmSource: crmSource as any,
+        }
+      : {}),
+
     ...(search
       ? {
           OR: [
-            { email: { contains: search, mode: "insensitive" as const } },
-            { firstName: { contains: search, mode: "insensitive" as const } },
-            { lastName: { contains: search, mode: "insensitive" as const } },
-            { phone: { contains: search, mode: "insensitive" as const } },
-            { jobTitle: { contains: search, mode: "insensitive" as const } },
-            { companyName: { contains: search, mode: "insensitive" as const } },
-            { country: { contains: search, mode: "insensitive" as const } },
-            { city: { contains: search, mode: "insensitive" as const } },
+            {
+              email: {
+                contains: search,
+                mode: "insensitive" as const,
+              },
+            },
+            {
+              firstName: {
+                contains: search,
+                mode: "insensitive" as const,
+              },
+            },
+            {
+              lastName: {
+                contains: search,
+                mode: "insensitive" as const,
+              },
+            },
+            {
+              phone: {
+                contains: search,
+                mode: "insensitive" as const,
+              },
+            },
+            {
+              jobTitle: {
+                contains: search,
+                mode: "insensitive" as const,
+              },
+            },
+            {
+              companyName: {
+                contains: search,
+                mode: "insensitive" as const,
+              },
+            },
+            {
+              country: {
+                contains: search,
+                mode: "insensitive" as const,
+              },
+            },
+            {
+              city: {
+                contains: search,
+                mode: "insensitive" as const,
+              },
+            },
             {
               crmCompany: {
-                name: { contains: search, mode: "insensitive" as const },
+                is: {
+                  name: {
+                    contains: search,
+                    mode: "insensitive" as const,
+                  },
+                },
               },
             },
           ],
@@ -141,6 +333,13 @@ export async function GET(req: NextRequest) {
     }),
   ]);
 
+  logInfo("GET_SUCCESS", {
+    returned: contacts.length,
+    total,
+    page,
+    pageSize,
+  });
+
   return NextResponse.json({
     data: contacts,
     total,
@@ -152,16 +351,53 @@ export async function GET(req: NextRequest) {
 
 // ─── POST /api/contacts ───────────────────────────────────────────────────────
 export async function POST(req: NextRequest) {
+  logInfo("POST_START", {
+    url: req.nextUrl.toString(),
+    method: req.method,
+  });
+
   const session = await auth();
 
   if (!session?.user?.id) {
+    logError("POST_UNAUTHORIZED", {
+      reason: "Session manquante",
+    });
+
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const body = await req.json();
+  let body: unknown;
+
+  try {
+    body = await req.json();
+  } catch (error) {
+    logError("POST_BODY_JSON_ERROR", {
+      error: error instanceof Error ? error.message : String(error),
+    });
+
+    return NextResponse.json(
+      { error: "Body JSON invalide." },
+      { status: 400 }
+    );
+  }
+
+  logInfo("POST_BODY_RECEIVED", {
+    userId: session.user.id,
+    bodyKeys:
+      typeof body === "object" && body !== null ? Object.keys(body) : [],
+    email:
+      typeof body === "object" && body !== null && "email" in body
+        ? maskEmail(String((body as { email?: unknown }).email || ""))
+        : null,
+  });
+
   const parsed = contactSchema.safeParse(body);
 
   if (!parsed.success) {
+    logError("POST_SCHEMA_VALIDATION_FAILED", {
+      error: parsed.error.flatten(),
+    });
+
     return NextResponse.json(
       { error: parsed.error.flatten() },
       { status: 400 }
@@ -170,10 +406,26 @@ export async function POST(req: NextRequest) {
 
   try {
     const data = parsed.data;
+
+    logInfo("POST_SCHEMA_VALIDATION_SUCCESS", {
+      email: maskEmail(data.email),
+      crmStatus: data.crmStatus || "NEW",
+      crmSource: data.crmSource || "MANUAL",
+      groupId: data.groupId || null,
+      isActive: data.isActive ?? true,
+      unsubscribed: data.unsubscribed ?? false,
+    });
+
     const groupId = await ensureGroupBelongsToUser(
       cleanString(data.groupId),
       session.user.id
     );
+
+    logInfo("POST_CONTACT_CREATE_START", {
+      userId: session.user.id,
+      email: maskEmail(data.email),
+      groupId,
+    });
 
     const contact = await prisma.$transaction(async (tx) => {
       const created = await tx.contact.create({
@@ -220,9 +472,246 @@ export async function POST(req: NextRequest) {
       return created;
     });
 
+    logInfo("POST_CONTACT_CREATED", {
+      contactId: contact.id,
+      email: maskEmail(contact.email),
+      crmStatus: contact.crmStatus,
+      crmSource: contact.crmSource,
+      isActive: contact.isActive,
+      unsubscribed: contact.unsubscribed,
+      groupId: contact.groupId || null,
+    });
+
+    await logWelcomeAutomationDiagnostic(session.user.id, contact.id);
+
+    const canStartAutomation =
+      contact.isActive === true && contact.unsubscribed === false;
+
+    logInfo("POST_AUTOMATION_ELIGIBILITY", {
+      contactId: contact.id,
+      canStartAutomation,
+      isActive: contact.isActive,
+      unsubscribed: contact.unsubscribed,
+    });
+
+    if (canStartAutomation) {
+      logInfo("POST_START_CONTACT_CREATED_AUTOMATION_BEFORE", {
+        contactId: contact.id,
+        trigger: "CONTACT_CREATED",
+      });
+
+      await startContactAutomation({
+        userId: session.user.id,
+        contactId: contact.id,
+        trigger: "CONTACT_CREATED",
+      });
+
+      logInfo("POST_START_CONTACT_CREATED_AUTOMATION_AFTER", {
+        contactId: contact.id,
+        trigger: "CONTACT_CREATED",
+      });
+
+      const statusTrigger = getTriggerFromCrmStatus(contact.crmStatus);
+
+      logInfo("POST_STATUS_TRIGGER_RESOLVED", {
+        contactId: contact.id,
+        crmStatus: contact.crmStatus,
+        statusTrigger,
+      });
+
+      if (statusTrigger) {
+        logInfo("POST_START_STATUS_AUTOMATION_BEFORE", {
+          contactId: contact.id,
+          trigger: statusTrigger,
+        });
+
+        await startContactAutomation({
+          userId: session.user.id,
+          contactId: contact.id,
+          trigger: statusTrigger,
+        });
+
+        logInfo("POST_START_STATUS_AUTOMATION_AFTER", {
+          contactId: contact.id,
+          trigger: statusTrigger,
+        });
+      }
+
+      await logWelcomeAutomationDiagnostic(session.user.id, contact.id);
+
+      const pendingBeforeSend = await prisma.emailAutomationEmail.findMany({
+        where: {
+          contactId: contact.id,
+        },
+        orderBy: {
+          scheduledAt: "asc",
+        },
+        select: {
+          id: true,
+          status: true,
+          subject: true,
+          scheduledAt: true,
+          sentAt: true,
+          failedAt: true,
+          error: true,
+          run: {
+            select: {
+              id: true,
+              status: true,
+              trigger: true,
+            },
+          },
+          step: {
+            select: {
+              id: true,
+              delayValue: true,
+              delayUnit: true,
+              campaignId: true,
+              campaign: {
+                select: {
+                  id: true,
+                  name: true,
+                  status: true,
+                },
+              },
+            },
+          },
+        },
+      });
+
+      logInfo("POST_EMAILS_FOR_CONTACT_BEFORE_PROCESS", {
+        contactId: contact.id,
+        count: pendingBeforeSend.length,
+        emails: pendingBeforeSend.map((email) => ({
+          id: email.id,
+          status: email.status,
+          subject: email.subject,
+          scheduledAt: email.scheduledAt.toISOString(),
+          sentAt: email.sentAt?.toISOString() || null,
+          failedAt: email.failedAt?.toISOString() || null,
+          error: email.error || null,
+          runId: email.run.id,
+          runStatus: email.run.status,
+          runTrigger: email.run.trigger,
+          stepId: email.step.id,
+          delayValue: email.step.delayValue,
+          delayUnit: email.step.delayUnit,
+          campaignId: email.step.campaignId,
+          campaignName: email.step.campaign?.name || null,
+          campaignStatus: email.step.campaign?.status || null,
+        })),
+      });
+
+      try {
+        logInfo("POST_PROCESS_PENDING_EMAILS_START", {
+          contactId: contact.id,
+          limit: 10,
+        });
+
+        const automationResult = await processPendingAutomationEmails({
+          limit: 10,
+        });
+
+        logInfo("POST_PROCESS_PENDING_EMAILS_RESULT", {
+          contactId: contact.id,
+          email: maskEmail(contact.email),
+          automationResult,
+        });
+      } catch (automationError) {
+        logError("POST_PROCESS_PENDING_EMAILS_ERROR", {
+          contactId: contact.id,
+          email: maskEmail(contact.email),
+          error:
+            automationError instanceof Error
+              ? automationError.message
+              : String(automationError),
+        });
+      }
+
+      const emailsAfterSend = await prisma.emailAutomationEmail.findMany({
+        where: {
+          contactId: contact.id,
+        },
+        orderBy: {
+          scheduledAt: "asc",
+        },
+        select: {
+          id: true,
+          status: true,
+          subject: true,
+          scheduledAt: true,
+          sentAt: true,
+          failedAt: true,
+          error: true,
+          run: {
+            select: {
+              id: true,
+              status: true,
+              trigger: true,
+            },
+          },
+          step: {
+            select: {
+              id: true,
+              delayValue: true,
+              delayUnit: true,
+              campaignId: true,
+              campaign: {
+                select: {
+                  id: true,
+                  name: true,
+                  status: true,
+                },
+              },
+            },
+          },
+        },
+      });
+
+      logInfo("POST_EMAILS_FOR_CONTACT_AFTER_PROCESS", {
+        contactId: contact.id,
+        count: emailsAfterSend.length,
+        emails: emailsAfterSend.map((email) => ({
+          id: email.id,
+          status: email.status,
+          subject: email.subject,
+          scheduledAt: email.scheduledAt.toISOString(),
+          sentAt: email.sentAt?.toISOString() || null,
+          failedAt: email.failedAt?.toISOString() || null,
+          error: email.error || null,
+          runId: email.run.id,
+          runStatus: email.run.status,
+          runTrigger: email.run.trigger,
+          stepId: email.step.id,
+          delayValue: email.step.delayValue,
+          delayUnit: email.step.delayUnit,
+          campaignId: email.step.campaignId,
+          campaignName: email.step.campaign?.name || null,
+          campaignStatus: email.step.campaign?.status || null,
+        })),
+      });
+    } else {
+      logInfo("POST_AUTOMATION_SKIPPED", {
+        contactId: contact.id,
+        reason: "Contact inactif ou désabonné",
+        isActive: contact.isActive,
+        unsubscribed: contact.unsubscribed,
+      });
+    }
+
+    logInfo("POST_SUCCESS", {
+      contactId: contact.id,
+      email: maskEmail(contact.email),
+    });
+
     return NextResponse.json(contact, { status: 201 });
   } catch (err: unknown) {
     if ((err as { code?: string }).code === "P2002") {
+      logError("POST_DUPLICATE_EMAIL", {
+        code: "P2002",
+        error: err instanceof Error ? err.message : String(err),
+      });
+
       return NextResponse.json(
         { error: "Cet email existe déjà" },
         { status: 409 }
@@ -230,8 +719,16 @@ export async function POST(req: NextRequest) {
     }
 
     if (err instanceof Error) {
+      logError("POST_ERROR", {
+        error: err.message,
+      });
+
       return NextResponse.json({ error: err.message }, { status: 400 });
     }
+
+    logError("POST_UNKNOWN_ERROR", {
+      error: String(err),
+    });
 
     throw err;
   }
@@ -239,18 +736,60 @@ export async function POST(req: NextRequest) {
 
 // ─── DELETE /api/contacts ─────────────────────────────────────────────────────
 export async function DELETE(req: NextRequest) {
+  logInfo("DELETE_START", {
+    url: req.nextUrl.toString(),
+  });
+
   const session = await auth();
 
   if (!session?.user?.id) {
+    logError("DELETE_UNAUTHORIZED", {
+      reason: "Session manquante",
+    });
+
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const body = (await req.json()) as { ids?: string[] };
+  let body: { ids?: string[] };
+
+  try {
+    body = (await req.json()) as { ids?: string[] };
+  } catch (error) {
+    logError("DELETE_BODY_JSON_ERROR", {
+      error: error instanceof Error ? error.message : String(error),
+    });
+
+    return NextResponse.json(
+      { error: "Body JSON invalide." },
+      { status: 400 }
+    );
+  }
+
   const ids = body.ids;
 
   if (!Array.isArray(ids) || ids.length === 0) {
+    logError("DELETE_IDS_INVALID", {
+      ids,
+    });
+
     return NextResponse.json({ error: "ids requis" }, { status: 400 });
   }
+
+  logInfo("DELETE_CANCEL_AUTOMATIONS_START", {
+    userId: session.user.id,
+    count: ids.length,
+    ids,
+  });
+
+  await cancelActiveAutomationsForContacts({
+    userId: session.user.id,
+    contactIds: ids,
+  });
+
+  logInfo("DELETE_CONTACTS_START", {
+    userId: session.user.id,
+    count: ids.length,
+  });
 
   const { count } = await prisma.contact.deleteMany({
     where: {
@@ -259,6 +798,10 @@ export async function DELETE(req: NextRequest) {
       },
       userId: session.user.id,
     },
+  });
+
+  logInfo("DELETE_SUCCESS", {
+    deleted: count,
   });
 
   return NextResponse.json({ deleted: count });

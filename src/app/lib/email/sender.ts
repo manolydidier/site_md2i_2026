@@ -605,3 +605,89 @@ export async function sendCampaign(campaignId: string) {
     totalRecipients: recipients.length,
   };
 }
+export async function sendAutomationEmail({
+  to,
+  subject,
+  html,
+  fromName,
+  fromEmail,
+  replyTo,
+}: {
+  to: string;
+  subject: string;
+  html: string;
+  fromName?: string | null;
+  fromEmail?: string | null;
+  replyTo?: string | null;
+}) {
+  try {
+    if (!process.env.RESEND_API_KEY) {
+      return {
+        success: false,
+        error: "RESEND_API_KEY manquant dans .env",
+      };
+    }
+
+    if (!process.env.EMAIL_FROM) {
+      return {
+        success: false,
+        error: "EMAIL_FROM manquant dans .env",
+      };
+    }
+
+    const verifiedFrom = getVerifiedFrom(fromName);
+    const safeReplyTo = getReplyTo(replyTo, fromEmail);
+    const finalHtml = prepareEmailHtml(html);
+
+    console.log("[sendAutomationEmail] before send", {
+      to,
+      subject,
+      from: verifiedFrom,
+      replyTo: safeReplyTo || null,
+      htmlLength: finalHtml.length,
+      hasStyle: hasStyleTag(finalHtml),
+      hasBaseCss: finalHtml.includes("MD2I_EMAIL_BASE"),
+    });
+
+    const { data, error } = await resend.emails.send({
+      from: verifiedFrom,
+      to: [to],
+      subject,
+      html: finalHtml,
+      ...(safeReplyTo ? { replyTo: safeReplyTo } : {}),
+    });
+
+    if (error) {
+      console.error("[sendAutomationEmail] Resend error:", error);
+
+      return {
+        success: false,
+        error:
+          typeof error === "object" && "message" in error
+            ? String(error.message)
+            : JSON.stringify(error),
+      };
+    }
+
+    console.log("[sendAutomationEmail] success", {
+      to,
+      subject,
+      data,
+    });
+
+    return {
+      success: true,
+      data,
+    };
+  } catch (error) {
+    console.error("[sendAutomationEmail] Fatal error:", error);
+
+    return {
+      success: false,
+      error:
+        error instanceof Error
+          ? error.message
+          : "Erreur inconnue pendant l'envoi automatique",
+    };
+  }
+}

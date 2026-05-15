@@ -2,9 +2,17 @@
 // GET PUT DELETE pour un contact individuel
 
 import { NextRequest, NextResponse } from "next/server";
+
 import { auth } from "@/auth";
 import { prisma } from "@/app/lib/prisma";
 import { contactSchema } from "@/app/lib/email/schemas";
+import {
+  cancelActiveAutomationsForContact,
+  startContactAutomation,
+} from "@/app/lib/email/automation-engine";
+
+export const dynamic = "force-dynamic";
+export const runtime = "nodejs";
 
 function cleanString(value?: string | null) {
   const cleaned = String(value || "").trim();
@@ -33,6 +41,16 @@ function getContactInclude() {
       },
     },
   };
+}
+
+function getTriggerFromCrmStatus(status: string | null | undefined) {
+  if (status === "NEW") return "CONTACT_STATUS_NEW";
+  if (status === "PROSPECT") return "CONTACT_STATUS_PROSPECT";
+  if (status === "HOT_PROSPECT") return "CONTACT_STATUS_HOT_PROSPECT";
+  if (status === "CUSTOMER") return "CONTACT_STATUS_CUSTOMER";
+  if (status === "INACTIVE") return "CONTACT_STATUS_INACTIVE";
+
+  return null;
 }
 
 async function ensureGroupBelongsToUser(groupId: string | null, userId: string) {
@@ -112,6 +130,9 @@ export async function PUT(
       },
       select: {
         id: true,
+        crmStatus: true,
+        unsubscribed: true,
+        isActive: true,
       },
     });
 
@@ -178,6 +199,39 @@ export async function PUT(
       return updated;
     });
 
+    const hasOptedOut =
+      updatedContact.unsubscribed === true || updatedContact.isActive === false;
+
+    if (hasOptedOut) {
+      await cancelActiveAutomationsForContact({
+        userId: session.user.id,
+        contactId: id,
+      });
+
+      return NextResponse.json(updatedContact);
+    }
+
+    const statusChanged = existingContact.crmStatus !== updatedContact.crmStatus;
+    const nextTrigger = getTriggerFromCrmStatus(updatedContact.crmStatus);
+
+    if (statusChanged && nextTrigger) {
+      if (
+        updatedContact.crmStatus === "CUSTOMER" ||
+        updatedContact.crmStatus === "INACTIVE"
+      ) {
+        await cancelActiveAutomationsForContact({
+          userId: session.user.id,
+          contactId: id,
+        });
+      }
+
+      await startContactAutomation({
+        userId: session.user.id,
+        contactId: id,
+        trigger: nextTrigger,
+      });
+    }
+
     return NextResponse.json(updatedContact);
   } catch (err: unknown) {
     if ((err as { code?: string }).code === "P2002") {
@@ -206,6 +260,11 @@ export async function DELETE(
   }
 
   const { id } = await params;
+
+  await cancelActiveAutomationsForContact({
+    userId: session.user.id,
+    contactId: id,
+  });
 
   const { count } = await prisma.contact.deleteMany({
     where: {
