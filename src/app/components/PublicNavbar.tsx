@@ -11,14 +11,55 @@ import logo from '../../assets/logo.png'
 const ORANGE = '#EF9F27'
 const LOGO_SRC = logo
 
-const LINKS = [
+type NavChild = {
+  href: string
+  label: string
+  description?: string
+}
+
+type NavItem = {
+  href: string
+  label: string
+  description?: string
+  children?: NavChild[]
+}
+
+const LINKS: NavItem[] = [
   { href: '/', label: 'Accueil' },
   { href: '/services', label: 'Services' },
-  { href: '/reference', label: 'Réferences' },
+  { href: '/reference', label: 'Références' },
   { href: '/blog', label: 'Blog' },
   { href: '/a-propos', label: 'À propos' },
-  { href: '/contact', label: 'Contact' },
+  {
+    href: '/contact',
+    label: 'Contact',
+    children: [
+      {
+        href: '/contact',
+        label: 'Contact général',
+        description: 'Écrire à l’équipe MD2I',
+      },
+      {
+        href: '/contact-commercial',
+        label: 'Contact commercial',
+        description: 'Demander un devis, une démo ou un rappel',
+      },
+    ],
+  },
 ]
+
+const SEARCH_LINKS = LINKS.flatMap((item) => {
+  if (!item.children?.length) return [item]
+
+  return [
+    {
+      href: item.href,
+      label: item.label,
+      description: item.description,
+    },
+    ...item.children,
+  ]
+})
 
 const LANGUAGES = [
   { code: 'FR', flag: '🇫🇷', label: 'Français' },
@@ -28,14 +69,30 @@ const LANGUAGES = [
 ]
 
 const SearchIcon = () => (
-  <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.1" strokeLinecap="round">
+  <svg
+    width="17"
+    height="17"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2.1"
+    strokeLinecap="round"
+  >
     <circle cx="11" cy="11" r="7.5" />
     <line x1="20" y1="20" x2="16.6" y2="16.6" />
   </svg>
 )
 
 const SunIcon = () => (
-  <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+  <svg
+    width="17"
+    height="17"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+  >
     <circle cx="12" cy="12" r="4.6" />
     <line x1="12" y1="2" x2="12" y2="4" />
     <line x1="12" y1="20" x2="12" y2="22" />
@@ -47,7 +104,15 @@ const SunIcon = () => (
 )
 
 const MoonIcon = () => (
-  <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+  <svg
+    width="17"
+    height="17"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+  >
     <path d="M20.5 14.2A8.8 8.8 0 1 1 9.8 3.5 7.2 7.2 0 0 0 20.5 14.2z" />
   </svg>
 )
@@ -61,21 +126,41 @@ const ChevronDown = ({ open }: { open: boolean }) => (
     stroke="currentColor"
     strokeWidth="2.3"
     strokeLinecap="round"
-    style={{ transform: open ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform .22s ease' }}
+    style={{
+      transform: open ? 'rotate(180deg)' : 'rotate(0deg)',
+      transition: 'transform .22s ease',
+    }}
   >
     <polyline points="6 9 12 15 18 9" />
   </svg>
 )
 
 const ArrowRight = () => (
-  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.3" strokeLinecap="round">
+  <svg
+    width="14"
+    height="14"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2.3"
+    strokeLinecap="round"
+  >
     <line x1="5" y1="12" x2="19" y2="12" />
     <polyline points="12 5 19 12 12 19" />
   </svg>
 )
 
 const ChevronUpIcon = () => (
-  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
+  <svg
+    width="18"
+    height="18"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="white"
+    strokeWidth="2.4"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
     <polyline points="18 15 12 9 6 15" />
   </svg>
 )
@@ -83,10 +168,16 @@ const ChevronUpIcon = () => (
 function tokens(dark: boolean, scrolled: boolean) {
   return {
     shellBg: dark
-      ? scrolled ? 'rgba(10,10,14,.90)' : 'rgba(10,10,14,.82)'
-      : scrolled ? 'rgba(255,255,255,.94)' : 'rgba(255,255,255,.88)',
+      ? scrolled
+        ? 'rgba(10,10,14,.90)'
+        : 'rgba(10,10,14,.82)'
+      : scrolled
+        ? 'rgba(255,255,255,.94)'
+        : 'rgba(255,255,255,.88)',
     shellBorder: dark ? 'rgba(255,255,255,.08)' : 'rgba(0,0,0,.06)',
-    shellShadow: dark ? '0 14px 40px rgba(0,0,0,.22)' : '0 14px 40px rgba(0,0,0,.08)',
+    shellShadow: dark
+      ? '0 14px 40px rgba(0,0,0,.22)'
+      : '0 14px 40px rgba(0,0,0,.08)',
     text: dark ? '#F4F1EC' : '#0D0E10',
     softText: dark ? 'rgba(255,255,255,.58)' : 'rgba(0,0,0,.56)',
     subtleText: dark ? 'rgba(255,255,255,.38)' : 'rgba(0,0,0,.38)',
@@ -117,17 +208,23 @@ function SearchModal({
 
   useEffect(() => {
     if (!open) return
+
     setQuery('')
+
     const id = setTimeout(() => inputRef.current?.focus(), 60)
+
     return () => clearTimeout(id)
   }, [open])
 
   useEffect(() => {
     if (!open) return
-    const fn = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose()
+
+    const fn = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') onClose()
     }
+
     window.addEventListener('keydown', fn)
+
     return () => window.removeEventListener('keydown', fn)
   }, [open, onClose])
 
@@ -158,15 +255,15 @@ function SearchModal({
 
   if (!open) return null
 
-  const filtered = LINKS.filter((item) =>
+  const filtered = SEARCH_LINKS.filter((item) =>
     item.label.toLowerCase().includes(query.toLowerCase())
   )
 
   return createPortal(
     <div
       ref={overlayRef}
-      onClick={(e) => {
-        if (e.target === overlayRef.current) onClose()
+      onClick={(event) => {
+        if (event.target === overlayRef.current) onClose()
       }}
       style={{
         position: 'fixed',
@@ -186,13 +283,23 @@ function SearchModal({
           background: t.dropdownBg,
           border: `1px solid ${t.shellBorder}`,
           borderRadius: 22,
-          boxShadow: dark ? '0 24px 70px rgba(0,0,0,.32)' : '0 24px 70px rgba(0,0,0,.10)',
+          boxShadow: dark
+            ? '0 24px 70px rgba(0,0,0,.32)'
+            : '0 24px 70px rgba(0,0,0,.10)',
           overflow: 'hidden',
           backdropFilter: 'blur(16px)',
           WebkitBackdropFilter: 'blur(16px)',
         }}
       >
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '18px 20px', borderBottom: `1px solid ${t.line}` }}>
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 12,
+            padding: '18px 20px',
+            borderBottom: `1px solid ${t.line}`,
+          }}
+        >
           <span style={{ color: ORANGE, display: 'flex' }}>
             <SearchIcon />
           </span>
@@ -200,7 +307,7 @@ function SearchModal({
           <input
             ref={inputRef}
             value={query}
-            onChange={(e) => setQuery(e.target.value)}
+            onChange={(event) => setQuery(event.target.value)}
             placeholder="Rechercher une page..."
             style={{
               flex: 1,
@@ -213,14 +320,29 @@ function SearchModal({
             }}
           />
 
-          <kbd style={{ fontSize: 11, color: t.subtleText, background: t.iconBg, border: `1px solid ${t.line}`, borderRadius: 8, padding: '4px 8px' }}>
+          <kbd
+            style={{
+              fontSize: 11,
+              color: t.subtleText,
+              background: t.iconBg,
+              border: `1px solid ${t.line}`,
+              borderRadius: 8,
+              padding: '4px 8px',
+            }}
+          >
             Échap
           </kbd>
         </div>
 
         <div style={{ padding: 8 }}>
           {query.length === 0 ? (
-            <div style={{ padding: '20px 14px', color: t.subtleText, fontSize: 14 }}>
+            <div
+              style={{
+                padding: '20px 14px',
+                color: t.subtleText,
+                fontSize: 14,
+              }}
+            >
               Commencez à taper pour chercher dans le site.
             </div>
           ) : filtered.length > 0 ? (
@@ -233,6 +355,7 @@ function SearchModal({
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'space-between',
+                  gap: 12,
                   padding: '13px 14px',
                   borderRadius: 14,
                   textDecoration: 'none',
@@ -247,8 +370,14 @@ function SearchModal({
               </Link>
             ))
           ) : (
-            <div style={{ padding: '20px 14px', color: t.subtleText, fontSize: 14 }}>
-              Aucun résultat pour "{query}".
+            <div
+              style={{
+                padding: '20px 14px',
+                color: t.subtleText,
+                fontSize: 14,
+              }}
+            >
+              Aucun résultat pour “{query}”.
             </div>
           )}
         </div>
@@ -273,8 +402,12 @@ function NavToggleButton({
 
   const addRipple = () => {
     const id = Date.now()
+
     setRipples((prev) => [...prev, id])
-    setTimeout(() => setRipples((prev) => prev.filter((r) => r !== id)), 600)
+
+    setTimeout(() => {
+      setRipples((prev) => prev.filter((r) => r !== id))
+    }, 600)
   }
 
   const handleClick = () => {
@@ -284,13 +417,20 @@ function NavToggleButton({
 
   const showTooltip = () => {
     if (tooltipTimer.current) clearTimeout(tooltipTimer.current)
+
     setTooltipVisible(true)
-    tooltipTimer.current = setTimeout(() => setTooltipVisible(false), 1800)
+
+    tooltipTimer.current = setTimeout(() => {
+      setTooltipVisible(false)
+    }, 1800)
   }
 
   const hideTooltip = () => {
     if (tooltipTimer.current) clearTimeout(tooltipTimer.current)
-    tooltipTimer.current = setTimeout(() => setTooltipVisible(false), 400)
+
+    tooltipTimer.current = setTimeout(() => {
+      setTooltipVisible(false)
+    }, 400)
   }
 
   return createPortal(
@@ -302,14 +442,18 @@ function NavToggleButton({
           right: 28,
           zIndex: 299,
           background: dark ? 'rgba(16,16,22,.97)' : 'rgba(255,255,255,.98)',
-          border: `1px solid ${dark ? 'rgba(255,255,255,.10)' : 'rgba(0,0,0,.08)'}`,
+          border: `1px solid ${
+            dark ? 'rgba(255,255,255,.10)' : 'rgba(0,0,0,.08)'
+          }`,
           borderRadius: 12,
           padding: '7px 13px',
           fontSize: 12,
           fontWeight: 500,
           color: dark ? 'rgba(255,255,255,.7)' : 'rgba(0,0,0,.6)',
           whiteSpace: 'nowrap',
-          boxShadow: dark ? '0 8px 24px rgba(0,0,0,.3)' : '0 8px 24px rgba(0,0,0,.08)',
+          boxShadow: dark
+            ? '0 8px 24px rgba(0,0,0,.3)'
+            : '0 8px 24px rgba(0,0,0,.08)',
           fontFamily: "'Inter', sans-serif",
           pointerEvents: 'none',
           opacity: tooltipVisible ? 1 : 0,
@@ -324,7 +468,9 @@ function NavToggleButton({
         onClick={handleClick}
         onMouseEnter={showTooltip}
         onMouseLeave={hideTooltip}
-        aria-label={navbarVisible ? 'Masquer la navigation' : 'Afficher la navigation'}
+        aria-label={
+          navbarVisible ? 'Masquer la navigation' : 'Afficher la navigation'
+        }
         style={{
           position: 'fixed',
           top: 90,
@@ -343,20 +489,6 @@ function NavToggleButton({
           overflow: 'hidden',
           padding: 0,
           transition: 'transform .18s ease, box-shadow .18s ease',
-        }}
-        onMouseOver={(e) => {
-          e.currentTarget.style.transform = 'scale(1.08)'
-          e.currentTarget.style.boxShadow = '0 6px 26px rgba(239,159,39,.6)'
-        }}
-        onMouseOut={(e) => {
-          e.currentTarget.style.transform = 'scale(1)'
-          e.currentTarget.style.boxShadow = '0 4px 20px rgba(239,159,39,.5)'
-        }}
-        onMouseDown={(e) => {
-          e.currentTarget.style.transform = 'scale(0.94)'
-        }}
-        onMouseUp={(e) => {
-          e.currentTarget.style.transform = 'scale(1.08)'
         }}
       >
         {ripples.map((id) => (
@@ -401,13 +533,13 @@ export default function PublicNavbar() {
   const [langOpen, setLangOpen] = useState(false)
   const [currentLang, setCurrentLang] = useState(LANGUAGES[0])
   const [scrolled, setScrolled] = useState(false)
-
   const [visible, setVisible] = useState(true)
   const [manualHidden, setManualHidden] = useState(false)
-
   const [logoError, setLogoError] = useState(false)
+  const [openDesktopMenu, setOpenDesktopMenu] = useState<string | null>(null)
 
   const langRef = useRef<HTMLDivElement>(null)
+  const navMenuTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const lastScroll = useRef(0)
 
   const t = useMemo(() => tokens(dark, scrolled), [dark, scrolled])
@@ -440,6 +572,7 @@ export default function PublicNavbar() {
         } else if (delta > 10) {
           setVisible(false)
           setMobileOpen(false)
+          setOpenDesktopMenu(null)
         } else if (delta < -10) {
           setVisible(true)
         }
@@ -450,39 +583,48 @@ export default function PublicNavbar() {
     }
 
     handler()
+
     window.addEventListener('scroll', handler, { passive: true })
+
     return () => window.removeEventListener('scroll', handler)
   }, [])
 
   useEffect(() => {
-    const fn = (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
-        e.preventDefault()
-        setSearchOpen((v) => !v)
+    const fn = (event: KeyboardEvent) => {
+      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k') {
+        event.preventDefault()
+        setSearchOpen((value) => !value)
       }
     }
+
     window.addEventListener('keydown', fn)
+
     return () => window.removeEventListener('keydown', fn)
   }, [])
 
   useEffect(() => {
-    const fn = (e: MouseEvent) => {
-      if (langRef.current && !langRef.current.contains(e.target as Node)) {
+    const fn = (event: MouseEvent) => {
+      if (langRef.current && !langRef.current.contains(event.target as Node)) {
         setLangOpen(false)
       }
     }
+
     document.addEventListener('mousedown', fn)
+
     return () => document.removeEventListener('mousedown', fn)
   }, [])
 
   useEffect(() => {
     setMobileOpen(false)
     setLangOpen(false)
+    setOpenDesktopMenu(null)
   }, [pathname])
 
   useEffect(() => {
     if (searchOpen) return
+
     document.body.style.overflow = mobileOpen ? 'hidden' : ''
+
     return () => {
       document.body.style.overflow = ''
     }
@@ -493,8 +635,29 @@ export default function PublicNavbar() {
     setLangOpen(false)
   }, [])
 
-  const isActive = (href: string) =>
-    href === '/' ? pathname === '/' : pathname.startsWith(href)
+  const isActive = (href: string) => {
+    if (href === '/') return pathname === '/'
+    return pathname.startsWith(href)
+  }
+
+  const isItemActive = (item: NavItem) => {
+    if (isActive(item.href)) return true
+
+    return item.children?.some((child) => isActive(child.href)) || false
+  }
+
+  const openMenu = (href: string) => {
+    if (navMenuTimer.current) clearTimeout(navMenuTimer.current)
+    setOpenDesktopMenu(href)
+  }
+
+  const closeMenuSoon = () => {
+    if (navMenuTimer.current) clearTimeout(navMenuTimer.current)
+
+    navMenuTimer.current = setTimeout(() => {
+      setOpenDesktopMenu(null)
+    }, 120)
+  }
 
   const navHeight = 68
   const navTop = 12
@@ -538,14 +701,13 @@ export default function PublicNavbar() {
           to   { opacity: 1; transform: translateY(0); }
         }
 
-        @keyframes navToggleRipple {
-          to { transform: scale(2.8); opacity: 0; }
+        @keyframes submenuIn {
+          from { opacity: 0; transform: translateY(8px) scale(.98); }
+          to   { opacity: 1; transform: translateY(0) scale(1); }
         }
 
-        @keyframes navToggleBtnPop {
-          0%   { transform: scale(0.5); opacity: 0; }
-          60%  { transform: scale(1.12); }
-          100% { transform: scale(1); opacity: 1; }
+        @keyframes navToggleRipple {
+          to { transform: scale(2.8); opacity: 0; }
         }
 
         .pro-nav-link {
@@ -556,6 +718,9 @@ export default function PublicNavbar() {
           font-size: 14px;
           font-weight: 500;
           transition: all .18s ease;
+          display: inline-flex;
+          align-items: center;
+          gap: 6px;
         }
 
         .pro-nav-link::after {
@@ -577,11 +742,24 @@ export default function PublicNavbar() {
           transform: scaleX(1);
         }
 
+        .pro-submenu-link:hover {
+          background: ${t.itemHover} !important;
+        }
+
+        .pro-submenu-link:hover .pro-submenu-arrow {
+          transform: translateX(3px);
+          color: ${ORANGE} !important;
+        }
+
         .pro-icon:hover {
           transform: translateY(-1px);
           color: ${t.text} !important;
-          background: ${dark ? 'rgba(255,255,255,.08)' : 'rgba(0,0,0,.05)'} !important;
-          border-color: ${dark ? 'rgba(255,255,255,.12)' : 'rgba(0,0,0,.08)'} !important;
+          background: ${
+            dark ? 'rgba(255,255,255,.08)' : 'rgba(0,0,0,.05)'
+          } !important;
+          border-color: ${
+            dark ? 'rgba(255,255,255,.12)' : 'rgba(0,0,0,.08)'
+          } !important;
         }
 
         .pro-lang-item:hover   { background: ${t.itemHover} !important; }
@@ -597,7 +775,11 @@ export default function PublicNavbar() {
         }
       `}</style>
 
-      <SearchModal open={searchOpen} onClose={() => setSearchOpen(false)} dark={dark} />
+      <SearchModal
+        open={searchOpen}
+        onClose={() => setSearchOpen(false)}
+        dark={dark}
+      />
 
       <header
         style={{
@@ -609,7 +791,9 @@ export default function PublicNavbar() {
           paddingTop: navTop,
           paddingLeft: 'clamp(12px, 2vw, 24px)',
           paddingRight: 'clamp(12px, 2vw, 24px)',
-          transform: navbarShown ? 'translate3d(0,0,0)' : 'translate3d(0,-120%,0)',
+          transform: navbarShown
+            ? 'translate3d(0,0,0)'
+            : 'translate3d(0,-120%,0)',
           transition: 'transform .32s cubic-bezier(0.22,1,0.36,1)',
           willChange: 'transform',
           backfaceVisibility: 'hidden',
@@ -635,17 +819,33 @@ export default function PublicNavbar() {
             transform: 'translateZ(0)',
           }}
         >
-          <div style={{ display: 'flex', alignItems: 'center', gap: 20, minWidth: 0 }}>
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 20,
+              minWidth: 0,
+            }}
+          >
             <Link
               href="/"
-              style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 12, color: t.text, minWidth: 0 }}
+              style={{
+                textDecoration: 'none',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 12,
+                color: t.text,
+                minWidth: 0,
+              }}
             >
               <div
                 style={{
                   width: 42,
                   height: 42,
                   borderRadius: 12,
-                  background: dark ? 'rgba(255,255,255,.04)' : 'rgba(0,0,0,.02)',
+                  background: dark
+                    ? 'rgba(255,255,255,.04)'
+                    : 'rgba(0,0,0,.02)',
                   border: `1px solid ${t.iconBorder}`,
                   display: 'flex',
                   alignItems: 'center',
@@ -660,17 +860,34 @@ export default function PublicNavbar() {
                     alt="Logo MD2I"
                     width={40}
                     height={40}
-                    style={{ width: 40, height: 40, objectFit: 'contain' }}
+                    style={{
+                      width: 40,
+                      height: 40,
+                      objectFit: 'contain',
+                    }}
                     onError={() => setLogoError(true)}
                   />
                 ) : (
-                  <span style={{ color: ORANGE, fontFamily: "'Syne', sans-serif", fontWeight: 800, fontSize: 15 }}>
+                  <span
+                    style={{
+                      color: ORANGE,
+                      fontFamily: "'Syne', sans-serif",
+                      fontWeight: 800,
+                      fontSize: 15,
+                    }}
+                  >
                     MD
                   </span>
                 )}
               </div>
 
-              <div style={{ display: 'flex', flexDirection: 'column', minWidth: 0 }}>
+              <div
+                style={{
+                  display: 'flex',
+                  flexDirection: 'column',
+                  minWidth: 0,
+                }}
+              >
                 <span
                   style={{
                     color: t.text,
@@ -701,9 +918,135 @@ export default function PublicNavbar() {
               </div>
             </Link>
 
-            <div className="pro-desktop-nav" style={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+            <div
+              className="pro-desktop-nav"
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 2,
+              }}
+            >
               {LINKS.map((link) => {
-                const active = isActive(link.href)
+                const active = isItemActive(link)
+                const hasChildren = Boolean(link.children?.length)
+                const menuOpen = openDesktopMenu === link.href
+
+                if (hasChildren) {
+                  return (
+                    <div
+                      key={link.href}
+                      style={{ position: 'relative' }}
+                      onMouseEnter={() => openMenu(link.href)}
+                      onMouseLeave={closeMenuSoon}
+                      onFocus={() => openMenu(link.href)}
+                    >
+                      <Link
+                        href={link.href}
+                        className={`pro-nav-link${active ? ' active' : ''}`}
+                        style={{
+                          color: active ? t.text : t.softText,
+                          background: active ? t.itemHover : 'transparent',
+                        }}
+                        aria-haspopup="menu"
+                        aria-expanded={menuOpen}
+                      >
+                        {link.label}
+                        <ChevronDown open={menuOpen} />
+                      </Link>
+
+                      {menuOpen && (
+                        <div
+                          role="menu"
+                          onMouseEnter={() => openMenu(link.href)}
+                          onMouseLeave={closeMenuSoon}
+                          style={{
+                            position: 'absolute',
+                            top: 'calc(100% + 12px)',
+                            right: 0,
+                            width: 270,
+                            padding: 8,
+                            borderRadius: 20,
+                            border: `1px solid ${t.shellBorder}`,
+                            background: t.dropdownBg,
+                            boxShadow: dark
+                              ? '0 20px 46px rgba(0,0,0,.32)'
+                              : '0 20px 46px rgba(0,0,0,.12)',
+                            backdropFilter: 'blur(18px)',
+                            WebkitBackdropFilter: 'blur(18px)',
+                            animation: 'submenuIn .18s ease',
+                          }}
+                        >
+                          {link.children?.map((child) => {
+                            const childActive = isActive(child.href)
+
+                            return (
+                              <Link
+                                key={child.href}
+                                href={child.href}
+                                role="menuitem"
+                                className="pro-submenu-link"
+                                style={{
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'space-between',
+                                  gap: 12,
+                                  padding: '12px 13px',
+                                  borderRadius: 15,
+                                  color: childActive ? ORANGE : t.text,
+                                  background: childActive
+                                    ? t.orangeSoft
+                                    : 'transparent',
+                                  textDecoration: 'none',
+                                }}
+                              >
+                                <span
+                                  style={{
+                                    display: 'flex',
+                                    flexDirection: 'column',
+                                    gap: 3,
+                                  }}
+                                >
+                                  <strong
+                                    style={{
+                                      fontSize: 14,
+                                      fontWeight: 750,
+                                    }}
+                                  >
+                                    {child.label}
+                                  </strong>
+
+                                  {child.description && (
+                                    <span
+                                      style={{
+                                        color: t.subtleText,
+                                        fontSize: 12,
+                                        lineHeight: 1.35,
+                                        fontWeight: 500,
+                                      }}
+                                    >
+                                      {child.description}
+                                    </span>
+                                  )}
+                                </span>
+
+                                <span
+                                  className="pro-submenu-arrow"
+                                  style={{
+                                    color: childActive ? ORANGE : t.subtleText,
+                                    transition: 'all .18s ease',
+                                    flexShrink: 0,
+                                  }}
+                                >
+                                  <ArrowRight />
+                                </span>
+                              </Link>
+                            )
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  )
+                }
 
                 return (
                   <Link
@@ -723,21 +1066,39 @@ export default function PublicNavbar() {
           </div>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <button className="pro-icon" onClick={() => setSearchOpen(true)} aria-label="Recherche" style={iconBtn}>
+            <button
+              className="pro-icon"
+              onClick={() => setSearchOpen(true)}
+              aria-label="Recherche"
+              style={iconBtn}
+            >
               <SearchIcon />
             </button>
 
-            <button className="pro-icon" onClick={toggleTheme} aria-label={dark ? 'Mode clair' : 'Mode sombre'} style={iconBtn}>
+            <button
+              className="pro-icon"
+              onClick={toggleTheme}
+              aria-label={dark ? 'Mode clair' : 'Mode sombre'}
+              style={iconBtn}
+            >
               {dark ? <SunIcon /> : <MoonIcon />}
             </button>
 
             <div ref={langRef} style={{ position: 'relative' }}>
               <button
                 className="pro-icon"
-                onClick={() => setLangOpen((v) => !v)}
+                onClick={() => setLangOpen((value) => !value)}
                 aria-expanded={langOpen}
                 aria-haspopup="listbox"
-                style={{ ...iconBtn, width: 'auto', padding: '0 12px', gap: 8, color: t.text, fontSize: 13, fontWeight: 600 }}
+                style={{
+                  ...iconBtn,
+                  width: 'auto',
+                  padding: '0 12px',
+                  gap: 8,
+                  color: t.text,
+                  fontSize: 13,
+                  fontWeight: 600,
+                }}
               >
                 <span style={{ fontSize: 15 }}>{currentLang.flag}</span>
                 <span>{currentLang.code}</span>
@@ -758,7 +1119,9 @@ export default function PublicNavbar() {
                     borderRadius: 18,
                     border: `1px solid ${t.shellBorder}`,
                     background: t.dropdownBg,
-                    boxShadow: dark ? '0 18px 40px rgba(0,0,0,.26)' : '0 18px 40px rgba(0,0,0,.10)',
+                    boxShadow: dark
+                      ? '0 18px 40px rgba(0,0,0,.26)'
+                      : '0 18px 40px rgba(0,0,0,.10)',
                     backdropFilter: 'blur(16px)',
                     WebkitBackdropFilter: 'blur(16px)',
                   }}
@@ -795,13 +1158,19 @@ export default function PublicNavbar() {
 
             <button
               className="pro-mobile-toggle pro-icon"
-              onClick={() => setMobileOpen((v) => !v)}
+              onClick={() => setMobileOpen((value) => !value)}
               aria-expanded={mobileOpen}
-              style={{ ...iconBtn, display: 'none', flexDirection: 'column', gap: 4 }}
+              aria-label="Menu mobile"
+              style={{
+                ...iconBtn,
+                display: 'none',
+                flexDirection: 'column',
+                gap: 4,
+              }}
             >
-              {[0, 1, 2].map((i) => (
+              {[0, 1, 2].map((index) => (
                 <span
-                  key={i}
+                  key={index}
                   style={{
                     width: 16,
                     height: 1.8,
@@ -809,14 +1178,14 @@ export default function PublicNavbar() {
                     background: mobileOpen ? ORANGE : t.text,
                     transition: 'all .2s ease',
                     transform:
-                      mobileOpen && i === 0
+                      mobileOpen && index === 0
                         ? 'translateY(5.8px) rotate(45deg)'
-                        : mobileOpen && i === 2
+                        : mobileOpen && index === 2
                           ? 'translateY(-5.8px) rotate(-45deg)'
-                          : mobileOpen && i === 1
+                          : mobileOpen && index === 1
                             ? 'scaleX(0)'
                             : 'none',
-                    opacity: mobileOpen && i === 1 ? 0 : 1,
+                    opacity: mobileOpen && index === 1 ? 0 : 1,
                   }}
                 />
               ))}
@@ -831,7 +1200,9 @@ export default function PublicNavbar() {
               borderRadius: 24,
               border: `1px solid ${t.shellBorder}`,
               background: t.mobileBg,
-              boxShadow: dark ? '0 18px 42px rgba(0,0,0,.24)' : '0 18px 42px rgba(0,0,0,.10)',
+              boxShadow: dark
+                ? '0 18px 42px rgba(0,0,0,.24)'
+                : '0 18px 42px rgba(0,0,0,.10)',
               backdropFilter: 'blur(16px)',
               WebkitBackdropFilter: 'blur(16px)',
               padding: 14,
@@ -840,7 +1211,81 @@ export default function PublicNavbar() {
           >
             <div style={{ display: 'grid', gap: 4 }}>
               {LINKS.map((link) => {
-                const active = isActive(link.href)
+                const active = isItemActive(link)
+
+                if (link.children?.length) {
+                  return (
+                    <div key={link.href}>
+                      <Link
+                        href={link.href}
+                        className="pro-mobile-link"
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                          textDecoration: 'none',
+                          padding: '13px 14px',
+                          borderRadius: 14,
+                          color: active ? t.text : t.softText,
+                          background: active ? t.itemHover : 'transparent',
+                          fontSize: 15,
+                          fontWeight: active ? 700 : 500,
+                        }}
+                      >
+                        <span>{link.label}</span>
+                        <span style={{ color: active ? ORANGE : t.subtleText }}>
+                          <ArrowRight />
+                        </span>
+                      </Link>
+
+                      <div
+                        style={{
+                          display: 'grid',
+                          gap: 4,
+                          margin: '4px 0 8px 14px',
+                          paddingLeft: 10,
+                          borderLeft: `1px solid ${t.line}`,
+                        }}
+                      >
+                        {link.children.map((child) => {
+                          const childActive = isActive(child.href)
+
+                          return (
+                            <Link
+                              key={child.href}
+                              href={child.href}
+                              className="pro-mobile-link"
+                              style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'space-between',
+                                gap: 12,
+                                textDecoration: 'none',
+                                padding: '11px 12px',
+                                borderRadius: 13,
+                                color: childActive ? ORANGE : t.softText,
+                                background: childActive
+                                  ? t.orangeSoft
+                                  : 'transparent',
+                                fontSize: 14,
+                                fontWeight: childActive ? 700 : 500,
+                              }}
+                            >
+                              <span>{child.label}</span>
+                              <span
+                                style={{
+                                  color: childActive ? ORANGE : t.subtleText,
+                                }}
+                              >
+                                <ArrowRight />
+                              </span>
+                            </Link>
+                          )
+                        })}
+                      </div>
+                    </div>
+                  )
+                }
 
                 return (
                   <Link
@@ -869,9 +1314,21 @@ export default function PublicNavbar() {
               })}
             </div>
 
-            <div style={{ height: 1, background: t.line, margin: '14px 0' }} />
+            <div
+              style={{
+                height: 1,
+                background: t.line,
+                margin: '14px 0',
+              }}
+            />
 
-            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+            <div
+              style={{
+                display: 'flex',
+                gap: 8,
+                flexWrap: 'wrap',
+              }}
+            >
               {LANGUAGES.map((lang) => {
                 const selected = currentLang.code === lang.code
 
@@ -880,7 +1337,9 @@ export default function PublicNavbar() {
                     key={lang.code}
                     onClick={() => handleLangSelect(lang)}
                     style={{
-                      border: `1px solid ${selected ? t.orangeBorder : t.iconBorder}`,
+                      border: `1px solid ${
+                        selected ? t.orangeBorder : t.iconBorder
+                      }`,
                       background: selected ? t.orangeSoft : t.iconBg,
                       color: selected ? ORANGE : t.softText,
                       borderRadius: 12,
@@ -905,10 +1364,11 @@ export default function PublicNavbar() {
 
       <div aria-hidden="true" style={{ height: headerOffset }} />
 
-      {/* Décommente si tu veux réactiver le bouton flottant
+      {/* Décommente si tu veux réactiver le bouton flottant */}
+      {/*
       <NavToggleButton
         navbarVisible={navbarShown}
-        onClick={() => setManualHidden((v) => !v)}
+        onClick={() => setManualHidden((value) => !value)}
         dark={dark}
       />
       */}

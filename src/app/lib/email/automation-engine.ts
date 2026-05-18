@@ -2,6 +2,7 @@
 
 import { prisma } from "@/app/lib/prisma";
 import { sendAutomationEmail } from "@/app/lib/email/sender";
+import { buildProspectLink } from "@/app/lib/email/contact-action-token";
 
 type EmailAutomationTrigger =
   | "CONTACT_CREATED"
@@ -78,6 +79,7 @@ function getContactName(contact: {
 function renderTemplate(
   template: string,
   contact: {
+    id: string;
     firstName: string | null;
     lastName: string | null;
     email: string;
@@ -91,6 +93,7 @@ function renderTemplate(
   const lastName = contact.lastName || "";
   const fullName = [firstName, lastName].filter(Boolean).join(" ");
   const contactName = getContactName(contact);
+  const prospectLink = buildProspectLink(contact.id);
 
   const values: Record<string, string> = {
     firstName,
@@ -102,6 +105,9 @@ function renderTemplate(
     companyName: contact.companyName || "",
     city: contact.city || "",
     country: contact.country || "",
+    contactId: contact.id,
+    prospectLink,
+    ctaProspectLink: prospectLink,
   };
 
   return template.replace(/\{\{\s*(\w+)\s*\}\}|\{(\w+)\}/g, (_, key1, key2) => {
@@ -321,6 +327,7 @@ export async function startContactAutomation({
           to: maskEmail(contact.email),
           subject,
           scheduledAt: scheduledAt.toISOString(),
+          hasProspectLink: content.includes("/api/email-actions/prospect"),
         });
 
         return [
@@ -647,6 +654,7 @@ export async function processPendingAutomationEmails({
         to: maskEmail(email.contact.email),
         subject: email.subject,
         htmlLength: cleanHtml.length,
+        hasProspectLink: cleanHtml.includes("/api/email-actions/prospect"),
         campaignId: email.step?.campaign?.id || null,
         fromName: email.step?.campaign?.fromName || null,
         fromEmail: email.step?.campaign?.fromEmail || null,

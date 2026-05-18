@@ -17,9 +17,28 @@ import {
   Users,
   Filter,
   RotateCcw,
+  Loader2,
 } from "lucide-react";
 
 import styles from "./ContactsTable.module.css";
+
+type TableContact = Contact & {
+  groupId?: string | null;
+  notes?: string | null;
+  jobTitle?: string | null;
+  companyName?: string | null;
+  country?: string | null;
+  city?: string | null;
+  phone?: string | null;
+  isActive?: boolean;
+  unsubscribed?: boolean;
+  crmStatus?: string | null;
+  crmSource?: string | null;
+  group?: {
+    id: string;
+    name: string;
+  } | null;
+};
 
 function getContactName(contact: Contact) {
   const name = [contact.firstName, contact.lastName]
@@ -84,6 +103,29 @@ const CRM_SOURCE_OPTIONS = [
   { value: "OTHER", label: "Autre" },
 ];
 
+function buildContactUpdatePayload(contact: TableContact, nextCrmStatus: string) {
+  return {
+    email: contact.email,
+    firstName: contact.firstName || null,
+    lastName: contact.lastName || null,
+    phone: contact.phone || null,
+
+    groupId: contact.group?.id || contact.groupId || null,
+
+    jobTitle: contact.jobTitle || null,
+    companyName: contact.companyName || null,
+    country: contact.country || null,
+    city: contact.city || null,
+    notes: contact.notes || null,
+
+    crmStatus: nextCrmStatus,
+    crmSource: contact.crmSource || "MANUAL",
+
+    isActive: contact.isActive ?? true,
+    unsubscribed: contact.unsubscribed ?? false,
+  };
+}
+
 export function ContactsTable() {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [editingContact, setEditingContact] = useState<Contact | null>(null);
@@ -93,6 +135,9 @@ export function ContactsTable() {
   const [filterGroupId, setFilterGroupId] = useState<string>("");
   const [filterCrmStatus, setFilterCrmStatus] = useState<string>("");
   const [filterCrmSource, setFilterCrmSource] = useState<string>("");
+
+  const [updatingStatusId, setUpdatingStatusId] = useState<string | null>(null);
+  const [quickActionError, setQuickActionError] = useState<string | null>(null);
 
   const { groups } = useGroups();
 
@@ -218,6 +263,47 @@ export function ContactsTable() {
     });
 
     refetch();
+  };
+
+  const handleQuickStatusChange = async (
+    contact: TableContact,
+    nextCrmStatus: string
+  ) => {
+    if (!nextCrmStatus || nextCrmStatus === contact.crmStatus) return;
+
+    setUpdatingStatusId(contact.id);
+    setQuickActionError(null);
+
+    try {
+      const res = await fetch(`/api/contacts/${contact.id}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(buildContactUpdatePayload(contact, nextCrmStatus)),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(
+          data.error ||
+            `Impossible de changer le statut de ${contact.email}.`
+        );
+      }
+
+      await refetch();
+    } catch (err) {
+      setQuickActionError(
+        err instanceof Error
+          ? err.message
+          : "Erreur lors du changement de statut CRM."
+      );
+
+      await refetch();
+    } finally {
+      setUpdatingStatusId(null);
+    }
   };
 
   const handleExport = (format: "csv" | "xlsx") => {
@@ -383,6 +469,16 @@ export function ContactsTable() {
         )}
       </div>
 
+      {quickActionError && (
+        <div className={`${styles.selectionBar} ${styles.errorBar}`}>
+          <span>{quickActionError}</span>
+
+          <button type="button" onClick={() => setQuickActionError(null)}>
+            Fermer
+          </button>
+        </div>
+      )}
+
       {selectedIds.size > 0 && (
         <div className={styles.selectionBar}>
           <span>{selectedIds.size} sélectionné(s)</span>
@@ -395,7 +491,7 @@ export function ContactsTable() {
       )}
 
       {error && (
-        <div className={styles.selectionBar}>
+        <div className={`${styles.selectionBar} ${styles.errorBar}`}>
           <span>{error}</span>
         </div>
       )}
@@ -456,135 +552,182 @@ export function ContactsTable() {
                 </td>
               </tr>
             ) : (
-              contacts.map((contact) => (
-                <tr key={contact.id}>
-                  <td className={styles.checkCell}>
-                    <input
-                      type="checkbox"
-                      checked={selectedIds.has(contact.id)}
-                      onChange={() => toggleSelect(contact.id)}
-                      className={styles.checkbox}
-                    />
-                  </td>
+              contacts.map((contact) => {
+                const tableContact = contact as TableContact;
+                const isUpdatingStatus = updatingStatusId === contact.id;
 
-                  <td>
-                    <div className={styles.contactBlock}>
-                      <span className={styles.contactName}>
-                        {getContactName(contact)}
-                      </span>
+                return (
+                  <tr key={contact.id}>
+                    <td className={styles.checkCell}>
+                      <input
+                        type="checkbox"
+                        checked={selectedIds.has(contact.id)}
+                        onChange={() => toggleSelect(contact.id)}
+                        className={styles.checkbox}
+                      />
+                    </td>
 
-                      <span className={styles.email}>{contact.email}</span>
-
-                      {contact.phone && (
-                        <span className={styles.muted}>{contact.phone}</span>
-                      )}
-
-                      {contact.jobTitle && (
-                        <span className={styles.jobTitle}>
-                          {contact.jobTitle}
+                    <td>
+                      <div className={styles.contactBlock}>
+                        <span className={styles.contactName}>
+                          {getContactName(contact)}
                         </span>
-                      )}
-                    </div>
-                  </td>
 
-                  <td>
-                    {contact.companyName ? (
-                      <div className={styles.companyBlock}>
-                        <span>{contact.companyName}</span>
-                      </div>
-                    ) : contact.crmCompany?.name ? (
-                      <div className={styles.companyBlock}>
-                        <span>{contact.crmCompany.name}</span>
-                      </div>
-                    ) : (
-                      <span className={styles.muted}>—</span>
-                    )}
-                  </td>
+                        <span className={styles.email}>{contact.email}</span>
 
-                  <td>
-                    {contact.city || contact.country ? (
-                      <div className={styles.locationBlock}>
-                        {contact.city && <span>{contact.city}</span>}
-
-                        {contact.country && (
+                        {tableContact.phone && (
                           <span className={styles.muted}>
-                            {contact.country}
+                            {tableContact.phone}
+                          </span>
+                        )}
+
+                        {tableContact.jobTitle && (
+                          <span className={styles.jobTitle}>
+                            {tableContact.jobTitle}
                           </span>
                         )}
                       </div>
-                    ) : (
-                      <span className={styles.muted}>—</span>
-                    )}
-                  </td>
+                    </td>
 
-                  <td>
-                    <div className={styles.crmMeta}>
-                      <span className={`${styles.status} ${styles.statusBlue}`}>
-                        {getCrmStatusLabel(contact.crmStatus)}
+                    <td>
+                      {tableContact.companyName ? (
+                        <div className={styles.companyBlock}>
+                          <span>{tableContact.companyName}</span>
+                        </div>
+                      ) : tableContact.crmCompany?.name ? (
+                        <div className={styles.companyBlock}>
+                          <span>{tableContact.crmCompany.name}</span>
+                        </div>
+                      ) : (
+                        <span className={styles.muted}>—</span>
+                      )}
+                    </td>
+
+                    <td>
+                      {tableContact.city || tableContact.country ? (
+                        <div className={styles.locationBlock}>
+                          {tableContact.city && (
+                            <span>{tableContact.city}</span>
+                          )}
+
+                          {tableContact.country && (
+                            <span className={styles.muted}>
+                              {tableContact.country}
+                            </span>
+                          )}
+                        </div>
+                      ) : (
+                        <span className={styles.muted}>—</span>
+                      )}
+                    </td>
+
+                    <td>
+                      <div className={styles.crmMeta}>
+                        <div className={styles.quickStatusWrap}>
+                          <select
+                            value={tableContact.crmStatus || "NEW"}
+                            onChange={(e) =>
+                              handleQuickStatusChange(
+                                tableContact,
+                                e.target.value
+                              )
+                            }
+                            disabled={isUpdatingStatus}
+                            className={styles.quickStatusSelect}
+                            title="Changer le statut CRM et déclencher les automatisations liées"
+                          >
+                            {CRM_STATUS_OPTIONS.map((status) => (
+                              <option key={status.value} value={status.value}>
+                                {status.label}
+                              </option>
+                            ))}
+                          </select>
+
+                          {isUpdatingStatus && (
+                            <Loader2
+                              size={14}
+                              className={styles.quickStatusLoader}
+                            />
+                          )}
+                        </div>
+
+                        <span className={styles.quickStatusHelp}>
+                          {isUpdatingStatus
+                            ? "Mise à jour..."
+                            : `Actuel : ${getCrmStatusLabel(
+                                tableContact.crmStatus
+                              )}`}
+                        </span>
+
+                        <span className={styles.sourcePill}>
+                          {getCrmSourceLabel(tableContact.crmSource)}
+                        </span>
+                      </div>
+                    </td>
+
+                    <td>
+                      {tableContact.group ? (
+                        <span className={styles.groupPill}>
+                          {tableContact.group.name}
+                        </span>
+                      ) : (
+                        <span className={styles.muted}>—</span>
+                      )}
+                    </td>
+
+                    <td>
+                      {tableContact.unsubscribed ? (
+                        <span
+                          className={`${styles.status} ${styles.statusRed}`}
+                        >
+                          Désabonné
+                        </span>
+                      ) : tableContact.isActive ? (
+                        <span
+                          className={`${styles.status} ${styles.statusGreen}`}
+                        >
+                          Actif
+                        </span>
+                      ) : (
+                        <span
+                          className={`${styles.status} ${styles.statusGray}`}
+                        >
+                          Inactif
+                        </span>
+                      )}
+                    </td>
+
+                    <td>
+                      <span className={styles.date}>
+                        {new Date(contact.createdAt).toLocaleDateString(
+                          "fr-FR"
+                        )}
                       </span>
+                    </td>
 
-                      <span className={styles.sourcePill}>
-                        {getCrmSourceLabel(contact.crmSource)}
-                      </span>
-                    </div>
-                  </td>
+                    <td>
+                      <div className={styles.rowActions}>
+                        <button
+                          type="button"
+                          onClick={() => setEditingContact(contact)}
+                          title="Modifier"
+                        >
+                          <Pencil size={16} />
+                        </button>
 
-                  <td>
-                    {contact.group ? (
-                      <span className={styles.groupPill}>
-                        {contact.group.name}
-                      </span>
-                    ) : (
-                      <span className={styles.muted}>—</span>
-                    )}
-                  </td>
-
-                  <td>
-                    {contact.unsubscribed ? (
-                      <span className={`${styles.status} ${styles.statusRed}`}>
-                        Désabonné
-                      </span>
-                    ) : contact.isActive ? (
-                      <span
-                        className={`${styles.status} ${styles.statusGreen}`}
-                      >
-                        Actif
-                      </span>
-                    ) : (
-                      <span className={`${styles.status} ${styles.statusGray}`}>
-                        Inactif
-                      </span>
-                    )}
-                  </td>
-
-                  <td>
-                    <span className={styles.date}>
-                      {new Date(contact.createdAt).toLocaleDateString("fr-FR")}
-                    </span>
-                  </td>
-
-                  <td>
-                    <div className={styles.rowActions}>
-                      <button
-                        type="button"
-                        onClick={() => setEditingContact(contact)}
-                        title="Modifier"
-                      >
-                        <Pencil size={16} />
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={() => handleDeleteOne(contact)}
-                        title="Supprimer"
-                        className={styles.danger}
-                      >
-                        <Trash2 size={16} />
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteOne(contact)}
+                          title="Supprimer"
+                          className={styles.danger}
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })
             )}
           </tbody>
         </table>

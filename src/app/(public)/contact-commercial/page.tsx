@@ -12,7 +12,7 @@ import {
   Sparkles,
 } from "lucide-react";
 
-import ProductLeadForm from "../components/crm/ProductLeadForm";
+import ProductLeadForm from "@/app/admin/components/crm/ProductLeadForm";
 import { prisma } from "@/app/lib/prisma";
 
 export const dynamic = "force-dynamic";

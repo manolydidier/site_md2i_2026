@@ -1,5 +1,7 @@
 "use client";
 
+import Link from "next/link";
+import type { ReactNode } from "react";
 import { useTheme } from "@/app/context/ThemeContext";
 import { useEffect, useRef, useState, useCallback, useMemo } from "react";
 
@@ -26,22 +28,34 @@ interface Reference {
 }
 
 type SortBy = "date" | "impact" | "client";
+type ViewMode = "map" | "list";
 
 const ORANGE = "#EF9F27";
 
 function getTokens(dark: boolean) {
   return {
-    bg: dark ? "#0f0e0d" : "#f5f4f0",
-    headerBg: dark ? "rgba(15,14,13,0.92)" : "rgba(255,255,255,0.93)",
-    cardBg: dark ? "#1f1e1b" : "#ffffff",
-    sidebarBg: dark ? "rgba(26,25,22,0.90)" : "rgba(255,255,255,0.90)",
-    text: dark ? "#f4f1ec" : "#0d0e10",
-    textSoft: dark ? "#9a9590" : "#5f5e5a",
-    textMuted: dark ? "#6b6a65" : "#888780",
-    border: dark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.08)",
-    borderStrong: dark ? "rgba(255,255,255,0.16)" : "rgba(0,0,0,0.14)",
-    shadow: dark ? "0 20px 60px rgba(0,0,0,0.6)" : "0 20px 60px rgba(0,0,0,0.14)",
-    stickyBg: dark ? "rgba(31,30,27,0.94)" : "rgba(255,255,255,0.94)",
+    bg: dark ? "#09090B" : "#F7F4EE",
+    glass: dark ? "rgba(17,17,22,0.82)" : "rgba(255,255,255,0.82)",
+    glassStrong: dark ? "rgba(17,17,22,0.94)" : "rgba(255,255,255,0.94)",
+    cardBg: dark ? "#151519" : "#FFFFFF",
+    panelBg: dark ? "rgba(16,16,20,0.96)" : "rgba(255,255,255,0.96)",
+    text: dark ? "#F8F4EF" : "#111111",
+    textSoft: dark ? "rgba(248,244,239,0.68)" : "rgba(17,17,17,0.66)",
+    textMuted: dark ? "rgba(248,244,239,0.42)" : "rgba(17,17,17,0.42)",
+    border: dark ? "rgba(255,255,255,0.09)" : "rgba(17,17,17,0.08)",
+    borderStrong: dark ? "rgba(255,255,255,0.16)" : "rgba(17,17,17,0.14)",
+    shadow: dark
+      ? "0 26px 90px rgba(0,0,0,0.55)"
+      : "0 26px 90px rgba(17,17,17,0.13)",
+    shadowSoft: dark
+      ? "0 16px 46px rgba(0,0,0,0.32)"
+      : "0 16px 46px rgba(17,17,17,0.08)",
+    orangeSoft: dark ? "rgba(239,159,39,0.14)" : "rgba(239,159,39,0.11)",
+    orangeBorder: "rgba(239,159,39,0.32)",
+    inputBg: dark ? "rgba(255,255,255,0.06)" : "rgba(17,17,17,0.04)",
+    mapOverlay: dark
+      ? "linear-gradient(180deg, rgba(9,9,11,0.50), rgba(9,9,11,0.06) 32%, rgba(9,9,11,0.22))"
+      : "linear-gradient(180deg, rgba(247,244,238,0.50), rgba(247,244,238,0.02) 32%, rgba(247,244,238,0.18))",
   };
 }
 
@@ -52,12 +66,35 @@ function safeImage(src?: string) {
 
 function stripHtml(html?: string) {
   if (!html) return "";
+
   if (typeof window === "undefined") {
     return html.replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim();
   }
-  const el = document.createElement("div");
-  el.innerHTML = html;
-  return (el.textContent || el.innerText || "").replace(/\s+/g, " ").trim();
+
+  const element = document.createElement("div");
+  element.innerHTML = html;
+
+  return (element.textContent || element.innerText || "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function getReferenceParam(reference: Reference) {
+  return encodeURIComponent(reference.slug || reference.id || reference.title);
+}
+
+function getNextId(projects: Reference[], activeId: string, direction: 1 | -1) {
+  if (projects.length === 0) return activeId;
+
+  const currentIndex = Math.max(
+    0,
+    projects.findIndex((project) => project.id === activeId)
+  );
+
+  const nextIndex =
+    (currentIndex + direction + projects.length) % projects.length;
+
+  return projects[nextIndex].id;
 }
 
 function RichHtml({
@@ -73,236 +110,51 @@ function RichHtml({
     <div
       className={clamp ? `rich-html clamp-${clamp}` : "rich-html"}
       style={{ color }}
-      dangerouslySetInnerHTML={{ __html: html || "" }}
+      dangerouslySetInnerHTML={{
+        __html: html || "",
+      }}
     />
   );
 }
 
-function getNextId(projects: Reference[], activeId: string, direction: 1 | -1) {
-  if (projects.length === 0) return activeId;
-  const currentIndex = Math.max(
-    0,
-    projects.findIndex((p) => p.id === activeId)
-  );
-  const nextIndex =
-    (currentIndex + direction + projects.length) % projects.length;
-  return projects[nextIndex].id;
-}
-
-function ArrowButton({
+function IconButton({
+  children,
   onClick,
-  dark,
-  t,
   label,
+  t,
 }: {
+  children: ReactNode;
   onClick: () => void;
-  dark: boolean;
-  t: ReturnType<typeof getTokens>;
   label: string;
+  t: ReturnType<typeof getTokens>;
 }) {
   return (
     <button
+      type="button"
       onClick={onClick}
       aria-label={label}
+      className="ui-icon-button"
       style={{
-        width: 32,
-        height: 32,
-        borderRadius: 10,
-        border: `0.5px solid ${t.border}`,
-        background: dark ? "rgba(255,255,255,0.04)" : "rgba(0,0,0,0.03)",
+        width: 38,
+        height: 38,
+        borderRadius: 13,
+        border: `1px solid ${t.border}`,
+        background: t.inputBg,
         color: t.text,
         cursor: "pointer",
         display: "inline-flex",
         alignItems: "center",
         justifyContent: "center",
-        fontSize: 14,
-        fontWeight: 700,
-        flexShrink: 0,
+        fontSize: 15,
+        fontWeight: 800,
       }}
     >
-      {label === "previous" ? "←" : "→"}
+      {children}
     </button>
   );
 }
 
-function MinimalTabs({
-  projects,
-  activeId,
-  onSelect,
-  onPrev,
-  onNext,
-  dark,
-  t,
-  sticky = false,
-}: {
-  projects: Reference[];
-  activeId: string;
-  onSelect: (id: string) => void;
-  onPrev: () => void;
-  onNext: () => void;
-  dark: boolean;
-  t: ReturnType<typeof getTokens>;
-  sticky?: boolean;
-}) {
-  if (projects.length <= 1) return null;
-
-  return (
-    <div
-      style={{
-        padding: "12px 14px",
-        borderBottom: `0.5px solid ${t.border}`,
-        background: sticky
-          ? t.stickyBg
-          : dark
-          ? "rgba(0,0,0,0.16)"
-          : "rgba(0,0,0,0.015)",
-        backdropFilter: sticky ? "blur(12px)" : "none",
-        position: sticky ? "sticky" : "relative",
-        top: sticky ? 0 : undefined,
-        zIndex: sticky ? 8 : 1,
-      }}
-    >
-      <div
-        style={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          gap: 10,
-          marginBottom: 10,
-          flexWrap: "wrap",
-        }}
-      >
-        <div
-          style={{
-            color: t.textMuted,
-            fontSize: 10,
-            fontWeight: 700,
-            letterSpacing: ".08em",
-            textTransform: "uppercase",
-          }}
-        >
-          {projects.length} projets
-        </div>
-
-        <div style={{ display: "flex", gap: 8 }}>
-          <ArrowButton
-            onClick={onPrev}
-            dark={dark}
-            t={t}
-            label="previous"
-          />
-          <ArrowButton
-            onClick={onNext}
-            dark={dark}
-            t={t}
-            label="next"
-          />
-        </div>
-      </div>
-
-      <div
-        className="tabs-scroll"
-        style={{
-          display: "flex",
-          gap: 8,
-          overflowX: "auto",
-          scrollbarWidth: "thin",
-          paddingBottom: 2,
-        }}
-      >
-        {projects.map((project) => {
-          const active = activeId === project.id;
-
-          return (
-            <button
-              key={project.id}
-              onClick={() => onSelect(project.id)}
-              style={{
-                flexShrink: 0,
-                border: active
-                  ? `1px solid ${ORANGE}`
-                  : `0.5px solid ${t.border}`,
-                background: active
-                  ? dark
-                    ? "rgba(239,159,39,0.10)"
-                    : "rgba(239,159,39,0.08)"
-                  : "transparent",
-                color: active ? t.text : t.textSoft,
-                borderRadius: 999,
-                padding: "8px 12px",
-                cursor: "pointer",
-                display: "flex",
-                alignItems: "center",
-                gap: 8,
-                minWidth: 0,
-              }}
-            >
-              <span
-                style={{
-                  width: 8,
-                  height: 8,
-                  borderRadius: "50%",
-                  background: active
-                    ? ORANGE
-                    : dark
-                    ? "rgba(255,255,255,.18)"
-                    : "rgba(0,0,0,.16)",
-                  flexShrink: 0,
-                }}
-              />
-              <span
-                style={{
-                  fontSize: 11,
-                  fontWeight: 700,
-                  whiteSpace: "nowrap",
-                }}
-              >
-                {project.client}
-              </span>
-              <span
-                style={{
-                  fontSize: 10,
-                  color: active ? ORANGE : t.textMuted,
-                  whiteSpace: "nowrap",
-                }}
-              >
-                {project.date}
-              </span>
-            </button>
-          );
-        })}
-      </div>
-    </div>
-  );
-}
-
-function FilterSection({
-  title,
-  children,
-  t,
-}: {
-  title: string;
-  children: React.ReactNode;
-  t: ReturnType<typeof getTokens>;
-}) {
-  return (
-    <div style={{ marginBottom: 20 }}>
-      <p
-        style={{
-          color: t.textMuted,
-          fontSize: 10,
-          fontWeight: 600,
-          marginBottom: 10,
-        }}
-      >
-        {title}
-      </p>
-      <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>{children}</div>
-    </div>
-  );
-}
-
-function FilterPill({
+function FilterChip({
   active,
   label,
   onClick,
@@ -315,14 +167,17 @@ function FilterPill({
 }) {
   return (
     <button
+      type="button"
       onClick={onClick}
+      className="filter-chip"
       style={{
+        border: `1px solid ${active ? "rgba(239,159,39,0.55)" : t.border}`,
         background: active ? ORANGE : "transparent",
-        border: `0.5px solid ${active ? "transparent" : t.border}`,
-        borderRadius: 20,
-        padding: "4px 10px",
-        fontSize: 10,
-        color: active ? "white" : t.textSoft,
+        color: active ? "#1A0D00" : t.textSoft,
+        borderRadius: 999,
+        padding: "8px 11px",
+        fontSize: 11,
+        fontWeight: 850,
         cursor: "pointer",
       }}
     >
@@ -331,38 +186,91 @@ function FilterPill({
   );
 }
 
-function StatBadge({
+function FilterBlock({
+  title,
+  children,
+  t,
+}: {
+  title: string;
+  children: ReactNode;
+  t: ReturnType<typeof getTokens>;
+}) {
+  return (
+    <section style={{ display: "grid", gap: 10 }}>
+      <p
+        style={{
+          margin: 0,
+          color: t.textMuted,
+          fontSize: 10,
+          fontWeight: 900,
+          letterSpacing: "0.1em",
+          textTransform: "uppercase",
+        }}
+      >
+        {title}
+      </p>
+
+      <div
+        style={{
+          display: "flex",
+          flexWrap: "wrap",
+          gap: 8,
+        }}
+      >
+        {children}
+      </div>
+    </section>
+  );
+}
+
+function StatCard({
   value,
   label,
+  icon,
   t,
 }: {
   value: string;
   label: string;
+  icon: string;
   t: ReturnType<typeof getTokens>;
 }) {
   return (
-    <div style={{ textAlign: "center" }}>
-      <p
+    <div
+      style={{
+        minWidth: 78,
+        padding: "8px 10px",
+        borderRadius: 15,
+        background: t.inputBg,
+        border: `1px solid ${t.border}`,
+        display: "grid",
+        gap: 2,
+      }}
+    >
+      <span style={{ fontSize: 13 }}>{icon}</span>
+
+      <strong
         style={{
-          color: ORANGE,
-          fontWeight: 700,
-          fontSize: 17,
+          color: t.text,
+          fontSize: 15,
           lineHeight: 1,
+          fontWeight: 950,
+          letterSpacing: "-0.04em",
         }}
       >
         {value}
-      </p>
-      <p
+      </strong>
+
+      <span
         style={{
           color: t.textMuted,
           fontSize: 9,
-          marginTop: 3,
+          fontWeight: 850,
           textTransform: "uppercase",
-          letterSpacing: "0.8px",
+          letterSpacing: "0.07em",
         }}
       >
         {label}
-      </p>
+      </span>
     </div>
   );
 }
@@ -381,22 +289,275 @@ function MetricCard({
   return (
     <div
       style={{
-        background: t.sidebarBg,
-        borderRadius: 12,
-        padding: "12px",
-        border: `0.5px solid ${t.border}`,
+        padding: 15,
+        borderRadius: 20,
+        background: t.inputBg,
+        border: `1px solid ${t.border}`,
+        display: "flex",
+        alignItems: "center",
+        gap: 11,
       }}
     >
-      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-        <span style={{ fontSize: 20 }}>{icon}</span>
-        <div>
-          <p style={{ color: t.textMuted, fontSize: 10, marginBottom: 2 }}>
-            {label}
-          </p>
-          <p style={{ color: t.text, fontSize: 13, fontWeight: 600 }}>
-            {value}
-          </p>
+      <span style={{ fontSize: 24 }}>{icon}</span>
+
+      <div style={{ minWidth: 0 }}>
+        <p
+          style={{
+            margin: "0 0 4px",
+            color: t.textMuted,
+            fontSize: 10,
+            fontWeight: 900,
+            letterSpacing: "0.08em",
+            textTransform: "uppercase",
+          }}
+        >
+          {label}
+        </p>
+
+        <p
+          style={{
+            margin: 0,
+            color: t.text,
+            fontSize: 13,
+            fontWeight: 850,
+            lineHeight: 1.35,
+          }}
+        >
+          {value}
+        </p>
+      </div>
+    </div>
+  );
+}
+
+function ToolbarActions({
+  open,
+  onToggle,
+  viewMode,
+  t,
+}: {
+  open: boolean;
+  onToggle: () => void;
+  viewMode: ViewMode;
+  t: ReturnType<typeof getTokens>;
+}) {
+  const isListMode = viewMode === "list";
+
+  return (
+    <div
+      style={{
+        position: "fixed",
+        right: 22,
+        top: isListMode ? 22 : undefined,
+        bottom: isListMode ? undefined : open ? 84 : 22,
+        zIndex: 1600,
+        display: "flex",
+        alignItems: "center",
+        gap: 8,
+      }}
+    >
+      <Link
+        href="/"
+        className="command-toggle"
+        title="Retour à l’accueil"
+        style={{
+          height: 38,
+          padding: "0 13px",
+          borderRadius: 999,
+          border: `1px solid ${t.border}`,
+          background: t.glassStrong,
+          color: t.text,
+          boxShadow: t.shadowSoft,
+          cursor: "pointer",
+          fontSize: 12,
+          fontWeight: 950,
+          display: "inline-flex",
+          alignItems: "center",
+          gap: 8,
+          backdropFilter: "blur(18px)",
+          textDecoration: "none",
+        }}
+      >
+        <span style={{ fontSize: 14, lineHeight: 1 }}>←</span>
+        <span>Accueil</span>
+      </Link>
+
+      <button
+        type="button"
+        onClick={onToggle}
+        className="command-toggle"
+        aria-pressed={open}
+        title={open ? "Masquer les outils" : "Afficher les outils"}
+        style={{
+          height: 38,
+          padding: "0 13px",
+          borderRadius: 999,
+          border: `1px solid ${open ? t.border : t.orangeBorder}`,
+          background: open ? t.glassStrong : ORANGE,
+          color: open ? t.text : "#1A0D00",
+          boxShadow: t.shadowSoft,
+          cursor: "pointer",
+          fontSize: 12,
+          fontWeight: 950,
+          display: "inline-flex",
+          alignItems: "center",
+          gap: 8,
+          backdropFilter: "blur(18px)",
+        }}
+      >
+        <span
+          style={{
+            width: 7,
+            height: 7,
+            borderRadius: 999,
+            background: open ? ORANGE : "#1A0D00",
+          }}
+        />
+
+        <span>Outils</span>
+
+        <span
+          style={{
+            fontSize: 13,
+            lineHeight: 1,
+            transform: open ? "rotate(180deg)" : "rotate(0deg)",
+            transition: "transform 0.18s ease",
+          }}
+        >
+          ↑
+        </span>
+      </button>
+    </div>
+  );
+}
+
+function ProjectTabs({
+  projects,
+  activeId,
+  onSelect,
+  onPrev,
+  onNext,
+  t,
+  sticky = false,
+}: {
+  projects: Reference[];
+  activeId: string;
+  onSelect: (id: string) => void;
+  onPrev: () => void;
+  onNext: () => void;
+  t: ReturnType<typeof getTokens>;
+  sticky?: boolean;
+}) {
+  if (projects.length <= 1) return null;
+
+  return (
+    <div
+      style={{
+        position: sticky ? "sticky" : "relative",
+        top: sticky ? 0 : undefined,
+        zIndex: sticky ? 8 : 1,
+        padding: "13px 14px",
+        borderBottom: `1px solid ${t.border}`,
+        background: sticky ? t.glassStrong : t.panelBg,
+        backdropFilter: sticky ? "blur(16px)" : "none",
+      }}
+    >
+      <div
+        style={{
+          marginBottom: 10,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          gap: 12,
+        }}
+      >
+        <span
+          style={{
+            color: t.textMuted,
+            fontSize: 10,
+            fontWeight: 900,
+            letterSpacing: "0.1em",
+            textTransform: "uppercase",
+          }}
+        >
+          {projects.length} projets dans ce pays
+        </span>
+
+        <div style={{ display: "flex", gap: 8 }}>
+          <IconButton onClick={onPrev} label="Projet précédent" t={t}>
+            ←
+          </IconButton>
+
+          <IconButton onClick={onNext} label="Projet suivant" t={t}>
+            →
+          </IconButton>
         </div>
+      </div>
+
+      <div
+        className="tabs-scroll"
+        style={{
+          display: "flex",
+          gap: 8,
+          overflowX: "auto",
+          paddingBottom: 2,
+        }}
+      >
+        {projects.map((project) => {
+          const active = activeId === project.id;
+
+          return (
+            <button
+              key={project.id}
+              type="button"
+              onClick={() => onSelect(project.id)}
+              className="project-tab"
+              style={{
+                flexShrink: 0,
+                border: `1px solid ${
+                  active ? "rgba(239,159,39,0.55)" : t.border
+                }`,
+                background: active ? t.orangeSoft : "transparent",
+                color: active ? t.text : t.textSoft,
+                borderRadius: 999,
+                padding: "9px 12px",
+                cursor: "pointer",
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 8,
+              }}
+            >
+              <span
+                style={{
+                  width: 8,
+                  height: 8,
+                  borderRadius: 999,
+                  background: active ? ORANGE : t.textMuted,
+                }}
+              />
+
+              <span
+                style={{
+                  fontSize: 11,
+                  fontWeight: 850,
+                  whiteSpace: "nowrap",
+                }}
+              >
+                {project.client}
+              </span>
+
+              <span
+                style={{
+                  fontSize: 10,
+                  color: active ? ORANGE : t.textMuted,
+                  whiteSpace: "nowrap",
+                }}
+              >
+                {project.date}
+              </span>
+            </button>
+          );
+        })}
       </div>
     </div>
   );
@@ -406,10 +567,15 @@ export default function MapReferences() {
   const { dark } = useTheme();
   const t = getTokens(dark);
 
+  const darkRef = useRef(dark);
+
   const [references, setReferences] = useState<Reference[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadingMap, setLoadingMap] = useState(true);
   const [isMapReady, setIsMapReady] = useState(false);
+
+  const [viewMode, setViewMode] = useState<ViewMode>("map");
+  const [commandBarOpen, setCommandBarOpen] = useState(true);
 
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
@@ -455,15 +621,27 @@ export default function MapReferences() {
   });
 
   useEffect(() => {
+    darkRef.current = dark;
+  }, [dark]);
+
+  useEffect(() => {
+    if (!commandBarOpen) {
+      setFilterPanelOpen(false);
+    }
+  }, [commandBarOpen]);
+
+  useEffect(() => {
     const loadReferences = async () => {
       try {
         setLoading(true);
-        const res = await fetch("/api/public/references", {
+
+        const response = await fetch("/api/public/references", {
           cache: "no-store",
         });
-        const data = await res.json();
 
-        if (!res.ok) {
+        const data = await response.json();
+
+        if (!response.ok) {
           throw new Error(data?.error || "Erreur de chargement");
         }
 
@@ -471,8 +649,9 @@ export default function MapReferences() {
       } catch (error) {
         console.error(error);
         setReferences([]);
+
         setShowNotification({
-          message: "Impossible de charger les références publiques",
+          message: "Impossible de charger les références publiques.",
           type: "error",
         });
       } finally {
@@ -486,27 +665,32 @@ export default function MapReferences() {
   const showTemporaryNotification = useCallback(
     (message: string, type: "success" | "info" | "error" = "success") => {
       setShowNotification({ message, type });
-      setTimeout(() => setShowNotification(null), 3000);
+
+      setTimeout(() => {
+        setShowNotification(null);
+      }, 3000);
     },
     []
   );
 
   useEffect(() => {
-    const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape") {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
         setModalData((prev) => ({ ...prev, visible: false }));
         setTooltipData((prev) => ({ ...prev, visible: false }));
+        setFilterPanelOpen(false);
         return;
       }
 
       if (modalData.visible && modalData.projects.length > 1) {
-        if (e.key === "ArrowRight") {
+        if (event.key === "ArrowRight") {
           setModalData((prev) => ({
             ...prev,
             activeTabId: getNextId(prev.projects, prev.activeTabId, 1),
           }));
         }
-        if (e.key === "ArrowLeft") {
+
+        if (event.key === "ArrowLeft") {
           setModalData((prev) => ({
             ...prev,
             activeTabId: getNextId(prev.projects, prev.activeTabId, -1),
@@ -516,57 +700,76 @@ export default function MapReferences() {
     };
 
     window.addEventListener("keydown", onKeyDown);
+
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [modalData.visible, modalData.projects.length]);
 
-  const ALL_CATEGORIES = useMemo(
-    () => Array.from(new Set(references.map((r) => r.category))).sort(),
+  const allCategories = useMemo(
+    () =>
+      Array.from(
+        new Set(references.map((reference) => reference.category))
+      ).sort(),
     [references]
   );
 
-  const ALL_TECHNOLOGIES = useMemo(
-    () => Array.from(new Set(references.flatMap((r) => r.technologies || []))).sort(),
+  const allTechnologies = useMemo(
+    () =>
+      Array.from(
+        new Set(references.flatMap((reference) => reference.technologies || []))
+      ).sort(),
     [references]
   );
 
-  const ALL_YEARS = useMemo(
-    () => Array.from(new Set(references.map((r) => r.date))).sort().reverse(),
+  const allYears = useMemo(
+    () =>
+      Array.from(new Set(references.map((reference) => reference.date)))
+        .sort()
+        .reverse(),
     [references]
   );
 
-  const ALL_TAGS = useMemo(
-    () => Array.from(new Set(references.flatMap((r) => r.tags || []))).sort(),
+  const allTags = useMemo(
+    () =>
+      Array.from(
+        new Set(references.flatMap((reference) => reference.tags || []))
+      ).sort(),
     [references]
   );
 
   const filteredReferences = useMemo(() => {
-    const filtered = references.filter((ref) => {
-      const q = searchQuery.toLowerCase();
+    const filtered = references.filter((reference) => {
+      const query = searchQuery.toLowerCase();
 
       const matchesSearch =
         searchQuery === "" ||
-        ref.title.toLowerCase().includes(q) ||
-        ref.client.toLowerCase().includes(q) ||
-        ref.country.toLowerCase().includes(q) ||
-        stripHtml(ref.excerpt).toLowerCase().includes(q) ||
-        stripHtml(ref.details).toLowerCase().includes(q) ||
-        (ref.tags || []).some((tag) => tag.toLowerCase().includes(q)) ||
-        (ref.technologies || []).some((tech) => tech.toLowerCase().includes(q));
+        reference.title.toLowerCase().includes(query) ||
+        reference.client.toLowerCase().includes(query) ||
+        reference.country.toLowerCase().includes(query) ||
+        stripHtml(reference.excerpt).toLowerCase().includes(query) ||
+        stripHtml(reference.details).toLowerCase().includes(query) ||
+        (reference.tags || []).some((tag) =>
+          tag.toLowerCase().includes(query)
+        ) ||
+        (reference.technologies || []).some((tech) =>
+          tech.toLowerCase().includes(query)
+        );
 
       const matchesCategory =
         selectedCategories.length === 0 ||
-        selectedCategories.includes(ref.category);
+        selectedCategories.includes(reference.category);
 
       const matchesTechnology =
         selectedTechnologies.length === 0 ||
-        (ref.technologies || []).some((tech) => selectedTechnologies.includes(tech));
+        (reference.technologies || []).some((tech) =>
+          selectedTechnologies.includes(tech)
+        );
 
       const matchesYear =
-        selectedYears.length === 0 || selectedYears.includes(ref.date);
+        selectedYears.length === 0 || selectedYears.includes(reference.date);
 
       const matchesTag =
         selectedTags.length === 0 ||
-        (ref.tags || []).some((tag) => selectedTags.includes(tag));
+        (reference.tags || []).some((tag) => selectedTags.includes(tag));
 
       return (
         matchesSearch &&
@@ -580,9 +783,11 @@ export default function MapReferences() {
     filtered.sort((a, b) => {
       if (sortBy === "date") return b.date.localeCompare(a.date);
       if (sortBy === "client") return a.client.localeCompare(b.client);
+
       if (sortBy === "impact") {
         return (b.impact?.length || 0) - (a.impact?.length || 0);
       }
+
       return 0;
     });
 
@@ -599,10 +804,15 @@ export default function MapReferences() {
 
   const referencesByCountry = useMemo(() => {
     const grouped = new Map<string, Reference[]>();
-    filteredReferences.forEach((ref) => {
-      if (!grouped.has(ref.country)) grouped.set(ref.country, []);
-      grouped.get(ref.country)!.push(ref);
+
+    filteredReferences.forEach((reference) => {
+      if (!grouped.has(reference.country)) {
+        grouped.set(reference.country, []);
+      }
+
+      grouped.get(reference.country)!.push(reference);
     });
+
     return grouped;
   }, [filteredReferences]);
 
@@ -610,28 +820,31 @@ export default function MapReferences() {
     () => ({
       countries: referencesByCountry.size,
       projects: filteredReferences.length,
-      sectors: new Set(filteredReferences.map((r) => r.category)).size,
-      totalImpact: filteredReferences.reduce(
-        (sum, r) => sum + Number(r.impact?.match(/\d+/)?.[0] || "0"),
-        0
-      ),
+      sectors: new Set(filteredReferences.map((reference) => reference.category))
+        .size,
+      technologies: new Set(
+        filteredReferences.flatMap((reference) => reference.technologies || [])
+      ).size,
     }),
     [filteredReferences, referencesByCountry]
   );
 
-  const hasActiveFilters =
-    searchQuery !== "" ||
-    selectedCategories.length > 0 ||
-    selectedTechnologies.length > 0 ||
-    selectedYears.length > 0 ||
-    selectedTags.length > 0;
+  const activeFiltersCount =
+    (searchQuery ? 1 : 0) +
+    selectedCategories.length +
+    selectedTechnologies.length +
+    selectedYears.length +
+    selectedTags.length;
+
+  const hasActiveFilters = activeFiltersCount > 0;
 
   const tooltipActiveProject =
-    tooltipData.projects.find((p) => p.id === tooltipData.activeTabId) ||
-    tooltipData.projects[0];
+    tooltipData.projects.find(
+      (project) => project.id === tooltipData.activeTabId
+    ) || tooltipData.projects[0];
 
   const modalActiveProject =
-    modalData.projects.find((p) => p.id === modalData.activeTabId) ||
+    modalData.projects.find((project) => project.id === modalData.activeTabId) ||
     modalData.projects[0];
 
   const getTileUrl = useCallback(
@@ -671,64 +884,44 @@ export default function MapReferences() {
     clearAllMarkers();
 
     referencesByCountry.forEach((refs, country) => {
-      const avgLat = refs.reduce((sum, r) => sum + r.lat, 0) / refs.length;
-      const avgLng = refs.reduce((sum, r) => sum + r.lng, 0) / refs.length;
-      const nbProjects = refs.length;
+      const avgLat =
+        refs.reduce((sum, reference) => sum + reference.lat, 0) / refs.length;
+
+      const avgLng =
+        refs.reduce((sum, reference) => sum + reference.lng, 0) / refs.length;
+
+      const projectCount = refs.length;
+      const size = projectCount > 1 ? 56 : 46;
 
       const iconHtml = `
-        <div style="display:flex;flex-direction:column;align-items:center;cursor:pointer;user-select:none;position:relative;">
-          <div style="
-            width:${nbProjects > 1 ? 52 : 42}px;
-            height:${nbProjects > 1 ? 52 : 42}px;
-            border-radius:50%;
-            border:3px solid ${ORANGE};
-            background:${dark ? "#1a1916" : "white"};
-            overflow:hidden;
-            position:relative;
-            box-shadow:0 2px 12px rgba(0,0,0,0.3);
+        <div class="md2i-marker">
+          <div class="md2i-marker-core" style="
+            width:${size}px;
+            height:${size}px;
+            background:${dark ? "#151519" : "#ffffff"};
           ">
-            <div style="
-              position:absolute;inset:-5px;border-radius:50%;
-              border:2px solid ${ORANGE};
-              animation:md2iPulse 2.4s ease-out infinite;
-            "></div>
+            <span class="md2i-marker-pulse"></span>
             <img
               src="https://flagicons.lipis.dev/flags/4x3/${refs[0].code}.svg"
               alt="${country}"
-              style="width:100%;height:100%;object-fit:cover;display:block;"
               loading="lazy"
             />
             ${
-              nbProjects > 1
-                ? `<div style="
-                    position:absolute;
-                    bottom:-5px;
-                    right:-5px;
-                    background:${ORANGE};
-                    color:white;
-                    font-size:10px;
-                    font-weight:bold;
-                    width:18px;
-                    height:18px;
-                    border-radius:50%;
-                    display:flex;
-                    align-items:center;
-                    justify-content:center;
-                    border:2px solid ${dark ? "#0f0e0d" : "white"};
-                  ">${nbProjects}</div>`
+              projectCount > 1
+                ? `<strong class="md2i-marker-count">${projectCount}</strong>`
                 : ""
             }
           </div>
-          <div style="width:2px;height:11px;background:${ORANGE};"></div>
-          <div style="width:6px;height:6px;border-radius:50%;background:${ORANGE};opacity:0.55;"></div>
+          <span class="md2i-marker-stem"></span>
+          <span class="md2i-marker-dot"></span>
         </div>
       `;
 
       const icon = L.divIcon({
         html: iconHtml,
         className: "",
-        iconSize: [nbProjects > 1 ? 60 : 44, nbProjects > 1 ? 74 : 58],
-        iconAnchor: [nbProjects > 1 ? 30 : 22, nbProjects > 1 ? 74 : 58],
+        iconSize: [size + 12, size + 34],
+        iconAnchor: [(size + 12) / 2, size + 34],
       });
 
       const marker = L.marker([avgLat, avgLng], { icon }).addTo(map);
@@ -736,16 +929,19 @@ export default function MapReferences() {
       if (!markersRef.current[country]) {
         markersRef.current[country] = [];
       }
+
       markersRef.current[country].push(marker);
 
-      marker.on("mouseover", (e: any) => {
+      marker.on("mouseover", (event: any) => {
         if (hideTimerRef.current) clearTimeout(hideTimerRef.current);
-        const mapRect = mapContainerRef.current!.getBoundingClientRect();
+        if (!mapContainerRef.current) return;
+
+        const mapRect = mapContainerRef.current.getBoundingClientRect();
 
         setTooltipData({
           visible: true,
-          x: mapRect.left + e.containerPoint.x,
-          y: mapRect.top + e.containerPoint.y,
+          x: mapRect.left + event.containerPoint.x,
+          y: mapRect.top + event.containerPoint.y,
           projects: refs,
           activeTabId: refs[0].id,
         });
@@ -754,11 +950,12 @@ export default function MapReferences() {
       marker.on("mouseout", () => {
         hideTimerRef.current = setTimeout(() => {
           setTooltipData((prev) => ({ ...prev, visible: false }));
-        }, 200);
+        }, 180);
       });
 
       marker.on("click", () => {
         setTooltipData((prev) => ({ ...prev, visible: false }));
+
         setModalData({
           visible: true,
           projects: refs,
@@ -783,14 +980,20 @@ export default function MapReferences() {
       L.Icon.Default.mergeOptions({
         iconRetinaUrl:
           "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png",
-        iconUrl:
-          "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png",
+        iconUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png",
         shadowUrl:
           "https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png",
       });
 
-      const rawContainer = container as HTMLDivElement & { _leaflet_id?: number };
-      if (rawContainer._leaflet_id) delete rawContainer._leaflet_id;
+      const rawContainer = container as HTMLDivElement & {
+        _leaflet_id?: number;
+      };
+
+      if (rawContainer._leaflet_id) {
+        delete rawContainer._leaflet_id;
+      }
+
+      const initialDark = darkRef.current;
 
       const map = L.map(container, {
         center: [20, 10],
@@ -808,8 +1011,8 @@ export default function MapReferences() {
 
       leafletMapRef.current = map;
 
-      tileLayerRef.current = L.tileLayer(getTileUrl(dark), {
-        attribution: getTileAttribution(dark),
+      tileLayerRef.current = L.tileLayer(getTileUrl(initialDark), {
+        attribution: getTileAttribution(initialDark),
         maxZoom: 19,
         crossOrigin: "anonymous",
       }).addTo(map);
@@ -833,6 +1036,7 @@ export default function MapReferences() {
         try {
           tileLayerRef.current.remove();
         } catch {}
+
         tileLayerRef.current = null;
       }
 
@@ -845,7 +1049,10 @@ export default function MapReferences() {
         const rawContainer = mapContainerRef.current as HTMLDivElement & {
           _leaflet_id?: number;
         };
-        if (rawContainer._leaflet_id) delete rawContainer._leaflet_id;
+
+        if (rawContainer._leaflet_id) {
+          delete rawContainer._leaflet_id;
+        }
       }
 
       setIsMapReady(false);
@@ -881,12 +1088,53 @@ export default function MapReferences() {
 
   useEffect(() => {
     if (!isMapReady) return;
+
     updateMarkers();
   }, [isMapReady, updateMarkers]);
+
+  const resetMapView = () => {
+    if (!leafletMapRef.current) return;
+
+    leafletMapRef.current.setView([20, 10], 3, {
+      animate: true,
+      duration: 0.8,
+    });
+
+    showTemporaryNotification("Carte recentrée.", "info");
+  };
+
+  const focusFilteredReferences = async () => {
+    if (!leafletMapRef.current || filteredReferences.length === 0) return;
+
+    const L = (await import("leaflet")).default;
+    const bounds = L.latLngBounds(
+      filteredReferences.map((reference) => [reference.lat, reference.lng])
+    );
+
+    leafletMapRef.current.fitBounds(bounds, {
+      padding: [80, 80],
+      maxZoom: 6,
+      animate: true,
+    });
+
+    showTemporaryNotification("Vue ajustée aux résultats.", "info");
+  };
+
+  const openProjectDetails = (reference: Reference) => {
+    const sameCountryProjects =
+      referencesByCountry.get(reference.country) || [reference];
+
+    setModalData({
+      visible: true,
+      projects: sameCountryProjects,
+      activeTabId: reference.id,
+    });
+  };
 
   const goTooltip = (direction: 1 | -1) => {
     setTooltipData((prev) => {
       if (prev.projects.length <= 1) return prev;
+
       return {
         ...prev,
         activeTabId: getNextId(prev.projects, prev.activeTabId, direction),
@@ -897,6 +1145,7 @@ export default function MapReferences() {
   const goModal = (direction: 1 | -1) => {
     setModalData((prev) => {
       if (prev.projects.length <= 1) return prev;
+
       return {
         ...prev,
         activeTabId: getNextId(prev.projects, prev.activeTabId, direction),
@@ -907,26 +1156,28 @@ export default function MapReferences() {
   const toggleCategory = (category: string) => {
     setSelectedCategories((prev) =>
       prev.includes(category)
-        ? prev.filter((c) => c !== category)
+        ? prev.filter((item) => item !== category)
         : [...prev, category]
     );
   };
 
-  const toggleTechnology = (tech: string) => {
+  const toggleTechnology = (technology: string) => {
     setSelectedTechnologies((prev) =>
-      prev.includes(tech) ? prev.filter((t) => t !== tech) : [...prev, tech]
+      prev.includes(technology)
+        ? prev.filter((item) => item !== technology)
+        : [...prev, technology]
     );
   };
 
   const toggleYear = (year: string) => {
     setSelectedYears((prev) =>
-      prev.includes(year) ? prev.filter((y) => y !== year) : [...prev, year]
+      prev.includes(year) ? prev.filter((item) => item !== year) : [...prev, year]
     );
   };
 
   const toggleTag = (tag: string) => {
     setSelectedTags((prev) =>
-      prev.includes(tag) ? prev.filter((t) => t !== tag) : [...prev, tag]
+      prev.includes(tag) ? prev.filter((item) => item !== tag) : [...prev, tag]
     );
   };
 
@@ -936,7 +1187,8 @@ export default function MapReferences() {
     setSelectedTechnologies([]);
     setSelectedYears([]);
     setSelectedTags([]);
-    showTemporaryNotification("Filtres réinitialisés", "info");
+
+    showTemporaryNotification("Filtres réinitialisés.", "info");
   };
 
   const exportToCSV = () => {
@@ -953,58 +1205,62 @@ export default function MapReferences() {
       "Détails",
     ];
 
-    const rows = filteredReferences.map((r) => [
-      r.client,
-      r.title,
-      r.country,
-      r.category,
-      r.date,
-      r.impact || "-",
-      (r.technologies || []).join(", "),
-      (r.tags || []).join(", "),
-      stripHtml(r.excerpt),
-      stripHtml(r.details),
+    const rows = filteredReferences.map((reference) => [
+      reference.client,
+      reference.title,
+      reference.country,
+      reference.category,
+      reference.date,
+      reference.impact || "-",
+      (reference.technologies || []).join(", "),
+      (reference.tags || []).join(", "),
+      stripHtml(reference.excerpt),
+      stripHtml(reference.details),
     ]);
 
     const csv = [headers, ...rows]
       .map((row) =>
-        row
-          .map((cell) => `"${String(cell).replace(/"/g, '""')}"`)
-          .join(",")
+        row.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(",")
       )
       .join("\n");
 
-    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const blob = new Blob([csv], {
+      type: "text/csv;charset=utf-8;",
+    });
+
     const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = "md2i-references.csv";
-    a.click();
+    const anchor = document.createElement("a");
+
+    anchor.href = url;
+    anchor.download = "md2i-references.csv";
+    anchor.click();
+
     URL.revokeObjectURL(url);
 
-    showTemporaryNotification("Export CSV réussi", "success");
+    showTemporaryNotification("Export CSV réussi.", "success");
   };
 
   const ttLeft = (() => {
-    const W = 390;
-    const OFFSET = 20;
-    let left = tooltipData.x + OFFSET;
+    const width = 390;
+    const offset = 20;
+    let left = tooltipData.x + offset;
 
-    if (typeof window !== "undefined" && left + W > window.innerWidth - 16) {
-      left = tooltipData.x - W - OFFSET;
+    if (typeof window !== "undefined" && left + width > window.innerWidth - 16) {
+      left = tooltipData.x - width - offset;
     }
 
     return left;
   })();
 
   const ttTop = (() => {
-    const H = tooltipData.projects.length > 1 ? 520 : 420;
-    let top = tooltipData.y - H / 2;
+    const height = tooltipData.projects.length > 1 ? 520 : 420;
+    let top = tooltipData.y - height / 2;
 
     if (typeof window !== "undefined") {
-      if (top < 60) top = 60;
-      if (top + H > window.innerHeight - 16) {
-        top = window.innerHeight - H - 16;
+      if (top < 70) top = 70;
+
+      if (top + height > window.innerHeight - 18) {
+        top = window.innerHeight - height - 18;
       }
     }
 
@@ -1015,8 +1271,8 @@ export default function MapReferences() {
     <>
       <style>{`
         @keyframes md2iPulse {
-          0% { transform: scale(0.85); opacity: 0.75; }
-          100% { transform: scale(1.65); opacity: 0; }
+          0% { transform: scale(0.82); opacity: 0.72; }
+          100% { transform: scale(1.82); opacity: 0; }
         }
 
         @keyframes md2iTooltipIn {
@@ -1029,8 +1285,18 @@ export default function MapReferences() {
           to { opacity: 1; transform: scale(1) translateY(0); }
         }
 
-        @keyframes slideDown {
-          from { opacity: 0; transform: translateY(-10px); }
+        @keyframes drawerIn {
+          from { opacity: 0; transform: translateX(18px); }
+          to { opacity: 1; transform: translateX(0); }
+        }
+
+        @keyframes commandBarIn {
+          from { opacity: 0; transform: translateY(18px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+
+        @keyframes listIn {
+          from { opacity: 0; transform: translateY(12px); }
           to { opacity: 1; transform: translateY(0); }
         }
 
@@ -1039,25 +1305,91 @@ export default function MapReferences() {
           to { opacity: 1; transform: translateX(0); }
         }
 
+        .md2i-marker {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          cursor: pointer;
+          user-select: none;
+          position: relative;
+        }
+
+        .md2i-marker-core {
+          border-radius: 999px;
+          border: 3px solid ${ORANGE};
+          position: relative;
+          overflow: visible;
+          box-shadow: 0 14px 30px rgba(0,0,0,0.28);
+        }
+
+        .md2i-marker-core img {
+          width: 100%;
+          height: 100%;
+          border-radius: 999px;
+          object-fit: cover;
+          display: block;
+          overflow: hidden;
+        }
+
+        .md2i-marker-pulse {
+          position: absolute;
+          inset: -7px;
+          border-radius: 999px;
+          border: 2px solid ${ORANGE};
+          animation: md2iPulse 2.35s ease-out infinite;
+          z-index: -1;
+        }
+
+        .md2i-marker-count {
+          position: absolute;
+          right: -7px;
+          bottom: -7px;
+          width: 22px;
+          height: 22px;
+          border-radius: 999px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          background: ${ORANGE};
+          color: #1A0D00;
+          border: 2px solid ${dark ? "#09090B" : "#FFFFFF"};
+          font-size: 11px;
+          font-weight: 950;
+        }
+
+        .md2i-marker-stem {
+          width: 2px;
+          height: 13px;
+          background: ${ORANGE};
+        }
+
+        .md2i-marker-dot {
+          width: 7px;
+          height: 7px;
+          border-radius: 999px;
+          background: ${ORANGE};
+          opacity: 0.72;
+        }
+
         .rich-html {
           font-size: 14px;
-          line-height: 1.7;
+          line-height: 1.78;
         }
 
         .rich-html p {
-          margin: 0 0 10px;
+          margin: 0 0 11px;
         }
 
         .rich-html h1,
         .rich-html h2,
         .rich-html h3 {
           margin: 0 0 10px;
-          line-height: 1.3;
+          line-height: 1.25;
         }
 
         .rich-html ul,
         .rich-html ol {
-          margin: 0 0 10px;
+          margin: 0 0 12px;
           padding-left: 18px;
         }
 
@@ -1069,23 +1401,23 @@ export default function MapReferences() {
         .rich-html img {
           max-width: 100%;
           height: auto;
-          border-radius: 10px;
+          border-radius: 14px;
           display: block;
-          margin: 10px 0;
+          margin: 12px 0;
         }
 
         .rich-html blockquote {
-          margin: 10px 0;
-          padding-left: 12px;
+          margin: 12px 0;
+          padding-left: 13px;
           border-left: 3px solid ${ORANGE};
-          opacity: 0.9;
+          opacity: 0.92;
         }
 
         .rich-html pre {
           padding: 12px;
-          border-radius: 10px;
+          border-radius: 12px;
           overflow-x: auto;
-          background: ${dark ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.05)"};
+          background: ${dark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.05)"};
         }
 
         .clamp-2 {
@@ -1100,13 +1432,137 @@ export default function MapReferences() {
         }
 
         .tabs-scroll::-webkit-scrollbar-thumb {
-          background: ${dark ? "rgba(255,255,255,.16)" : "rgba(0,0,0,.12)"};
+          background: ${dark ? "rgba(255,255,255,.16)" : "rgba(0,0,0,.13)"};
           border-radius: 999px;
         }
 
-        @media (max-width: 960px) {
+        .reference-list-scroll::-webkit-scrollbar {
+          width: 8px;
+        }
+
+        .reference-list-scroll::-webkit-scrollbar-thumb {
+          background: ${dark ? "rgba(255,255,255,.15)" : "rgba(0,0,0,.14)"};
+          border-radius: 999px;
+        }
+
+        .filter-chip,
+        .project-tab,
+        .ui-icon-button,
+        .command-toggle,
+        .reference-card {
+          transition:
+            transform .18s ease,
+            border-color .18s ease,
+            background .18s ease,
+            color .18s ease,
+            box-shadow .18s ease;
+        }
+
+        .filter-chip:hover,
+        .project-tab:hover,
+        .ui-icon-button:hover,
+        .command-toggle:hover {
+          transform: translateY(-1px);
+          box-shadow: ${dark ? "0 10px 24px rgba(0,0,0,.28)" : "0 10px 24px rgba(17,17,17,.08)"};
+        }
+
+        .reference-card:hover {
+          transform: translateY(-4px);
+          border-color: rgba(239,159,39,0.36) !important;
+          box-shadow: ${dark ? "0 20px 52px rgba(0,0,0,.36)" : "0 20px 52px rgba(17,17,17,.12)"} !important;
+        }
+
+        .leaflet-control-zoom {
+          border: none !important;
+          box-shadow: ${dark ? "0 12px 30px rgba(0,0,0,.35)" : "0 12px 30px rgba(17,17,17,.12)"} !important;
+        }
+
+        .leaflet-control-zoom a {
+          background: ${dark ? "rgba(17,17,22,.92)" : "rgba(255,255,255,.92)"} !important;
+          color: ${dark ? "#F8F4EF" : "#111111"} !important;
+          border-bottom: 1px solid ${dark ? "rgba(255,255,255,.08)" : "rgba(17,17,17,.08)"} !important;
+        }
+
+        @media (max-width: 1180px) {
+          .reference-list-grid {
+            grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+          }
+        }
+
+        @media (max-width: 980px) {
+          .reference-top-panel {
+            left: 14px !important;
+            right: 14px !important;
+            width: auto !important;
+            max-width: none !important;
+          }
+
+          .reference-command-bar {
+            left: 14px !important;
+            right: 14px !important;
+            width: auto !important;
+          }
+
+          .reference-command-inner {
+            grid-template-columns: 1fr !important;
+          }
+
+          .reference-stats {
+            display: none !important;
+          }
+
+          .reference-filter-drawer {
+            left: 14px !important;
+            right: 14px !important;
+            width: auto !important;
+            top: 120px !important;
+          }
+
           .modal-top-grid {
             grid-template-columns: 1fr !important;
+          }
+
+          .modal-content-padding {
+            padding: 24px !important;
+          }
+        }
+
+        @media (max-width: 760px) {
+          .reference-list-grid {
+            grid-template-columns: 1fr !important;
+          }
+
+          .reference-list-page {
+            padding-left: 14px !important;
+            padding-right: 14px !important;
+          }
+
+          .reference-command-bar {
+            right: 14px !important;
+            left: 14px !important;
+            top: 72px !important;
+          }
+        }
+
+        @media (max-width: 640px) {
+          .reference-top-panel {
+            top: 14px !important;
+          }
+
+          .reference-title {
+            font-size: 21px !important;
+          }
+
+          .reference-command-actions {
+            flex-wrap: wrap !important;
+          }
+
+          .reference-command-actions button {
+            flex: 1 !important;
+          }
+
+          .reference-modal-hero {
+            height: 230px !important;
           }
         }
       `}</style>
@@ -1118,295 +1574,968 @@ export default function MapReferences() {
           height: "100vh",
           overflow: "hidden",
           background: t.bg,
-          transition: "background 0.35s",
+          transition: "background 0.35s ease",
+          fontFamily: "Inter, Arial, Helvetica, sans-serif",
         }}
       >
+        <div
+          ref={mapContainerRef}
+          style={{
+            position: "absolute",
+            inset: 0,
+            zIndex: 0,
+            opacity: viewMode === "map" ? 1 : 0,
+            pointerEvents: viewMode === "map" ? "auto" : "none",
+            transition: "opacity 0.22s ease",
+          }}
+        />
+
+        {viewMode === "map" && (
+          <div
+            aria-hidden="true"
+            style={{
+              position: "absolute",
+              inset: 0,
+              zIndex: 1,
+              pointerEvents: "none",
+              background: t.mapOverlay,
+            }}
+          />
+        )}
+
+        {viewMode === "map" && (
+          <section
+            className="reference-top-panel"
+            style={{
+              position: "fixed",
+              top: 96,
+              left: 22,
+              zIndex: 1000,
+              width: "min(470px, calc(100vw - 44px))",
+              padding: 18,
+              borderRadius: 26,
+              background: t.glass,
+              border: `1px solid ${t.border}`,
+              boxShadow: t.shadowSoft,
+              backdropFilter: "blur(18px)",
+            }}
+          >
+            <div
+              style={{
+                display: "flex",
+                alignItems: "flex-start",
+                justifyContent: "space-between",
+                gap: 14,
+              }}
+            >
+              <div>
+                <p
+                  style={{
+                    margin: "0 0 8px",
+                    color: ORANGE,
+                    fontSize: 11,
+                    fontWeight: 950,
+                    letterSpacing: "0.12em",
+                    textTransform: "uppercase",
+                  }}
+                >
+                  Références mondiales
+                </p>
+
+                <h1
+                  className="reference-title"
+                  style={{
+                    margin: 0,
+                    color: t.text,
+                    fontSize: 28,
+                    lineHeight: 1.05,
+                    fontWeight: 950,
+                    letterSpacing: "-0.055em",
+                  }}
+                >
+                  Carte interactive des projets MD2I
+                </h1>
+
+                <p
+                  style={{
+                    maxWidth: 400,
+                    margin: "10px 0 0",
+                    color: t.textSoft,
+                    fontSize: 13,
+                    lineHeight: 1.65,
+                    fontWeight: 650,
+                  }}
+                >
+                  Explorez les références par pays, secteur, technologie et
+                  année. Basculez en mode liste pour parcourir les projets plus
+                  facilement.
+                </p>
+              </div>
+
+              <div
+                style={{
+                  width: 46,
+                  height: 46,
+                  borderRadius: 16,
+                  background: t.orangeSoft,
+                  border: `1px solid ${t.orangeBorder}`,
+                  color: ORANGE,
+                  display: "grid",
+                  placeItems: "center",
+                  flexShrink: 0,
+                  fontSize: 22,
+                }}
+              >
+                🌍
+              </div>
+            </div>
+          </section>
+        )}
+
         {showNotification && (
           <div
             style={{
               position: "fixed",
-              top: 80,
-              right: 20,
-              zIndex: 2000,
+              top: 90,
+              right: 22,
+              zIndex: 2200,
+              padding: "13px 16px",
+              borderRadius: 16,
               background:
                 showNotification.type === "success"
-                  ? "#10b981"
+                  ? "#10B981"
                   : showNotification.type === "error"
-                  ? "#ef4444"
-                  : ORANGE,
-              color: "white",
-              padding: "12px 20px",
-              borderRadius: 12,
-              boxShadow: "0 4px 12px rgba(0,0,0,0.2)",
-              animation: "notificationSlide 0.3s ease",
+                    ? "#EF4444"
+                    : ORANGE,
+              color: showNotification.type === "info" ? "#1A0D00" : "#FFFFFF",
+              boxShadow: t.shadowSoft,
+              animation: "notificationSlide 0.25s ease",
               fontSize: 13,
-              fontWeight: 500,
+              fontWeight: 850,
             }}
           >
             {showNotification.message}
           </div>
         )}
 
-        <header
-          style={{
-            position: "fixed",
-            bottom: 0,
-            left: 0,
-            right: 0,
-            zIndex: 1000,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-            padding: "10px 20px",
-            background: t.headerBg,
-            borderBottom: `0.5px solid ${t.border}`,
-            backdropFilter: "blur(18px)",
-          }}
-        >
-          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-            <div>
-              <p
-                style={{
-                  color: t.textMuted,
-                  fontSize: 10,
-                  marginTop: 3,
-                }}
-              >
-                Références mondiales · Innovation & Transformation
-              </p>
-            </div>
-          </div>
+        <ToolbarActions
+          open={commandBarOpen}
+          onToggle={() => setCommandBarOpen((prev) => !prev)}
+          viewMode={viewMode}
+          t={t}
+        />
 
-          <div
+        {viewMode === "list" && (
+          <section
+            className="reference-list-page reference-list-scroll"
             style={{
-              display: "flex",
-              alignItems: "center",
-              gap: 10,
-              flex: 1,
-              maxWidth: 640,
-              margin: "0 24px",
-            }}
-          >
-            <div
-              style={{
-                flex: 1,
-                display: "flex",
-                alignItems: "center",
-                gap: 8,
-                background: dark
-                  ? "rgba(255,255,255,0.05)"
-                  : "rgba(0,0,0,0.04)",
-                border: `0.5px solid ${t.border}`,
-                borderRadius: 40,
-                padding: "6px 14px",
-              }}
-            >
-              <span style={{ fontSize: 14 }}>🔍</span>
-              <input
-                type="text"
-                placeholder="Rechercher..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                style={{
-                  flex: 1,
-                  background: "transparent",
-                  border: "none",
-                  outline: "none",
-                  color: t.text,
-                  fontSize: 12,
-                }}
-              />
-              {searchQuery && (
-                <button
-                  onClick={() => setSearchQuery("")}
-                  style={{
-                    background: "transparent",
-                    border: "none",
-                    cursor: "pointer",
-                    color: t.textMuted,
-                  }}
-                >
-                  ✕
-                </button>
-              )}
-            </div>
-
-            <button
-              onClick={() => setFilterPanelOpen(!filterPanelOpen)}
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: 6,
-                background: hasActiveFilters
-                  ? ORANGE
-                  : dark
-                  ? "rgba(255,255,255,0.05)"
-                  : "rgba(0,0,0,0.04)",
-                border: `0.5px solid ${hasActiveFilters ? "transparent" : t.border}`,
-                borderRadius: 40,
-                padding: "6px 14px",
-                cursor: "pointer",
-                color: hasActiveFilters ? "white" : t.text,
-                fontSize: 12,
-                fontWeight: 500,
-              }}
-            >
-              <span>⚙️</span>
-              Filtres
-            </button>
-
-            <button
-              onClick={exportToCSV}
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: 6,
-                background: dark
-                  ? "rgba(255,255,255,0.05)"
-                  : "rgba(0,0,0,0.04)",
-                border: `0.5px solid ${t.border}`,
-                borderRadius: 40,
-                padding: "6px 14px",
-                cursor: "pointer",
-                color: t.text,
-                fontSize: 12,
-              }}
-            >
-              📊 Exporter CSV
-            </button>
-          </div>
-
-          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            <div
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: 18,
-                background: dark
-                  ? "rgba(255,255,255,0.05)"
-                  : "rgba(0,0,0,0.04)",
-                border: `0.5px solid ${t.border}`,
-                borderRadius: 16,
-                padding: "8px 18px",
-              }}
-            >
-              <StatBadge value={String(stats.countries)} label="Pays" t={t} />
-              <div style={{ width: "0.5px", height: 28, background: t.border }} />
-              <StatBadge value={String(stats.projects)} label="Projets" t={t} />
-              <div style={{ width: "0.5px", height: 28, background: t.border }} />
-              <StatBadge value={String(stats.sectors)} label="Secteurs" t={t} />
-            </div>
-          </div>
-        </header>
-
-        {filterPanelOpen && (
-          <div
-            style={{
-              position: "absolute",
-              top: 70,
-              right: 20,
-              zIndex: 1001,
-              width: 360,
-              background: t.cardBg,
-              border: `0.5px solid ${t.borderStrong}`,
-              borderRadius: 20,
-              boxShadow: t.shadow,
-              padding: 16,
-              animation: "slideDown 0.2s ease",
-              maxHeight: "calc(100vh - 100px)",
+              position: "fixed",
+              inset: 0,
+              zIndex: 850,
               overflowY: "auto",
+              padding: commandBarOpen ? "96px 22px 34px" : "28px 22px 34px",
+              background: dark
+                ? "radial-gradient(circle at top left, rgba(239,159,39,0.10), transparent 34%), #09090B"
+                : "radial-gradient(circle at top left, rgba(239,159,39,0.13), transparent 34%), #F7F4EE",
+              transition: "padding 0.2s ease",
+              animation: "listIn 0.22s ease",
             }}
           >
             <div
               style={{
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "center",
-                marginBottom: 16,
+                maxWidth: 1280,
+                margin: "0 auto",
               }}
             >
-              <h3 style={{ color: t.text, fontSize: 13, fontWeight: 700 }}>
-                Filtres avancés
-              </h3>
-              {hasActiveFilters && (
-                <button
-                  onClick={clearFilters}
-                  style={{
-                    background: "transparent",
-                    border: "none",
-                    color: ORANGE,
-                    fontSize: 11,
-                    cursor: "pointer",
-                  }}
-                >
-                  Tout réinitialiser
-                </button>
-              )}
-            </div>
-
-            <div style={{ marginBottom: 20 }}>
-              <p
+              <header
                 style={{
-                  color: t.textMuted,
-                  fontSize: 10,
-                  fontWeight: 600,
-                  marginBottom: 10,
+                  marginBottom: 22,
+                  display: "grid",
+                  gridTemplateColumns: "minmax(0, 1fr) auto",
+                  gap: 18,
+                  alignItems: "end",
                 }}
               >
-                TRIER PAR
-              </p>
-              <div style={{ display: "flex", gap: 8 }}>
-                {(["date", "impact", "client"] as const).map((option) => (
-                  <button
-                    key={option}
-                    onClick={() => setSortBy(option)}
+                <div>
+                  <p
                     style={{
-                      background: sortBy === option ? ORANGE : "transparent",
-                      border: `0.5px solid ${sortBy === option ? "transparent" : t.border}`,
-                      borderRadius: 20,
-                      padding: "4px 12px",
-                      fontSize: 10,
-                      color: sortBy === option ? "white" : t.textSoft,
-                      cursor: "pointer",
+                      margin: "0 0 8px",
+                      color: ORANGE,
+                      fontSize: 11,
+                      fontWeight: 950,
+                      letterSpacing: "0.12em",
+                      textTransform: "uppercase",
                     }}
                   >
-                    {option === "date"
-                      ? "📅 Date"
-                      : option === "impact"
-                      ? "📈 Impact"
-                      : "🏢 Client"}
+                    Références MD2I
+                  </p>
+
+                  <h1
+                    style={{
+                      margin: 0,
+                      color: t.text,
+                      fontSize: 36,
+                      lineHeight: 1.02,
+                      fontWeight: 950,
+                      letterSpacing: "-0.06em",
+                    }}
+                  >
+                    Réalisations et projets clients
+                  </h1>
+
+                  <p
+                    style={{
+                      maxWidth: 650,
+                      margin: "12px 0 0",
+                      color: t.textSoft,
+                      fontSize: 14,
+                      lineHeight: 1.7,
+                      fontWeight: 650,
+                    }}
+                  >
+                    Parcourez les références MD2I sous forme de cartes claires,
+                    filtrables et orientées décision.
+                  </p>
+                </div>
+
+                <div
+                  style={{
+                    display: "flex",
+                    gap: 8,
+                    flexWrap: "wrap",
+                    justifyContent: "flex-end",
+                  }}
+                >
+                  <div
+                    style={{
+                      minWidth: 105,
+                      padding: "12px 14px",
+                      borderRadius: 18,
+                      background: t.glassStrong,
+                      border: `1px solid ${t.border}`,
+                      boxShadow: t.shadowSoft,
+                    }}
+                  >
+                    <strong
+                      style={{
+                        display: "block",
+                        color: t.text,
+                        fontSize: 22,
+                        lineHeight: 1,
+                        fontWeight: 950,
+                        letterSpacing: "-0.04em",
+                      }}
+                    >
+                      {filteredReferences.length}
+                    </strong>
+
+                    <span
+                      style={{
+                        color: t.textMuted,
+                        fontSize: 10,
+                        fontWeight: 900,
+                        letterSpacing: "0.08em",
+                        textTransform: "uppercase",
+                      }}
+                    >
+                      Projets
+                    </span>
+                  </div>
+
+                  <div
+                    style={{
+                      minWidth: 105,
+                      padding: "12px 14px",
+                      borderRadius: 18,
+                      background: t.glassStrong,
+                      border: `1px solid ${t.border}`,
+                      boxShadow: t.shadowSoft,
+                    }}
+                  >
+                    <strong
+                      style={{
+                        display: "block",
+                        color: t.text,
+                        fontSize: 22,
+                        lineHeight: 1,
+                        fontWeight: 950,
+                        letterSpacing: "-0.04em",
+                      }}
+                    >
+                      {stats.countries}
+                    </strong>
+
+                    <span
+                      style={{
+                        color: t.textMuted,
+                        fontSize: 10,
+                        fontWeight: 900,
+                        letterSpacing: "0.08em",
+                        textTransform: "uppercase",
+                      }}
+                    >
+                      Pays
+                    </span>
+                  </div>
+                </div>
+              </header>
+
+              {hasActiveFilters && (
+                <div
+                  style={{
+                    marginBottom: 18,
+                    padding: 12,
+                    borderRadius: 18,
+                    background: t.glassStrong,
+                    border: `1px solid ${t.border}`,
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    gap: 12,
+                    flexWrap: "wrap",
+                  }}
+                >
+                  <span
+                    style={{
+                      color: t.textSoft,
+                      fontSize: 12,
+                      fontWeight: 800,
+                    }}
+                  >
+                    {activeFiltersCount} filtre
+                    {activeFiltersCount > 1 ? "s" : ""} actif
+                    {activeFiltersCount > 1 ? "s" : ""}
+                  </span>
+
+                  <button
+                    type="button"
+                    onClick={clearFilters}
+                    style={{
+                      height: 34,
+                      padding: "0 12px",
+                      borderRadius: 999,
+                      border: `1px solid ${t.orangeBorder}`,
+                      background: t.orangeSoft,
+                      color: ORANGE,
+                      cursor: "pointer",
+                      fontSize: 12,
+                      fontWeight: 900,
+                    }}
+                  >
+                    Réinitialiser
                   </button>
-                ))}
+                </div>
+              )}
+
+              {filteredReferences.length === 0 ? (
+                <div
+                  style={{
+                    padding: 34,
+                    borderRadius: 26,
+                    background: t.glassStrong,
+                    border: `1px solid ${t.border}`,
+                    color: t.textSoft,
+                    fontSize: 14,
+                    fontWeight: 750,
+                    textAlign: "center",
+                  }}
+                >
+                  Aucune référence ne correspond aux filtres actuels.
+                </div>
+              ) : (
+                <div
+                  className="reference-list-grid"
+                  style={{
+                    display: "grid",
+                    gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
+                    gap: 16,
+                  }}
+                >
+                  {filteredReferences.map((reference) => (
+                    <article
+                      key={reference.id}
+                      className="reference-card"
+                      style={{
+                        overflow: "hidden",
+                        borderRadius: 26,
+                        background: t.cardBg,
+                        border: `1px solid ${t.border}`,
+                        boxShadow: t.shadowSoft,
+                      }}
+                    >
+                      <div
+                        style={{
+                          position: "relative",
+                          height: 178,
+                          overflow: "hidden",
+                        }}
+                      >
+                        <img
+                          src={safeImage(reference.image)}
+                          alt={reference.title}
+                          loading="lazy"
+                          style={{
+                            width: "100%",
+                            height: "100%",
+                            objectFit: "cover",
+                          }}
+                        />
+
+                        <div
+                          style={{
+                            position: "absolute",
+                            inset: 0,
+                            background:
+                              "linear-gradient(to top, rgba(0,0,0,0.78), rgba(0,0,0,0.12) 60%, transparent)",
+                          }}
+                        />
+
+                        <div
+                          style={{
+                            position: "absolute",
+                            left: 14,
+                            right: 14,
+                            top: 14,
+                            display: "flex",
+                            justifyContent: "space-between",
+                            gap: 8,
+                          }}
+                        >
+                          <span
+                            style={{
+                              background: ORANGE,
+                              color: "#1A0D00",
+                              padding: "6px 10px",
+                              borderRadius: 999,
+                              fontSize: 10,
+                              fontWeight: 950,
+                            }}
+                          >
+                            {reference.category}
+                          </span>
+
+                          <span
+                            style={{
+                              background: "rgba(255,255,255,0.16)",
+                              color: "white",
+                              padding: "6px 10px",
+                              borderRadius: 999,
+                              fontSize: 10,
+                              fontWeight: 850,
+                              backdropFilter: "blur(8px)",
+                            }}
+                          >
+                            {reference.country}
+                          </span>
+                        </div>
+
+                        <div
+                          style={{
+                            position: "absolute",
+                            left: 14,
+                            right: 14,
+                            bottom: 14,
+                          }}
+                        >
+                          <p
+                            style={{
+                              margin: "0 0 5px",
+                              color: ORANGE,
+                              fontSize: 11,
+                              fontWeight: 900,
+                            }}
+                          >
+                            {reference.client} · {reference.date}
+                          </p>
+
+                          <h3
+                            style={{
+                              margin: 0,
+                              color: "#FFFFFF",
+                              fontSize: 18,
+                              lineHeight: 1.2,
+                              fontWeight: 950,
+                              letterSpacing: "-0.04em",
+                            }}
+                          >
+                            {reference.title}
+                          </h3>
+                        </div>
+                      </div>
+
+                      <div
+                        style={{
+                          padding: 18,
+                          display: "grid",
+                          gap: 14,
+                        }}
+                      >
+                        <RichHtml
+                          html={reference.excerpt}
+                          color={t.textSoft}
+                          clamp={2}
+                        />
+
+                        <div
+                          style={{
+                            display: "flex",
+                            flexWrap: "wrap",
+                            gap: 6,
+                            minHeight: 28,
+                          }}
+                        >
+                          {(reference.technologies || [])
+                            .slice(0, 4)
+                            .map((technology) => (
+                              <span
+                                key={technology}
+                                style={{
+                                  padding: "5px 8px",
+                                  borderRadius: 999,
+                                  background: t.inputBg,
+                                  border: `1px solid ${t.border}`,
+                                  color: t.textSoft,
+                                  fontSize: 10,
+                                  fontWeight: 800,
+                                }}
+                              >
+                                {technology}
+                              </span>
+                            ))}
+                        </div>
+
+                        <div
+                          style={{
+                            display: "grid",
+                            gridTemplateColumns: "1fr 1fr",
+                            gap: 8,
+                          }}
+                        >
+                          <button
+                            type="button"
+                            onClick={() => openProjectDetails(reference)}
+                            style={{
+                              height: 38,
+                              borderRadius: 999,
+                              border: "none",
+                              background: ORANGE,
+                              color: "#1A0D00",
+                              cursor: "pointer",
+                              fontSize: 12,
+                              fontWeight: 950,
+                            }}
+                          >
+                            Détails
+                          </button>
+
+                          <Link
+                            href={`/contact-commercial?reference=${getReferenceParam(
+                              reference
+                            )}`}
+                            style={{
+                              height: 38,
+                              borderRadius: 999,
+                              border: `1px solid ${t.border}`,
+                              background: t.inputBg,
+                              color: t.text,
+                              display: "inline-flex",
+                              alignItems: "center",
+                              justifyContent: "center",
+                              textDecoration: "none",
+                              fontSize: 12,
+                              fontWeight: 900,
+                            }}
+                          >
+                            Projet similaire
+                          </Link>
+                        </div>
+                      </div>
+                    </article>
+                  ))}
+                </div>
+              )}
+            </div>
+          </section>
+        )}
+
+        {commandBarOpen && (
+          <section
+            className="reference-command-bar"
+            style={{
+              position: "fixed",
+              left: 22,
+              right: viewMode === "list" ? 220 : 22,
+              top: viewMode === "list" ? 22 : undefined,
+              bottom: viewMode === "map" ? 22 : undefined,
+              zIndex: 1500,
+              padding: 9,
+              borderRadius: 22,
+              background: t.glassStrong,
+              border: `1px solid ${t.border}`,
+              boxShadow: t.shadow,
+              backdropFilter: "blur(22px)",
+              animation: "commandBarIn 0.22s ease",
+            }}
+          >
+            <div
+              className="reference-command-inner"
+              style={{
+                display: "grid",
+                gridTemplateColumns: "minmax(280px, 1fr) auto auto",
+                alignItems: "center",
+                gap: 10,
+              }}
+            >
+              <div
+                style={{
+                  height: 38,
+                  padding: "0 13px",
+                  borderRadius: 999,
+                  border: `1px solid ${t.border}`,
+                  background: t.inputBg,
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 9,
+                }}
+              >
+                <span style={{ color: ORANGE, fontSize: 14 }}>⌕</span>
+
+                <input
+                  type="text"
+                  placeholder="Rechercher un client, pays, projet, technologie..."
+                  value={searchQuery}
+                  onChange={(event) => setSearchQuery(event.target.value)}
+                  style={{
+                    flex: 1,
+                    minWidth: 0,
+                    background: "transparent",
+                    border: "none",
+                    outline: "none",
+                    color: t.text,
+                    fontSize: 12,
+                    fontWeight: 650,
+                  }}
+                />
+
+                {searchQuery && (
+                  <button
+                    type="button"
+                    onClick={() => setSearchQuery("")}
+                    style={{
+                      width: 24,
+                      height: 24,
+                      borderRadius: 999,
+                      border: "none",
+                      background: "transparent",
+                      color: t.textMuted,
+                      cursor: "pointer",
+                      fontWeight: 900,
+                    }}
+                  >
+                    ✕
+                  </button>
+                )}
+              </div>
+
+              <div
+                className="reference-command-actions"
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 8,
+                }}
+              >
+                <button
+                  type="button"
+                  onClick={() =>
+                    setViewMode((prev) => (prev === "map" ? "list" : "map"))
+                  }
+                  className="ui-icon-button"
+                  style={{
+                    height: 38,
+                    padding: "0 13px",
+                    borderRadius: 999,
+                    border: `1px solid ${t.border}`,
+                    background: t.inputBg,
+                    color: t.text,
+                    cursor: "pointer",
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: 8,
+                    fontSize: 12,
+                    fontWeight: 900,
+                    whiteSpace: "nowrap",
+                  }}
+                >
+                  {viewMode === "map" ? "☷ Liste" : "🌍 Carte"}
+                </button>
+
+                {viewMode === "map" && (
+                  <>
+                    <button
+                      type="button"
+                      onClick={focusFilteredReferences}
+                      className="ui-icon-button"
+                      style={{
+                        height: 38,
+                        padding: "0 13px",
+                        borderRadius: 999,
+                        border: `1px solid ${t.border}`,
+                        background: t.inputBg,
+                        color: t.text,
+                        cursor: "pointer",
+                        display: "inline-flex",
+                        alignItems: "center",
+                        gap: 8,
+                        fontSize: 12,
+                        fontWeight: 850,
+                        whiteSpace: "nowrap",
+                      }}
+                    >
+                      ⊙ Voir résultats
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={resetMapView}
+                      className="ui-icon-button"
+                      style={{
+                        height: 38,
+                        padding: "0 13px",
+                        borderRadius: 999,
+                        border: `1px solid ${t.border}`,
+                        background: t.inputBg,
+                        color: t.text,
+                        cursor: "pointer",
+                        display: "inline-flex",
+                        alignItems: "center",
+                        gap: 8,
+                        fontSize: 12,
+                        fontWeight: 850,
+                        whiteSpace: "nowrap",
+                      }}
+                    >
+                      ↺ Recentrer
+                    </button>
+                  </>
+                )}
+
+                <button
+                  type="button"
+                  onClick={() => setFilterPanelOpen((prev) => !prev)}
+                  className="ui-icon-button"
+                  style={{
+                    height: 38,
+                    padding: "0 13px",
+                    borderRadius: 999,
+                    border: `1px solid ${
+                      hasActiveFilters ? "rgba(239,159,39,0.58)" : t.border
+                    }`,
+                    background: hasActiveFilters ? ORANGE : t.inputBg,
+                    color: hasActiveFilters ? "#1A0D00" : t.text,
+                    cursor: "pointer",
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: 8,
+                    fontSize: 12,
+                    fontWeight: 900,
+                    whiteSpace: "nowrap",
+                  }}
+                >
+                  ⚙️ Filtres
+                  {activeFiltersCount > 0 && (
+                    <span
+                      style={{
+                        minWidth: 18,
+                        height: 18,
+                        padding: "0 5px",
+                        borderRadius: 999,
+                        background: hasActiveFilters ? "#1A0D00" : ORANGE,
+                        color: hasActiveFilters ? "#FFFFFF" : "#1A0D00",
+                        display: "inline-flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        fontSize: 10,
+                        fontWeight: 950,
+                      }}
+                    >
+                      {activeFiltersCount}
+                    </span>
+                  )}
+                </button>
+
+                <button
+                  type="button"
+                  onClick={exportToCSV}
+                  className="ui-icon-button"
+                  style={{
+                    height: 38,
+                    padding: "0 13px",
+                    borderRadius: 999,
+                    border: `1px solid ${t.border}`,
+                    background: t.inputBg,
+                    color: t.text,
+                    cursor: "pointer",
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: 8,
+                    fontSize: 12,
+                    fontWeight: 850,
+                    whiteSpace: "nowrap",
+                  }}
+                >
+                  ⬇ Export
+                </button>
+              </div>
+
+              <div
+                className="reference-stats"
+                style={{
+                  display: viewMode === "list" ? "none" : "flex",
+                  alignItems: "center",
+                  gap: 6,
+                }}
+              >
+                <StatCard
+                  value={String(stats.countries)}
+                  label="Pays"
+                  icon="🌍"
+                  t={t}
+                />
+                <StatCard
+                  value={String(stats.projects)}
+                  label="Projets"
+                  icon="📍"
+                  t={t}
+                />
+                <StatCard
+                  value={String(stats.sectors)}
+                  label="Secteurs"
+                  icon="◼"
+                  t={t}
+                />
+                <StatCard
+                  value={String(stats.technologies)}
+                  label="Techs"
+                  icon="⚙️"
+                  t={t}
+                />
               </div>
             </div>
+          </section>
+        )}
 
-            <FilterSection title="CATÉGORIES" t={t}>
-              {ALL_CATEGORIES.map((cat) => (
-                <FilterPill
-                  key={cat}
-                  active={selectedCategories.includes(cat)}
-                  label={cat}
-                  onClick={() => toggleCategory(cat)}
+        {filterPanelOpen && commandBarOpen && (
+          <aside
+            className="reference-filter-drawer"
+            style={{
+              position: "fixed",
+              top: viewMode === "list" ? 84 : 96,
+              right: 22,
+              zIndex: 1700,
+              width: 390,
+              maxHeight: "calc(100vh - 140px)",
+              overflowY: "auto",
+              padding: 18,
+              borderRadius: 26,
+              background: t.panelBg,
+              border: `1px solid ${t.borderStrong}`,
+              boxShadow: t.shadow,
+              backdropFilter: "blur(22px)",
+              animation: "drawerIn 0.22s ease",
+              display: "grid",
+              gap: 18,
+            }}
+          >
+            <div
+              style={{
+                display: "flex",
+                alignItems: "flex-start",
+                justifyContent: "space-between",
+                gap: 14,
+              }}
+            >
+              <div>
+                <p
+                  style={{
+                    margin: "0 0 5px",
+                    color: ORANGE,
+                    fontSize: 11,
+                    fontWeight: 950,
+                    letterSpacing: "0.1em",
+                    textTransform: "uppercase",
+                  }}
+                >
+                  Exploration
+                </p>
+
+                <h2
+                  style={{
+                    margin: 0,
+                    color: t.text,
+                    fontSize: 20,
+                    fontWeight: 950,
+                    letterSpacing: "-0.04em",
+                  }}
+                >
+                  Filtres avancés
+                </h2>
+              </div>
+
+              <IconButton
+                label="Fermer les filtres"
+                t={t}
+                onClick={() => setFilterPanelOpen(false)}
+              >
+                ✕
+              </IconButton>
+            </div>
+
+            <FilterBlock title="Trier par" t={t}>
+              {(["date", "impact", "client"] as const).map((option) => (
+                <FilterChip
+                  key={option}
+                  active={sortBy === option}
+                  label={
+                    option === "date"
+                      ? "Date"
+                      : option === "impact"
+                        ? "Impact"
+                        : "Client"
+                  }
+                  onClick={() => setSortBy(option)}
                   t={t}
                 />
               ))}
-            </FilterSection>
+            </FilterBlock>
 
-            <FilterSection title="TECHNOLOGIES" t={t}>
-              {ALL_TECHNOLOGIES.slice(0, 16).map((tech) => (
-                <FilterPill
-                  key={tech}
-                  active={selectedTechnologies.includes(tech)}
-                  label={tech}
-                  onClick={() => toggleTechnology(tech)}
+            <FilterBlock title="Catégories" t={t}>
+              {allCategories.map((category) => (
+                <FilterChip
+                  key={category}
+                  active={selectedCategories.includes(category)}
+                  label={category}
+                  onClick={() => toggleCategory(category)}
                   t={t}
                 />
               ))}
-            </FilterSection>
+            </FilterBlock>
 
-            <FilterSection title="TAGS" t={t}>
-              {ALL_TAGS.slice(0, 20).map((tag) => (
-                <FilterPill
+            <FilterBlock title="Technologies" t={t}>
+              {allTechnologies.slice(0, 18).map((technology) => (
+                <FilterChip
+                  key={technology}
+                  active={selectedTechnologies.includes(technology)}
+                  label={technology}
+                  onClick={() => toggleTechnology(technology)}
+                  t={t}
+                />
+              ))}
+            </FilterBlock>
+
+            <FilterBlock title="Tags" t={t}>
+              {allTags.slice(0, 22).map((tag) => (
+                <FilterChip
                   key={tag}
                   active={selectedTags.includes(tag)}
                   label={`#${tag}`}
@@ -1414,11 +2543,11 @@ export default function MapReferences() {
                   t={t}
                 />
               ))}
-            </FilterSection>
+            </FilterBlock>
 
-            <FilterSection title="ANNÉES" t={t}>
-              {ALL_YEARS.map((year) => (
-                <FilterPill
+            <FilterBlock title="Années" t={t}>
+              {allYears.map((year) => (
+                <FilterChip
                   key={year}
                   active={selectedYears.includes(year)}
                   label={year}
@@ -1426,16 +2555,30 @@ export default function MapReferences() {
                   t={t}
                 />
               ))}
-            </FilterSection>
-          </div>
+            </FilterBlock>
+
+            {hasActiveFilters && (
+              <button
+                type="button"
+                onClick={clearFilters}
+                style={{
+                  height: 44,
+                  borderRadius: 999,
+                  border: `1px solid ${t.orangeBorder}`,
+                  background: t.orangeSoft,
+                  color: ORANGE,
+                  cursor: "pointer",
+                  fontSize: 13,
+                  fontWeight: 900,
+                }}
+              >
+                Réinitialiser tous les filtres
+              </button>
+            )}
+          </aside>
         )}
 
-        <div
-          ref={mapContainerRef}
-          style={{ position: "absolute", inset: 0, zIndex: 0 }}
-        />
-
-        {loadingMap && (
+        {loadingMap && viewMode === "map" && (
           <div
             style={{
               position: "absolute",
@@ -1455,42 +2598,47 @@ export default function MapReferences() {
         {loading && (
           <div
             style={{
-              position: "absolute",
-              top: 90,
-              left: 20,
+              position: "fixed",
+              top: 96,
+              right: 22,
               zIndex: 1002,
-              background: t.cardBg,
-              border: `0.5px solid ${t.border}`,
-              borderRadius: 14,
-              padding: "10px 14px",
+              background: t.panelBg,
+              border: `1px solid ${t.border}`,
+              borderRadius: 16,
+              padding: "11px 15px",
               color: t.textSoft,
               fontSize: 12,
+              fontWeight: 800,
+              boxShadow: t.shadowSoft,
             }}
           >
             Chargement des références…
           </div>
         )}
 
-        {!loading && filteredReferences.length === 0 && (
+        {!loading && filteredReferences.length === 0 && viewMode === "map" && (
           <div
             style={{
-              position: "absolute",
-              top: 90,
-              left: 20,
+              position: "fixed",
+              top: 96,
+              right: 22,
               zIndex: 1002,
-              background: t.cardBg,
-              border: `0.5px solid ${t.border}`,
-              borderRadius: 14,
+              background: t.panelBg,
+              border: `1px solid ${t.border}`,
+              borderRadius: 16,
               padding: "12px 16px",
               color: t.textSoft,
               fontSize: 12,
+              fontWeight: 800,
+              boxShadow: t.shadowSoft,
             }}
           >
-            Aucune référence publiée trouvée
+            Aucune référence publiée trouvée.
           </div>
         )}
 
         {tooltipData.visible &&
+          viewMode === "map" &&
           tooltipData.projects.length > 0 &&
           tooltipActiveProject && (
             <div
@@ -1512,45 +2660,52 @@ export default function MapReferences() {
             >
               <div
                 style={{
-                  background: t.cardBg,
-                  border: `0.5px solid ${t.borderStrong}`,
-                  borderRadius: 20,
+                  background: t.panelBg,
+                  border: `1px solid ${t.borderStrong}`,
+                  borderRadius: 24,
                   overflow: "hidden",
                   boxShadow: t.shadow,
+                  backdropFilter: "blur(18px)",
                 }}
               >
-                <div style={{ position: "relative", height: 130 }}>
+                <div style={{ position: "relative", height: 145 }}>
                   <img
                     src={safeImage(tooltipActiveProject.image)}
                     alt={tooltipActiveProject.title}
-                    style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                    style={{
+                      width: "100%",
+                      height: "100%",
+                      objectFit: "cover",
+                    }}
                   />
+
                   <div
                     style={{
                       position: "absolute",
                       inset: 0,
                       background:
-                        "linear-gradient(to top, rgba(0,0,0,0.7) 0%, transparent 55%)",
+                        "linear-gradient(to top, rgba(0,0,0,0.72), transparent 62%)",
                     }}
                   />
+
                   <span
                     style={{
                       position: "absolute",
-                      top: 10,
-                      left: 10,
+                      top: 12,
+                      left: 12,
                       background: ORANGE,
-                      color: "white",
-                      fontSize: 9,
-                      fontWeight: 700,
-                      padding: "3px 9px",
-                      borderRadius: 99,
+                      color: "#1A0D00",
+                      fontSize: 10,
+                      fontWeight: 950,
+                      padding: "6px 10px",
+                      borderRadius: 999,
                     }}
                   >
                     {tooltipActiveProject.category}
                   </span>
                 </div>
 
-                <MinimalTabs
+                <ProjectTabs
                   projects={tooltipData.projects}
                   activeId={tooltipData.activeTabId}
                   onSelect={(id) =>
@@ -1561,17 +2716,16 @@ export default function MapReferences() {
                   }
                   onPrev={() => goTooltip(-1)}
                   onNext={() => goTooltip(1)}
-                  dark={dark}
                   t={t}
                 />
 
-                <div style={{ padding: "12px 14px" }}>
+                <div style={{ padding: 16 }}>
                   <p
                     style={{
+                      margin: "0 0 5px",
                       color: ORANGE,
-                      fontSize: 10,
-                      fontWeight: 600,
-                      marginBottom: 4,
+                      fontSize: 11,
+                      fontWeight: 900,
                     }}
                   >
                     {tooltipActiveProject.client} · {tooltipActiveProject.date}
@@ -1579,11 +2733,12 @@ export default function MapReferences() {
 
                   <h3
                     style={{
+                      margin: "0 0 9px",
                       color: t.text,
-                      fontSize: 13,
-                      fontWeight: 700,
-                      lineHeight: 1.4,
-                      marginBottom: 8,
+                      fontSize: 16,
+                      fontWeight: 950,
+                      lineHeight: 1.32,
+                      letterSpacing: "-0.03em",
                     }}
                   >
                     {tooltipActiveProject.title}
@@ -1599,7 +2754,7 @@ export default function MapReferences() {
                     style={{
                       display: "flex",
                       gap: 8,
-                      margin: "10px 0 12px",
+                      margin: "12px 0 14px",
                       flexWrap: "wrap",
                     }}
                   >
@@ -1609,9 +2764,11 @@ export default function MapReferences() {
                         style={{
                           color: ORANGE,
                           fontSize: 10,
-                          padding: "4px 8px",
-                          border: `0.5px solid ${ORANGE}40`,
-                          borderRadius: 20,
+                          padding: "5px 9px",
+                          border: `1px solid rgba(239,159,39,0.30)`,
+                          background: t.orangeSoft,
+                          borderRadius: 999,
+                          fontWeight: 850,
                         }}
                       >
                         #{tag}
@@ -1620,8 +2777,10 @@ export default function MapReferences() {
                   </div>
 
                   <button
+                    type="button"
                     onClick={() => {
                       setTooltipData((prev) => ({ ...prev, visible: false }));
+
                       setModalData({
                         visible: true,
                         projects: tooltipData.projects,
@@ -1630,13 +2789,13 @@ export default function MapReferences() {
                     }}
                     style={{
                       width: "100%",
-                      padding: "8px 0",
-                      borderRadius: 12,
+                      height: 42,
+                      borderRadius: 999,
                       background: ORANGE,
                       border: "none",
-                      color: "white",
-                      fontSize: 11,
-                      fontWeight: 600,
+                      color: "#1A0D00",
+                      fontSize: 12,
+                      fontWeight: 950,
                       cursor: "pointer",
                     }}
                   >
@@ -1647,332 +2806,497 @@ export default function MapReferences() {
             </div>
           )}
 
-        {modalData.visible && modalData.projects.length > 0 && modalActiveProject && (
-          <div
-            style={{
-              position: "fixed",
-              inset: 0,
-              zIndex: 2000,
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              padding: 16,
-              background: "rgba(0,0,0,0.75)",
-              backdropFilter: "blur(8px)",
-            }}
-            onClick={() => setModalData((prev) => ({ ...prev, visible: false }))}
-          >
+        {modalData.visible &&
+          modalData.projects.length > 0 &&
+          modalActiveProject && (
             <div
               style={{
-                background: t.cardBg,
-                border: `0.5px solid ${t.borderStrong}`,
-                borderRadius: 28,
-                width: "min(1100px, calc(100vw - 32px))",
-                maxHeight: "92vh",
-                overflowY: "auto",
-                boxShadow: "0 32px 80px rgba(0,0,0,0.5)",
-                animation: "md2iModalIn 0.25s ease",
-                position: "relative",
+                position: "fixed",
+                inset: 0,
+                zIndex: 2000,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                padding: 16,
+                background: "rgba(0,0,0,0.72)",
+                backdropFilter: "blur(10px)",
               }}
-              onClick={(e) => e.stopPropagation()}
+              onClick={() =>
+                setModalData((prev) => ({
+                  ...prev,
+                  visible: false,
+                }))
+              }
             >
-              <div style={{ position: "relative", height: 320 }}>
-                <img
-                  src={safeImage(modalActiveProject.image)}
-                  alt={modalActiveProject.title}
-                  style={{ width: "100%", height: "100%", objectFit: "cover" }}
-                />
-                <div
-                  style={{
-                    position: "absolute",
-                    inset: 0,
-                    background:
-                      "linear-gradient(to top, rgba(0,0,0,0.75) 0%, rgba(0,0,0,0.2) 60%, transparent 100%)",
-                  }}
-                />
-                <button
-                  onClick={() =>
-                    setModalData((prev) => ({ ...prev, visible: false }))
-                  }
-                  style={{
-                    position: "absolute",
-                    top: 16,
-                    right: 16,
-                    width: 38,
-                    height: 38,
-                    borderRadius: "50%",
-                    background: "rgba(0,0,0,0.5)",
-                    border: "none",
-                    color: "white",
-                    fontSize: 18,
-                    cursor: "pointer",
-                  }}
-                >
-                  ✕
-                </button>
-
-                <div
-                  style={{
-                    position: "absolute",
-                    left: 24,
-                    bottom: 22,
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 8,
-                    flexWrap: "wrap",
-                  }}
-                >
-                  <span
-                    style={{
-                      background: ORANGE,
-                      color: "white",
-                      fontSize: 10,
-                      fontWeight: 700,
-                      padding: "5px 10px",
-                      borderRadius: 999,
-                    }}
-                  >
-                    {modalActiveProject.category}
-                  </span>
-
-                  <span
-                    style={{
-                      background: "rgba(255,255,255,0.14)",
-                      color: "white",
-                      fontSize: 10,
-                      fontWeight: 600,
-                      padding: "5px 10px",
-                      borderRadius: 999,
-                      backdropFilter: "blur(8px)",
-                    }}
-                  >
-                    {modalData.projects.length} projet
-                    {modalData.projects.length > 1 ? "s" : ""} dans ce pays
-                  </span>
-                </div>
-              </div>
-
-              <MinimalTabs
-                projects={modalData.projects}
-                activeId={modalData.activeTabId}
-                onSelect={(id) =>
-                  setModalData((prev) => ({
-                    ...prev,
-                    activeTabId: id,
-                  }))
-                }
-                onPrev={() => goModal(-1)}
-                onNext={() => goModal(1)}
-                dark={dark}
-                t={t}
-                sticky
-              />
-
               <div
                 style={{
-                  padding: "32px 40px 40px",
-                  display: "grid",
-                  gap: 28,
-                  alignItems: "start",
+                  background: t.cardBg,
+                  border: `1px solid ${t.borderStrong}`,
+                  borderRadius: 30,
+                  width: "min(1120px, calc(100vw - 32px))",
+                  maxHeight: "92vh",
+                  overflowY: "auto",
+                  boxShadow: "0 34px 95px rgba(0,0,0,0.52)",
+                  animation: "md2iModalIn 0.24s ease",
+                  position: "relative",
                 }}
+                onClick={(event) => event.stopPropagation()}
               >
                 <div
-                  className="modal-top-grid"
+                  className="reference-modal-hero"
                   style={{
-                    display: "grid",
-                    gridTemplateColumns:
-                      "minmax(0, 1.2fr) minmax(280px, 0.8fr)",
-                    gap: 28,
-                    alignItems: "start",
+                    position: "relative",
+                    height: 335,
+                    overflow: "hidden",
                   }}
                 >
-                  <div style={{ minWidth: 0 }}>
-                    <p
-                      style={{
-                        color: ORANGE,
-                        fontSize: 13,
-                        fontWeight: 600,
-                        marginBottom: 6,
-                      }}
-                    >
-                      {modalActiveProject.client}
-                    </p>
+                  <img
+                    src={safeImage(modalActiveProject.image)}
+                    alt={modalActiveProject.title}
+                    style={{
+                      width: "100%",
+                      height: "100%",
+                      objectFit: "cover",
+                    }}
+                  />
 
-                    <h2
-                      style={{
-                        color: t.text,
-                        fontSize: 32,
-                        fontWeight: 700,
-                        lineHeight: 1.22,
-                        marginBottom: 20,
-                      }}
-                    >
-                      {modalActiveProject.title}
-                    </h2>
+                  <div
+                    style={{
+                      position: "absolute",
+                      inset: 0,
+                      background:
+                        "linear-gradient(to top, rgba(0,0,0,0.82), rgba(0,0,0,0.22) 58%, transparent)",
+                    }}
+                  />
 
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setModalData((prev) => ({
+                        ...prev,
+                        visible: false,
+                      }))
+                    }
+                    style={{
+                      position: "absolute",
+                      top: 18,
+                      right: 18,
+                      width: 42,
+                      height: 42,
+                      borderRadius: 999,
+                      background: "rgba(0,0,0,0.46)",
+                      border: "1px solid rgba(255,255,255,0.18)",
+                      color: "white",
+                      fontSize: 18,
+                      cursor: "pointer",
+                      backdropFilter: "blur(10px)",
+                    }}
+                  >
+                    ✕
+                  </button>
+
+                  <div
+                    style={{
+                      position: "absolute",
+                      left: 28,
+                      right: 28,
+                      bottom: 26,
+                      display: "grid",
+                      gap: 12,
+                    }}
+                  >
                     <div
                       style={{
-                        borderLeft: `3px solid ${ORANGE}`,
-                        paddingLeft: 16,
-                        marginBottom: 0,
+                        display: "flex",
+                        gap: 8,
+                        flexWrap: "wrap",
                       }}
                     >
-                      <RichHtml
-                        html={modalActiveProject.excerpt}
-                        color={dark ? "rgba(239,159,39,0.85)" : "#a0660a"}
-                      />
+                      <span
+                        style={{
+                          background: ORANGE,
+                          color: "#1A0D00",
+                          fontSize: 10,
+                          fontWeight: 950,
+                          padding: "6px 11px",
+                          borderRadius: 999,
+                        }}
+                      >
+                        {modalActiveProject.category}
+                      </span>
+
+                      <span
+                        style={{
+                          background: "rgba(255,255,255,0.14)",
+                          color: "white",
+                          fontSize: 10,
+                          fontWeight: 850,
+                          padding: "6px 11px",
+                          borderRadius: 999,
+                          backdropFilter: "blur(8px)",
+                        }}
+                      >
+                        {modalData.projects.length} projet
+                        {modalData.projects.length > 1 ? "s" : ""} dans ce pays
+                      </span>
+                    </div>
+
+                    <div>
+                      <p
+                        style={{
+                          margin: "0 0 6px",
+                          color: ORANGE,
+                          fontSize: 13,
+                          fontWeight: 850,
+                        }}
+                      >
+                        {modalActiveProject.client} · {modalActiveProject.date}
+                      </p>
+
+                      <h2
+                        style={{
+                          maxWidth: 780,
+                          margin: 0,
+                          color: "#FFFFFF",
+                          fontSize: 36,
+                          lineHeight: 1.08,
+                          fontWeight: 950,
+                          letterSpacing: "-0.055em",
+                        }}
+                      >
+                        {modalActiveProject.title}
+                      </h2>
                     </div>
                   </div>
+                </div>
 
-                  <aside style={{ minWidth: 0 }}>
-                    <div
+                <ProjectTabs
+                  projects={modalData.projects}
+                  activeId={modalData.activeTabId}
+                  onSelect={(id) =>
+                    setModalData((prev) => ({
+                      ...prev,
+                      activeTabId: id,
+                    }))
+                  }
+                  onPrev={() => goModal(-1)}
+                  onNext={() => goModal(1)}
+                  t={t}
+                  sticky
+                />
+
+                <div
+                  className="modal-content-padding"
+                  style={{
+                    padding: "34px 42px 42px",
+                    display: "grid",
+                    gap: 30,
+                  }}
+                >
+                  <div
+                    className="modal-top-grid"
+                    style={{
+                      display: "grid",
+                      gridTemplateColumns:
+                        "minmax(0, 1.2fr) minmax(300px, 0.8fr)",
+                      gap: 30,
+                      alignItems: "start",
+                    }}
+                  >
+                    <div style={{ minWidth: 0, display: "grid", gap: 18 }}>
+                      <section
+                        style={{
+                          padding: 22,
+                          borderRadius: 24,
+                          background: t.inputBg,
+                          border: `1px solid ${t.border}`,
+                        }}
+                      >
+                        <p
+                          style={{
+                            margin: "0 0 10px",
+                            color: ORANGE,
+                            fontSize: 11,
+                            fontWeight: 950,
+                            letterSpacing: "0.1em",
+                            textTransform: "uppercase",
+                          }}
+                        >
+                          Résumé du projet
+                        </p>
+
+                        <RichHtml
+                          html={modalActiveProject.excerpt}
+                          color={dark ? "rgba(239,159,39,0.88)" : "#9A5D08"}
+                        />
+                      </section>
+
+                      <section
+                        style={{
+                          padding: 24,
+                          borderRadius: 24,
+                          background: t.panelBg,
+                          border: `1px solid ${t.border}`,
+                        }}
+                      >
+                        <p
+                          style={{
+                            margin: "0 0 12px",
+                            color: t.textMuted,
+                            fontSize: 11,
+                            fontWeight: 950,
+                            letterSpacing: "0.1em",
+                            textTransform: "uppercase",
+                          }}
+                        >
+                          Détails de la mission
+                        </p>
+
+                        <RichHtml
+                          html={modalActiveProject.details}
+                          color={t.textSoft}
+                        />
+                      </section>
+                    </div>
+
+                    <aside style={{ minWidth: 0 }}>
+                      <div
+                        style={{
+                          position: "sticky",
+                          top: 86,
+                          display: "grid",
+                          gap: 12,
+                        }}
+                      >
+                        <section
+                          style={{
+                            padding: 18,
+                            borderRadius: 24,
+                            background: t.panelBg,
+                            border: `1px solid ${t.border}`,
+                            display: "grid",
+                            gap: 12,
+                          }}
+                        >
+                          <p
+                            style={{
+                              margin: 0,
+                              color: ORANGE,
+                              fontSize: 11,
+                              fontWeight: 950,
+                              letterSpacing: "0.1em",
+                              textTransform: "uppercase",
+                            }}
+                          >
+                            Informations clés
+                          </p>
+
+                          <div
+                            style={{
+                              display: "grid",
+                              gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
+                              gap: 12,
+                            }}
+                          >
+                            <MetricCard
+                              icon="🌍"
+                              label="Pays"
+                              value={modalActiveProject.country}
+                              t={t}
+                            />
+
+                            <MetricCard
+                              icon="🏢"
+                              label="Client"
+                              value={modalActiveProject.client}
+                              t={t}
+                            />
+
+                            {modalActiveProject.team && (
+                              <MetricCard
+                                icon="👥"
+                                label="Équipe"
+                                value={modalActiveProject.team}
+                                t={t}
+                              />
+                            )}
+
+                            {modalActiveProject.duration && (
+                              <MetricCard
+                                icon="⏱️"
+                                label="Durée"
+                                value={modalActiveProject.duration}
+                                t={t}
+                              />
+                            )}
+
+                            {modalActiveProject.budget && (
+                              <MetricCard
+                                icon="💰"
+                                label="Budget"
+                                value={modalActiveProject.budget}
+                                t={t}
+                              />
+                            )}
+
+                            {modalActiveProject.impact && (
+                              <MetricCard
+                                icon="📈"
+                                label="Impact"
+                                value={modalActiveProject.impact}
+                                t={t}
+                              />
+                            )}
+                          </div>
+                        </section>
+
+                        <Link
+                          href={`/contact-commercial?reference=${getReferenceParam(
+                            modalActiveProject
+                          )}`}
+                          style={{
+                            width: "100%",
+                            height: 48,
+                            borderRadius: 999,
+                            background: ORANGE,
+                            border: "none",
+                            color: "#1A0D00",
+                            fontSize: 14,
+                            fontWeight: 950,
+                            cursor: "pointer",
+                            display: "inline-flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            textDecoration: "none",
+                          }}
+                        >
+                          Je veux une solution similaire →
+                        </Link>
+
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setModalData((prev) => ({
+                              ...prev,
+                              visible: false,
+                            }))
+                          }
+                          style={{
+                            width: "100%",
+                            height: 48,
+                            borderRadius: 999,
+                            background: "transparent",
+                            border: `1px solid ${t.border}`,
+                            color: t.textSoft,
+                            fontSize: 14,
+                            fontWeight: 850,
+                            cursor: "pointer",
+                          }}
+                        >
+                          Fermer
+                        </button>
+                      </div>
+                    </aside>
+                  </div>
+
+                  {(modalActiveProject.technologies || []).length > 0 && (
+                    <section
                       style={{
-                        position: "sticky",
-                        top: 96,
+                        padding: 22,
+                        borderRadius: 24,
+                        background: t.panelBg,
+                        border: `1px solid ${t.border}`,
                         display: "grid",
                         gap: 12,
                       }}
                     >
-                      <div
-                        style={{
-                          display: "grid",
-                          gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
-                          gap: 12,
-                        }}
-                      >
-                        {modalActiveProject.team && (
-                          <MetricCard
-                            icon="👥"
-                            label="Équipe"
-                            value={modalActiveProject.team}
-                            t={t}
-                          />
-                        )}
-                        {modalActiveProject.duration && (
-                          <MetricCard
-                            icon="⏱️"
-                            label="Durée"
-                            value={modalActiveProject.duration}
-                            t={t}
-                          />
-                        )}
-                        {modalActiveProject.budget && (
-                          <MetricCard
-                            icon="💰"
-                            label="Budget"
-                            value={modalActiveProject.budget}
-                            t={t}
-                          />
-                        )}
-                        {modalActiveProject.impact && (
-                          <MetricCard
-                            icon="📈"
-                            label="Impact"
-                            value={modalActiveProject.impact}
-                            t={t}
-                          />
-                        )}
-                      </div>
-
-                      <button
-                        style={{
-                          width: "100%",
-                          padding: "14px 0",
-                          borderRadius: 14,
-                          background: ORANGE,
-                          border: "none",
-                          color: "white",
-                          fontSize: 14,
-                          fontWeight: 700,
-                          cursor: "pointer",
-                        }}
-                      >
-                        📧 Contacter MD2I
-                      </button>
-
-                      <button
-                        onClick={() =>
-                          setModalData((prev) => ({ ...prev, visible: false }))
-                        }
-                        style={{
-                          width: "100%",
-                          padding: "14px 0",
-                          borderRadius: 14,
-                          background: "transparent",
-                          border: `0.5px solid ${t.border}`,
-                          color: t.textSoft,
-                          fontSize: 14,
-                          fontWeight: 600,
-                          cursor: "pointer",
-                        }}
-                      >
-                        Fermer
-                      </button>
-                    </div>
-                  </aside>
-                </div>
-
-                <div style={{ minWidth: 0 }}>
-                  <div style={{ marginBottom: 24 }}>
-                    <RichHtml html={modalActiveProject.details} color={t.textSoft} />
-                  </div>
-
-                  {(modalActiveProject.technologies || []).length > 0 && (
-                    <div style={{ marginBottom: 24 }}>
                       <p
                         style={{
+                          margin: 0,
                           color: t.textMuted,
                           fontSize: 11,
-                          fontWeight: 600,
-                          marginBottom: 12,
+                          fontWeight: 950,
+                          letterSpacing: "0.1em",
+                          textTransform: "uppercase",
                         }}
                       >
-                        🛠️ TECHNOLOGIES UTILISÉES
+                        Technologies utilisées
                       </p>
 
-                      <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-                        {(modalActiveProject.technologies || []).map((tech) => (
-                          <span
-                            key={tech}
-                            style={{
-                              background: dark
-                                ? "rgba(255,255,255,0.08)"
-                                : "rgba(0,0,0,0.05)",
-                              padding: "6px 12px",
-                              borderRadius: 20,
-                              fontSize: 11,
-                              color: t.textSoft,
-                            }}
-                          >
-                            {tech}
-                          </span>
-                        ))}
+                      <div
+                        style={{
+                          display: "flex",
+                          flexWrap: "wrap",
+                          gap: 8,
+                        }}
+                      >
+                        {(modalActiveProject.technologies || []).map(
+                          (technology) => (
+                            <span
+                              key={technology}
+                              style={{
+                                padding: "7px 12px",
+                                borderRadius: 999,
+                                background: t.inputBg,
+                                border: `1px solid ${t.border}`,
+                                color: t.textSoft,
+                                fontSize: 12,
+                                fontWeight: 800,
+                              }}
+                            >
+                              {technology}
+                            </span>
+                          )
+                        )}
                       </div>
-                    </div>
+                    </section>
                   )}
 
                   {(modalActiveProject.tags || []).length > 0 && (
-                    <div style={{ marginBottom: 28 }}>
+                    <section
+                      style={{
+                        padding: 22,
+                        borderRadius: 24,
+                        background: t.panelBg,
+                        border: `1px solid ${t.border}`,
+                        display: "grid",
+                        gap: 12,
+                      }}
+                    >
                       <p
                         style={{
+                          margin: 0,
                           color: t.textMuted,
                           fontSize: 11,
-                          fontWeight: 600,
-                          marginBottom: 12,
+                          fontWeight: 950,
+                          letterSpacing: "0.1em",
+                          textTransform: "uppercase",
                         }}
                       >
-                        🏷️ TAGS
+                        Tags
                       </p>
 
-                      <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+                      <div
+                        style={{
+                          display: "flex",
+                          flexWrap: "wrap",
+                          gap: 8,
+                        }}
+                      >
                         {(modalActiveProject.tags || []).map((tag) => (
                           <button
                             key={tag}
+                            type="button"
                             onClick={() => {
                               setSelectedTags((prev) =>
                                 prev.includes(tag) ? prev : [...prev, tag]
                               );
-                              setModalData((prev) => ({ ...prev, visible: false }));
+
+                              setModalData((prev) => ({
+                                ...prev,
+                                visible: false,
+                              }));
+
                               showTemporaryNotification(
                                 `Filtre ajouté : #${tag}`,
                                 "info"
@@ -1980,25 +3304,25 @@ export default function MapReferences() {
                             }}
                             style={{
                               color: ORANGE,
-                              fontSize: 10,
-                              padding: "4px 10px",
-                              border: `0.5px solid ${ORANGE}40`,
-                              borderRadius: 20,
-                              background: "transparent",
+                              fontSize: 11,
+                              padding: "6px 11px",
+                              border: `1px solid rgba(239,159,39,0.34)`,
+                              borderRadius: 999,
+                              background: t.orangeSoft,
                               cursor: "pointer",
+                              fontWeight: 850,
                             }}
                           >
                             #{tag}
                           </button>
                         ))}
                       </div>
-                    </div>
+                    </section>
                   )}
                 </div>
               </div>
             </div>
-          </div>
-        )}
+          )}
       </main>
     </>
   );

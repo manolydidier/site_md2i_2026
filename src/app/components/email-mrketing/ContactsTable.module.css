@@ -198,6 +198,15 @@
   cursor: pointer;
 }
 
+.errorBar {
+  border-color: #fecaca;
+  background: #fef2f2;
+}
+
+.errorBar span {
+  color: #991b1b;
+}
+
 .tableWrap {
   border: 1px solid #e5e7eb;
   border-radius: 14px;
@@ -207,7 +216,7 @@
 
 .tableWrap table {
   width: 100%;
-  min-width: 900px;
+  min-width: 980px;
   border-collapse: collapse;
   font-size: 13px;
 }
@@ -510,6 +519,58 @@
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+.quickStatusWrap {
+  position: relative;
+  width: 160px;
+}
+
+.quickStatusSelect {
+  width: 100%;
+  height: 34px;
+  padding: 0 32px 0 10px;
+  border-radius: 999px;
+  border: 1px solid #bfdbfe;
+  background: #eff6ff;
+  color: #1e3a8a;
+  font-size: 12px;
+  font-weight: 900;
+  outline: none;
+  cursor: pointer;
+  appearance: none;
+  transition: 0.15s ease;
+}
+
+.quickStatusSelect:hover {
+  border-color: rgba(239, 159, 39, 0.45);
+  background: rgba(239, 159, 39, 0.1);
+  color: #92400e;
+}
+
+.quickStatusSelect:focus {
+  border-color: rgba(239, 159, 39, 0.6);
+  box-shadow: 0 0 0 4px rgba(239, 159, 39, 0.12);
+}
+
+.quickStatusSelect:disabled {
+  opacity: 0.65;
+  cursor: wait;
+}
+
+.quickStatusLoader {
+  position: absolute;
+  right: 10px;
+  top: 10px;
+  color: #ef9f27;
+  animation: spin 0.8s linear infinite;
+  pointer-events: none;
+}
+
+.quickStatusHelp {
+  color: #6b7280;
+  font-size: 11px;
+  font-weight: 700;
 }
 
 @media (max-width: 1100px) {

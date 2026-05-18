@@ -6,7 +6,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { contactSchema } from "@/app/lib/email/schemas";
 import { useContacts, useGroups } from "@/app/hooks/useEmailMarketing";
 import type { Contact, ContactFormData } from "@/app/types/email-marketing";
-import { X, UserPlus } from "lucide-react";
+import { AlertCircle, X, UserPlus } from "lucide-react";
 
 interface ContactModalProps {
   contact?: Contact | null;
@@ -46,6 +46,7 @@ export function ContactModal({ contact, onClose, onSave }: ContactModalProps) {
     register,
     handleSubmit,
     reset,
+    watch,
     formState: { errors, isSubmitting },
   } = useForm<ContactFormData>({
     resolver: zodResolver(contactSchema),
@@ -69,6 +70,11 @@ export function ContactModal({ contact, onClose, onSave }: ContactModalProps) {
       unsubscribed: contact?.unsubscribed ?? false,
     },
   });
+
+  const currentCrmStatus = watch("crmStatus");
+  const currentCrmSource = watch("crmSource");
+  const isActive = watch("isActive");
+  const unsubscribed = watch("unsubscribed");
 
   useEffect(() => {
     if (contact) {
@@ -153,12 +159,20 @@ export function ContactModal({ contact, onClose, onSave }: ContactModalProps) {
             <div className="field-grid">
               <div className="field-group">
                 <label>Prénom</label>
-                <input type="text" {...register("firstName")} placeholder="Jean" />
+                <input
+                  type="text"
+                  {...register("firstName")}
+                  placeholder="Jean"
+                />
               </div>
 
               <div className="field-group">
                 <label>Nom</label>
-                <input type="text" {...register("lastName")} placeholder="Dupont" />
+                <input
+                  type="text"
+                  {...register("lastName")}
+                  placeholder="Dupont"
+                />
               </div>
             </div>
 
@@ -219,6 +233,18 @@ export function ContactModal({ contact, onClose, onSave }: ContactModalProps) {
           <div className="form-section">
             <p className="section-title">CRM & segmentation</p>
 
+            <div className="automation-notice">
+              <AlertCircle className="h-4 w-4" />
+              <div>
+                <strong>Automatisations email</strong>
+                <p>
+                  Le changement de statut CRM ou de source peut déclencher une
+                  automatisation active, par exemple une prospection, une relance
+                  ou un email client.
+                </p>
+              </div>
+            </div>
+
             <div className="field-grid">
               <div className="field-group">
                 <label>Statut CRM</label>
@@ -230,6 +256,14 @@ export function ContactModal({ contact, onClose, onSave }: ContactModalProps) {
                     </option>
                   ))}
                 </select>
+
+                {isEdit && contact?.crmStatus !== currentCrmStatus && (
+                  <p className="field-help warning">
+                    Le statut changera de {contact?.crmStatus || "—"} vers{" "}
+                    {currentCrmStatus}. Les automatisations liées peuvent se
+                    déclencher.
+                  </p>
+                )}
               </div>
 
               <div className="field-group">
@@ -242,6 +276,13 @@ export function ContactModal({ contact, onClose, onSave }: ContactModalProps) {
                     </option>
                   ))}
                 </select>
+
+                {isEdit && contact?.crmSource !== currentCrmSource && (
+                  <p className="field-help warning">
+                    La source changera de {contact?.crmSource || "—"} vers{" "}
+                    {currentCrmSource}.
+                  </p>
+                )}
               </div>
             </div>
 
@@ -273,6 +314,16 @@ export function ContactModal({ contact, onClose, onSave }: ContactModalProps) {
                 <span>Désabonné des emails</span>
               </label>
             </div>
+
+            {(!isActive || unsubscribed) && (
+              <div className="automation-warning">
+                <AlertCircle className="h-4 w-4" />
+                <p>
+                  Si le contact est inactif ou désabonné, les automatisations
+                  email actives seront annulées pour ce contact.
+                </p>
+              </div>
+            )}
           </div>
 
           <div className="form-section">
@@ -479,6 +530,56 @@ export function ContactModal({ contact, onClose, onSave }: ContactModalProps) {
         .field-group textarea:focus {
           border-color: rgba(239, 159, 39, 0.55);
           box-shadow: 0 0 0 4px rgba(239, 159, 39, 0.1);
+        }
+
+        .field-help {
+          margin: 0;
+          font-size: 11px;
+          line-height: 1.45;
+          font-weight: 700;
+        }
+
+        .field-help.warning {
+          color: #92400e;
+        }
+
+        .automation-notice,
+        .automation-warning {
+          margin-bottom: 14px;
+          padding: 12px;
+          border-radius: 13px;
+          display: flex;
+          align-items: flex-start;
+          gap: 10px;
+        }
+
+        .automation-notice {
+          border: 1px solid rgba(239, 159, 39, 0.25);
+          background: rgba(239, 159, 39, 0.08);
+          color: #92400e;
+        }
+
+        .automation-warning {
+          margin-top: 12px;
+          margin-bottom: 0;
+          border: 1px solid #fecaca;
+          background: #fef2f2;
+          color: #991b1b;
+        }
+
+        .automation-notice strong {
+          display: block;
+          margin-bottom: 3px;
+          font-size: 13px;
+          font-weight: 900;
+        }
+
+        .automation-notice p,
+        .automation-warning p {
+          margin: 0;
+          font-size: 12px;
+          line-height: 1.5;
+          font-weight: 700;
         }
 
         .checkbox-grid {

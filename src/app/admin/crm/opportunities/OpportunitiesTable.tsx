@@ -1,7 +1,27 @@
 "use client";
 
+import type { CSSProperties } from "react";
 import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
+import {
+  AlertTriangle,
+  Building2,
+  CalendarClock,
+  CheckCircle2,
+  CircleDollarSign,
+  Flame,
+  Loader2,
+  Mail,
+  Package,
+  Pencil,
+  Phone,
+  Save,
+  Sparkles,
+  Target,
+  TrendingUp,
+  UserRound,
+  X,
+} from "lucide-react";
 
 type StageOption = {
   value: string;
@@ -73,6 +93,7 @@ function formatAmount(amount: string, currency: string | null) {
   return new Intl.NumberFormat("fr-FR", {
     style: "currency",
     currency: currency || "EUR",
+    maximumFractionDigits: 0,
   }).format(value);
 }
 
@@ -122,9 +143,22 @@ function findStageValue(stageOptions: StageOption[], candidates: string[]) {
   );
 }
 
-function getStageClass(stage: string) {
-  if (["WON", "CLOSED_WON"].includes(stage)) return "crm-badge-green";
-  if (["LOST", "CLOSED_LOST"].includes(stage)) return "crm-badge-red";
+function getStageStyle(stage: string): CSSProperties {
+  if (["WON", "CLOSED_WON"].includes(stage)) {
+    return {
+      background: "#DCFCE7",
+      color: "#166534",
+      border: "1px solid #BBF7D0",
+    };
+  }
+
+  if (["LOST", "CLOSED_LOST"].includes(stage)) {
+    return {
+      background: "#FEE2E2",
+      color: "#991B1B",
+      border: "1px solid #FECACA",
+    };
+  }
 
   if (
     [
@@ -136,16 +170,66 @@ function getStageClass(stage: string) {
       "IN_NEGOTIATION",
     ].includes(stage)
   ) {
-    return "crm-badge-orange";
+    return {
+      background: "#FFF7ED",
+      color: "#9A3412",
+      border: "1px solid #FED7AA",
+    };
   }
 
-  if (["QUALIFIED", "QUALIFICATION"].includes(stage)) return "crm-badge-blue";
+  if (["QUALIFIED", "QUALIFICATION"].includes(stage)) {
+    return {
+      background: "#EFF6FF",
+      color: "#1E3A8A",
+      border: "1px solid #BFDBFE",
+    };
+  }
 
-  return "";
+  return {
+    background: "#F8FAFC",
+    color: "#475569",
+    border: "1px solid #E2E8F0",
+  };
+}
+
+function getSourceLabel(source: string) {
+  const labels: Record<string, string> = {
+    WEBSITE: "Site web",
+    FACEBOOK: "Facebook",
+    LINKEDIN: "LinkedIn",
+    EMAIL_CAMPAIGN: "Email",
+    GOOGLE: "Google",
+    DIRECT: "Direct",
+    TENDER: "Appel d’offre",
+    REFERRAL: "Recommandation",
+    MANUAL: "Manuel",
+    OTHER: "Autre",
+  };
+
+  return labels[source] || source;
 }
 
 function isLostStage(stage: string) {
   return ["LOST", "CLOSED_LOST"].includes(stage);
+}
+
+function isWonStage(stage: string) {
+  return ["WON", "CLOSED_WON"].includes(stage);
+}
+
+function isHotStage(stage: string) {
+  return [
+    "PROPOSAL",
+    "PROPOSAL_SENT",
+    "QUOTE_SENT",
+    "OFFER_SENT",
+    "NEGOTIATION",
+    "IN_NEGOTIATION",
+  ].includes(stage);
+}
+
+function clampProbability(value: number) {
+  return Math.min(Math.max(value || 0, 0), 100);
 }
 
 export default function OpportunitiesTable({
@@ -188,6 +272,22 @@ export default function OpportunitiesTable({
       lost: findStageValue(stageOptions, ["LOST", "CLOSED_LOST"]),
     };
   }, [stageOptions]);
+
+  const sortedOpportunities = useMemo(() => {
+    return [...opportunities].sort((a, b) => {
+      const aWonLost = isWonStage(a.stage) || isLostStage(a.stage) ? 1 : 0;
+      const bWonLost = isWonStage(b.stage) || isLostStage(b.stage) ? 1 : 0;
+
+      if (aWonLost !== bWonLost) return aWonLost - bWonLost;
+
+      const aHot = isHotStage(a.stage) ? 0 : 1;
+      const bHot = isHotStage(b.stage) ? 0 : 1;
+
+      if (aHot !== bHot) return aHot - bHot;
+
+      return String(b.createdAt).localeCompare(String(a.createdAt));
+    });
+  }, [opportunities]);
 
   function openModal(opportunity: OpportunityRow) {
     setSelected(opportunity);
@@ -296,184 +396,247 @@ export default function OpportunitiesTable({
     });
   }
 
-  if (opportunities.length === 0) {
-    return (
-      <div className="crm-card crm-section">
-        <div className="crm-empty">Aucune opportunité pour le moment.</div>
-      </div>
-    );
-  }
-
   return (
-    <div className="crm-grid">
-      {notice && (
+    <div style={s.wrapper}>
+      {notice && !selected && (
         <div
-          className={
-            notice.type === "success"
-              ? "crm-notice crm-notice-success"
-              : "crm-notice crm-notice-error"
-          }
+          style={{
+            ...s.notice,
+            ...(notice.type === "success" ? s.noticeSuccess : s.noticeError),
+          }}
         >
-          {notice.message}
+          {notice.type === "success" ? (
+            <CheckCircle2 size={17} />
+          ) : (
+            <AlertTriangle size={17} />
+          )}
+
+          <span>{notice.message}</span>
         </div>
       )}
 
-      <div className="crm-card crm-section">
-        <div className="crm-section-head">
+      <section style={s.card}>
+        <div style={s.cardHeader}>
           <div>
-            <h2 className="crm-section-title">Pipeline commercial</h2>
-            <p className="crm-section-subtitle">
+            <div style={s.sectionTitleRow}>
+              <span style={s.sectionIcon}>
+                <Target size={18} />
+              </span>
+
+              <h2 style={s.sectionTitle}>Pipeline commercial</h2>
+            </div>
+
+            <p style={s.sectionSubtitle}>
               Consultez les opportunités. Cliquez sur “Gérer” pour modifier
               l’étape, le montant, la probabilité ou la prochaine relance.
             </p>
           </div>
         </div>
 
-        <div className="crm-table-wrap">
-          <table className="crm-table">
-            <thead>
-              <tr>
-                <th>Opportunité</th>
-                <th>Produit</th>
-                <th>Contact</th>
-                <th>Entreprise</th>
-                <th>Étape</th>
-                <th>Source</th>
-                <th>Montant</th>
-                <th>Probabilité</th>
-                <th>Créée le</th>
-                <th>Action</th>
-              </tr>
-            </thead>
+        {sortedOpportunities.length === 0 ? (
+          <div style={s.empty}>
+            <div style={s.emptyIcon}>
+              <Sparkles size={20} />
+            </div>
 
-            <tbody>
-              {opportunities.map((opportunity) => (
-                <tr key={opportunity.id}>
-                  <td>
-                    <div className="crm-name">{opportunity.title}</div>
+            <p>Aucune opportunité pour le moment.</p>
+          </div>
+        ) : (
+          <div style={s.tableWrap}>
+            <table style={s.table}>
+              <thead>
+                <tr>
+                  <th style={s.th}>Opportunité</th>
+                  <th style={s.th}>Produit</th>
+                  <th style={s.th}>Contact</th>
+                  <th style={s.th}>Entreprise</th>
+                  <th style={s.th}>Étape</th>
+                  <th style={s.th}>Source</th>
+                  <th style={s.th}>Montant</th>
+                  <th style={s.th}>Probabilité</th>
+                  <th style={s.th}>Créée le</th>
+                  <th style={s.thRight}>Action</th>
+                </tr>
+              </thead>
 
-                    {opportunity.requestType && (
-                      <div className="crm-muted">
-                        Type : {opportunity.requestType}
-                      </div>
-                    )}
+              <tbody>
+                {sortedOpportunities.map((opportunity) => {
+                  const probability = clampProbability(
+                    opportunity.probability || 0
+                  );
 
-                    {opportunity.description && (
-                      <div className="crm-muted crm-small-text">
-                        {opportunity.description}
-                      </div>
-                    )}
-                  </td>
-
-                  <td>
-                    {opportunity.product ? (
-                      <>
-                        <div className="crm-name">
-                          {opportunity.product.name}
-                        </div>
-                        <div className="crm-muted">
-                          {opportunity.product.slug}
-                        </div>
-                      </>
-                    ) : (
-                      "—"
-                    )}
-                  </td>
-
-                  <td>
-                    {opportunity.contact ? (
-                      <>
-                        <div className="crm-name">
-                          {getContactName(opportunity.contact)}
-                        </div>
-                        <div className="crm-muted">
-                          {opportunity.contact.email}
-                        </div>
-                        {opportunity.contact.phone && (
-                          <div className="crm-muted">
-                            {opportunity.contact.phone}
-                          </div>
-                        )}
-                      </>
-                    ) : (
-                      "—"
-                    )}
-                  </td>
-
-                  <td>{opportunity.company?.name || "—"}</td>
-
-                  <td>
-                    <span
-                      className={`crm-badge ${getStageClass(
-                        opportunity.stage
-                      )}`}
+                  return (
+                    <tr
+                      key={opportunity.id}
+                      style={{
+                        ...s.tr,
+                        ...(isHotStage(opportunity.stage) ? s.trHot : {}),
+                        ...(isWonStage(opportunity.stage) ? s.trSuccess : {}),
+                        ...(isLostStage(opportunity.stage) ? s.trLost : {}),
+                      }}
                     >
-                      {getStageLabel(stageOptions, opportunity.stage)}
-                    </span>
-                  </td>
+                      <td style={s.td}>
+                        <div style={s.mainCell}>
+                          <span style={s.name}>{opportunity.title}</span>
 
-                  <td>{opportunity.source}</td>
+                          <div style={s.pillRow}>
+                            {opportunity.requestType && (
+                              <span style={s.requestBadge}>
+                                {opportunity.requestType}
+                              </span>
+                            )}
 
-                  <td>
-                    <div className="crm-name">
-                      {formatAmount(opportunity.amount, opportunity.currency)}
-                    </div>
-                  </td>
+                            {opportunity.offer?.title && (
+                              <span style={s.offerBadge}>
+                                {opportunity.offer.title}
+                              </span>
+                            )}
+                          </div>
 
-                  <td>
-                    <div className="crm-action-stack">
-                      <div className="crm-progress">
+                          {opportunity.description && (
+                            <span style={s.muted}>
+                              {opportunity.description}
+                            </span>
+                          )}
+                        </div>
+                      </td>
+
+                      <td style={s.td}>
+                        {opportunity.product ? (
+                          <div style={s.mainCell}>
+                            <span style={s.inlineIconText}>
+                              <Package size={14} />
+                              {opportunity.product.name}
+                            </span>
+
+                            <span style={s.muted}>
+                              {opportunity.product.slug}
+                            </span>
+                          </div>
+                        ) : (
+                          <span style={s.muted}>—</span>
+                        )}
+                      </td>
+
+                      <td style={s.td}>
+                        {opportunity.contact ? (
+                          <div style={s.mainCell}>
+                            <span style={s.inlineIconText}>
+                              <UserRound size={14} />
+                              {getContactName(opportunity.contact)}
+                            </span>
+
+                            <span style={s.inlineMutedText}>
+                              <Mail size={13} />
+                              {opportunity.contact.email}
+                            </span>
+
+                            {opportunity.contact.phone && (
+                              <span style={s.inlineMutedText}>
+                                <Phone size={13} />
+                                {opportunity.contact.phone}
+                              </span>
+                            )}
+                          </div>
+                        ) : (
+                          <span style={s.muted}>—</span>
+                        )}
+                      </td>
+
+                      <td style={s.td}>
+                        {opportunity.company?.name ? (
+                          <span style={s.inlineIconText}>
+                            <Building2 size={14} />
+                            {opportunity.company.name}
+                          </span>
+                        ) : (
+                          <span style={s.muted}>—</span>
+                        )}
+                      </td>
+
+                      <td style={s.td}>
                         <span
                           style={{
-                            width: `${Math.min(
-                              Math.max(opportunity.probability || 0, 0),
-                              100
-                            )}%`,
+                            ...s.badge,
+                            ...getStageStyle(opportunity.stage),
                           }}
-                        />
-                      </div>
-                      <div className="crm-muted">
-                        {opportunity.probability || 0}%
-                      </div>
-                    </div>
-                  </td>
+                        >
+                          {getStageLabel(stageOptions, opportunity.stage)}
+                        </span>
+                      </td>
 
-                  <td>{formatDate(opportunity.createdAt)}</td>
+                      <td style={s.td}>
+                        <span style={s.sourceBadge}>
+                          {getSourceLabel(opportunity.source)}
+                        </span>
+                      </td>
 
-                  <td>
-                    <button
-                      type="button"
-                      className="crm-mini-button crm-mini-button-primary"
-                      onClick={() => openModal(opportunity)}
-                    >
-                      Gérer
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
+                      <td style={s.td}>
+                        <div style={s.amountCell}>
+                          <CircleDollarSign size={15} />
+                          <strong>
+                            {formatAmount(
+                              opportunity.amount,
+                              opportunity.currency
+                            )}
+                          </strong>
+                        </div>
+                      </td>
+
+                      <td style={s.td}>
+                        <div style={s.probabilityCell}>
+                          <div style={s.progress}>
+                            <span
+                              style={{
+                                ...s.progressFill,
+                                width: `${probability}%`,
+                              }}
+                            />
+                          </div>
+
+                          <span style={s.probabilityText}>{probability}%</span>
+                        </div>
+                      </td>
+
+                      <td style={s.td}>{formatDate(opportunity.createdAt)}</td>
+
+                      <td style={s.tdRight}>
+                        <button
+                          type="button"
+                          style={s.manageButton}
+                          onClick={() => openModal(opportunity)}
+                        >
+                          <Pencil size={14} />
+                          Gérer
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </section>
 
       {selected && form && (
-        <div className="crm-modal-backdrop" onMouseDown={closeModal}>
+        <div style={s.modalBackdrop} onMouseDown={closeModal}>
           <div
-            className="crm-modal"
+            style={s.modal}
             role="dialog"
             aria-modal="true"
             aria-labelledby="crm-opportunity-modal-title"
             onMouseDown={(event) => event.stopPropagation()}
           >
-            <div className="crm-modal-header">
+            <div style={s.modalHeader}>
               <div>
-                <p className="crm-modal-eyebrow">Gestion opportunité</p>
+                <p style={s.modalEyebrow}>Gestion opportunité</p>
 
-                <h2 id="crm-opportunity-modal-title" className="crm-modal-title">
+                <h2 id="crm-opportunity-modal-title" style={s.modalTitle}>
                   {selected.title}
                 </h2>
 
-                <p className="crm-modal-subtitle">
+                <p style={s.modalSubtitle}>
                   Modifiez les informations commerciales dans cette fenêtre,
                   puis validez.
                 </p>
@@ -481,57 +644,49 @@ export default function OpportunitiesTable({
 
               <button
                 type="button"
-                className="crm-modal-close"
+                style={s.modalClose}
                 onClick={closeModal}
                 disabled={Boolean(loadingId)}
                 aria-label="Fermer"
               >
-                ×
+                <X size={18} />
               </button>
             </div>
 
-            <div className="crm-modal-body">
-              <div className="crm-modal-summary">
-                <div>
-                  <span>Produit</span>
-                  <strong>{selected.product?.name || "—"}</strong>
-                </div>
+            <div style={s.modalBody}>
+              <div style={s.modalSummary}>
+                <SummaryItem label="Produit" value={selected.product?.name || "—"} />
 
-                <div>
-                  <span>Contact</span>
-                  <strong>
-                    {selected.contact
-                      ? getContactName(selected.contact)
-                      : "—"}
-                  </strong>
-                </div>
+                <SummaryItem
+                  label="Contact"
+                  value={
+                    selected.contact ? getContactName(selected.contact) : "—"
+                  }
+                />
 
-                <div>
-                  <span>Entreprise</span>
-                  <strong>{selected.company?.name || "—"}</strong>
-                </div>
+                <SummaryItem
+                  label="Entreprise"
+                  value={selected.company?.name || "—"}
+                />
 
-                <div>
-                  <span>Source</span>
-                  <strong>{selected.source}</strong>
-                </div>
+                <SummaryItem label="Source" value={getSourceLabel(selected.source)} />
               </div>
 
-              <div className="crm-modal-quick-actions">
+              <div style={s.quickActions}>
                 {quickStages.contacted && (
                   <button
                     type="button"
-                    className="crm-mini-button crm-mini-button-secondary"
+                    style={s.quickButton}
                     onClick={() => applyQuickStage(quickStages.contacted, 25)}
                   >
-                    Marquer contacté
+                    Contacté
                   </button>
                 )}
 
                 {quickStages.qualified && (
                   <button
                     type="button"
-                    className="crm-mini-button crm-mini-button-secondary"
+                    style={s.quickButton}
                     onClick={() => applyQuickStage(quickStages.qualified, 50)}
                   >
                     Qualifier
@@ -541,7 +696,7 @@ export default function OpportunitiesTable({
                 {quickStages.proposal && (
                   <button
                     type="button"
-                    className="crm-mini-button crm-mini-button-secondary"
+                    style={s.quickButtonOrange}
                     onClick={() => applyQuickStage(quickStages.proposal, 75)}
                   >
                     Proposition envoyée
@@ -551,7 +706,7 @@ export default function OpportunitiesTable({
                 {quickStages.negotiation && (
                   <button
                     type="button"
-                    className="crm-mini-button crm-mini-button-secondary"
+                    style={s.quickButtonOrange}
                     onClick={() => applyQuickStage(quickStages.negotiation, 85)}
                   >
                     Négociation
@@ -561,7 +716,7 @@ export default function OpportunitiesTable({
                 {quickStages.won && (
                   <button
                     type="button"
-                    className="crm-mini-button"
+                    style={s.quickButtonSuccess}
                     onClick={() => applyQuickStage(quickStages.won, 100)}
                   >
                     Gagné
@@ -571,7 +726,7 @@ export default function OpportunitiesTable({
                 {quickStages.lost && (
                   <button
                     type="button"
-                    className="crm-mini-button crm-mini-button-danger"
+                    style={s.quickButtonDanger}
                     onClick={() => applyQuickStage(quickStages.lost, 0)}
                   >
                     Perdu
@@ -579,11 +734,12 @@ export default function OpportunitiesTable({
                 )}
               </div>
 
-              <div className="crm-modal-form-grid">
-                <label className="crm-modal-field">
+              <div style={s.formGrid}>
+                <label style={s.field}>
                   <span>Étape du pipeline</span>
+
                   <select
-                    className="crm-control"
+                    style={s.control}
                     value={form.stage}
                     onChange={(event) =>
                       updateForm("stage", event.target.value)
@@ -597,10 +753,11 @@ export default function OpportunitiesTable({
                   </select>
                 </label>
 
-                <label className="crm-modal-field">
+                <label style={s.field}>
                   <span>Montant estimé</span>
+
                   <input
-                    className="crm-control"
+                    style={s.control}
                     type="number"
                     min="0"
                     step="1"
@@ -612,10 +769,11 @@ export default function OpportunitiesTable({
                   />
                 </label>
 
-                <label className="crm-modal-field">
+                <label style={s.field}>
                   <span>Probabilité</span>
+
                   <select
-                    className="crm-control"
+                    style={s.control}
                     value={form.probability}
                     onChange={(event) =>
                       updateForm("probability", Number(event.target.value))
@@ -629,10 +787,11 @@ export default function OpportunitiesTable({
                   </select>
                 </label>
 
-                <label className="crm-modal-field">
+                <label style={s.field}>
                   <span>Prochaine relance</span>
+
                   <input
-                    className="crm-control"
+                    style={s.control}
                     type="datetime-local"
                     value={form.nextFollowUpAt}
                     onChange={(event) =>
@@ -642,11 +801,31 @@ export default function OpportunitiesTable({
                 </label>
               </div>
 
+              <div style={s.modalProgressBox}>
+                <div style={s.modalProgressHead}>
+                  <span>Probabilité actuelle</span>
+                  <strong>{clampProbability(Number(form.probability))}%</strong>
+                </div>
+
+                <div style={s.progress}>
+                  <span
+                    style={{
+                      ...s.progressFill,
+                      width: `${clampProbability(Number(form.probability))}%`,
+                    }}
+                  />
+                </div>
+              </div>
+
               {isLostStage(form.stage) && (
-                <label className="crm-modal-field">
+                <label style={s.field}>
                   <span>Raison de perte</span>
+
                   <textarea
-                    className="crm-control crm-modal-textarea"
+                    style={{
+                      ...s.control,
+                      ...s.textarea,
+                    }}
                     value={form.lostReason}
                     onChange={(event) =>
                       updateForm("lostReason", event.target.value)
@@ -657,16 +836,17 @@ export default function OpportunitiesTable({
               )}
 
               {notice?.type === "error" && (
-                <div className="crm-notice crm-notice-error">
-                  {notice.message}
+                <div style={{ ...s.notice, ...s.noticeError }}>
+                  <AlertTriangle size={17} />
+                  <span>{notice.message}</span>
                 </div>
               )}
             </div>
 
-            <div className="crm-modal-footer">
+            <div style={s.modalFooter}>
               <button
                 type="button"
-                className="crm-modal-cancel"
+                style={s.cancelButton}
                 onClick={closeModal}
                 disabled={Boolean(loadingId)}
               >
@@ -675,13 +855,24 @@ export default function OpportunitiesTable({
 
               <button
                 type="button"
-                className="crm-modal-submit"
+                style={{
+                  ...s.submitButton,
+                  opacity: loadingId === selected.id ? 0.6 : 1,
+                }}
                 onClick={submitModal}
                 disabled={loadingId === selected.id}
               >
-                {loadingId === selected.id
-                  ? "Enregistrement..."
-                  : "Enregistrer les modifications"}
+                {loadingId === selected.id ? (
+                  <>
+                    <Loader2 size={16} />
+                    Enregistrement...
+                  </>
+                ) : (
+                  <>
+                    <Save size={16} />
+                    Enregistrer les modifications
+                  </>
+                )}
               </button>
             </div>
           </div>
@@ -690,3 +881,565 @@ export default function OpportunitiesTable({
     </div>
   );
 }
+
+function SummaryItem({ label, value }: { label: string; value: string }) {
+  return (
+    <div style={s.summaryItem}>
+      <span>{label}</span>
+      <strong>{value}</strong>
+    </div>
+  );
+}
+
+const ORANGE = "#EF9F27";
+const ORANGE_DARK = "#92400E";
+const ORANGE_SOFT = "rgba(239, 159, 39, 0.10)";
+const ORANGE_BORDER = "rgba(239, 159, 39, 0.28)";
+const SURFACE = "#FFFFFF";
+const TEXT = "#111827";
+const MUTED = "#6B7280";
+const SOFT = "#9CA3AF";
+const BORDER = "#E5E7EB";
+
+const s: Record<string, CSSProperties> = {
+  wrapper: {
+    display: "grid",
+    gap: 16,
+  },
+
+  notice: {
+    padding: "12px 14px",
+    borderRadius: 14,
+    display: "flex",
+    alignItems: "center",
+    gap: 8,
+    fontSize: 13,
+    fontWeight: 800,
+  },
+
+  noticeSuccess: {
+    background: "#DCFCE7",
+    color: "#166534",
+    border: "1px solid #BBF7D0",
+  },
+
+  noticeError: {
+    background: "#FEE2E2",
+    color: "#991B1B",
+    border: "1px solid #FECACA",
+  },
+
+  card: {
+    background: SURFACE,
+    border: `1px solid ${BORDER}`,
+    borderRadius: 22,
+    padding: 18,
+    boxShadow: "0 14px 40px rgba(15, 23, 42, 0.05)",
+    overflow: "hidden",
+  },
+
+  cardHeader: {
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "flex-start",
+    gap: 12,
+    marginBottom: 16,
+  },
+
+  sectionTitleRow: {
+    display: "flex",
+    alignItems: "center",
+    gap: 9,
+  },
+
+  sectionIcon: {
+    width: 34,
+    height: 34,
+    borderRadius: 12,
+    display: "inline-flex",
+    alignItems: "center",
+    justifyContent: "center",
+    color: ORANGE,
+    background: ORANGE_SOFT,
+    border: `1px solid ${ORANGE_BORDER}`,
+  },
+
+  sectionTitle: {
+    margin: 0,
+    color: TEXT,
+    fontSize: 18,
+    fontWeight: 900,
+    letterSpacing: "-0.02em",
+  },
+
+  sectionSubtitle: {
+    margin: "6px 0 0 43px",
+    color: MUTED,
+    fontSize: 13,
+  },
+
+  tableWrap: {
+    width: "100%",
+    overflowX: "auto",
+    borderRadius: 16,
+    border: `1px solid ${BORDER}`,
+  },
+
+  table: {
+    width: "100%",
+    minWidth: 1180,
+    borderCollapse: "collapse",
+    fontSize: 13,
+  },
+
+  th: {
+    padding: "13px 14px",
+    background: "#F9FAFB",
+    borderBottom: `1px solid ${BORDER}`,
+    color: MUTED,
+    textAlign: "left",
+    fontSize: 12,
+    fontWeight: 900,
+    whiteSpace: "nowrap",
+  },
+
+  thRight: {
+    padding: "13px 14px",
+    background: "#F9FAFB",
+    borderBottom: `1px solid ${BORDER}`,
+    color: MUTED,
+    textAlign: "right",
+    fontSize: 12,
+    fontWeight: 900,
+    whiteSpace: "nowrap",
+  },
+
+  tr: {
+    background: "#FFFFFF",
+  },
+
+  trHot: {
+    background: "#FFFCF7",
+  },
+
+  trSuccess: {
+    background: "#FBFFFC",
+  },
+
+  trLost: {
+    background: "#FFFBFB",
+  },
+
+  td: {
+    padding: "14px",
+    borderBottom: "1px solid #F1F5F9",
+    color: "#374151",
+    verticalAlign: "top",
+  },
+
+  tdRight: {
+    padding: "14px",
+    borderBottom: "1px solid #F1F5F9",
+    color: "#374151",
+    verticalAlign: "top",
+    textAlign: "right",
+  },
+
+  mainCell: {
+    display: "flex",
+    flexDirection: "column",
+    gap: 5,
+  },
+
+  name: {
+    color: TEXT,
+    fontWeight: 900,
+  },
+
+  muted: {
+    color: SOFT,
+    fontSize: 12,
+    fontWeight: 600,
+    lineHeight: 1.4,
+  },
+
+  inlineIconText: {
+    display: "inline-flex",
+    alignItems: "center",
+    gap: 6,
+    color: TEXT,
+    fontWeight: 800,
+  },
+
+  inlineMutedText: {
+    display: "inline-flex",
+    alignItems: "center",
+    gap: 6,
+    color: SOFT,
+    fontSize: 12,
+    fontWeight: 600,
+  },
+
+  pillRow: {
+    display: "flex",
+    gap: 6,
+    flexWrap: "wrap",
+  },
+
+  badge: {
+    display: "inline-flex",
+    width: "fit-content",
+    padding: "5px 9px",
+    borderRadius: 999,
+    fontSize: 12,
+    fontWeight: 900,
+    whiteSpace: "nowrap",
+  },
+
+  requestBadge: {
+    display: "inline-flex",
+    width: "fit-content",
+    padding: "4px 8px",
+    borderRadius: 999,
+    color: "#475569",
+    background: "#F8FAFC",
+    border: "1px solid #E2E8F0",
+    fontSize: 11,
+    fontWeight: 900,
+    whiteSpace: "nowrap",
+  },
+
+  offerBadge: {
+    display: "inline-flex",
+    width: "fit-content",
+    padding: "4px 8px",
+    borderRadius: 999,
+    color: ORANGE_DARK,
+    background: ORANGE_SOFT,
+    border: `1px solid ${ORANGE_BORDER}`,
+    fontSize: 11,
+    fontWeight: 900,
+    whiteSpace: "nowrap",
+  },
+
+  sourceBadge: {
+    display: "inline-flex",
+    width: "fit-content",
+    padding: "5px 9px",
+    borderRadius: 999,
+    color: "#475569",
+    background: "#F8FAFC",
+    border: "1px solid #E2E8F0",
+    fontSize: 12,
+    fontWeight: 900,
+    whiteSpace: "nowrap",
+  },
+
+  amountCell: {
+    display: "inline-flex",
+    alignItems: "center",
+    gap: 6,
+    color: TEXT,
+  },
+
+  probabilityCell: {
+    display: "grid",
+    gap: 6,
+    minWidth: 120,
+  },
+
+  progress: {
+    height: 9,
+    width: "100%",
+    borderRadius: 999,
+    background: "#E5E7EB",
+    overflow: "hidden",
+  },
+
+  progressFill: {
+    display: "block",
+    height: "100%",
+    borderRadius: 999,
+    background: ORANGE,
+  },
+
+  probabilityText: {
+    color: MUTED,
+    fontSize: 12,
+    fontWeight: 900,
+  },
+
+  manageButton: {
+    height: 34,
+    padding: "0 12px",
+    borderRadius: 10,
+    border: `1px solid ${ORANGE_BORDER}`,
+    background: ORANGE,
+    color: "#1a0d00",
+    display: "inline-flex",
+    alignItems: "center",
+    gap: 6,
+    fontSize: 12,
+    fontWeight: 900,
+    cursor: "pointer",
+    whiteSpace: "nowrap",
+  },
+
+  empty: {
+    minHeight: 230,
+    borderRadius: 18,
+    background: "#F9FAFB",
+    border: `1px dashed ${BORDER}`,
+    display: "flex",
+    flexDirection: "column",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 10,
+    color: MUTED,
+  },
+
+  emptyIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: 15,
+    display: "inline-flex",
+    alignItems: "center",
+    justifyContent: "center",
+    color: ORANGE,
+    background: ORANGE_SOFT,
+    border: `1px solid ${ORANGE_BORDER}`,
+  },
+
+  modalBackdrop: {
+    position: "fixed",
+    inset: 0,
+    zIndex: 80,
+    padding: 24,
+    background: "rgba(15, 23, 42, 0.48)",
+    overflowY: "auto",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+
+  modal: {
+    width: "min(960px, 100%)",
+    background: "#F8FAFC",
+    borderRadius: 24,
+    boxShadow: "0 24px 80px rgba(15, 23, 42, 0.28)",
+    border: "1px solid rgba(255,255,255,0.18)",
+    overflow: "hidden",
+  },
+
+  modalHeader: {
+    padding: 22,
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "flex-start",
+    gap: 16,
+    background:
+      "linear-gradient(135deg, #111827 0%, #1F2937 58%, #2B1804 100%)",
+  },
+
+  modalEyebrow: {
+    margin: "0 0 6px",
+    color: ORANGE,
+    fontSize: 11,
+    fontWeight: 900,
+    letterSpacing: "0.1em",
+    textTransform: "uppercase",
+  },
+
+  modalTitle: {
+    margin: 0,
+    color: "#FFFFFF",
+    fontSize: 23,
+    fontWeight: 900,
+    letterSpacing: "-0.03em",
+  },
+
+  modalSubtitle: {
+    margin: "8px 0 0",
+    maxWidth: 620,
+    color: "#D1D5DB",
+    fontSize: 13,
+    lineHeight: 1.6,
+  },
+
+  modalClose: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    border: "1px solid rgba(255,255,255,0.16)",
+    background: "rgba(255,255,255,0.08)",
+    color: "#FFFFFF",
+    display: "inline-flex",
+    alignItems: "center",
+    justifyContent: "center",
+    cursor: "pointer",
+  },
+
+  modalBody: {
+    padding: 22,
+    display: "grid",
+    gap: 16,
+  },
+
+  modalSummary: {
+    display: "grid",
+    gridTemplateColumns: "repeat(4, minmax(0, 1fr))",
+    gap: 12,
+  },
+
+  summaryItem: {
+    padding: 14,
+    borderRadius: 16,
+    background: "#FFFFFF",
+    border: `1px solid ${BORDER}`,
+    display: "flex",
+    flexDirection: "column",
+    gap: 5,
+  },
+
+  quickActions: {
+    display: "flex",
+    alignItems: "center",
+    gap: 8,
+    flexWrap: "wrap",
+  },
+
+  quickButton: {
+    height: 36,
+    padding: "0 12px",
+    borderRadius: 10,
+    border: `1px solid ${BORDER}`,
+    background: "#FFFFFF",
+    color: TEXT,
+    fontSize: 12,
+    fontWeight: 900,
+    cursor: "pointer",
+  },
+
+  quickButtonOrange: {
+    height: 36,
+    padding: "0 12px",
+    borderRadius: 10,
+    border: "1px solid #FED7AA",
+    background: "#FFF7ED",
+    color: "#9A3412",
+    fontSize: 12,
+    fontWeight: 900,
+    cursor: "pointer",
+  },
+
+  quickButtonSuccess: {
+    height: 36,
+    padding: "0 12px",
+    borderRadius: 10,
+    border: "1px solid #BBF7D0",
+    background: "#DCFCE7",
+    color: "#166534",
+    fontSize: 12,
+    fontWeight: 900,
+    cursor: "pointer",
+  },
+
+  quickButtonDanger: {
+    height: 36,
+    padding: "0 12px",
+    borderRadius: 10,
+    border: "1px solid #FECACA",
+    background: "#FEF2F2",
+    color: "#991B1B",
+    fontSize: 12,
+    fontWeight: 900,
+    cursor: "pointer",
+  },
+
+  formGrid: {
+    display: "grid",
+    gridTemplateColumns: "repeat(4, minmax(0, 1fr))",
+    gap: 12,
+  },
+
+  field: {
+    display: "flex",
+    flexDirection: "column",
+    gap: 7,
+  },
+
+  control: {
+    width: "100%",
+    height: 42,
+    padding: "0 12px",
+    borderRadius: 12,
+    border: `1px solid ${BORDER}`,
+    background: "#FFFFFF",
+    color: TEXT,
+    fontSize: 14,
+    outline: "none",
+    boxSizing: "border-box",
+  },
+
+  textarea: {
+    minHeight: 92,
+    padding: 12,
+    resize: "vertical",
+    fontFamily: "Arial, Helvetica, sans-serif",
+  },
+
+  modalProgressBox: {
+    padding: 14,
+    borderRadius: 16,
+    background: "#FFFFFF",
+    border: `1px solid ${BORDER}`,
+    display: "grid",
+    gap: 10,
+  },
+
+  modalProgressHead: {
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "center",
+    gap: 12,
+    color: MUTED,
+    fontSize: 13,
+    fontWeight: 800,
+  },
+
+  modalFooter: {
+    padding: 22,
+    borderTop: `1px solid ${BORDER}`,
+    display: "flex",
+    justifyContent: "flex-end",
+    gap: 10,
+    background: "#FFFFFF",
+  },
+
+  cancelButton: {
+    height: 42,
+    padding: "0 15px",
+    borderRadius: 12,
+    border: `1px solid ${BORDER}`,
+    background: "#FFFFFF",
+    color: TEXT,
+    fontSize: 13,
+    fontWeight: 900,
+    cursor: "pointer",
+  },
+
+  submitButton: {
+    height: 42,
+    padding: "0 15px",
+    borderRadius: 12,
+    border: `1px solid ${ORANGE_BORDER}`,
+    background: ORANGE,
+    color: "#1a0d00",
+    display: "inline-flex",
+    alignItems: "center",
+    gap: 8,
+    fontSize: 13,
+    fontWeight: 900,
+    cursor: "pointer",
+  },
+};

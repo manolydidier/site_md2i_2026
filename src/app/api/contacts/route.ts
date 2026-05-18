@@ -1,4 +1,4 @@
-// app/api/contacts/route.ts
+// src/app/api/contacts/route.ts
 // CRUD contacts
 // GET    /api/contacts
 // POST   /api/contacts
@@ -17,6 +17,41 @@ import {
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
+
+type LegacyAutomationTrigger =
+  | "CONTACT_CREATED"
+  | "CONTACT_STATUS_NEW"
+  | "CONTACT_STATUS_PROSPECT"
+  | "CONTACT_STATUS_HOT_PROSPECT"
+  | "CONTACT_STATUS_CUSTOMER"
+  | "CONTACT_STATUS_INACTIVE"
+  | "EMAIL_OPENED"
+  | "EMAIL_CLICKED"
+  | "MANUAL_START";
+
+type DynamicTriggerEvent =
+  | "CONTACT_CREATED"
+  | "CONTACT_UPDATED"
+  | "EMAIL_OPENED"
+  | "EMAIL_CLICKED"
+  | "MANUAL_START";
+
+type ContactAutomationSnapshot = {
+  id: string;
+  email: string;
+  firstName: string | null;
+  lastName: string | null;
+  phone: string | null;
+  groupId: string | null;
+  jobTitle: string | null;
+  companyName: string | null;
+  country: string | null;
+  city: string | null;
+  crmStatus: string | null;
+  crmSource: string | null;
+  isActive: boolean;
+  unsubscribed: boolean;
+};
 
 function cleanString(value?: string | null) {
   const cleaned = String(value || "").trim();
@@ -65,7 +100,43 @@ function getContactInclude() {
   };
 }
 
-function getTriggerFromCrmStatus(status: string | null | undefined) {
+function toContactSnapshot(contact: {
+  id: string;
+  email: string;
+  firstName: string | null;
+  lastName: string | null;
+  phone: string | null;
+  groupId: string | null;
+  jobTitle: string | null;
+  companyName: string | null;
+  country: string | null;
+  city: string | null;
+  crmStatus: unknown;
+  crmSource: unknown;
+  isActive: boolean;
+  unsubscribed: boolean;
+}): ContactAutomationSnapshot {
+  return {
+    id: contact.id,
+    email: contact.email,
+    firstName: contact.firstName,
+    lastName: contact.lastName,
+    phone: contact.phone,
+    groupId: contact.groupId,
+    jobTitle: contact.jobTitle,
+    companyName: contact.companyName,
+    country: contact.country,
+    city: contact.city,
+    crmStatus: contact.crmStatus ? String(contact.crmStatus) : null,
+    crmSource: contact.crmSource ? String(contact.crmSource) : null,
+    isActive: contact.isActive,
+    unsubscribed: contact.unsubscribed,
+  };
+}
+
+function getTriggerFromCrmStatus(
+  status: string | null | undefined
+): LegacyAutomationTrigger | null {
   if (status === "NEW") return "CONTACT_STATUS_NEW";
   if (status === "PROSPECT") return "CONTACT_STATUS_PROSPECT";
   if (status === "HOT_PROSPECT") return "CONTACT_STATUS_HOT_PROSPECT";
@@ -73,6 +144,28 @@ function getTriggerFromCrmStatus(status: string | null | undefined) {
   if (status === "INACTIVE") return "CONTACT_STATUS_INACTIVE";
 
   return null;
+}
+
+async function startContactAutomationCompat(payload: {
+  userId: string;
+  contactId: string;
+  trigger: LegacyAutomationTrigger;
+  triggerEvent: DynamicTriggerEvent;
+  previousContact?: ContactAutomationSnapshot | null;
+  currentContact?: ContactAutomationSnapshot | null;
+}) {
+  logInfo("START_AUTOMATION_COMPAT", {
+    userId: payload.userId,
+    contactId: payload.contactId,
+    trigger: payload.trigger,
+    triggerEvent: payload.triggerEvent,
+    previousCrmStatus: payload.previousContact?.crmStatus || null,
+    currentCrmStatus: payload.currentContact?.crmStatus || null,
+    previousCrmSource: payload.previousContact?.crmSource || null,
+    currentCrmSource: payload.currentContact?.crmSource || null,
+  });
+
+  await startContactAutomation(payload as any);
 }
 
 async function ensureGroupBelongsToUser(groupId: string | null, userId: string) {
@@ -118,11 +211,10 @@ async function ensureGroupBelongsToUser(groupId: string | null, userId: string) 
   return group.id;
 }
 
-async function logWelcomeAutomationDiagnostic(userId: string, contactId?: string) {
+async function logAutomationDiagnostic(userId: string, contactId?: string) {
   const automations = await prisma.emailAutomation.findMany({
     where: {
       userId,
-      trigger: "CONTACT_CREATED",
     },
     include: {
       steps: {
@@ -167,7 +259,7 @@ async function logWelcomeAutomationDiagnostic(userId: string, contactId?: string
       })
     : null;
 
-  logInfo("WELCOME_AUTOMATION_DIAGNOSTIC", {
+  logInfo("AUTOMATION_DIAGNOSTIC", {
     userId,
     contactId: contactId || null,
     automationCount: automations.length,
@@ -178,6 +270,10 @@ async function logWelcomeAutomationDiagnostic(userId: string, contactId?: string
       id: automation.id,
       name: automation.name,
       trigger: automation.trigger,
+      triggerEvent: automation.triggerEvent,
+      conditionField: automation.conditionField,
+      conditionOperator: automation.conditionOperator,
+      conditionValue: automation.conditionValue,
       isActive: automation.isActive,
       stepCount: automation.steps.length,
       activeStepCount: automation.steps.filter((step) => step.isActive).length,
@@ -472,6 +568,8 @@ export async function POST(req: NextRequest) {
       return created;
     });
 
+    const currentSnapshot = toContactSnapshot(contact);
+
     logInfo("POST_CONTACT_CREATED", {
       contactId: contact.id,
       email: maskEmail(contact.email),
@@ -482,7 +580,7 @@ export async function POST(req: NextRequest) {
       groupId: contact.groupId || null,
     });
 
-    await logWelcomeAutomationDiagnostic(session.user.id, contact.id);
+    await logAutomationDiagnostic(session.user.id, contact.id);
 
     const canStartAutomation =
       contact.isActive === true && contact.unsubscribed === false;
@@ -498,24 +596,31 @@ export async function POST(req: NextRequest) {
       logInfo("POST_START_CONTACT_CREATED_AUTOMATION_BEFORE", {
         contactId: contact.id,
         trigger: "CONTACT_CREATED",
+        triggerEvent: "CONTACT_CREATED",
       });
 
-      await startContactAutomation({
+      await startContactAutomationCompat({
         userId: session.user.id,
         contactId: contact.id,
         trigger: "CONTACT_CREATED",
+        triggerEvent: "CONTACT_CREATED",
+        previousContact: null,
+        currentContact: currentSnapshot,
       });
 
       logInfo("POST_START_CONTACT_CREATED_AUTOMATION_AFTER", {
         contactId: contact.id,
         trigger: "CONTACT_CREATED",
+        triggerEvent: "CONTACT_CREATED",
       });
 
-      const statusTrigger = getTriggerFromCrmStatus(contact.crmStatus);
+      const statusTrigger = getTriggerFromCrmStatus(
+        currentSnapshot.crmStatus || undefined
+      );
 
       logInfo("POST_STATUS_TRIGGER_RESOLVED", {
         contactId: contact.id,
-        crmStatus: contact.crmStatus,
+        crmStatus: currentSnapshot.crmStatus,
         statusTrigger,
       });
 
@@ -523,21 +628,28 @@ export async function POST(req: NextRequest) {
         logInfo("POST_START_STATUS_AUTOMATION_BEFORE", {
           contactId: contact.id,
           trigger: statusTrigger,
+          triggerEvent: "CONTACT_UPDATED",
+          previousCrmStatus: null,
+          currentCrmStatus: currentSnapshot.crmStatus,
         });
 
-        await startContactAutomation({
+        await startContactAutomationCompat({
           userId: session.user.id,
           contactId: contact.id,
           trigger: statusTrigger,
+          triggerEvent: "CONTACT_UPDATED",
+          previousContact: null,
+          currentContact: currentSnapshot,
         });
 
         logInfo("POST_START_STATUS_AUTOMATION_AFTER", {
           contactId: contact.id,
           trigger: statusTrigger,
+          triggerEvent: "CONTACT_UPDATED",
         });
       }
 
-      await logWelcomeAutomationDiagnostic(session.user.id, contact.id);
+      await logAutomationDiagnostic(session.user.id, contact.id);
 
       const pendingBeforeSend = await prisma.emailAutomationEmail.findMany({
         where: {
@@ -559,6 +671,7 @@ export async function POST(req: NextRequest) {
               id: true,
               status: true,
               trigger: true,
+              triggerEvent: true,
             },
           },
           step: {
@@ -593,6 +706,7 @@ export async function POST(req: NextRequest) {
           runId: email.run.id,
           runStatus: email.run.status,
           runTrigger: email.run.trigger,
+          runTriggerEvent: email.run.triggerEvent,
           stepId: email.step.id,
           delayValue: email.step.delayValue,
           delayUnit: email.step.delayUnit,
@@ -648,6 +762,7 @@ export async function POST(req: NextRequest) {
               id: true,
               status: true,
               trigger: true,
+              triggerEvent: true,
             },
           },
           step: {
@@ -682,6 +797,7 @@ export async function POST(req: NextRequest) {
           runId: email.run.id,
           runStatus: email.run.status,
           runTrigger: email.run.trigger,
+          runTriggerEvent: email.run.triggerEvent,
           stepId: email.step.id,
           delayValue: email.step.delayValue,
           delayUnit: email.step.delayUnit,

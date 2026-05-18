@@ -620,11 +620,27 @@ model EmailLog {
 // ============================================================
 
 model EmailAutomation {
-  id          String                 @id @default(cuid())
+  id          String  @id @default(cuid())
   name        String
   description String?
-  trigger     EmailAutomationTrigger
-  isActive    Boolean                @default(true)
+
+  // Ancien déclencheur : conservé pour compatibilité avec ton code actuel.
+  // On le gardera pendant la transition.
+  trigger EmailAutomationTrigger @default(CONTACT_CREATED)
+
+  // Nouveau système dynamique.
+  // Exemple :
+  // triggerEvent       = CONTACT_UPDATED
+  // conditionField     = CRM_STATUS
+  // conditionOperator  = CHANGED_TO
+  // conditionValue     = PROSPECT
+  triggerEvent       EmailAutomationTriggerEvent      @default(CONTACT_CREATED)
+  conditionField     EmailAutomationConditionField    @default(NONE)
+  conditionOperator  EmailAutomationConditionOperator @default(ALWAYS)
+  conditionValue     String?
+  conditionValueJson Json?
+
+  isActive Boolean @default(true)
 
   userId String @db.Uuid
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -637,13 +653,26 @@ model EmailAutomation {
 
   @@index([userId])
   @@index([trigger])
+  @@index([triggerEvent])
+  @@index([conditionField])
+  @@index([conditionOperator])
+  @@index([conditionValue])
   @@index([isActive])
   @@index([createdAt])
-  // Index rapides pour chercher les automatisations actives par déclencheur
+  // Anciens index utiles
   @@index([userId, trigger])
   @@index([userId, isActive])
   @@index([userId, trigger, isActive])
   @@index([userId, isActive, createdAt])
+  // Nouveaux index utiles pour les déclencheurs dynamiques
+  // Les noms map: évitent les collisions Prisma/PostgreSQL sur les index longs.
+  @@index([userId, triggerEvent], map: "idx_email_auto_user_event")
+  @@index([userId, triggerEvent, isActive], map: "idx_email_auto_user_event_active")
+  @@index([userId, triggerEvent, conditionField], map: "idx_email_auto_user_event_field")
+  @@index([userId, triggerEvent, conditionField, conditionOperator], map: "idx_email_auto_user_event_field_op")
+  @@index([userId, triggerEvent, isActive, conditionField], map: "idx_email_auto_user_event_active_field")
+  @@index([userId, triggerEvent, isActive, conditionField, conditionOperator], map: "idx_email_auto_user_event_active_field_op")
+  @@index([userId, isActive, triggerEvent, createdAt], map: "idx_email_auto_user_active_event_created")
   @@map("email_automations")
 }
 
@@ -689,8 +718,16 @@ model EmailAutomationRun {
   userId String @db.Uuid
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  trigger EmailAutomationTrigger
-  status  EmailAutomationRunStatus @default(ACTIVE)
+  // Ancien déclencheur conservé pour compatibilité.
+  trigger EmailAutomationTrigger @default(CONTACT_CREATED)
+
+  // Nouveau déclencheur dynamique utilisé pour l’historique.
+  triggerEvent EmailAutomationTriggerEvent @default(CONTACT_CREATED)
+
+  // Snapshot facultatif de la condition au moment du lancement.
+  conditionSnapshot Json?
+
+  status EmailAutomationRunStatus @default(ACTIVE)
 
   startedAt   DateTime  @default(now())
   completedAt DateTime?
@@ -706,16 +743,19 @@ model EmailAutomationRun {
   @@index([automationId])
   @@index([status])
   @@index([trigger])
+  @@index([triggerEvent])
   @@index([startedAt])
   // Index rapides pour éviter les doublons actifs et afficher l’historique
   @@index([userId, contactId, status])
   @@index([userId, automationId, status])
   @@index([userId, trigger, status])
+  @@index([userId, triggerEvent, status])
   @@index([userId, startedAt])
   @@index([contactId, automationId, status])
   @@index([automationId, status])
   @@index([contactId, status])
   @@index([userId, status, startedAt])
+  @@index([userId, triggerEvent, status, startedAt])
   @@map("email_automation_runs")
 }
 
@@ -1122,6 +1162,43 @@ enum EmailAutomationTrigger {
   EMAIL_OPENED
   EMAIL_CLICKED
   MANUAL_START
+}
+
+enum EmailAutomationTriggerEvent {
+  CONTACT_CREATED
+  CONTACT_UPDATED
+  EMAIL_OPENED
+  EMAIL_CLICKED
+  MANUAL_START
+}
+
+enum EmailAutomationConditionField {
+  NONE
+  EMAIL
+  FIRST_NAME
+  LAST_NAME
+  PHONE
+  GROUP_ID
+  CRM_STATUS
+  CRM_SOURCE
+  COMPANY_NAME
+  COUNTRY
+  CITY
+  IS_ACTIVE
+  UNSUBSCRIBED
+}
+
+enum EmailAutomationConditionOperator {
+  ALWAYS
+  EQUALS
+  NOT_EQUALS
+  CONTAINS
+  NOT_CONTAINS
+  EXISTS
+  NOT_EXISTS
+  CHANGED
+  CHANGED_TO
+  CHANGED_FROM
 }
 
 enum EmailAutomationRunStatus {
