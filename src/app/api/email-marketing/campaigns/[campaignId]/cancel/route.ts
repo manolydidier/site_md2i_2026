@@ -1,9 +1,6 @@
-// src/app/api/email-marketing/campaigns/[campaignId]/prepare-recipients/route.ts
-
 import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { prisma } from "@/app/lib/prisma";
-import { ensureCampaignRecipients } from "@/app/lib/email-marketing/campaign-recipients";
 
 type RouteParams = Promise<{
   campaignId?: string;
@@ -12,13 +9,10 @@ type RouteParams = Promise<{
 
 async function getCampaignId(params: RouteParams) {
   const resolvedParams = await params;
-
   const campaignId = resolvedParams.campaignId || resolvedParams.id;
 
   if (!campaignId) {
-    throw new Error(
-      "campaignId est manquant. Vérifie que le dossier de route s'appelle [campaignId] ou [id]."
-    );
+    throw new Error("campaignId est manquant.");
   }
 
   return campaignId;
@@ -37,54 +31,61 @@ export async function POST(
 
     const campaignId = await getCampaignId(params);
 
-    console.log("[prepare-campaign-recipients][START]", {
-      campaignId,
-      userId: session.user.id,
-    });
-
     const campaign = await prisma.campaign.findFirst({
       where: {
         id: campaignId,
         userId: session.user.id,
       },
-      include: {
-        campaignGroups: {
-          select: {
-            groupId: true,
-          },
-        },
+      select: {
+        id: true,
+        status: true,
       },
     });
 
     if (!campaign) {
       return NextResponse.json(
-        {
-          success: false,
-          error: "Campagne introuvable.",
-        },
+        { success: false, error: "Campagne introuvable." },
         { status: 404 }
       );
     }
 
-    const result = await ensureCampaignRecipients({
-      id: campaign.id,
-      userId: campaign.userId,
-      groupId: campaign.groupId,
-      campaignGroups: campaign.campaignGroups,
+    if (campaign.status === "SENT") {
+      return NextResponse.json(
+        {
+          success: false,
+          error: "Cette campagne est deja envoyee, elle ne peut plus etre annulee.",
+        },
+        { status: 400 }
+      );
+    }
+
+    if (campaign.status === "CANCELLED") {
+      return NextResponse.json({
+        success: true,
+        message: "Cette campagne est deja annulee.",
+      });
+    }
+
+    await prisma.campaign.update({
+      where: {
+        id: campaign.id,
+      },
+      data: {
+        status: "CANCELLED",
+      },
     });
 
-    console.log("[prepare-campaign-recipients][DONE]", {
+    console.log("[campaign-cancel][DONE]", {
       campaignId: campaign.id,
-      created: result.created,
-      totalRecipients: result.totalRecipients,
+      userId: session.user.id,
     });
 
     return NextResponse.json({
       success: true,
-      ...result,
+      message: "Envoi annule.",
     });
   } catch (error) {
-    console.error("[prepare-campaign-recipients][ERROR]", error);
+    console.error("[campaign-cancel][ERROR]", error);
 
     return NextResponse.json(
       {

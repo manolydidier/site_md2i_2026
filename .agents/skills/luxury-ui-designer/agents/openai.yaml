@@ -1,0 +1,7 @@
+interface:
+  display_name: "Luxury UI Designer"
+  short_description: "React premium: Motion, Tailwind, shadcn/ui"
+  default_prompt: "Use $luxury-ui-designer to design and implement a premium React interface with Tailwind, shadcn/ui, and advanced Motion animations."
+
+policy:
+  allow_implicit_invocation: true

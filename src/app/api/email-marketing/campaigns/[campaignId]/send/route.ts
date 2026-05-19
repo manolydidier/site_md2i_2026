@@ -1,5 +1,3 @@
-// src/app/api/email-marketing/campaigns/[campaignId]/send/route.ts
-
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { prisma } from "@/app/lib/prisma";
@@ -10,6 +8,42 @@ type Body = {
   limit?: number;
   retryFailed?: boolean;
 };
+
+type RouteParams = Promise<{
+  campaignId?: string;
+  id?: string;
+}>;
+
+type RuntimeCampaignStatus =
+  | "DRAFT"
+  | "SENDING"
+  | "SENT"
+  | "FAILED"
+  | "SCHEDULED"
+  | "CANCELLED";
+
+type RuntimeCampaignState = {
+  totalRecipients: number;
+  sentCount: number;
+  failedCount: number;
+  pendingCount: number;
+  status: RuntimeCampaignStatus;
+  sentAt: Date | null;
+};
+
+async function getCampaignId(params: RouteParams) {
+  const resolvedParams = await params;
+
+  const campaignId = resolvedParams.campaignId || resolvedParams.id;
+
+  if (!campaignId) {
+    throw new Error(
+      "campaignId est manquant. Verifie que le dossier de route s'appelle bien [campaignId] ou [id]."
+    );
+  }
+
+  return campaignId;
+}
 
 function replaceVariables(
   html: string,
@@ -33,30 +67,82 @@ function getErrorMessage(error: unknown) {
   return error instanceof Error ? error.message : String(error);
 }
 
-async function refreshCampaignCounters(campaignId: string) {
-  const [totalRecipients, sentCount, failedCount] = await Promise.all([
-    prisma.campaignRecipient.count({
-      where: {
-        campaignId,
-      },
-    }),
+async function getCampaignRuntimeState(
+  campaignId: string
+): Promise<RuntimeCampaignState> {
+  if (!campaignId) {
+    throw new Error(
+      "[getCampaignRuntimeState] campaignId est undefined. Impossible de mettre a jour la campagne."
+    );
+  }
 
-    prisma.campaignRecipient.count({
-      where: {
-        campaignId,
-        sent: true,
-      },
-    }),
-
-    prisma.campaignRecipient.count({
-      where: {
-        campaignId,
-        error: {
-          not: null,
+  const [campaign, totalRecipients, sentCount, failedCount, pendingCount] =
+    await Promise.all([
+      prisma.campaign.findUnique({
+        where: {
+          id: campaignId,
         },
-      },
-    }),
-  ]);
+        select: {
+          status: true,
+          sentAt: true,
+        },
+      }),
+
+      prisma.campaignRecipient.count({
+        where: {
+          campaignId,
+        },
+      }),
+
+      prisma.campaignRecipient.count({
+        where: {
+          campaignId,
+          sent: true,
+        },
+      }),
+
+      prisma.campaignRecipient.count({
+        where: {
+          campaignId,
+          error: {
+            not: null,
+          },
+        },
+      }),
+
+      prisma.campaignRecipient.count({
+        where: {
+          campaignId,
+          sent: false,
+          error: null,
+        },
+      }),
+    ]);
+
+  if (!campaign) {
+    throw new Error(
+      "[getCampaignRuntimeState] Campagne introuvable pendant la mise a jour."
+    );
+  }
+
+  let status: RuntimeCampaignStatus = campaign.status;
+
+  if (campaign.status === "CANCELLED" && pendingCount > 0) {
+    status = "CANCELLED";
+  } else if (pendingCount > 0) {
+    status = "SENDING";
+  } else if (sentCount > 0) {
+    status = "SENT";
+  } else if (failedCount > 0) {
+    status = "FAILED";
+  } else if (campaign.status === "CANCELLED") {
+    status = "CANCELLED";
+  } else if (campaign.status === "SENDING") {
+    status = "DRAFT";
+  }
+
+  const sentAt =
+    status === "SENT" ? campaign.sentAt ?? new Date() : campaign.sentAt;
 
   await prisma.campaign.update({
     where: {
@@ -66,6 +152,8 @@ async function refreshCampaignCounters(campaignId: string) {
       totalRecipients,
       sentCount,
       failedCount,
+      status,
+      sentAt,
     },
   });
 
@@ -73,12 +161,55 @@ async function refreshCampaignCounters(campaignId: string) {
     totalRecipients,
     sentCount,
     failedCount,
+    pendingCount,
+    status,
+    sentAt,
+  };
+}
+
+async function getLatestCampaignStatus(campaignId: string) {
+  const campaign = await prisma.campaign.findUnique({
+    where: {
+      id: campaignId,
+    },
+    select: {
+      status: true,
+    },
+  });
+
+  return campaign?.status ?? null;
+}
+
+async function buildSendResponse(params: {
+  success: boolean;
+  campaignId: string;
+  sent: number;
+  failed: number;
+  cancelled?: boolean;
+  message?: string;
+}) {
+  const runtime = await getCampaignRuntimeState(params.campaignId);
+  const cancelled = runtime.status === "CANCELLED";
+
+  return {
+    success: params.success,
+    cancelled,
+    message: cancelled || !params.cancelled ? params.message : undefined,
+    status: runtime.status,
+    sent: params.sent,
+    failed: params.failed,
+    remaining: runtime.pendingCount,
+    counters: {
+      totalRecipients: runtime.totalRecipients,
+      sentCount: runtime.sentCount,
+      failedCount: runtime.failedCount,
+    },
   };
 }
 
 export async function POST(
   req: NextRequest,
-  { params }: { params: { campaignId: string } }
+  { params }: { params: RouteParams }
 ) {
   const startedAt = new Date();
 
@@ -90,7 +221,7 @@ export async function POST(
     }
 
     const userId = session.user.id;
-    const campaignId = params.campaignId;
+    const campaignId = await getCampaignId(params);
 
     const body = (await req.json().catch(() => ({}))) as Body;
 
@@ -120,10 +251,39 @@ export async function POST(
     });
 
     if (!campaign) {
+      console.warn("[campaign-send][CAMPAIGN_NOT_FOUND]", {
+        campaignId,
+        userId,
+      });
+
       return NextResponse.json(
         { success: false, error: "Campagne introuvable." },
         { status: 404 }
       );
+    }
+
+    if (campaign.status === "SENT") {
+      return NextResponse.json(
+        {
+          success: false,
+          error: "Cette campagne est deja envoyee.",
+        },
+        { status: 409 }
+      );
+    }
+
+    if (campaign.status === "CANCELLED") {
+      const response = await buildSendResponse({
+        success: true,
+        campaignId: campaign.id,
+        sent: 0,
+        failed: 0,
+        cancelled: true,
+        message:
+          "L'envoi est annule. Dupliquez ou reouvrez la campagne si vous souhaitez la relancer.",
+      });
+
+      return NextResponse.json(response);
     }
 
     if (!campaign.htmlContent?.trim()) {
@@ -140,20 +300,11 @@ export async function POST(
       return NextResponse.json(
         {
           success: false,
-          error: "L'adresse d'expéditeur de la campagne est vide.",
+          error: "L'adresse d'expediteur de la campagne est vide.",
         },
         { status: 400 }
       );
     }
-
-    await prisma.campaign.update({
-      where: {
-        id: campaign.id,
-      },
-      data: {
-        status: "SENDING",
-      },
-    });
 
     const prepared = await ensureCampaignRecipients({
       id: campaign.id,
@@ -163,14 +314,52 @@ export async function POST(
     });
 
     console.log("[campaign-send][RECIPIENTS_PREPARED]", {
-      campaignId,
+      campaignId: campaign.id,
       created: prepared.created,
       totalRecipients: prepared.totalRecipients,
     });
 
+    if (prepared.totalRecipients <= 0) {
+      return NextResponse.json(
+        {
+          success: false,
+          error:
+            "Aucun destinataire valide n'a ete trouve pour cette campagne.",
+        },
+        { status: 400 }
+      );
+    }
+
+    const statusBeforeSending = await getLatestCampaignStatus(campaign.id);
+
+    if (statusBeforeSending === "CANCELLED") {
+      const response = await buildSendResponse({
+        success: true,
+        campaignId: campaign.id,
+        sent: 0,
+        failed: 0,
+        cancelled: true,
+        message:
+          "L'envoi a ete annule avant le lancement du prochain lot.",
+      });
+
+      return NextResponse.json(response);
+    }
+
+    if (statusBeforeSending !== "SENDING") {
+      await prisma.campaign.update({
+        where: {
+          id: campaign.id,
+        },
+        data: {
+          status: "SENDING",
+        },
+      });
+    }
+
     const recipients = await prisma.campaignRecipient.findMany({
       where: {
-        campaignId,
+        campaignId: campaign.id,
         sent: false,
         ...(retryFailed
           ? {}
@@ -197,40 +386,42 @@ export async function POST(
     });
 
     if (recipients.length === 0) {
-      const counters = await refreshCampaignCounters(campaignId);
-
-      const remaining = await prisma.campaignRecipient.count({
-        where: {
-          campaignId,
-          sent: false,
-          error: null,
-        },
-      });
-
-      await prisma.campaign.update({
-        where: {
-          id: campaignId,
-        },
-        data: {
-          status: remaining === 0 ? "SENT" : "SENDING",
-          sentAt: remaining === 0 && !campaign.sentAt ? new Date() : campaign.sentAt,
-        },
-      });
-
-      return NextResponse.json({
+      const response = await buildSendResponse({
         success: true,
-        message: "Aucun destinataire restant à envoyer.",
+        campaignId: campaign.id,
         sent: 0,
         failed: 0,
-        remaining,
-        counters,
+        message: "Aucun destinataire restant a envoyer pour ce lot.",
       });
+
+      console.log("[campaign-send][NO_RECIPIENTS_TO_SEND]", {
+        campaignId: campaign.id,
+        remaining: response.remaining,
+        counters: response.counters,
+        status: response.status,
+      });
+
+      return NextResponse.json(response);
     }
 
     let sent = 0;
     let failed = 0;
+    let cancelled = false;
 
     for (const recipient of recipients) {
+      const liveStatus = await getLatestCampaignStatus(campaign.id);
+
+      if (liveStatus === "CANCELLED") {
+        cancelled = true;
+
+        console.warn("[campaign-send][CANCELLED_DURING_BATCH]", {
+          campaignId: campaign.id,
+          recipientId: recipient.id,
+        });
+
+        break;
+      }
+
       try {
         const html = replaceVariables(campaign.htmlContent, {
           email: recipient.email,
@@ -276,8 +467,9 @@ export async function POST(
         sent += 1;
 
         console.log("[campaign-send][SENT]", {
-          campaignId,
+          campaignId: campaign.id,
           recipientId: recipient.id,
+          contactId: recipient.contactId,
           email: recipient.email,
           resendEmailId: result.id,
         });
@@ -306,49 +498,38 @@ export async function POST(
         });
 
         console.error("[campaign-send][FAILED]", {
-          campaignId,
+          campaignId: campaign.id,
           recipientId: recipient.id,
+          contactId: recipient.contactId,
           email: recipient.email,
           error: message,
         });
       }
     }
 
-    const remaining = await prisma.campaignRecipient.count({
-      where: {
-        campaignId,
-        sent: false,
-        error: null,
-      },
-    });
-
-    const counters = await refreshCampaignCounters(campaignId);
-
-    await prisma.campaign.update({
-      where: {
-        id: campaignId,
-      },
-      data: {
-        status: remaining === 0 ? "SENT" : "SENDING",
-        sentAt: remaining === 0 && !campaign.sentAt ? new Date() : campaign.sentAt,
-      },
+    const response = await buildSendResponse({
+      success: true,
+      campaignId: campaign.id,
+      sent,
+      failed,
+      cancelled,
+      message: cancelled
+        ? "L'envoi a ete annule. Les emails deja transmis restent envoyes."
+        : undefined,
     });
 
     console.log("[campaign-send][DONE]", {
-      campaignId,
+      campaignId: campaign.id,
       sent,
       failed,
-      remaining,
+      remaining: response.remaining,
+      counters: response.counters,
+      status: response.status,
+      cancelled,
       finishedAt: new Date().toISOString(),
     });
 
-    return NextResponse.json({
-      success: true,
-      sent,
-      failed,
-      remaining,
-      counters,
-    });
+    return NextResponse.json(response);
   } catch (error) {
     console.error("[campaign-send][ERROR]", error);
 

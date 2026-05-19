@@ -1146,6 +1146,7 @@ enum CampaignStatus {
   SENT
   FAILED
   SCHEDULED
+  CANCELLED
 }
 
 // ============================================================

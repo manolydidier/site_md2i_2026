@@ -9,6 +9,7 @@ import type {
   ContactGroup,
   GroupFormData,
   Campaign,
+  CampaignStatus,
 } from "@/app/types/email-marketing";
 
 interface UseContactsOptions {
@@ -353,7 +354,7 @@ export function useCampaigns() {
 
 export function useCampaignStatus(campaignId: string | null, active: boolean) {
   const [status, setStatus] = useState<{
-    status: string;
+    status: CampaignStatus;
     progress: number;
     sentCount: number;
     failedCount: number;
@@ -373,7 +374,11 @@ export function useCampaignStatus(campaignId: string | null, active: boolean) {
 
         setStatus(data);
 
-        if (data.status === "SENT" || data.status === "FAILED") {
+        if (
+          data.status === "SENT" ||
+          data.status === "FAILED" ||
+          data.status === "CANCELLED"
+        ) {
           clearInterval(interval);
         }
       } catch {

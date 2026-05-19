@@ -2,11 +2,9 @@
 
 import { Resend } from "resend";
 
-const resend = new Resend(process.env.RESEND_API_KEY);
-
 type SendCampaignEmailParams = {
-  fromName: string;
-  fromEmail: string;
+  fromName?: string | null;
+  fromEmail?: string | null;
   replyTo?: string | null;
   to: string;
   subject: string;
@@ -19,11 +17,15 @@ type SendCampaignEmailParams = {
 function getRequiredEnv(name: string) {
   const value = process.env[name];
 
-  if (!value) {
+  if (!value?.trim()) {
     throw new Error(`${name} est manquant.`);
   }
 
-  return value;
+  return value.trim();
+}
+
+function getResend() {
+  return new Resend(getRequiredEnv("RESEND_API_KEY"));
 }
 
 function htmlToText(html: string) {
@@ -33,6 +35,73 @@ function htmlToText(html: string) {
     .replace(/<[^>]+>/g, " ")
     .replace(/\s+/g, " ")
     .trim();
+}
+
+function extractEmail(value: string) {
+  const clean = value.trim();
+
+  const match = clean.match(/<([^>]+)>/);
+
+  if (match?.[1]) {
+    return match[1].trim();
+  }
+
+  return clean;
+}
+
+function buildFrom({
+  fromName,
+  fromEmail,
+}: {
+  fromName?: string | null;
+  fromEmail?: string | null;
+}) {
+  /**
+   * Priorité :
+   * 1. EMAIL_FROM si tu l’utilises déjà pour l’ancien envoi qui marche.
+   * 2. RESEND_FROM_EMAIL si tu l’as configuré.
+   * 3. campaign.fromEmail si elle existe.
+   * 4. MAIL_FROM_ADDRESS en dernier fallback.
+   */
+  const envFrom =
+    process.env.EMAIL_FROM?.trim() ||
+    process.env.RESEND_FROM_EMAIL?.trim() ||
+    "";
+
+  const rawFrom = envFrom || fromEmail?.trim() || process.env.MAIL_FROM_ADDRESS?.trim() || "";
+
+  if (!rawFrom) {
+    throw new Error(
+      "Aucun expéditeur trouvé. Configure EMAIL_FROM ou RESEND_FROM_EMAIL dans .env."
+    );
+  }
+
+  /**
+   * Si la valeur est déjà au format :
+   * MD2I <noreply@send.md2i.eu>
+   * on la garde telle quelle.
+   */
+  if (rawFrom.includes("<") && rawFrom.includes(">")) {
+    return rawFrom;
+  }
+
+  const cleanEmail = extractEmail(rawFrom);
+  const cleanName =
+    fromName?.trim() ||
+    process.env.MAIL_FROM_NAME?.trim() ||
+    "MD2I";
+
+  return `${cleanName} <${cleanEmail}>`;
+}
+
+function sanitizeTagValue(value: string) {
+  /**
+   * Resend accepte les tags avec lettres ASCII, chiffres, _ et -.
+   * Les IDs cuid/uuid passent normalement, mais on sécurise quand même.
+   */
+  return value
+    .replace(/[^a-zA-Z0-9_-]/g, "_")
+    .slice(0, 256);
 }
 
 export async function sendResendCampaignEmail({
@@ -46,43 +115,92 @@ export async function sendResendCampaignEmail({
   recipientId,
   contactId,
 }: SendCampaignEmailParams) {
-  getRequiredEnv("RESEND_API_KEY");
+  const resend = getResend();
 
-  const from = `${fromName || "MD2I"} <${fromEmail}>`;
+  const from = buildFrom({
+    fromName,
+    fromEmail,
+  });
+
+  const cleanTo = to.trim().toLowerCase();
+  const cleanSubject = subject?.trim() || "Message de MD2I";
+
+  if (!cleanTo) {
+    throw new Error("Email destinataire manquant.");
+  }
+
+  if (!html?.trim()) {
+    throw new Error("HTML de campagne vide.");
+  }
+
+  console.log("[resend-campaign-sender][SEND_ATTEMPT]", {
+    from,
+    to: cleanTo,
+    subject: cleanSubject,
+    campaignId,
+    recipientId,
+    contactId,
+  });
 
   const { data, error } = await resend.emails.send({
     from,
-    to,
-    subject,
+    to: [cleanTo],
+    subject: cleanSubject,
     html,
     text: htmlToText(html),
-    replyTo: replyTo || undefined,
 
-    // Important : ces tags permettent au webhook Resend
-    // de retrouver la ligne CampaignRecipient.
+    /**
+     * Si replyTo est vide, on ne l’envoie pas à Resend.
+     */
+    replyTo: replyTo?.trim() || undefined,
+
+    /**
+     * Les tags ne servent pas à envoyer.
+     * Ils servent au webhook pour retrouver CampaignRecipient.
+     */
     tags: [
       {
         name: "campaign_id",
-        value: campaignId,
+        value: sanitizeTagValue(campaignId),
       },
       {
         name: "recipient_id",
-        value: recipientId,
+        value: sanitizeTagValue(recipientId),
       },
       {
         name: "contact_id",
-        value: contactId,
+        value: sanitizeTagValue(contactId),
       },
     ],
   });
 
   if (error) {
-    throw new Error(error.message || "Erreur Resend pendant l'envoi.");
+    console.error("[resend-campaign-sender][RESEND_ERROR]", {
+      from,
+      to: cleanTo,
+      subject: cleanSubject,
+      error,
+    });
+
+    throw new Error(error.message || JSON.stringify(error));
   }
 
   if (!data?.id) {
+    console.error("[resend-campaign-sender][NO_ID]", {
+      from,
+      to: cleanTo,
+      subject: cleanSubject,
+      data,
+    });
+
     throw new Error("Resend n'a pas retourné d'identifiant email.");
   }
+
+  console.log("[resend-campaign-sender][SEND_SUCCESS]", {
+    from,
+    to: cleanTo,
+    resendEmailId: data.id,
+  });
 
   return data;
 }

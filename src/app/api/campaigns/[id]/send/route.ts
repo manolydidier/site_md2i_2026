@@ -1,75 +1,51 @@
-// app/api/campaigns/[id]/send/route.ts
-// POST → déclenche l'envoi de la campagne
-// Le client peut poll /status pour suivre la progression
+// src/app/api/campaigns/[id]/send/route.ts
 
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@/auth";
-import { prisma } from "@/app/lib/prisma";
-import { sendCampaign } from "@/app/lib/email/sender";
+
+type RouteParams = Promise<{
+  id?: string;
+}>;
 
 export async function POST(
   req: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: RouteParams }
 ) {
-  const session = await auth();
+  const resolvedParams = await params;
+  const campaignId = resolvedParams.id;
 
-  if (!session?.user?.id) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  if (!campaignId) {
+    return NextResponse.json(
+      {
+        success: false,
+        error: "campaignId manquant dans l’ancienne route /api/campaigns/[id]/send.",
+      },
+      { status: 400 }
+    );
   }
 
-  const { id } = await params;
-
-  // Vérifier que la campagne appartient bien à l'utilisateur
-  const campaign = await prisma.campaign.findFirst({
-    where: {
-      id,
-      userId: session.user.id,
-    },
+  console.warn("[legacy-campaign-send][REDIRECT_TO_NEW_ROUTE]", {
+    campaignId,
   });
 
-  if (!campaign) {
-    return NextResponse.json(
-      { error: "Campagne introuvable" },
-      { status: 404 }
-    );
-  }
+  const body = await req.text().catch(() => "");
 
-  if (campaign.status === "SENDING") {
-    return NextResponse.json(
-      { error: "Campagne déjà en cours d'envoi" },
-      { status: 409 }
-    );
-  }
-
-  if (campaign.status === "SENT") {
-    return NextResponse.json(
-      { error: "Campagne déjà envoyée" },
-      { status: 409 }
-    );
-  }
-
-  if (!campaign.groupId) {
-    const count = await prisma.campaignRecipient.count({
-      where: { campaignId: id },
-    });
-
-    if (count === 0) {
-      return NextResponse.json(
-        { error: "Aucun destinataire : assignez un groupe ou des contacts" },
-        { status: 400 }
-      );
-    }
-  }
-
-  sendCampaign(id).catch((err) => {
-    console.error(`[API] Erreur envoi campagne ${id}:`, err);
-  });
-
-  return NextResponse.json(
-    {
-      message: "Envoi démarré",
-      campaignId: id,
-    },
-    { status: 202 }
+  const url = new URL(
+    `/api/email-marketing/campaigns/${campaignId}/send`,
+    req.url
   );
+
+  const response = await fetch(url, {
+    method: "POST",
+    headers: {
+      "Content-Type": req.headers.get("Content-Type") || "application/json",
+      cookie: req.headers.get("cookie") || "",
+    },
+    body: body || JSON.stringify({ limit: 50, retryFailed: false }),
+  });
+
+  const data = await response.json().catch(() => null);
+
+  return NextResponse.json(data, {
+    status: response.status,
+  });
 }

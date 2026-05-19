@@ -1,14 +1,46 @@
 // src/app/types/email-marketing.ts
 // Types partagés pour tout le module email marketing
 
+import type { ContactInput } from "@/app/lib/email/schemas";
+
 export type CampaignStatus =
   | "DRAFT"
   | "SENDING"
   | "SENT"
   | "FAILED"
-  | "SCHEDULED";
+  | "SCHEDULED"
+  | "CANCELLED";
 
 export type DateLike = string | Date;
+
+export type CrmContactStatus =
+  | "NEW"
+  | "PROSPECT"
+  | "HOT_PROSPECT"
+  | "CUSTOMER"
+  | "PARTNER"
+  | "INACTIVE"
+  | "LOST";
+
+export type CrmLeadSource =
+  | "WEBSITE"
+  | "FACEBOOK"
+  | "LINKEDIN"
+  | "EMAIL_CAMPAIGN"
+  | "GOOGLE"
+  | "DIRECT"
+  | "TENDER"
+  | "REFERRAL"
+  | "MANUAL"
+  | "OTHER";
+
+export interface CrmCompanyPreview {
+  id: string;
+  name: string;
+  type?: string | null;
+  country?: string | null;
+  city?: string | null;
+}
 
 export interface ContactGroup {
   id: string;
@@ -29,15 +61,26 @@ export interface Contact {
   firstName?: string | null;
   lastName?: string | null;
   phone?: string | null;
+  jobTitle?: string | null;
+  companyName?: string | null;
+  country?: string | null;
+  city?: string | null;
+  notes?: string | null;
   metadata?: Record<string, unknown> | null;
   isActive: boolean;
   unsubscribed: boolean;
+  crmStatus?: CrmContactStatus | null;
+  crmSource?: CrmLeadSource | null;
+  consentDate?: DateLike | null;
+  consentSource?: string | null;
   groupId?: string | null;
+  crmCompanyId?: string | null;
   userId: string;
   createdAt: DateLike;
   updatedAt: DateLike;
 
   group?: ContactGroup | null;
+  crmCompany?: CrmCompanyPreview | null;
 }
 
 export interface CampaignGroup {
@@ -121,13 +164,7 @@ export interface EmailLog {
 
 // Formulaires React Hook Form + Zod
 
-export interface ContactFormData {
-  email: string;
-  firstName?: string;
-  lastName?: string;
-  phone?: string;
-  groupId?: string;
-}
+export type ContactFormData = ContactInput;
 
 export interface GroupFormData {
   name: string;

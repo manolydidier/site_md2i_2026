@@ -6,8 +6,10 @@ import {
   useMemo,
   useState,
   useCallback,
+  useRef,
   type ReactNode,
 } from "react";
+
 import { useCampaigns, useCampaignStatus } from "@/app/hooks/useEmailMarketing";
 import type { Campaign } from "@/app/types/email-marketing";
 
@@ -36,7 +38,7 @@ import {
   Inbox,
   Sparkles,
   Calendar,
-  MoreHorizontal,
+  Ban,
 } from "lucide-react";
 
 import styles from "./CampaignsList.module.css";
@@ -46,7 +48,13 @@ interface CampaignsListProps {
   onEdit: (campaign: Campaign) => void;
 }
 
-type StatusKey = "DRAFT" | "SENDING" | "SENT" | "FAILED" | "SCHEDULED";
+type StatusKey =
+  | "DRAFT"
+  | "SENDING"
+  | "SENT"
+  | "FAILED"
+  | "SCHEDULED"
+  | "CANCELLED";
 
 type CampaignStatusConfig = {
   label: string;
@@ -63,6 +71,15 @@ type SendPopupState =
       campaign: Campaign;
       sentCount: number;
       failedCount: number;
+      remainingCount?: number;
+    }
+  | {
+      phase: "cancelled";
+      campaign: Campaign;
+      sentCount?: number;
+      failedCount?: number;
+      remainingCount?: number;
+      message?: string;
     }
   | { phase: "error"; campaign: Campaign; message: string };
 
@@ -70,11 +87,52 @@ type DeletePopupState =
   | { phase: "idle" }
   | { phase: "confirm"; campaign: Campaign };
 
-type LogEntry = {
-  email: string;
-  status: string;
+type CampaignSendResponse = {
+  success: boolean;
+  cancelled?: boolean;
+  status?: StatusKey;
+  sent?: number;
+  failed?: number;
+  remaining?: number;
+  counters?: {
+    totalRecipients: number;
+    sentCount: number;
+    failedCount: number;
+  };
+  error?: string;
   message?: string;
-  createdAt: string;
+};
+
+type CampaignPrepareResponse = {
+  success: boolean;
+  created?: number;
+  totalRecipients?: number;
+  error?: string;
+};
+
+type CampaignCancelResponse = {
+  success: boolean;
+  message?: string;
+  error?: string;
+};
+
+type CampaignStatsResponse = {
+  success: boolean;
+  campaign?: Campaign;
+  stats?: {
+    total: number;
+    sent: number;
+    pending: number;
+    delivered: number;
+    opened: number;
+    clicked: number;
+    failed: number;
+    sentRate: number;
+    deliveryRate: number;
+    openRate: number;
+    clickRate: number;
+  };
+  error?: string;
 };
 
 const STATUS_CONFIG: Record<StatusKey, CampaignStatusConfig> = {
@@ -103,6 +161,11 @@ const STATUS_CONFIG: Record<StatusKey, CampaignStatusConfig> = {
     icon: <Clock size={12} />,
     className: styles.statusScheduled,
   },
+  CANCELLED: {
+    label: "Annulée",
+    icon: <Ban size={12} />,
+    className: styles.statusFailed,
+  },
 };
 
 function cn(...classes: Array<string | false | null | undefined>) {
@@ -124,7 +187,7 @@ function formatDate(value?: string | Date | null, withLabel?: string) {
   };
 }
 
-async function readJsonSafe<T = any>(res: Response): Promise<T | null> {
+async function readJsonSafe<T = unknown>(res: Response): Promise<T | null> {
   const text = await res.text();
 
   if (!text) {
@@ -188,9 +251,7 @@ async function fetchCampaignDetails(campaign: Campaign) {
 export function CampaignsList({ onNew, onEdit }: CampaignsListProps) {
   const campaignState = useCampaigns();
 
-  const campaigns = Array.isArray(campaignState.campaigns)
-    ? campaignState.campaigns
-    : [];
+  const campaigns = campaignState.campaigns;
 
   const total = Number.isFinite(Number(campaignState.total))
     ? Number(campaignState.total)
@@ -202,6 +263,8 @@ export function CampaignsList({ onNew, onEdit }: CampaignsListProps) {
   const refetch = campaignState.refetch;
   const deleteCampaign = campaignState.deleteCampaign;
   const duplicateCampaign = campaignState.duplicateCampaign;
+
+  const cancelRequestedRef = useRef<Record<string, boolean>>({});
 
   const [sendPopup, setSendPopup] = useState<SendPopupState>({
     phase: "idle",
@@ -227,19 +290,28 @@ export function CampaignsList({ onNew, onEdit }: CampaignsListProps) {
     Boolean(activeSendingCampaignId)
   );
 
-  // Statistiques globales pour les indicateurs en haut
   const overviewStats = useMemo(() => {
     const sent = campaigns.filter((c) => c.status === "SENT").length;
     const drafts = campaigns.filter((c) => c.status === "DRAFT").length;
     const sending = campaigns.filter((c) => c.status === "SENDING").length;
-    return { sent, drafts, sending };
+    const cancelled = campaigns.filter(
+      (c) => String(c.status) === "CANCELLED"
+    ).length;
+
+    return { sent, drafts, sending, cancelled };
   }, [campaigns]);
 
   useEffect(() => {
     if (!activeSendingCampaign || !pollStatus) return;
 
-    if (pollStatus.status === "SENT") {
+    const status = String(pollStatus.status);
+
+    if (status === "SENT") {
       const finishedCampaign = activeSendingCampaign;
+
+      if (cancelRequestedRef.current[finishedCampaign.id]) {
+        return;
+      }
 
       setActiveSendingCampaign(null);
       refetch();
@@ -261,7 +333,7 @@ export function CampaignsList({ onNew, onEdit }: CampaignsListProps) {
       });
     }
 
-    if (pollStatus.status === "FAILED") {
+    if (status === "FAILED") {
       const failedCampaign = activeSendingCampaign;
 
       setActiveSendingCampaign(null);
@@ -277,6 +349,31 @@ export function CampaignsList({ onNew, onEdit }: CampaignsListProps) {
             campaign: failedCampaign,
             message:
               "L'envoi a échoué. Vérifiez vos paramètres d'envoi et réessayez.",
+          };
+        }
+
+        return current;
+      });
+    }
+
+    if (status === "CANCELLED") {
+      const cancelledCampaign = activeSendingCampaign;
+
+      setActiveSendingCampaign(null);
+      refetch();
+
+      setSendPopup((current) => {
+        if (
+          current.phase === "sending" &&
+          current.campaign.id === cancelledCampaign.id
+        ) {
+          return {
+            phase: "cancelled",
+            campaign: cancelledCampaign,
+            sentCount: pollStatus.sentCount,
+            failedCount: pollStatus.failedCount,
+            message:
+              "L’envoi a été annulé. Les emails déjà envoyés restent envoyés, les autres ne seront plus traités.",
           };
         }
 
@@ -317,10 +414,83 @@ export function CampaignsList({ onNew, onEdit }: CampaignsListProps) {
     [activeSendingCampaign]
   );
 
+  const handleCancelSend = useCallback(
+    async (campaign: Campaign) => {
+      const confirmed = window.confirm(
+        "Voulez-vous vraiment annuler l’envoi de cette campagne ? Les emails déjà envoyés ne pourront pas être récupérés."
+      );
+
+      if (!confirmed) return;
+
+      cancelRequestedRef.current[campaign.id] = true;
+
+      try {
+        console.log("[CampaignsList][CANCEL_SEND_START]", {
+          campaignId: campaign.id,
+          campaignName: campaign.name,
+        });
+
+        const res = await fetch(
+          `/api/email-marketing/campaigns/${campaign.id}/cancel`,
+          {
+            method: "POST",
+          }
+        );
+
+        const data = await readJsonSafe<CampaignCancelResponse>(res);
+
+        console.log("[CampaignsList][CANCEL_SEND_RESULT]", {
+          campaignId: campaign.id,
+          status: res.status,
+          data,
+        });
+
+        if (!res.ok || !data?.success) {
+          throw new Error(
+            data?.error || "Impossible d’annuler l’envoi de la campagne."
+          );
+        }
+
+        setActiveSendingCampaign(null);
+
+        setSendPopup({
+          phase: "cancelled",
+          campaign,
+          message:
+            data.message ||
+            "L’envoi a été annulé. Les emails déjà envoyés restent envoyés, les autres ne seront plus traités.",
+        });
+
+        refetch();
+      } catch (error) {
+        const message =
+          error instanceof Error
+            ? error.message
+            : "Erreur réseau pendant l’annulation de l’envoi.";
+
+        console.error("[CampaignsList][CANCEL_SEND_ERROR]", {
+          campaignId: campaign.id,
+          error,
+        });
+
+        setSendPopup({
+          phase: "error",
+          campaign,
+          message,
+        });
+
+        refetch();
+      }
+    },
+    [refetch]
+  );
+
   const handleSendConfirm = useCallback(async () => {
     if (sendPopup.phase !== "confirm") return;
 
     const { campaign } = sendPopup;
+
+    cancelRequestedRef.current[campaign.id] = false;
 
     setActiveSendingCampaign(campaign);
 
@@ -330,35 +500,246 @@ export function CampaignsList({ onNew, onEdit }: CampaignsListProps) {
     });
 
     try {
-      const res = await fetch(`/api/campaigns/${campaign.id}/send`, {
-        method: "POST",
+      console.log("[CampaignsList][SEND_CONFIRM_START]", {
+        campaignId: campaign.id,
+        campaignName: campaign.name,
       });
 
-      const data = await readJsonSafe<{ error?: string }>(res);
+      const prepareRes = await fetch(
+        `/api/email-marketing/campaigns/${campaign.id}/prepare-recipients`,
+        {
+          method: "POST",
+        }
+      );
 
-      if (!res.ok) {
+      const prepareData = await readJsonSafe<CampaignPrepareResponse>(
+        prepareRes
+      );
+
+      console.log("[CampaignsList][PREPARE_RECIPIENTS_RESULT]", {
+        campaignId: campaign.id,
+        status: prepareRes.status,
+        data: prepareData,
+      });
+
+      if (!prepareRes.ok || !prepareData?.success) {
+        throw new Error(
+          prepareData?.error ||
+            "Impossible de préparer les destinataires de la campagne."
+        );
+      }
+
+      const totalRecipients = Number(prepareData.totalRecipients || 0);
+
+      if (totalRecipients <= 0) {
+        throw new Error(
+          "Aucun destinataire valide trouvé. Vérifiez les groupes ou contacts associés à cette campagne."
+        );
+      }
+
+      let totalSent = 0;
+      let totalFailed = 0;
+      let displaySentCount = 0;
+      let displayFailedCount = 0;
+      let remaining = totalRecipients;
+
+      const batchSize = 10;
+      const maxLoops = Math.max(Math.ceil(totalRecipients / batchSize) + 5, 20);
+      let loop = 0;
+      let lastKnownStatus: StatusKey | null = null;
+
+      while (remaining > 0 && loop < maxLoops) {
+        if (cancelRequestedRef.current[campaign.id]) {
+          console.warn("[CampaignsList][SEND_CANCELLED_BEFORE_BATCH]", {
+            campaignId: campaign.id,
+            remaining,
+          });
+
+          setActiveSendingCampaign(null);
+
+          setSendPopup({
+            phase: "cancelled",
+            campaign,
+            sentCount: displaySentCount,
+            failedCount: displayFailedCount,
+            remainingCount: remaining,
+            message:
+              "L’envoi a été annulé avant le prochain lot. Les emails déjà envoyés restent envoyés.",
+          });
+
+          refetch();
+          return;
+        }
+
+        loop += 1;
+
+        const sendRes = await fetch(
+          `/api/email-marketing/campaigns/${campaign.id}/send`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              /**
+               * Lot volontairement limité.
+               * Plus le lot est petit, plus l’annulation est rapide côté interface.
+               */
+              limit: batchSize,
+              retryFailed: false,
+            }),
+          }
+        );
+
+        const sendData = await readJsonSafe<CampaignSendResponse>(sendRes);
+
+        console.log("[CampaignsList][SEND_BATCH_RESULT]", {
+          campaignId: campaign.id,
+          loop,
+          status: sendRes.status,
+          data: sendData,
+        });
+
+        if (!sendRes.ok || !sendData?.success) {
+          throw new Error(
+            sendData?.error || "Erreur pendant l'envoi de la campagne."
+          );
+        }
+
+        const batchSent = Number(sendData.sent || 0);
+        const batchFailed = Number(sendData.failed || 0);
+
+        totalSent += batchSent;
+        totalFailed += batchFailed;
+        displaySentCount = Math.max(
+          totalSent,
+          Number(sendData.counters?.sentCount || 0)
+        );
+        displayFailedCount = Math.max(
+          totalFailed,
+          Number(sendData.counters?.failedCount || 0)
+        );
+        remaining = Number(sendData.remaining || 0);
+        lastKnownStatus = sendData.status || lastKnownStatus;
+
+        if (
+          sendData.cancelled ||
+          lastKnownStatus === "CANCELLED" ||
+          cancelRequestedRef.current[campaign.id]
+        ) {
+          console.warn("[CampaignsList][SEND_CANCELLED_AFTER_BATCH]", {
+            campaignId: campaign.id,
+            totalSent: displaySentCount,
+            totalFailed: displayFailedCount,
+            remaining,
+          });
+
+          setActiveSendingCampaign(null);
+
+          setSendPopup({
+            phase: "cancelled",
+            campaign,
+            sentCount: displaySentCount,
+            failedCount: displayFailedCount,
+            remainingCount: remaining,
+            message:
+              sendData.message ||
+              "L’envoi a été annulé. Les emails déjà envoyés restent envoyés, les autres ne seront plus traités.",
+          });
+
+          refetch();
+          return;
+        }
+
+        if (batchSent === 0 && batchFailed === 0) {
+          break;
+        }
+      }
+
+      if (loop >= maxLoops && remaining > 0) {
+        console.warn("[CampaignsList][SEND_MAX_LOOPS_REACHED]", {
+          campaignId: campaign.id,
+          remaining,
+        });
+
         setActiveSendingCampaign(null);
 
         setSendPopup({
           phase: "error",
           campaign,
           message:
-            data?.error ||
-            "Une erreur est survenue lors du démarrage de l'envoi.",
+            "L'envoi a ete interrompu avant la fin du traitement. Certains destinataires restent en attente.",
         });
 
+        refetch();
         return;
       }
 
+      setActiveSendingCampaign(null);
+
+      if (lastKnownStatus === "FAILED") {
+        setSendPopup({
+          phase: "error",
+          campaign,
+          message:
+            displayFailedCount > 0
+              ? "Aucun email n'a pu etre envoye pour cette campagne. Verifiez la configuration puis reessayez."
+              : "L'envoi de la campagne a echoue.",
+        });
+
+        refetch();
+        return;
+      }
+
+      if (remaining > 0) {
+        setSendPopup({
+          phase: "error",
+          campaign,
+          message:
+            "L'envoi s'est arrete avant la fin. Des destinataires restent a traiter.",
+        });
+
+        refetch();
+        return;
+      }
+
+      setSendPopup({
+        phase: "success",
+        campaign,
+        sentCount: displaySentCount,
+        failedCount: displayFailedCount,
+        remainingCount: remaining,
+      });
+
       refetch();
-    } catch {
+
+      console.log("[CampaignsList][SEND_CONFIRM_DONE]", {
+        campaignId: campaign.id,
+        totalSent: displaySentCount,
+        totalFailed: displayFailedCount,
+        remaining,
+        finalStatus: lastKnownStatus,
+      });
+    } catch (error) {
+      const message =
+        error instanceof Error
+          ? error.message
+          : "Erreur réseau. Vérifiez votre connexion et réessayez.";
+
+      console.error("[CampaignsList][SEND_CONFIRM_ERROR]", {
+        campaignId: campaign.id,
+        error,
+      });
+
       setActiveSendingCampaign(null);
 
       setSendPopup({
         phase: "error",
         campaign,
-        message: "Erreur réseau. Vérifiez votre connexion et réessayez.",
+        message,
       });
+
+      refetch();
     }
   }, [sendPopup, refetch]);
 
@@ -384,15 +765,13 @@ export function CampaignsList({ onNew, onEdit }: CampaignsListProps) {
       phase: "idle",
     });
 
-    refetch();
-  }, [deletePopup, deleteCampaign, refetch]);
+  }, [deletePopup, deleteCampaign]);
 
   const handleDuplicate = useCallback(
     async (campaign: Campaign) => {
       await duplicateCampaign(campaign.id);
-      refetch();
     },
-    [duplicateCampaign, refetch]
+    [duplicateCampaign]
   );
 
   return (
@@ -403,7 +782,9 @@ export function CampaignsList({ onNew, onEdit }: CampaignsListProps) {
             <Sparkles size={12} />
             Email marketing
           </span>
+
           <h2 className={styles.title}>Campagnes</h2>
+
           <p className={styles.description}>
             Créez, modifiez, prévisualisez et envoyez vos campagnes email.
           </p>
@@ -429,13 +810,13 @@ export function CampaignsList({ onNew, onEdit }: CampaignsListProps) {
         </div>
       </header>
 
-      {/* Overview stats */}
       {hasCampaigns && (
         <div className={styles.overview}>
           <div className={styles.overviewCard}>
             <div className={styles.overviewIcon} data-color="blue">
               <Mail size={16} />
             </div>
+
             <div>
               <span className={styles.overviewValue}>{total}</span>
               <span className={styles.overviewLabel}>
@@ -448,6 +829,7 @@ export function CampaignsList({ onNew, onEdit }: CampaignsListProps) {
             <div className={styles.overviewIcon} data-color="green">
               <CheckCircle size={16} />
             </div>
+
             <div>
               <span className={styles.overviewValue}>{overviewStats.sent}</span>
               <span className={styles.overviewLabel}>envoyées</span>
@@ -458,6 +840,7 @@ export function CampaignsList({ onNew, onEdit }: CampaignsListProps) {
             <div className={styles.overviewIcon} data-color="amber">
               <FileEdit size={16} />
             </div>
+
             <div>
               <span className={styles.overviewValue}>
                 {overviewStats.drafts}
@@ -471,11 +854,27 @@ export function CampaignsList({ onNew, onEdit }: CampaignsListProps) {
               <div className={styles.overviewIcon} data-color="indigo">
                 <Loader2 size={16} className={styles.spin} />
               </div>
+
               <div>
                 <span className={styles.overviewValue}>
                   {overviewStats.sending}
                 </span>
                 <span className={styles.overviewLabel}>en cours</span>
+              </div>
+            </div>
+          )}
+
+          {overviewStats.cancelled > 0 && (
+            <div className={styles.overviewCard}>
+              <div className={styles.overviewIcon} data-color="red">
+                <Ban size={16} />
+              </div>
+
+              <div>
+                <span className={styles.overviewValue}>
+                  {overviewStats.cancelled}
+                </span>
+                <span className={styles.overviewLabel}>annulées</span>
               </div>
             </div>
           )}
@@ -508,6 +907,7 @@ export function CampaignsList({ onNew, onEdit }: CampaignsListProps) {
                   onDelete={() => handleDeleteRequest(campaign)}
                   onDuplicate={() => handleDuplicate(campaign)}
                   onSend={() => handleSendRequest(campaign)}
+                  onCancelSend={() => handleCancelSend(campaign)}
                   onPreview={() => setPreviewCampaign(campaign)}
                   onStats={() =>
                     setStatsId((current) =>
@@ -545,6 +945,7 @@ export function CampaignsList({ onNew, onEdit }: CampaignsListProps) {
           isBackgroundRunning={Boolean(activeSendingCampaign)}
           onConfirm={handleSendConfirm}
           onCancel={handleSendCancel}
+          onCancelSend={handleCancelSend}
           onClose={() =>
             setSendPopup({
               phase: "idle",
@@ -574,6 +975,7 @@ interface SendPopupProps {
   isBackgroundRunning: boolean;
   onConfirm: () => void;
   onCancel: () => void;
+  onCancelSend: (campaign: Campaign) => void | Promise<void>;
   onClose: () => void;
 }
 
@@ -583,6 +985,7 @@ function SendPopup({
   isBackgroundRunning,
   onConfirm,
   onCancel,
+  onCancelSend,
   onClose,
 }: SendPopupProps) {
   useEffect(() => {
@@ -712,8 +1115,9 @@ function SendPopup({
                   au(x) groupe(s) <strong>{groupLabel}</strong>
                 </>
               )}
-              . Vous pouvez fermer cette fenêtre et suivre l&apos;envoi depuis
-              le bouton de la ligne.
+              . Les destinataires sont préparés dans{" "}
+              <strong>CampaignRecipient</strong>, puis l&apos;envoi passe par
+              Resend.
             </p>
 
             <div className={styles.sendingProgressWrap}>
@@ -760,18 +1164,29 @@ function SendPopup({
             )}
 
             <p className={styles.sendingNote}>
-              L&apos;envoi continue en arrière-plan. Pour revoir ce statut,
-              cliquez sur le bouton d&apos;envoi de cette campagne.
+              L&apos;envoi est traité par lots. Le bouton d&apos;annulation
+              arrête les prochains envois, mais les emails déjà transmis à Resend
+              ne peuvent pas être récupérés.
             </p>
 
-            <button
-              type="button"
-              onClick={onClose}
-              className={styles.popupCancelBtn}
-              style={{ marginTop: "4px" }}
-            >
-              Masquer et continuer en arrière-plan
-            </button>
+            <div className={styles.popupActions}>
+              <button
+                type="button"
+                onClick={onClose}
+                className={styles.popupCancelBtn}
+              >
+                Masquer
+              </button>
+
+              <button
+                type="button"
+                onClick={() => onCancelSend(state.campaign)}
+                className={cn(styles.popupConfirmBtn, styles.popupConfirmBtnRed)}
+              >
+                <Ban size={15} />
+                Annuler l&apos;envoi
+              </button>
+            </div>
           </>
         )}
 
@@ -785,7 +1200,7 @@ function SendPopup({
 
             <p className={styles.popupSubtitle}>
               La campagne <strong>« {state.campaign.name} »</strong> a été
-              envoyée avec succès.
+              traitée avec succès.
             </p>
 
             <div className={styles.successStats}>
@@ -802,6 +1217,15 @@ function SendPopup({
                   <span>échecs</span>
                 </div>
               )}
+
+              {typeof state.remainingCount === "number" &&
+                state.remainingCount > 0 && (
+                  <div className={styles.successStatItem} data-failed>
+                    <Clock size={18} className={styles.failedStatIcon} />
+                    <strong>{state.remainingCount}</strong>
+                    <span>restants</span>
+                  </div>
+                )}
             </div>
 
             <button
@@ -812,6 +1236,64 @@ function SendPopup({
             >
               <CheckCircle size={15} />
               Parfait, fermer
+            </button>
+          </>
+        )}
+
+        {state.phase === "cancelled" && (
+          <>
+            <div className={styles.popupIconWrap} data-color="red">
+              <Ban size={26} />
+            </div>
+
+            <h3 className={styles.popupTitle}>Envoi annulé</h3>
+
+            <p className={styles.popupSubtitle}>
+              La campagne <strong>« {state.campaign.name} »</strong> a été
+              annulée.
+            </p>
+
+            <div className={styles.errorBox}>
+              <AlertTriangle size={13} />
+              <span>
+                {state.message ||
+                  "Les emails déjà envoyés restent envoyés. Les destinataires restants ne seront plus traités."}
+              </span>
+            </div>
+
+            <div className={styles.successStats}>
+              {typeof state.sentCount === "number" && (
+                <div className={styles.successStatItem}>
+                  <CheckCircle size={18} className={styles.successStatIcon} />
+                  <strong>{state.sentCount}</strong>
+                  <span>envoyés avant annulation</span>
+                </div>
+              )}
+
+              {typeof state.failedCount === "number" && state.failedCount > 0 && (
+                <div className={styles.successStatItem} data-failed>
+                  <AlertCircle size={18} className={styles.failedStatIcon} />
+                  <strong>{state.failedCount}</strong>
+                  <span>échecs</span>
+                </div>
+              )}
+
+              {typeof state.remainingCount === "number" && (
+                <div className={styles.successStatItem} data-failed>
+                  <Clock size={18} className={styles.failedStatIcon} />
+                  <strong>{state.remainingCount}</strong>
+                  <span>non traités</span>
+                </div>
+              )}
+            </div>
+
+            <button
+              type="button"
+              onClick={onClose}
+              className={styles.popupConfirmBtn}
+            >
+              <CheckCircle size={15} />
+              Fermer
             </button>
           </>
         )}
@@ -1001,6 +1483,7 @@ interface CampaignRowProps {
   onDelete: () => void;
   onDuplicate: () => void;
   onSend: () => void;
+  onCancelSend: () => void;
   onPreview: () => void;
   onStats: () => void;
   showStats: boolean;
@@ -1014,26 +1497,36 @@ function CampaignRow({
   onDelete,
   onDuplicate,
   onSend,
+  onCancelSend,
   onPreview,
   onStats,
   showStats,
 }: CampaignRowProps) {
+  const campaignStatus = String(campaign.status) as StatusKey;
+  const isCancelled = campaignStatus === "CANCELLED";
   const isActivelySending = isSending || campaign.status === "SENDING";
   const progress = sendProgress?.progress ?? 0;
 
   const displayStatus: StatusKey = isActivelySending
     ? "SENDING"
-    : (campaign.status as StatusKey);
+    : campaignStatus;
 
   const displayConfig = STATUS_CONFIG[displayStatus] ?? STATUS_CONFIG.DRAFT;
 
   const sentCount = sendProgress?.sentCount ?? campaign.sentCount ?? 0;
   const failedCount = sendProgress?.failedCount ?? campaign.failedCount ?? 0;
 
-  const canEdit = campaign.status === "DRAFT" || campaign.status === "FAILED";
+  const canEdit =
+    campaign.status === "DRAFT" ||
+    campaign.status === "FAILED" ||
+    isCancelled;
+
   const canSend = campaign.status === "DRAFT" || campaign.status === "FAILED";
   const canDelete = campaign.status !== "SENDING";
-  const canShowStats = campaign.status === "SENT";
+  const canShowStats =
+    campaign.status === "SENT" ||
+    campaign.status === "FAILED" ||
+    isCancelled;
 
   const dateInfo = campaign.sentAt
     ? formatDate(campaign.sentAt, "Envoyée")
@@ -1060,6 +1553,7 @@ function CampaignRow({
           <div className={styles.campaignText}>
             <div className={styles.campaignTitleRow}>
               <h3>{campaign.name}</h3>
+
               <span className={cn(styles.status, displayConfig.className)}>
                 {displayConfig.icon}
                 {displayConfig.label}
@@ -1087,7 +1581,9 @@ function CampaignRow({
                 </span>
               )}
 
-              {(campaign.status === "SENT" || isActivelySending) && (
+              {(campaign.status === "SENT" ||
+                isActivelySending ||
+                isCancelled) && (
                 <span className={styles.metaItem} data-accent>
                   <CheckCircle size={11} />
                   {sentCount.toLocaleString("fr-FR")} envoyés
@@ -1104,6 +1600,7 @@ function CampaignRow({
                     style={{ width: `${progress}%` }}
                   />
                 </div>
+
                 <small>{progress}%</small>
               </div>
             )}
@@ -1132,13 +1629,19 @@ function CampaignRow({
           )}
 
           {isActivelySending ? (
-            <ActionButton
-              label="Suivre l'envoi"
-              onClick={onSend}
-              variant="primary"
-            >
-              <Loader2 size={15} className={styles.spin} />
-            </ActionButton>
+            <>
+              <ActionButton
+                label="Suivre l'envoi"
+                onClick={onSend}
+                variant="primary"
+              >
+                <Loader2 size={15} className={styles.spin} />
+              </ActionButton>
+
+              <ActionButton label="Annuler l'envoi" onClick={onCancelSend} danger>
+                <Ban size={15} />
+              </ActionButton>
+            </>
           ) : (
             canSend && (
               <ActionButton
@@ -1286,6 +1789,7 @@ function PreviewModal({
             <div className={styles.previewHeaderIcon}>
               <Mail size={16} />
             </div>
+
             <div>
               <h3>{campaign.name}</h3>
               <p>Sujet : {campaign.subject || "Non renseigné"}</p>
@@ -1314,25 +1818,57 @@ function PreviewModal({
 }
 
 function CampaignStats({ campaignId }: { campaignId: string }) {
-  const [logs, setLogs] = useState<LogEntry[]>([]);
-  const [loaded, setLoaded] = useState(false);
+  const [statsState, setStatsState] = useState<{
+    campaignId: string;
+    loaded: boolean;
+    stats: CampaignStatsResponse["stats"] | null;
+    error: string | null;
+  }>({
+    campaignId,
+    loaded: false,
+    stats: null,
+    error: null,
+  });
 
   useEffect(() => {
     let mounted = true;
 
-    fetch(`/api/campaigns/${campaignId}`)
-      .then((res) => readJsonSafe<{ logs?: LogEntry[] }>(res))
+    fetch(`/api/email-marketing/campaigns/${campaignId}/stats`, {
+      method: "GET",
+      cache: "no-store",
+    })
+      .then((res) => readJsonSafe<CampaignStatsResponse>(res))
       .then((data) => {
         if (!mounted) return;
 
-        setLogs(Array.isArray(data?.logs) ? data.logs : []);
-        setLoaded(true);
+        if (!data?.success || !data.stats) {
+          setStatsState({
+            campaignId,
+            loaded: true,
+            stats: null,
+            error: data?.error || "Impossible de charger les statistiques.",
+          });
+          return;
+        }
+
+        setStatsState({
+          campaignId,
+          loaded: true,
+          stats: data.stats,
+          error: null,
+        });
       })
-      .catch(() => {
+      .catch((err) => {
         if (!mounted) return;
 
-        setLogs([]);
-        setLoaded(true);
+        console.error("[CampaignStats][ERROR]", err);
+
+        setStatsState({
+          campaignId,
+          loaded: true,
+          stats: null,
+          error: "Erreur rÃ©seau pendant le chargement des statistiques.",
+        });
       });
 
     return () => {
@@ -1340,24 +1876,27 @@ function CampaignStats({ campaignId }: { campaignId: string }) {
     };
   }, [campaignId]);
 
-  const stats = useMemo(() => {
-    const sent = logs.filter(
-      (log) => log.status?.toLowerCase() === "sent"
-    ).length;
-
-    return {
-      sent,
-      failed: logs.length - sent,
-      total: logs.length,
-      rate: logs.length > 0 ? Math.round((sent / logs.length) * 100) : 0,
-    };
-  }, [logs]);
+  const loaded =
+    statsState.campaignId === campaignId ? statsState.loaded : false;
+  const stats = statsState.campaignId === campaignId ? statsState.stats : null;
+  const error = statsState.campaignId === campaignId ? statsState.error : null;
 
   if (!loaded) {
     return (
       <div className={styles.statsLoading}>
         <Loader2 size={14} className={styles.spin} />
-        Chargement du journal…
+        Chargement des statistiques…
+      </div>
+    );
+  }
+
+  if (error || !stats) {
+    return (
+      <div className={styles.statsBox}>
+        <div className={styles.errorBox}>
+          <AlertTriangle size={13} />
+          <span>{error || "Statistiques indisponibles."}</span>
+        </div>
       </div>
     );
   }
@@ -1366,8 +1905,8 @@ function CampaignStats({ campaignId }: { campaignId: string }) {
     <div className={styles.statsBox}>
       <header className={styles.statsHeader}>
         <div>
-          <h4>Journal d&apos;envoi</h4>
-          <p>{stats.total} entrée(s) au total</p>
+          <h4>Statistiques de campagne</h4>
+          <p>{stats.total} destinataire(s) au total</p>
         </div>
 
         <div className={styles.statsKpis}>
@@ -1376,55 +1915,127 @@ function CampaignStats({ campaignId }: { campaignId: string }) {
             <span className={styles.statsKpiLabel}>envoyés</span>
           </div>
 
-          <div className={styles.statsKpi} data-type="failed">
-            <span className={styles.statsKpiValue}>{stats.failed}</span>
-            <span className={styles.statsKpiLabel}>échecs</span>
+          <div className={styles.statsKpi} data-type="rate">
+            <span className={styles.statsKpiValue}>{stats.sentRate}%</span>
+            <span className={styles.statsKpiLabel}>envoi</span>
+          </div>
+
+          <div className={styles.statsKpi} data-type="sent">
+            <span className={styles.statsKpiValue}>{stats.delivered}</span>
+            <span className={styles.statsKpiLabel}>livrés</span>
           </div>
 
           <div className={styles.statsKpi} data-type="rate">
-            <span className={styles.statsKpiValue}>{stats.rate}%</span>
-            <span className={styles.statsKpiLabel}>de réussite</span>
+            <span className={styles.statsKpiValue}>{stats.deliveryRate}%</span>
+            <span className={styles.statsKpiLabel}>livraison</span>
+          </div>
+
+          <div className={styles.statsKpi} data-type="sent">
+            <span className={styles.statsKpiValue}>{stats.opened}</span>
+            <span className={styles.statsKpiLabel}>ouverts</span>
+          </div>
+
+          <div className={styles.statsKpi} data-type="rate">
+            <span className={styles.statsKpiValue}>{stats.openRate}%</span>
+            <span className={styles.statsKpiLabel}>ouverture</span>
+          </div>
+
+          <div className={styles.statsKpi} data-type="sent">
+            <span className={styles.statsKpiValue}>{stats.clicked}</span>
+            <span className={styles.statsKpiLabel}>clics</span>
+          </div>
+
+          <div className={styles.statsKpi} data-type="rate">
+            <span className={styles.statsKpiValue}>{stats.clickRate}%</span>
+            <span className={styles.statsKpiLabel}>clic</span>
+          </div>
+
+          <div className={styles.statsKpi} data-type="failed">
+            <span className={styles.statsKpiValue}>{stats.failed}</span>
+            <span className={styles.statsKpiLabel}>échecs</span>
           </div>
         </div>
       </header>
 
       <div className={styles.statsList}>
-        {logs.length === 0 ? (
-          <p className={styles.emptyLog}>Aucun log disponible.</p>
-        ) : (
-          logs.map((log, index) => {
-            const isSent = log.status?.toLowerCase() === "sent";
+        <div className={styles.statsItem}>
+          <span className={cn(styles.statusDot, styles.statusDotSent)} />
+          <span className={styles.statsEmail}>Destinataires préparés</span>
+          <span className={styles.statsBadge}>{stats.total}</span>
+          <span className={styles.statsMessage}>
+            Contacts ajoutés dans campaign_recipients
+          </span>
+          <span className={styles.statsTime}>—</span>
+        </div>
 
-            return (
-              <div key={`${log.email}-${index}`} className={styles.statsItem}>
-                <span
-                  className={cn(
-                    styles.statusDot,
-                    isSent ? styles.statusDotSent : styles.statusDotFailed
-                  )}
-                />
+        <div className={styles.statsItem}>
+          <span className={cn(styles.statusDot, styles.statusDotSent)} />
+          <span className={styles.statsEmail}>Emails envoyés</span>
+          <span className={cn(styles.statsBadge, styles.sentText)}>
+            {stats.sent}
+          </span>
+          <span className={styles.statsMessage}>
+            Emails acceptés par Resend
+          </span>
+          <span className={styles.statsTime}>{stats.sentRate}%</span>
+        </div>
 
-                <span className={styles.statsEmail}>{log.email}</span>
+        <div className={styles.statsItem}>
+          <span className={cn(styles.statusDot, styles.statusDotSent)} />
+          <span className={styles.statsEmail}>Emails livrés</span>
+          <span className={cn(styles.statsBadge, styles.sentText)}>
+            {stats.delivered}
+          </span>
+          <span className={styles.statsMessage}>
+            Mis à jour par webhook Resend
+          </span>
+          <span className={styles.statsTime}>{stats.deliveryRate}%</span>
+        </div>
 
-                <span
-                  className={cn(
-                    styles.statsBadge,
-                    isSent ? styles.sentText : styles.failedText
-                  )}
-                >
-                  {log.status}
-                </span>
+        <div className={styles.statsItem}>
+          <span className={cn(styles.statusDot, styles.statusDotSent)} />
+          <span className={styles.statsEmail}>Ouvertures</span>
+          <span className={cn(styles.statsBadge, styles.sentText)}>
+            {stats.opened}
+          </span>
+          <span className={styles.statsMessage}>Événement email.opened</span>
+          <span className={styles.statsTime}>{stats.openRate}%</span>
+        </div>
 
-                <span className={styles.statsMessage}>
-                  {log.message || "—"}
-                </span>
+        <div className={styles.statsItem}>
+          <span className={cn(styles.statusDot, styles.statusDotSent)} />
+          <span className={styles.statsEmail}>Clics</span>
+          <span className={cn(styles.statsBadge, styles.sentText)}>
+            {stats.clicked}
+          </span>
+          <span className={styles.statsMessage}>Événement email.clicked</span>
+          <span className={styles.statsTime}>{stats.clickRate}%</span>
+        </div>
 
-                <span className={styles.statsTime}>
-                  {new Date(log.createdAt).toLocaleTimeString("fr-FR")}
-                </span>
-              </div>
-            );
-          })
+        {stats.pending > 0 && (
+          <div className={styles.statsItem}>
+            <span className={cn(styles.statusDot, styles.statusDotFailed)} />
+            <span className={styles.statsEmail}>En attente</span>
+            <span className={styles.statsBadge}>{stats.pending}</span>
+            <span className={styles.statsMessage}>
+              Destinataires préparés mais pas encore envoyés
+            </span>
+            <span className={styles.statsTime}>—</span>
+          </div>
+        )}
+
+        {stats.failed > 0 && (
+          <div className={styles.statsItem}>
+            <span className={cn(styles.statusDot, styles.statusDotFailed)} />
+            <span className={styles.statsEmail}>Échecs</span>
+            <span className={cn(styles.statsBadge, styles.failedText)}>
+              {stats.failed}
+            </span>
+            <span className={styles.statsMessage}>
+              Erreurs Resend ou webhooks bounce/failed
+            </span>
+            <span className={styles.statsTime}>—</span>
+          </div>
         )}
       </div>
     </div>

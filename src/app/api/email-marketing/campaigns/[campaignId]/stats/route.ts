@@ -4,9 +4,28 @@ import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { prisma } from "@/app/lib/prisma";
 
+type RouteParams = Promise<{
+  campaignId?: string;
+  id?: string;
+}>;
+
+async function getCampaignId(params: RouteParams) {
+  const resolvedParams = await params;
+
+  const campaignId = resolvedParams.campaignId || resolvedParams.id;
+
+  if (!campaignId) {
+    throw new Error(
+      "campaignId est manquant. Vérifie que le dossier de route s'appelle [campaignId] ou [id]."
+    );
+  }
+
+  return campaignId;
+}
+
 export async function GET(
   _req: Request,
-  { params }: { params: { campaignId: string } }
+  { params }: { params: RouteParams }
 ) {
   try {
     const session = await auth();
@@ -15,9 +34,11 @@ export async function GET(
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
+    const campaignId = await getCampaignId(params);
+
     const campaign = await prisma.campaign.findFirst({
       where: {
-        id: params.campaignId,
+        id: campaignId,
         userId: session.user.id,
       },
       select: {
@@ -33,75 +54,71 @@ export async function GET(
 
     if (!campaign) {
       return NextResponse.json(
-        { success: false, error: "Campagne introuvable." },
+        {
+          success: false,
+          error: "Campagne introuvable.",
+        },
         { status: 404 }
       );
     }
 
-    const [
-      total,
-      sent,
-      pending,
-      delivered,
-      opened,
-      clicked,
-      failed,
-    ] = await Promise.all([
-      prisma.campaignRecipient.count({
-        where: {
-          campaignId: campaign.id,
-        },
-      }),
-
-      prisma.campaignRecipient.count({
-        where: {
-          campaignId: campaign.id,
-          sent: true,
-        },
-      }),
-
-      prisma.campaignRecipient.count({
-        where: {
-          campaignId: campaign.id,
-          sent: false,
-          error: null,
-        },
-      }),
-
-      prisma.campaignRecipient.count({
-        where: {
-          campaignId: campaign.id,
-          delivered: true,
-        },
-      }),
-
-      prisma.campaignRecipient.count({
-        where: {
-          campaignId: campaign.id,
-          openedAt: {
-            not: null,
+    const [total, sent, pending, delivered, opened, clicked, failed] =
+      await Promise.all([
+        prisma.campaignRecipient.count({
+          where: {
+            campaignId,
           },
-        },
-      }),
+        }),
 
-      prisma.campaignRecipient.count({
-        where: {
-          campaignId: campaign.id,
-          clickedAt: {
-            not: null,
+        prisma.campaignRecipient.count({
+          where: {
+            campaignId,
+            sent: true,
           },
-        },
-      }),
+        }),
 
-      prisma.campaignRecipient.count({
-        where: {
-          campaignId: campaign.id,
-          error: {
-            not: null,
+        prisma.campaignRecipient.count({
+          where: {
+            campaignId,
+            sent: false,
+            error: null,
           },
-        },
-      }),
-    ]);
+        }),
+
+        prisma.campaignRecipient.count({
+          where: {
+            campaignId,
+            delivered: true,
+          },
+        }),
+
+        prisma.campaignRecipient.count({
+          where: {
+            campaignId,
+            openedAt: {
+              not: null,
+            },
+          },
+        }),
+
+        prisma.campaignRecipient.count({
+          where: {
+            campaignId,
+            clickedAt: {
+              not: null,
+            },
+          },
+        }),
+
+        prisma.campaignRecipient.count({
+          where: {
+            campaignId,
+            error: {
+              not: null,
+            },
+          },
+        }),
+      ]);
 
     return NextResponse.json({
       success: true,

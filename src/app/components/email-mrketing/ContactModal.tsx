@@ -3,6 +3,7 @@
 import { useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import type { z } from "zod";
 import { contactSchema } from "@/app/lib/email/schemas";
 import { useContacts, useGroups } from "@/app/hooks/useEmailMarketing";
 import type { Contact, ContactFormData } from "@/app/types/email-marketing";
@@ -37,6 +38,8 @@ const CRM_SOURCES = [
   { value: "OTHER", label: "Autre" },
 ];
 
+type ContactFormValues = z.input<typeof contactSchema>;
+
 export function ContactModal({ contact, onClose, onSave }: ContactModalProps) {
   const { groups } = useGroups();
   const { createContact, updateContact } = useContacts();
@@ -48,7 +51,7 @@ export function ContactModal({ contact, onClose, onSave }: ContactModalProps) {
     reset,
     watch,
     formState: { errors, isSubmitting },
-  } = useForm<ContactFormData>({
+  } = useForm<ContactFormValues>({
     resolver: zodResolver(contactSchema),
     defaultValues: {
       email: contact?.email || "",
@@ -71,41 +74,43 @@ export function ContactModal({ contact, onClose, onSave }: ContactModalProps) {
     },
   });
 
-  const currentCrmStatus = watch("crmStatus");
-  const currentCrmSource = watch("crmSource");
-  const isActive = watch("isActive");
-  const unsubscribed = watch("unsubscribed");
+  const currentCrmStatus = watch("crmStatus") as string;
+  const currentCrmSource = watch("crmSource") as string;
+  const isActive = watch("isActive") as boolean;
+  const unsubscribed = watch("unsubscribed") as boolean;
 
   useEffect(() => {
     if (contact) {
       reset({
-        email: contact.email || "",
-        firstName: contact.firstName || "",
-        lastName: contact.lastName || "",
-        phone: contact.phone || "",
-        groupId: contact.groupId || "",
+        email: contact?.email || "",
+        firstName: contact?.firstName || "",
+        lastName: contact?.lastName || "",
+        phone: contact?.phone || "",
+        groupId: contact?.groupId || "",
 
-        jobTitle: contact.jobTitle || "",
-        companyName: contact.companyName || "",
-        country: contact.country || "",
-        city: contact.city || "",
-        notes: contact.notes || "",
+        jobTitle: contact?.jobTitle || "",
+        companyName: contact?.companyName || "",
+        country: contact?.country || "",
+        city: contact?.city || "",
+        notes: contact?.notes || "",
 
-        crmStatus: contact.crmStatus || "NEW",
-        crmSource: contact.crmSource || "MANUAL",
+        crmStatus: contact?.crmStatus || "NEW",
+        crmSource: contact?.crmSource || "MANUAL",
 
-        isActive: contact.isActive ?? true,
-        unsubscribed: contact.unsubscribed ?? false,
+        isActive: contact?.isActive ?? true,
+        unsubscribed: contact?.unsubscribed ?? false,
       });
     }
   }, [contact, reset]);
 
-  const onSubmit = async (data: ContactFormData) => {
+  const onSubmit = async (data: ContactFormValues) => {
     try {
+      const payload: ContactFormData = contactSchema.parse(data);
+
       if (isEdit && contact) {
-        await updateContact(contact.id, data);
+        await updateContact(contact.id, payload);
       } else {
-        await createContact(data);
+        await createContact(payload);
       }
 
       onSave();
