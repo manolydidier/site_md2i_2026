@@ -1,5 +1,18 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import {
+  ArrowLeft,
+  ArrowRight,
+  BadgeCheck,
+  CheckCircle2,
+  Clock3,
+  FileCheck2,
+  LockKeyhole,
+  MessageSquareText,
+  ShieldCheck,
+  Sparkles,
+  WalletCards,
+} from "lucide-react";
 
 import ProductLeadForm from "@/app/admin/components/crm/ProductLeadForm";
 import { prisma } from "@/app/lib/prisma";
@@ -83,32 +96,58 @@ export default async function ProductLeadPage({ params }: ProductLeadPageProps) 
 
   const productUrl = `/produits/${product.slug || product.id}`;
   const priceLabel = formatPrice(product.price);
+  const categoryLabel = product.category?.name || "Solution MD2I";
 
   return (
     <main className="lead-root">
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
-
-        * {
-          box-sizing: border-box;
-        }
+        @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800;900&display=swap');
 
         .lead-root {
+          --lead-font-body: "DM Sans", Inter, Arial, Helvetica, sans-serif;
+          --lead-bg: #050608;
+          --lead-panel: rgba(255, 255, 255, 0.07);
+          --lead-panel-strong: rgba(255, 255, 255, 0.105);
+          --lead-border: rgba(255, 255, 255, 0.12);
+          --lead-text: #f8fafc;
+          --lead-muted: rgba(226, 232, 240, 0.7);
+          --lead-soft: rgba(148, 163, 184, 0.78);
+          --lead-gold: #fcd34d;
+          --lead-amber: #f59e0b;
+          --lead-cyan: #22d3ee;
+          --lead-emerald: #34d399;
           min-height: 100vh;
-          font-family: Inter, Arial, Helvetica, sans-serif;
-          color: #0f172a;
+          color: var(--lead-text);
           background:
-            radial-gradient(circle at 8% 0%, rgba(249, 115, 22, 0.16), transparent 34%),
-            radial-gradient(circle at 92% 14%, rgba(30, 58, 138, 0.12), transparent 36%),
-            linear-gradient(135deg, #f8fafc 0%, #eef2f7 52%, #fff7ed 100%);
+            linear-gradient(120deg, rgba(252, 211, 77, 0.09), transparent 28%),
+            linear-gradient(240deg, rgba(34, 211, 238, 0.09), transparent 28%),
+            linear-gradient(180deg, #050608 0%, #09090b 48%, #050608 100%);
+          font-family: var(--lead-font-body);
           overflow-x: hidden;
         }
 
+        .lead-root,
+        .lead-root * {
+          box-sizing: border-box;
+        }
+
+        .lead-root::before {
+          content: "";
+          position: fixed;
+          inset: 0;
+          pointer-events: none;
+          background-image:
+            linear-gradient(rgba(255, 255, 255, 0.045) 1px, transparent 1px),
+            linear-gradient(90deg, rgba(255, 255, 255, 0.045) 1px, transparent 1px);
+          background-size: 72px 72px;
+          mask-image: linear-gradient(180deg, rgba(0, 0, 0, 0.82), transparent 78%);
+        }
+
         .lead-page {
-          width: 100%;
-          max-width: 1320px;
+          position: relative;
+          width: min(1440px, 100%);
           margin: 0 auto;
-          padding: 24px 22px 70px;
+          padding: clamp(18px, 3vw, 34px) clamp(16px, 4vw, 56px) clamp(60px, 7vw, 96px);
         }
 
         .lead-nav {
@@ -116,45 +155,46 @@ export default async function ProductLeadPage({ params }: ProductLeadPageProps) 
           align-items: center;
           justify-content: space-between;
           gap: 14px;
-          margin-bottom: 26px;
-          animation: leadFadeDown 0.45s ease both;
+          margin-bottom: clamp(28px, 4vw, 54px);
+          animation: leadFadeDown 0.48s ease both;
         }
 
         .lead-nav-link {
-          min-height: 42px;
+          min-height: 46px;
           display: inline-flex;
           align-items: center;
+          justify-content: center;
           gap: 9px;
-          padding: 0 16px;
+          padding: 0 18px;
           border-radius: 999px;
+          color: rgba(248, 250, 252, 0.86);
           text-decoration: none;
           font-size: 13px;
           font-weight: 800;
-          transition: 0.18s ease;
-        }
-
-        .lead-nav-back {
-          color: #334155;
-          background: rgba(255, 255, 255, 0.78);
-          border: 1px solid rgba(148, 163, 184, 0.28);
-          box-shadow: 0 10px 28px rgba(15, 23, 42, 0.06);
-        }
-
-        .lead-nav-product {
-          color: #9a3412;
-          background: #fff7ed;
-          border: 1px solid #fed7aa;
+          background: rgba(255, 255, 255, 0.06);
+          border: 1px solid rgba(255, 255, 255, 0.12);
+          box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
+          backdrop-filter: blur(18px);
+          transition: transform 0.2s ease, border-color 0.2s ease, background 0.2s ease;
         }
 
         .lead-nav-link:hover {
-          transform: translateY(-1px);
-          opacity: 0.9;
+          transform: translateY(-2px);
+          border-color: rgba(252, 211, 77, 0.34);
+          background: rgba(255, 255, 255, 0.09);
+        }
+
+        .lead-nav-product {
+          color: #0f172a;
+          background: #fcd34d;
+          border-color: rgba(252, 211, 77, 0.72);
+          box-shadow: 0 18px 42px rgba(202, 138, 4, 0.22);
         }
 
         .lead-layout {
           display: grid;
-          grid-template-columns: minmax(320px, 0.78fr) minmax(440px, 1.22fr);
-          gap: 24px;
+          grid-template-columns: minmax(320px, 0.82fr) minmax(520px, 1.18fr);
+          gap: clamp(18px, 2vw, 28px);
           align-items: start;
         }
 
@@ -163,49 +203,55 @@ export default async function ProductLeadPage({ params }: ProductLeadPageProps) 
           top: 22px;
           display: grid;
           gap: 16px;
-          animation: leadFadeLeft 0.55s ease both;
+          animation: leadFadeLeft 0.58s ease both;
         }
 
-        .product-card,
-        .trust-card,
-        .form-shell {
-          background: rgba(255, 255, 255, 0.9);
-          border: 1px solid rgba(203, 213, 225, 0.86);
-          border-radius: 28px;
-          box-shadow: 0 24px 70px rgba(15, 23, 42, 0.1);
-          backdrop-filter: blur(14px);
+        .glass-card {
+          border: 1px solid var(--lead-border);
+          background:
+            linear-gradient(145deg, rgba(255, 255, 255, 0.105), rgba(255, 255, 255, 0.038)),
+            rgba(9, 9, 11, 0.62);
+          box-shadow:
+            inset 0 1px 0 rgba(255, 255, 255, 0.09),
+            0 28px 86px rgba(0, 0, 0, 0.36);
+          backdrop-filter: blur(24px);
         }
 
         .product-card {
           overflow: hidden;
+          border-radius: 30px;
         }
 
         .product-cover {
           position: relative;
-          min-height: 220px;
-          background: linear-gradient(135deg, #0f172a, #1e3a8a 60%, #f97316 140%);
+          min-height: 272px;
           overflow: hidden;
+          background:
+            linear-gradient(135deg, rgba(252, 211, 77, 0.18), transparent 46%),
+            linear-gradient(150deg, #0f172a, #020617 68%);
         }
 
         .product-cover img {
           width: 100%;
-          height: 260px;
+          height: 300px;
           display: block;
           object-fit: cover;
+          opacity: 0.9;
+          filter: saturate(1.04) contrast(1.04);
           transition: transform 0.7s ease;
         }
 
         .product-card:hover .product-cover img {
-          transform: scale(1.04);
+          transform: scale(1.035);
         }
 
         .product-cover-empty {
-          height: 260px;
+          height: 300px;
           display: flex;
           align-items: center;
           justify-content: center;
-          color: rgba(255, 255, 255, 0.16);
-          font-size: 104px;
+          color: rgba(255, 255, 255, 0.12);
+          font-size: clamp(92px, 12vw, 160px);
           font-weight: 900;
           letter-spacing: -0.08em;
         }
@@ -215,90 +261,88 @@ export default async function ProductLeadPage({ params }: ProductLeadPageProps) 
           position: absolute;
           inset: 0;
           background:
-            linear-gradient(180deg, rgba(15, 23, 42, 0.04), rgba(15, 23, 42, 0.72)),
-            radial-gradient(circle at 20% 20%, rgba(255,255,255,.2), transparent 35%);
+            linear-gradient(180deg, rgba(5, 6, 8, 0.1), rgba(5, 6, 8, 0.84)),
+            linear-gradient(90deg, rgba(5, 6, 8, 0.38), transparent);
         }
 
         .product-badge {
           position: absolute;
-          top: 16px;
-          left: 16px;
+          left: 18px;
+          top: 18px;
           z-index: 2;
-          min-height: 30px;
+          min-height: 34px;
           display: inline-flex;
           align-items: center;
-          padding: 0 12px;
+          gap: 8px;
+          padding: 0 13px;
           border-radius: 999px;
-          color: #fff7ed;
-          background: rgba(15, 23, 42, 0.55);
-          border: 1px solid rgba(255, 255, 255, 0.14);
-          backdrop-filter: blur(10px);
+          color: #fef3c7;
+          background: rgba(15, 23, 42, 0.62);
+          border: 1px solid rgba(255, 255, 255, 0.16);
+          backdrop-filter: blur(14px);
           font-size: 11px;
           font-weight: 900;
-          letter-spacing: 0.1em;
+          letter-spacing: 0.11em;
           text-transform: uppercase;
         }
 
         .product-content {
-          padding: 24px;
+          padding: clamp(22px, 2.4vw, 30px);
         }
 
         .lead-kicker {
           display: inline-flex;
           align-items: center;
           gap: 8px;
-          margin-bottom: 13px;
-          color: #ea580c;
+          margin-bottom: 16px;
+          color: var(--lead-gold);
           font-size: 11px;
           font-weight: 900;
-          letter-spacing: 0.12em;
+          letter-spacing: 0.14em;
           text-transform: uppercase;
         }
 
-        .lead-dot {
-          width: 8px;
-          height: 8px;
-          border-radius: 999px;
-          background: #f97316;
-          box-shadow: 0 0 0 6px rgba(249, 115, 22, 0.14);
-          animation: leadPulse 2.2s ease-in-out infinite;
+        .lead-kicker svg {
+          width: 15px;
+          height: 15px;
         }
 
         .product-title {
+          max-width: 640px;
           margin: 0;
-          color: #0f172a;
-          font-size: clamp(28px, 3vw, 42px);
-          line-height: 1.03;
-          letter-spacing: -0.055em;
+          color: #ffffff;
+          font-size: clamp(32px, 4.4vw, 58px);
+          line-height: 0.98;
+          letter-spacing: -0.06em;
           font-weight: 950;
         }
 
         .product-text {
-          margin: 14px 0 0;
-          color: #475569;
-          font-size: 14.5px;
-          line-height: 1.7;
+          margin: 18px 0 0;
+          color: var(--lead-muted);
+          font-size: 15.5px;
+          line-height: 1.78;
           font-weight: 600;
         }
 
         .product-meta {
           display: grid;
           grid-template-columns: 1fr 1fr;
-          gap: 10px;
-          margin-top: 20px;
+          gap: 12px;
+          margin-top: 24px;
         }
 
         .meta-box {
-          min-height: 82px;
-          padding: 14px;
-          border-radius: 18px;
-          background: #f8fafc;
-          border: 1px solid #e2e8f0;
+          min-height: 92px;
+          padding: 16px;
+          border-radius: 22px;
+          background: rgba(255, 255, 255, 0.055);
+          border: 1px solid rgba(255, 255, 255, 0.1);
         }
 
         .meta-label {
-          margin: 0 0 7px;
-          color: #64748b;
+          margin: 0 0 8px;
+          color: var(--lead-soft);
           font-size: 10px;
           font-weight: 900;
           letter-spacing: 0.1em;
@@ -307,22 +351,30 @@ export default async function ProductLeadPage({ params }: ProductLeadPageProps) 
 
         .meta-value {
           margin: 0;
-          color: #0f172a;
+          color: #ffffff;
           font-size: 14px;
-          line-height: 1.35;
+          line-height: 1.38;
           font-weight: 900;
         }
 
         .trust-card {
+          border-radius: 26px;
           padding: 22px;
         }
 
         .trust-title {
-          margin: 0 0 14px;
-          color: #0f172a;
+          display: flex;
+          align-items: center;
+          gap: 10px;
+          margin: 0 0 16px;
+          color: #ffffff;
           font-size: 16px;
           font-weight: 900;
           letter-spacing: -0.02em;
+        }
+
+        .trust-title svg {
+          color: var(--lead-cyan);
         }
 
         .trust-list {
@@ -331,73 +383,69 @@ export default async function ProductLeadPage({ params }: ProductLeadPageProps) 
         }
 
         .trust-item {
-          display: flex;
-          align-items: flex-start;
-          gap: 10px;
-          color: #334155;
+          display: grid;
+          grid-template-columns: 34px 1fr;
+          gap: 11px;
+          align-items: start;
+          color: rgba(226, 232, 240, 0.74);
           font-size: 13.5px;
           line-height: 1.55;
           font-weight: 700;
         }
 
         .trust-check {
-          width: 22px;
-          height: 22px;
-          flex: 0 0 22px;
-          border-radius: 999px;
+          width: 34px;
+          height: 34px;
           display: inline-flex;
           align-items: center;
           justify-content: center;
-          color: #fff;
-          background: linear-gradient(135deg, #16a34a, #15803d);
-          font-size: 12px;
-          font-weight: 900;
-          margin-top: 1px;
+          border-radius: 14px;
+          color: var(--lead-emerald);
+          background: rgba(52, 211, 153, 0.1);
+          border: 1px solid rgba(52, 211, 153, 0.22);
         }
 
         .form-zone {
-          animation: leadFadeRight 0.55s 0.06s ease both;
+          min-width: 0;
+          animation: leadFadeRight 0.58s 0.05s ease both;
         }
 
         .form-shell {
           overflow: hidden;
-          border-color: rgba(249, 115, 22, 0.32);
-        }
-
-        .form-stripe {
-          height: 5px;
-          background: linear-gradient(90deg, #fb923c, #ea580c, #facc15, #fb923c);
-          background-size: 220% 100%;
-          animation: leadShimmer 3s linear infinite;
+          border-radius: 34px;
         }
 
         .form-header {
-          padding: 28px 30px 20px;
-          border-bottom: 1px solid #e2e8f0;
+          position: relative;
+          padding: clamp(24px, 3vw, 38px);
+          border-bottom: 1px solid rgba(255, 255, 255, 0.1);
           background:
-            radial-gradient(circle at 10% 0%, rgba(249, 115, 22, 0.1), transparent 34%),
-            #ffffff;
+            linear-gradient(135deg, rgba(252, 211, 77, 0.12), transparent 42%),
+            linear-gradient(240deg, rgba(34, 211, 238, 0.09), transparent 38%),
+            rgba(255, 255, 255, 0.035);
         }
 
         .form-mini {
+          width: fit-content;
+          max-width: 100%;
           display: flex;
           align-items: center;
           gap: 12px;
-          padding: 12px;
-          border-radius: 18px;
-          background: #f8fafc;
-          border: 1px solid #e2e8f0;
-          margin-bottom: 20px;
+          margin-bottom: 22px;
+          padding: 10px 12px;
+          border-radius: 20px;
+          background: rgba(255, 255, 255, 0.07);
+          border: 1px solid rgba(255, 255, 255, 0.12);
         }
 
         .form-mini-icon {
           width: 48px;
           height: 48px;
-          border-radius: 15px;
+          border-radius: 16px;
           flex-shrink: 0;
           overflow: hidden;
-          color: #ffffff;
-          background: linear-gradient(135deg, #f97316, #c2410c);
+          color: #09090b;
+          background: linear-gradient(135deg, #fcd34d, #22d3ee);
           display: flex;
           align-items: center;
           justify-content: center;
@@ -414,60 +462,87 @@ export default async function ProductLeadPage({ params }: ProductLeadPageProps) 
 
         .form-mini-label {
           margin: 0 0 3px;
-          color: #64748b;
+          color: var(--lead-soft);
           font-size: 10px;
           font-weight: 900;
-          letter-spacing: 0.1em;
+          letter-spacing: 0.11em;
           text-transform: uppercase;
         }
 
         .form-mini-name {
           margin: 0;
-          color: #0f172a;
+          color: #ffffff;
           font-size: 15px;
           line-height: 1.25;
           font-weight: 900;
         }
 
         .form-title {
+          max-width: 760px;
           margin: 0;
-          color: #0f172a;
-          font-size: clamp(26px, 3vw, 40px);
-          line-height: 1.08;
-          letter-spacing: -0.045em;
+          color: #ffffff;
+          font-size: clamp(31px, 4vw, 54px);
+          line-height: 1.02;
+          letter-spacing: -0.055em;
           font-weight: 950;
         }
 
         .form-title span {
-          color: #ea580c;
+          color: var(--lead-gold);
         }
 
         .form-subtitle {
-          max-width: 620px;
-          margin: 12px 0 0;
-          color: #475569;
-          font-size: 15px;
-          line-height: 1.65;
-          font-weight: 650;
+          max-width: 690px;
+          margin: 16px 0 0;
+          color: var(--lead-muted);
+          font-size: 15.5px;
+          line-height: 1.78;
+          font-weight: 600;
+        }
+
+        .form-highlights {
+          display: grid;
+          grid-template-columns: repeat(3, minmax(0, 1fr));
+          gap: 10px;
+          margin-top: 24px;
+        }
+
+        .highlight {
+          min-height: 78px;
+          padding: 14px;
+          border-radius: 18px;
+          background: rgba(255, 255, 255, 0.055);
+          border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .highlight svg {
+          color: var(--lead-cyan);
+          margin-bottom: 8px;
+        }
+
+        .highlight span {
+          display: block;
+          color: rgba(226, 232, 240, 0.78);
+          font-size: 12px;
+          line-height: 1.35;
+          font-weight: 800;
         }
 
         .form-body {
-          padding: 28px 30px 30px;
+          padding: clamp(20px, 2.6vw, 34px);
         }
 
         .process-grid {
           display: grid;
           grid-template-columns: repeat(3, minmax(0, 1fr));
           gap: 14px;
-          margin-top: 24px;
+          margin-top: 18px;
         }
 
         .process-card {
+          min-height: 180px;
           padding: 20px;
-          border-radius: 22px;
-          background: rgba(255, 255, 255, 0.78);
-          border: 1px solid rgba(203, 213, 225, 0.78);
-          box-shadow: 0 16px 44px rgba(15, 23, 42, 0.07);
+          border-radius: 24px;
           animation: leadFadeUp 0.55s ease both;
         }
 
@@ -479,41 +554,38 @@ export default async function ProductLeadPage({ params }: ProductLeadPageProps) 
           animation-delay: 0.16s;
         }
 
-        .process-num {
-          width: 40px;
-          height: 40px;
+        .process-icon {
+          width: 42px;
+          height: 42px;
           display: inline-flex;
           align-items: center;
           justify-content: center;
-          border-radius: 15px;
-          color: #ea580c;
-          background: #fff7ed;
-          border: 1px solid #fed7aa;
-          font-weight: 950;
-          margin-bottom: 14px;
+          border-radius: 16px;
+          color: #09090b;
+          background: #fcd34d;
+          margin-bottom: 16px;
         }
 
         .process-title {
           margin: 0 0 8px;
-          color: #0f172a;
+          color: #ffffff;
           font-size: 15px;
           font-weight: 900;
+          letter-spacing: -0.02em;
         }
 
         .process-text {
           margin: 0;
-          color: #64748b;
-          font-size: 13.5px;
-          line-height: 1.6;
-          font-weight: 600;
+          color: var(--lead-soft);
+          font-size: 13px;
+          line-height: 1.62;
+          font-weight: 650;
         }
 
         .footer-note {
-          margin-top: 24px;
+          margin-top: 18px;
           padding: 22px 24px;
-          border-radius: 24px;
-          background: #0f172a;
-          color: #cbd5e1;
+          border-radius: 26px;
           display: flex;
           align-items: center;
           justify-content: space-between;
@@ -523,8 +595,9 @@ export default async function ProductLeadPage({ params }: ProductLeadPageProps) 
 
         .footer-note p {
           margin: 0;
+          color: var(--lead-muted);
           font-size: 14px;
-          line-height: 1.6;
+          line-height: 1.65;
           font-weight: 650;
         }
 
@@ -533,18 +606,25 @@ export default async function ProductLeadPage({ params }: ProductLeadPageProps) 
         }
 
         .footer-note a {
-          min-height: 42px;
+          min-height: 44px;
           display: inline-flex;
           align-items: center;
           justify-content: center;
+          gap: 8px;
           padding: 0 18px;
           border-radius: 999px;
-          color: #1f1308;
-          background: #fb923c;
+          color: #09090b;
+          background: #fcd34d;
           text-decoration: none;
           font-size: 13px;
           font-weight: 900;
           white-space: nowrap;
+          transition: transform 0.2s ease, background 0.2s ease;
+        }
+
+        .footer-note a:hover {
+          transform: translateY(-2px);
+          background: #fde68a;
         }
 
         @keyframes leadFadeDown {
@@ -567,17 +647,17 @@ export default async function ProductLeadPage({ params }: ProductLeadPageProps) 
           to { opacity: 1; transform: translateY(0); }
         }
 
-        @keyframes leadPulse {
-          0%, 100% { box-shadow: 0 0 0 6px rgba(249,115,22,.14); }
-          50% { box-shadow: 0 0 0 10px rgba(249,115,22,.04); }
+        @media (prefers-reduced-motion: reduce) {
+          .lead-root *,
+          .lead-root *::before,
+          .lead-root *::after {
+            animation-duration: 0.001ms !important;
+            scroll-behavior: auto !important;
+            transition-duration: 0.001ms !important;
+          }
         }
 
-        @keyframes leadShimmer {
-          0% { background-position: 220% 0; }
-          100% { background-position: -220% 0; }
-        }
-
-        @media (max-width: 1120px) {
+        @media (max-width: 1180px) {
           .lead-layout {
             grid-template-columns: 1fr;
           }
@@ -586,58 +666,73 @@ export default async function ProductLeadPage({ params }: ProductLeadPageProps) 
             position: static;
           }
 
-          .process-grid {
-            grid-template-columns: 1fr;
+          .product-cover {
+            min-height: 220px;
+          }
+
+          .product-cover img,
+          .product-cover-empty {
+            height: 260px;
           }
         }
 
-        @media (max-width: 720px) {
+        @media (max-width: 780px) {
           .lead-page {
-            padding: 18px 14px 48px;
+            padding-bottom: 54px;
           }
 
           .lead-nav {
-            flex-direction: column;
             align-items: stretch;
+            flex-direction: column;
           }
 
           .lead-nav-link {
-            justify-content: center;
+            width: 100%;
           }
 
-          .product-meta {
+          .product-meta,
+          .form-highlights,
+          .process-grid {
             grid-template-columns: 1fr;
+          }
+
+          .form-shell {
+            border-radius: 26px;
           }
 
           .form-header,
           .form-body {
-            padding-left: 20px;
-            padding-right: 20px;
+            padding-left: 18px;
+            padding-right: 18px;
           }
 
           .footer-note {
-            flex-direction: column;
             align-items: stretch;
+            flex-direction: column;
+          }
+
+          .footer-note a {
+            width: 100%;
           }
         }
       `}</style>
 
       <div className="lead-page">
         <nav className="lead-nav" aria-label="Navigation produit">
-          <Link href="/produits" className="lead-nav-link lead-nav-back">
-            <span aria-hidden="true">←</span>
+          <Link href="/produits" className="lead-nav-link">
+            <ArrowLeft size={17} aria-hidden="true" />
             Retour aux produits
           </Link>
 
           <Link href={productUrl} className="lead-nav-link lead-nav-product">
             Voir la fiche produit
-            <span aria-hidden="true">→</span>
+            <ArrowRight size={17} aria-hidden="true" />
           </Link>
         </nav>
 
         <section className="lead-layout">
           <aside className="lead-aside">
-            <article className="product-card">
+            <article className="product-card glass-card">
               <div className="product-cover">
                 {product.coverImage ? (
                   <img src={product.coverImage} alt={product.name} />
@@ -648,13 +743,14 @@ export default async function ProductLeadPage({ params }: ProductLeadPageProps) 
                 )}
 
                 <div className="product-badge">
-                  {product.category?.name || "Solution MD2I"}
+                  <BadgeCheck size={14} aria-hidden="true" />
+                  {categoryLabel}
                 </div>
               </div>
 
               <div className="product-content">
                 <div className="lead-kicker">
-                  <span className="lead-dot" />
+                  <Sparkles aria-hidden="true" />
                   Demande commerciale
                 </div>
 
@@ -679,32 +775,39 @@ export default async function ProductLeadPage({ params }: ProductLeadPageProps) 
               </div>
             </article>
 
-            <article className="trust-card">
-              <h2 className="trust-title">Ce qui se passe après l’envoi</h2>
+            <article className="trust-card glass-card">
+              <h2 className="trust-title">
+                <ShieldCheck size={19} aria-hidden="true" />
+                Après l’envoi
+              </h2>
 
               <div className="trust-list">
                 <div className="trust-item">
-                  <span className="trust-check">✓</span>
-                  <span>Votre demande est transmise à l’équipe commerciale.</span>
+                  <span className="trust-check">
+                    <CheckCircle2 size={18} aria-hidden="true" />
+                  </span>
+                  <span>Votre demande est transmise à l’équipe commerciale MD2I.</span>
                 </div>
 
                 <div className="trust-item">
-                  <span className="trust-check">✓</span>
-                  <span>Le produit concerné est automatiquement associé.</span>
+                  <span className="trust-check">
+                    <CheckCircle2 size={18} aria-hidden="true" />
+                  </span>
+                  <span>Le produit concerné est automatiquement associé au lead.</span>
                 </div>
 
                 <div className="trust-item">
-                  <span className="trust-check">✓</span>
-                  <span>Une relance commerciale est créée dans le CRM.</span>
+                  <span className="trust-check">
+                    <CheckCircle2 size={18} aria-hidden="true" />
+                  </span>
+                  <span>Une relance est créée dans le CRM pour assurer le suivi.</span>
                 </div>
               </div>
             </article>
           </aside>
 
           <section className="form-zone">
-            <div className="form-shell">
-              <div className="form-stripe" />
-
+            <div className="form-shell glass-card">
               <header className="form-header">
                 <div className="form-mini">
                   <div className="form-mini-icon">
@@ -726,10 +829,25 @@ export default async function ProductLeadPage({ params }: ProductLeadPageProps) 
                 </h2>
 
                 <p className="form-subtitle">
-                  Remplissez ce formulaire. Les champs importants sont validés,
-                  la demande est sécurisée et votre message arrive directement
-                  dans le CRM MD2I.
+                  Quelques informations suffisent pour qualifier votre demande,
+                  sécuriser le suivi commercial et vous orienter vers la bonne
+                  réponse MD2I.
                 </p>
+
+                <div className="form-highlights" aria-label="Garanties du formulaire">
+                  <div className="highlight">
+                    <Clock3 size={18} aria-hidden="true" />
+                    <span>Réponse commerciale structurée</span>
+                  </div>
+                  <div className="highlight">
+                    <LockKeyhole size={18} aria-hidden="true" />
+                    <span>Formulaire sécurisé anti-spam</span>
+                  </div>
+                  <div className="highlight">
+                    <WalletCards size={18} aria-hidden="true" />
+                    <span>Produit associé au CRM</span>
+                  </div>
+                </div>
               </header>
 
               <div className="form-body">
@@ -741,46 +859,54 @@ export default async function ProductLeadPage({ params }: ProductLeadPageProps) 
                   description=""
                   defaultRequestType="DEMO"
                   showProductSelect={false}
+                  variant="premium"
+                  hideHeader
                 />
               </div>
             </div>
 
             <div className="process-grid" aria-label="Processus de demande">
-              <article className="process-card">
-                <div className="process-num">1</div>
-                <h3 className="process-title">Vous envoyez votre besoin</h3>
+              <article className="process-card glass-card">
+                <div className="process-icon">
+                  <MessageSquareText size={20} aria-hidden="true" />
+                </div>
+                <h3 className="process-title">Vous décrivez le besoin</h3>
                 <p className="process-text">
-                  Indiquez vos coordonnées, votre structure et le type de
-                  demande souhaité.
+                  Indiquez votre contexte, vos coordonnées et le type de demande souhaité.
                 </p>
               </article>
 
-              <article className="process-card">
-                <div className="process-num">2</div>
-                <h3 className="process-title">MD2I analyse votre contexte</h3>
+              <article className="process-card glass-card">
+                <div className="process-icon">
+                  <FileCheck2 size={20} aria-hidden="true" />
+                </div>
+                <h3 className="process-title">MD2I qualifie la demande</h3>
                 <p className="process-text">
-                  La demande est qualifiée avec le produit, la source et les
-                  informations commerciales.
+                  Le produit, la source et les informations commerciales sont associés.
                 </p>
               </article>
 
-              <article className="process-card">
-                <div className="process-num">3</div>
+              <article className="process-card glass-card">
+                <div className="process-icon">
+                  <ShieldCheck size={20} aria-hidden="true" />
+                </div>
                 <h3 className="process-title">Vous recevez un retour</h3>
                 <p className="process-text">
-                  L’équipe peut vous proposer une démonstration, un devis ou un
-                  rappel.
+                  L’équipe peut proposer une démonstration, un devis ou un rappel.
                 </p>
               </article>
             </div>
 
-            <div className="footer-note">
+            <div className="footer-note glass-card">
               <p>
                 <strong>Besoin de comparer plusieurs solutions ?</strong>{" "}
-                Consultez le catalogue complet MD2I.
+                Consultez le catalogue complet MD2I avant de finaliser votre demande.
               </p>
 
-              <Link href="/produits">Voir le catalogue</Link>
+              <Link href="/produits">
+                Voir le catalogue
+                <ArrowRight size={16} aria-hidden="true" />
+              </Link>
             </div>
           </section>
         </section>

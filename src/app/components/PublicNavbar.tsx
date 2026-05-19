@@ -28,7 +28,7 @@ const LINKS: NavItem[] = [
   { href: '/', label: 'Accueil' },
   { href: '/services', label: 'Services' },
   { href: '/reference', label: 'Références' },
-  { href: '/blog', label: 'Blog' },
+  { href: '/produits', label: 'Produits' },
   { href: '/a-propos', label: 'À propos' },
   {
     href: '/contact',

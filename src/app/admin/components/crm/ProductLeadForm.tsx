@@ -33,6 +33,8 @@ type ProductLeadFormProps = {
   description?: string;
   defaultRequestType?: RequestType;
   showProductSelect?: boolean;
+  variant?: "default" | "premium";
+  hideHeader?: boolean;
 };
 
 type FormState = {
@@ -240,6 +242,8 @@ export default function ProductLeadForm({
   description = "Remplissez ce formulaire pour être contacté par l’équipe MD2I.",
   defaultRequestType = "CONTACT",
   showProductSelect = true,
+  variant = "default",
+  hideHeader = false,
 }: ProductLeadFormProps) {
   const tracking = useMemo(() => getTrackingParams(), []);
 
@@ -461,13 +465,18 @@ export default function ProductLeadForm({
   };
 
   return (
-    <form onSubmit={submit} className={styles.form} noValidate>
+    <form
+      onSubmit={submit}
+      className={`${styles.form} ${variant === "premium" ? styles.formPremium : ""}`}
+      noValidate
+    >
+      {!hideHeader && (
       <div className={styles.header}>
         <span className={styles.badge}>MD2I</span>
 
-        <h2 className={styles.title}>{title}</h2>
+        {title && <h2 className={styles.title}>{title}</h2>}
 
-        <p className={styles.text}>{description}</p>
+        {description && <p className={styles.text}>{description}</p>}
 
         {finalProductName && (
           <p className={styles.productLabel}>
@@ -475,6 +484,7 @@ export default function ProductLeadForm({
           </p>
         )}
       </div>
+      )}
 
       <div className={styles.progressWrap} aria-label="Progression du formulaire">
         <div className={styles.progressTop}>
