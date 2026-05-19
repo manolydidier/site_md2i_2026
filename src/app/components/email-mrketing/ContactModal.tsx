@@ -1,29 +1,23 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useMemo } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import type { z } from "zod";
 import { contactSchema } from "@/app/lib/email/schemas";
-import { useContacts, useGroups } from "@/app/hooks/useEmailMarketing";
+import {
+  useContacts,
+  useGroups,
+  useCrmStatuses,
+} from "@/app/hooks/useEmailMarketing";
 import type { Contact, ContactFormData } from "@/app/types/email-marketing";
-import { AlertCircle, X, UserPlus } from "lucide-react";
+import { AlertCircle, X, UserPlus, Loader2 } from "lucide-react";
 
 interface ContactModalProps {
   contact?: Contact | null;
   onClose: () => void;
   onSave: () => void;
 }
-
-const CRM_STATUSES = [
-  { value: "NEW", label: "Nouveau" },
-  { value: "PROSPECT", label: "Prospect" },
-  { value: "HOT_PROSPECT", label: "Prospect chaud" },
-  { value: "CUSTOMER", label: "Client" },
-  { value: "PARTNER", label: "Partenaire" },
-  { value: "INACTIVE", label: "Inactif" },
-  { value: "LOST", label: "Perdu" },
-];
 
 const CRM_SOURCES = [
   { value: "MANUAL", label: "Manuel" },
@@ -40,10 +34,73 @@ const CRM_SOURCES = [
 
 type ContactFormValues = z.input<typeof contactSchema>;
 
+function getStatusLabelById(
+  statuses: { id: string; label: string; key: string }[],
+  id?: string | null
+) {
+  if (!id) return "—";
+
+  return (
+    statuses.find((status) => status.id === id)?.label ||
+    statuses.find((status) => status.key === id)?.label ||
+    "—"
+  );
+}
+
+function getDefaultStatusId(
+  statuses: {
+    id: string;
+    key: string;
+    isDefault?: boolean;
+    isActive?: boolean;
+  }[],
+  contact?: Contact | null
+) {
+  if (contact?.crmStatusOptionId) {
+    return contact.crmStatusOptionId;
+  }
+
+  if (contact?.crmStatusOption?.id) {
+    return contact.crmStatusOption.id;
+  }
+
+  if (contact?.crmStatus) {
+    const matchingStatus = statuses.find(
+      (status) => status.key === contact.crmStatus
+    );
+
+    if (matchingStatus) {
+      return matchingStatus.id;
+    }
+  }
+
+  const defaultStatus = statuses.find(
+    (status) => status.isDefault && status.isActive
+  );
+
+  if (defaultStatus) {
+    return defaultStatus.id;
+  }
+
+  return statuses.find((status) => status.isActive)?.id || "";
+}
+
 export function ContactModal({ contact, onClose, onSave }: ContactModalProps) {
   const { groups } = useGroups();
+  const { statuses, loading: statusesLoading } = useCrmStatuses();
   const { createContact, updateContact } = useContacts();
+
   const isEdit = Boolean(contact);
+
+  const activeStatuses = useMemo(
+    () => statuses.filter((status) => status.isActive),
+    [statuses]
+  );
+
+  const defaultStatusId = useMemo(
+    () => getDefaultStatusId(statuses, contact),
+    [statuses, contact]
+  );
 
   const {
     register,
@@ -67,6 +124,7 @@ export function ContactModal({ contact, onClose, onSave }: ContactModalProps) {
       notes: contact?.notes || "",
 
       crmStatus: contact?.crmStatus || "NEW",
+      crmStatusOptionId: defaultStatusId,
       crmSource: contact?.crmSource || "MANUAL",
 
       isActive: contact?.isActive ?? true,
@@ -74,38 +132,51 @@ export function ContactModal({ contact, onClose, onSave }: ContactModalProps) {
     },
   });
 
-  const currentCrmStatus = watch("crmStatus") as string;
+  const currentCrmStatusOptionId = watch("crmStatusOptionId") as string;
   const currentCrmSource = watch("crmSource") as string;
   const isActive = watch("isActive") as boolean;
   const unsubscribed = watch("unsubscribed") as boolean;
 
   useEffect(() => {
-    if (contact) {
-      reset({
-        email: contact?.email || "",
-        firstName: contact?.firstName || "",
-        lastName: contact?.lastName || "",
-        phone: contact?.phone || "",
-        groupId: contact?.groupId || "",
+    reset({
+      email: contact?.email || "",
+      firstName: contact?.firstName || "",
+      lastName: contact?.lastName || "",
+      phone: contact?.phone || "",
+      groupId: contact?.groupId || "",
 
-        jobTitle: contact?.jobTitle || "",
-        companyName: contact?.companyName || "",
-        country: contact?.country || "",
-        city: contact?.city || "",
-        notes: contact?.notes || "",
+      jobTitle: contact?.jobTitle || "",
+      companyName: contact?.companyName || "",
+      country: contact?.country || "",
+      city: contact?.city || "",
+      notes: contact?.notes || "",
 
-        crmStatus: contact?.crmStatus || "NEW",
-        crmSource: contact?.crmSource || "MANUAL",
+      crmStatus: contact?.crmStatus || "NEW",
+      crmStatusOptionId: getDefaultStatusId(statuses, contact),
+      crmSource: contact?.crmSource || "MANUAL",
 
-        isActive: contact?.isActive ?? true,
-        unsubscribed: contact?.unsubscribed ?? false,
-      });
-    }
-  }, [contact, reset]);
+      isActive: contact?.isActive ?? true,
+      unsubscribed: contact?.unsubscribed ?? false,
+    });
+  }, [contact, reset, statuses]);
+
+  const originalStatusId =
+    contact?.crmStatusOptionId || contact?.crmStatusOption?.id || "";
+
+  const originalStatusLabel = getStatusLabelById(statuses, originalStatusId);
+  const currentStatusLabel = getStatusLabelById(
+    statuses,
+    currentCrmStatusOptionId
+  );
 
   const onSubmit = async (data: ContactFormValues) => {
     try {
-      const payload: ContactFormData = contactSchema.parse(data);
+      const parsed = contactSchema.parse(data);
+
+      const payload = {
+        ...parsed,
+        crmStatusOptionId: data.crmStatusOptionId || null,
+      } as ContactFormData;
 
       if (isEdit && contact) {
         await updateContact(contact.id, payload);
@@ -252,23 +323,47 @@ export function ContactModal({ contact, onClose, onSave }: ContactModalProps) {
 
             <div className="field-grid">
               <div className="field-group">
-                <label>Statut CRM</label>
+                <label>Statut CRM dynamique</label>
 
-                <select {...register("crmStatus")}>
-                  {CRM_STATUSES.map((status) => (
-                    <option key={status.value} value={status.value}>
-                      {status.label}
+                <div className="select-status-wrap">
+                  <select
+                    {...register("crmStatusOptionId")}
+                    disabled={statusesLoading || activeStatuses.length === 0}
+                  >
+                    <option value="">
+                      {statusesLoading
+                        ? "Chargement des statuts..."
+                        : "Sélectionner un statut"}
                     </option>
-                  ))}
-                </select>
 
-                {isEdit && contact?.crmStatus !== currentCrmStatus && (
+                    {activeStatuses.map((status) => (
+                      <option key={status.id} value={status.id}>
+                        {status.label}
+                      </option>
+                    ))}
+                  </select>
+
+                  {statusesLoading && (
+                    <Loader2 className="select-loader h-4 w-4" />
+                  )}
+                </div>
+
+                {activeStatuses.length === 0 && !statusesLoading && (
                   <p className="field-help warning">
-                    Le statut changera de {contact?.crmStatus || "—"} vers{" "}
-                    {currentCrmStatus}. Les automatisations liées peuvent se
-                    déclencher.
+                    Aucun statut CRM actif. Ajoutez-en dans l’onglet “Statuts
+                    CRM”.
                   </p>
                 )}
+
+                {isEdit &&
+                  originalStatusId !== currentCrmStatusOptionId &&
+                  currentCrmStatusOptionId && (
+                    <p className="field-help warning">
+                      Le statut changera de {originalStatusLabel} vers{" "}
+                      {currentStatusLabel}. Les automatisations liées peuvent se
+                      déclencher.
+                    </p>
+                  )}
               </div>
 
               <div className="field-group">
@@ -290,6 +385,8 @@ export function ContactModal({ contact, onClose, onSave }: ContactModalProps) {
                 )}
               </div>
             </div>
+
+            <input type="hidden" {...register("crmStatus")} />
 
             <div className="field-group">
               <label>Groupe email marketing</label>
@@ -535,6 +632,29 @@ export function ContactModal({ contact, onClose, onSave }: ContactModalProps) {
         .field-group textarea:focus {
           border-color: rgba(239, 159, 39, 0.55);
           box-shadow: 0 0 0 4px rgba(239, 159, 39, 0.1);
+        }
+
+        .select-status-wrap {
+          position: relative;
+        }
+
+        .select-status-wrap select {
+          padding-right: 42px;
+        }
+
+        .select-loader {
+          position: absolute;
+          right: 12px;
+          top: 13px;
+          color: #ef9f27;
+          animation: contactSpin 0.8s linear infinite;
+          pointer-events: none;
+        }
+
+        @keyframes contactSpin {
+          to {
+            transform: rotate(360deg);
+          }
         }
 
         .field-help {

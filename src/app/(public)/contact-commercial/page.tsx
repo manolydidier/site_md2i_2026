@@ -1,10 +1,10 @@
 // src/app/contact-commercial/page.tsx
-// ou le chemin exact de ta page Contact commercial
 
-import type { CSSProperties, ReactNode } from "react";
+import { ReactNode } from "react";
 import {
   ArrowRight,
   BadgeCheck,
+  CheckCircle2,
   Clock3,
   Headphones,
   MailCheck,
@@ -33,133 +33,694 @@ export default async function ContactCommercialPage() {
   });
 
   return (
-    <main style={s.page}>
-      <section style={s.hero}>
-        <div style={s.heroGlowOne} />
-        <div style={s.heroGlowTwo} />
+    <main className="cc-page">
+      <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700;800&display=swap');
 
-        <div style={s.heroInner}>
-          <div style={s.heroContent}>
-            <div style={s.eyebrow}>
-              <Sparkles size={15} />
-              <span>Contact commercial MD2I</span>
+        .cc-page {
+          --cc-font: "Sora", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+
+          --cc-bg: #f8fafc;
+          --cc-bg-2: #ffffff;
+          --cc-surface: #ffffff;
+          --cc-surface-soft: #fbfcfe;
+          --cc-surface-warm: #fffaf2;
+          --cc-surface-orange: #fff7ed;
+
+          --cc-border: #e2e8f0;
+          --cc-border-strong: #cbd5e1;
+
+          --cc-text: #0f172a;
+          --cc-text-soft: #334155;
+          --cc-muted: #64748b;
+
+          --cc-orange: #ef9f27;
+          --cc-orange-dark: #b6620e;
+          --cc-orange-soft: #fff7ed;
+          --cc-orange-border: #fed7aa;
+
+          --cc-green: #16a34a;
+          --cc-green-soft: #ecfdf3;
+          --cc-green-border: #a7f3c5;
+
+          --cc-blue-soft: #eff6ff;
+          --cc-blue-border: #bfdbfe;
+          --cc-blue-text: #1e40af;
+
+          --cc-shadow-sm: 0 8px 22px rgba(15, 23, 42, 0.055);
+          --cc-shadow-md: 0 18px 45px rgba(15, 23, 42, 0.075);
+          --cc-shadow-lg: 0 24px 70px rgba(15, 23, 42, 0.095);
+
+          /*
+            Variables pour ProductLeadForm variant="premium".
+            Elles gardent le formulaire blanc, lisible et cohérent.
+          */
+          --lead-font-body: "Sora";
+          --lead-form-ink: #0f172a;
+          --lead-form-strong: #0f172a;
+          --lead-form-bg: #ffffff;
+          --lead-muted: #475569;
+          --lead-soft: #64748b;
+          --lead-border: #e2e8f0;
+          --lead-panel-border: #e2e8f0;
+          --lead-panel-hover-bg: #f8fafc;
+          --lead-field-bg: #ffffff;
+          --lead-field-focus-bg: #ffffff;
+          --lead-placeholder: #94a3b8;
+          --lead-option-text: #0f172a;
+          --lead-option-bg: #ffffff;
+          --lead-gold: #b6620e;
+          --lead-amber: #d8891e;
+          --lead-cyan: #2563eb;
+          --lead-emerald: #16a34a;
+          --lead-accent-soft: #fff7ed;
+          --lead-accent-border: #fed7aa;
+          --lead-cta-bg: #ef9f27;
+          --lead-cta-hover: #f5a623;
+          --lead-button-text: #ffffff;
+
+          min-height: 100vh;
+          color: var(--cc-text);
+          font-family: var(--cc-font);
+          background:
+            radial-gradient(circle at 8% 0%, rgba(239, 159, 39, 0.08), transparent 30%),
+            radial-gradient(circle at 95% 10%, rgba(37, 99, 235, 0.045), transparent 28%),
+            linear-gradient(180deg, #ffffff 0%, #fbfcfe 42%, #f8fafc 100%);
+          -webkit-font-smoothing: antialiased;
+          text-rendering: optimizeLegibility;
+        }
+
+        .cc-page *,
+        .cc-page *::before,
+        .cc-page *::after {
+          box-sizing: border-box;
+        }
+
+        .cc-container {
+          width: min(1180px, 100%);
+          margin: 0 auto;
+          padding-left: clamp(16px, 4vw, 32px);
+          padding-right: clamp(16px, 4vw, 32px);
+        }
+
+        .cc-hero {
+          position: relative;
+          overflow: hidden;
+          padding: clamp(54px, 7vw, 84px) 0 34px;
+        }
+
+        .cc-hero::before {
+          content: "";
+          position: absolute;
+          top: -140px;
+          right: -100px;
+          width: 360px;
+          height: 360px;
+          border-radius: 999px;
+          background: rgba(239, 159, 39, 0.11);
+          filter: blur(18px);
+          pointer-events: none;
+        }
+
+        .cc-hero::after {
+          content: "";
+          position: absolute;
+          left: -150px;
+          bottom: -170px;
+          width: 380px;
+          height: 380px;
+          border-radius: 999px;
+          background: rgba(37, 99, 235, 0.045);
+          filter: blur(18px);
+          pointer-events: none;
+        }
+
+        .cc-hero-grid {
+          position: relative;
+          z-index: 1;
+          display: grid;
+          grid-template-columns: minmax(0, 1.08fr) minmax(310px, 0.52fr);
+          gap: clamp(22px, 4vw, 36px);
+          align-items: center;
+        }
+
+        .cc-eyebrow {
+          width: fit-content;
+          margin: 0 0 18px;
+          padding: 9px 13px;
+          border-radius: 999px;
+          display: inline-flex;
+          align-items: center;
+          gap: 8px;
+          color: var(--cc-orange-dark);
+          background: var(--cc-orange-soft);
+          border: 1px solid var(--cc-orange-border);
+          font-size: 12px;
+          font-weight: 800;
+          letter-spacing: 0.08em;
+          text-transform: uppercase;
+        }
+
+        .cc-title {
+          max-width: 860px;
+          margin: 0;
+          color: var(--cc-text);
+          font-size: clamp(38px, 6vw, 64px);
+          line-height: 1.02;
+          font-weight: 800;
+          letter-spacing: -0.06em;
+        }
+
+        .cc-title span {
+          color: var(--cc-orange-dark);
+        }
+
+        .cc-subtitle {
+          max-width: 740px;
+          margin: 20px 0 0;
+          color: var(--cc-text-soft);
+          font-size: clamp(15.5px, 1.6vw, 18px);
+          line-height: 1.78;
+          font-weight: 500;
+        }
+
+        .cc-hero-actions {
+          margin-top: 30px;
+          display: flex;
+          align-items: center;
+          gap: 14px;
+          flex-wrap: wrap;
+        }
+
+        .cc-primary-link {
+          min-height: 48px;
+          padding: 0 20px;
+          border-radius: 999px;
+          background: linear-gradient(135deg, var(--cc-orange), #d8891e);
+          color: #ffffff;
+          border: 1px solid rgba(239, 159, 39, 0.62);
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          gap: 9px;
+          text-decoration: none;
+          font-size: 14px;
+          font-weight: 800;
+          box-shadow: 0 14px 30px rgba(239, 159, 39, 0.22);
+          transition: transform 0.18s ease, box-shadow 0.18s ease;
+        }
+
+        .cc-primary-link:hover {
+          transform: translateY(-1px);
+          box-shadow: 0 18px 38px rgba(239, 159, 39, 0.28);
+        }
+
+        .cc-hero-hint {
+          display: inline-flex;
+          align-items: center;
+          gap: 8px;
+          color: var(--cc-muted);
+          font-size: 13px;
+          font-weight: 700;
+        }
+
+        .cc-hero-hint svg {
+          color: var(--cc-orange-dark);
+        }
+
+        .cc-hero-card {
+          padding: 24px;
+          border-radius: 26px;
+          background:
+            radial-gradient(circle at top right, rgba(239, 159, 39, 0.09), transparent 36%),
+            linear-gradient(180deg, rgba(255, 255, 255, 0.96), #ffffff);
+          border: 1px solid var(--cc-border);
+          box-shadow: var(--cc-shadow-lg);
+        }
+
+        .cc-hero-card-icon {
+          width: 54px;
+          height: 54px;
+          margin-bottom: 18px;
+          border-radius: 18px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          color: var(--cc-orange-dark);
+          background: var(--cc-orange-soft);
+          border: 1px solid var(--cc-orange-border);
+        }
+
+        .cc-hero-card h2 {
+          margin: 0;
+          color: var(--cc-text);
+          font-size: 21px;
+          line-height: 1.25;
+          font-weight: 800;
+          letter-spacing: -0.03em;
+        }
+
+        .cc-hero-card p {
+          margin: 10px 0 0;
+          color: var(--cc-text-soft);
+          font-size: 14px;
+          line-height: 1.72;
+          font-weight: 500;
+        }
+
+        .cc-hero-stats {
+          margin-top: 20px;
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          gap: 10px;
+        }
+
+        .cc-stat {
+          padding: 14px;
+          border-radius: 18px;
+          background: var(--cc-surface-soft);
+          border: 1px solid var(--cc-border);
+        }
+
+        .cc-stat strong {
+          display: block;
+          color: var(--cc-text);
+          font-size: 22px;
+          line-height: 1;
+          font-weight: 800;
+          letter-spacing: -0.04em;
+        }
+
+        .cc-stat span {
+          display: block;
+          margin-top: 6px;
+          color: var(--cc-muted);
+          font-size: 12px;
+          line-height: 1.45;
+          font-weight: 700;
+        }
+
+        .cc-benefits {
+          padding: 0 0 34px;
+        }
+
+        .cc-benefits-grid {
+          display: grid;
+          grid-template-columns: repeat(3, minmax(0, 1fr));
+          gap: 16px;
+        }
+
+        .cc-benefit-card {
+          padding: 20px;
+          border-radius: 22px;
+          background: var(--cc-surface);
+          border: 1px solid var(--cc-border);
+          display: flex;
+          align-items: flex-start;
+          gap: 14px;
+          box-shadow: var(--cc-shadow-sm);
+        }
+
+        .cc-benefit-icon {
+          width: 42px;
+          height: 42px;
+          border-radius: 14px;
+          flex-shrink: 0;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          color: var(--cc-orange-dark);
+          background: var(--cc-orange-soft);
+          border: 1px solid var(--cc-orange-border);
+        }
+
+        .cc-benefit-card h3 {
+          margin: 0;
+          color: var(--cc-text);
+          font-size: 15px;
+          font-weight: 800;
+          letter-spacing: -0.01em;
+        }
+
+        .cc-benefit-card p {
+          margin: 7px 0 0;
+          color: var(--cc-text-soft);
+          font-size: 13px;
+          line-height: 1.62;
+          font-weight: 500;
+        }
+
+        .cc-form-section {
+          padding: 24px 0 54px;
+        }
+
+        .cc-form-grid {
+          display: grid;
+          grid-template-columns: minmax(280px, 0.42fr) minmax(0, 0.58fr);
+          gap: 24px;
+          align-items: start;
+        }
+
+        .cc-form-intro {
+          position: sticky;
+          top: 24px;
+          padding: 24px;
+          border-radius: 26px;
+          background:
+            radial-gradient(circle at top right, rgba(239, 159, 39, 0.1), transparent 34%),
+            linear-gradient(180deg, #ffffff 0%, #fbfcfe 100%);
+          border: 1px solid var(--cc-border);
+          box-shadow: var(--cc-shadow-md);
+        }
+
+        .cc-form-intro-badge {
+          width: fit-content;
+          margin: 0 0 14px;
+          padding: 7px 11px;
+          border-radius: 999px;
+          color: var(--cc-orange-dark);
+          background: var(--cc-orange-soft);
+          border: 1px solid var(--cc-orange-border);
+          font-size: 11px;
+          font-weight: 800;
+          letter-spacing: 0.1em;
+          text-transform: uppercase;
+        }
+
+        .cc-form-intro h2 {
+          margin: 0;
+          color: var(--cc-text);
+          font-size: 30px;
+          line-height: 1.14;
+          font-weight: 800;
+          letter-spacing: -0.045em;
+        }
+
+        .cc-form-intro p {
+          margin: 13px 0 0;
+          color: var(--cc-text-soft);
+          font-size: 14px;
+          line-height: 1.72;
+          font-weight: 500;
+        }
+
+        .cc-form-points {
+          margin-top: 18px;
+          display: grid;
+          gap: 10px;
+        }
+
+        .cc-form-point {
+          display: flex;
+          align-items: flex-start;
+          gap: 9px;
+          color: var(--cc-text-soft);
+          font-size: 13px;
+          line-height: 1.55;
+          font-weight: 600;
+        }
+
+        .cc-form-point svg {
+          margin-top: 1px;
+          flex-shrink: 0;
+          color: var(--cc-green);
+        }
+
+        .cc-form-card {
+          padding: clamp(16px, 2vw, 22px);
+          border-radius: 26px;
+          background:
+            linear-gradient(180deg, #ffffff 0%, #fbfcfe 100%);
+          border: 1px solid var(--cc-border);
+          box-shadow: var(--cc-shadow-lg);
+        }
+
+        .cc-warning {
+          margin-bottom: 16px;
+          padding: 14px;
+          border-radius: 16px;
+          background: var(--cc-orange-soft);
+          border: 1px solid var(--cc-orange-border);
+          color: var(--cc-orange-dark);
+          font-size: 13px;
+          line-height: 1.6;
+          font-weight: 800;
+        }
+
+        .cc-reassurance {
+          padding: 0 0 64px;
+        }
+
+        .cc-reassurance-card {
+          padding: clamp(24px, 4vw, 34px);
+          border-radius: 28px;
+          background:
+            radial-gradient(circle at top right, rgba(239, 159, 39, 0.12), transparent 34%),
+            linear-gradient(135deg, #ffffff 0%, #fbfcfe 60%, #fffaf2 100%);
+          border: 1px solid var(--cc-border);
+          display: grid;
+          grid-template-columns: minmax(0, 0.48fr) minmax(0, 0.52fr);
+          gap: 24px;
+          align-items: center;
+          box-shadow: var(--cc-shadow-md);
+        }
+
+        .cc-reassurance-badge {
+          margin: 0 0 9px;
+          color: var(--cc-orange-dark);
+          font-size: 11px;
+          font-weight: 800;
+          letter-spacing: 0.1em;
+          text-transform: uppercase;
+        }
+
+        .cc-reassurance-card h2 {
+          margin: 0;
+          color: var(--cc-text);
+          font-size: clamp(24px, 3vw, 32px);
+          line-height: 1.18;
+          font-weight: 800;
+          letter-spacing: -0.045em;
+        }
+
+        .cc-reassurance-card p {
+          margin: 0;
+          color: var(--cc-text-soft);
+          font-size: 15px;
+          line-height: 1.8;
+          font-weight: 500;
+        }
+
+        @media (max-width: 980px) {
+          .cc-hero-grid,
+          .cc-form-grid,
+          .cc-reassurance-card {
+            grid-template-columns: 1fr;
+          }
+
+          .cc-form-intro {
+            position: static;
+          }
+
+          .cc-benefits-grid {
+            grid-template-columns: 1fr;
+          }
+        }
+
+        @media (max-width: 640px) {
+          .cc-hero {
+            padding-top: 42px;
+          }
+
+          .cc-hero-actions {
+            align-items: stretch;
+            flex-direction: column;
+          }
+
+          .cc-primary-link {
+            width: 100%;
+          }
+
+          .cc-hero-hint {
+            justify-content: center;
+            text-align: center;
+          }
+
+          .cc-hero-stats {
+            grid-template-columns: 1fr;
+          }
+
+          .cc-benefit-card {
+            padding: 18px;
+          }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+          .cc-page *,
+          .cc-page *::before,
+          .cc-page *::after {
+            animation: none !important;
+            transition: none !important;
+            scroll-behavior: auto !important;
+          }
+        }
+      `}</style>
+
+      <section className="cc-hero">
+        <div className="cc-container">
+          <div className="cc-hero-grid">
+            <div>
+              <div className="cc-eyebrow">
+                <Sparkles size={15} aria-hidden="true" />
+                <span>Contact commercial MD2I</span>
+              </div>
+
+              <h1 className="cc-title">
+                Parlons de votre besoin et trouvons la{" "}
+                <span>bonne solution.</span>
+              </h1>
+
+              <p className="cc-subtitle">
+                Sélectionnez un produit ou service, décrivez votre demande, puis
+                l’équipe MD2I vous recontactera avec une réponse adaptée à votre
+                contexte.
+              </p>
+
+              <div className="cc-hero-actions">
+                <a href="#demande-commerciale" className="cc-primary-link">
+                  Envoyer une demande
+                  <ArrowRight size={17} aria-hidden="true" />
+                </a>
+
+                <div className="cc-hero-hint">
+                  <Clock3 size={16} aria-hidden="true" />
+                  <span>Réponse rapide par l’équipe commerciale</span>
+                </div>
+              </div>
             </div>
 
-            <h1 style={s.title}>
-              Parlons de votre besoin et trouvons la bonne solution.
-            </h1>
-
-            <p style={s.subtitle}>
-              Sélectionnez un produit ou service, décrivez votre demande, puis
-              l’équipe MD2I vous recontactera avec une réponse adaptée à votre
-              contexte.
-            </p>
-
-            <div style={s.heroActions}>
-              <a href="#demande-commerciale" style={s.primaryButton}>
-                Envoyer une demande
-                <ArrowRight size={17} />
-              </a>
-
-              <div style={s.heroHint}>
-                <Clock3 size={16} />
-                <span>Réponse rapide par l’équipe commerciale</span>
+            <aside className="cc-hero-card">
+              <div className="cc-hero-card-icon">
+                <Headphones size={24} aria-hidden="true" />
               </div>
+
+              <h2>Accompagnement personnalisé</h2>
+
+              <p>
+                Votre demande est automatiquement transmise au CRM MD2I pour
+                être suivie par notre équipe commerciale.
+              </p>
+
+              <div className="cc-hero-stats">
+                <div className="cc-stat">
+                  <strong>{products.length}</strong>
+                  <span>solutions disponibles</span>
+                </div>
+
+                <div className="cc-stat">
+                  <strong>CRM</strong>
+                  <span>suivi structuré</span>
+                </div>
+              </div>
+            </aside>
+          </div>
+        </div>
+      </section>
+
+      <section className="cc-benefits">
+        <div className="cc-container">
+          <div className="cc-benefits-grid">
+            <BenefitCard
+              icon={<BadgeCheck size={21} />}
+              title="Solution adaptée"
+              text="Nous analysons votre demande pour vous orienter vers le bon produit ou service."
+            />
+
+            <BenefitCard
+              icon={<MailCheck size={21} />}
+              title="Suivi commercial"
+              text="Votre demande est enregistrée proprement pour faciliter le suivi et les relances."
+            />
+
+            <BenefitCard
+              icon={<ShieldCheck size={21} />}
+              title="Échange professionnel"
+              text="Vous êtes recontacté avec une réponse claire, structurée et adaptée à votre projet."
+            />
+          </div>
+        </div>
+      </section>
+
+      <section id="demande-commerciale" className="cc-form-section">
+        <div className="cc-container">
+          <div className="cc-form-grid">
+            <aside className="cc-form-intro">
+              <p className="cc-form-intro-badge">Votre demande</p>
+
+              <h2>Demande commerciale</h2>
+
+              <p>
+                Choisissez le produit ou service qui vous intéresse, puis
+                indiquez vos informations. Cela nous permet de mieux comprendre
+                votre besoin avant de vous recontacter.
+              </p>
+
+              <div className="cc-form-points">
+                <div className="cc-form-point">
+                  <CheckCircle2 size={15} aria-hidden="true" />
+                  <span>Qualification claire de votre besoin.</span>
+                </div>
+
+                <div className="cc-form-point">
+                  <CheckCircle2 size={15} aria-hidden="true" />
+                  <span>Suivi commercial structuré dans le CRM.</span>
+                </div>
+
+                <div className="cc-form-point">
+                  <CheckCircle2 size={15} aria-hidden="true" />
+                  <span>Retour adapté au produit ou service sélectionné.</span>
+                </div>
+              </div>
+            </aside>
+
+            <div className="cc-form-card">
+              {products.length === 0 && (
+                <div className="cc-warning">
+                  Aucun produit publié n’est disponible pour le moment. Vous
+                  pouvez tout de même envoyer une demande générale si le
+                  formulaire le permet.
+                </div>
+              )}
+
+              <ProductLeadForm
+                productOptions={products}
+                title="Demande commerciale"
+                description="Choisissez le produit ou service qui vous intéresse. L’équipe MD2I vous recontactera rapidement."
+                defaultRequestType="CONTACT"
+                variant="premium"
+              />
             </div>
           </div>
+        </div>
+      </section>
 
-          <aside style={s.heroCard}>
-            <div style={s.heroCardIcon}>
-              <Headphones size={24} />
+      <section className="cc-reassurance">
+        <div className="cc-container">
+          <div className="cc-reassurance-card">
+            <div>
+              <p className="cc-reassurance-badge">MD2I</p>
+
+              <h2>
+                Un interlocuteur pour transformer votre besoin en solution.
+              </h2>
             </div>
 
-            <h2 style={s.heroCardTitle}>Accompagnement personnalisé</h2>
-
-            <p style={s.heroCardText}>
-              Votre demande est automatiquement transmise au CRM MD2I pour être
-              suivie par notre équipe commerciale.
+            <p>
+              Que votre demande concerne un site web, une solution digitale, un
+              CRM, une automatisation, une maintenance ou un accompagnement,
+              nous vous aidons à clarifier la meilleure approche.
             </p>
-
-            <div style={s.heroStats}>
-              <div>
-                <strong>{products.length}</strong>
-                <span>solutions disponibles</span>
-              </div>
-
-              <div>
-                <strong>CRM</strong>
-                <span>suivi structuré</span>
-              </div>
-            </div>
-          </aside>
-        </div>
-      </section>
-
-      <section style={s.benefits}>
-        <BenefitCard
-          icon={<BadgeCheck size={21} />}
-          title="Solution adaptée"
-          text="Nous analysons votre demande pour vous orienter vers le bon produit ou service."
-        />
-
-        <BenefitCard
-          icon={<MailCheck size={21} />}
-          title="Suivi commercial"
-          text="Votre demande est enregistrée proprement pour faciliter le suivi et les relances."
-        />
-
-        <BenefitCard
-          icon={<ShieldCheck size={21} />}
-          title="Échange professionnel"
-          text="Vous êtes recontacté avec une réponse claire, structurée et adaptée à votre projet."
-        />
-      </section>
-
-      <section id="demande-commerciale" style={s.formSection}>
-        <div style={s.formIntro}>
-          <p style={s.formEyebrow}>Votre demande</p>
-
-          <h2 style={s.formTitle}>Demande commerciale</h2>
-
-          <p style={s.formDescription}>
-            Choisissez le produit ou service qui vous intéresse, puis indiquez
-            vos informations. Cela nous permet de mieux comprendre votre besoin
-            avant de vous recontacter.
-          </p>
-        </div>
-
-        <div style={s.formCard}>
-          {products.length === 0 && (
-            <div style={s.warningBox}>
-              Aucun produit publié n’est disponible pour le moment. Vous pouvez
-              tout de même envoyer une demande générale si le formulaire le
-              permet.
-            </div>
-          )}
-
-          <ProductLeadForm
-            productOptions={products}
-            title="Demande commerciale"
-            description="Choisissez le produit ou service qui vous intéresse. L’équipe MD2I vous recontactera rapidement."
-            defaultRequestType="CONTACT"
-          />
-        </div>
-      </section>
-
-      <section style={s.reassurance}>
-        <div style={s.reassuranceInner}>
-          <div>
-            <p style={s.reassuranceEyebrow}>MD2I</p>
-            <h2 style={s.reassuranceTitle}>
-              Un interlocuteur pour transformer votre besoin en solution.
-            </h2>
           </div>
-
-          <p style={s.reassuranceText}>
-            Que votre demande concerne un site web, une solution digitale, un
-            CRM, une automatisation, une maintenance ou un accompagnement, nous
-            vous aidons à clarifier la meilleure approche.
-          </p>
         </div>
       </section>
     </main>
@@ -176,349 +737,15 @@ function BenefitCard({
   text: string;
 }) {
   return (
-    <article style={s.benefitCard}>
-      <div style={s.benefitIcon}>{icon}</div>
+    <article className="cc-benefit-card">
+      <div className="cc-benefit-icon" aria-hidden="true">
+        {icon}
+      </div>
 
       <div>
-        <h3 style={s.benefitTitle}>{title}</h3>
-        <p style={s.benefitText}>{text}</p>
+        <h3>{title}</h3>
+        <p>{text}</p>
       </div>
     </article>
   );
 }
-
-const ORANGE = "#EF9F27";
-const ORANGE_DARK = "#92400E";
-const ORANGE_SOFT = "rgba(239, 159, 39, 0.10)";
-const ORANGE_BORDER = "rgba(239, 159, 39, 0.28)";
-const TEXT = "#0F172A";
-const MUTED = "#64748B";
-const BORDER = "#E5E7EB";
-const SURFACE = "#FFFFFF";
-
-const s: Record<string, CSSProperties> = {
-  page: {
-    minHeight: "100vh",
-    background:
-      "radial-gradient(circle at top left, rgba(239,159,39,0.14), transparent 34%), linear-gradient(180deg, #FFFDF8 0%, #F8FAFC 42%, #F1F5F9 100%)",
-    color: TEXT,
-    fontFamily: "Arial, Helvetica, sans-serif",
-  },
-
-  hero: {
-    position: "relative",
-    overflow: "hidden",
-    padding: "72px 20px 44px",
-  },
-
-  heroGlowOne: {
-    position: "absolute",
-    top: -120,
-    right: -80,
-    width: 320,
-    height: 320,
-    borderRadius: 999,
-    background: "rgba(239,159,39,0.20)",
-    filter: "blur(12px)",
-  },
-
-  heroGlowTwo: {
-    position: "absolute",
-    left: -120,
-    bottom: -160,
-    width: 360,
-    height: 360,
-    borderRadius: 999,
-    background: "rgba(15,23,42,0.08)",
-    filter: "blur(16px)",
-  },
-
-  heroInner: {
-    position: "relative",
-    zIndex: 1,
-    maxWidth: 1180,
-    margin: "0 auto",
-    display: "grid",
-    gridTemplateColumns: "minmax(0, 1.1fr) minmax(320px, 0.55fr)",
-    gap: 28,
-    alignItems: "center",
-  },
-
-  heroContent: {
-    maxWidth: 760,
-  },
-
-  eyebrow: {
-    width: "fit-content",
-    marginBottom: 18,
-    padding: "9px 13px",
-    borderRadius: 999,
-    display: "inline-flex",
-    alignItems: "center",
-    gap: 8,
-    color: ORANGE_DARK,
-    background: ORANGE_SOFT,
-    border: `1px solid ${ORANGE_BORDER}`,
-    fontSize: 12,
-    fontWeight: 900,
-    letterSpacing: "0.08em",
-    textTransform: "uppercase",
-  },
-
-  title: {
-    margin: 0,
-    maxWidth: 820,
-    color: TEXT,
-    fontSize: 56,
-    lineHeight: 1.02,
-    fontWeight: 900,
-    letterSpacing: "-0.055em",
-  },
-
-  subtitle: {
-    maxWidth: 720,
-    margin: "20px 0 0",
-    color: MUTED,
-    fontSize: 18,
-    lineHeight: 1.75,
-    fontWeight: 600,
-  },
-
-  heroActions: {
-    marginTop: 30,
-    display: "flex",
-    alignItems: "center",
-    gap: 16,
-    flexWrap: "wrap",
-  },
-
-  primaryButton: {
-    height: 48,
-    padding: "0 20px",
-    borderRadius: 999,
-    background: ORANGE,
-    color: "#1A0D00",
-    border: `1px solid ${ORANGE_BORDER}`,
-    display: "inline-flex",
-    alignItems: "center",
-    gap: 9,
-    textDecoration: "none",
-    fontSize: 14,
-    fontWeight: 900,
-    boxShadow: "0 14px 34px rgba(239,159,39,0.22)",
-  },
-
-  heroHint: {
-    display: "inline-flex",
-    alignItems: "center",
-    gap: 8,
-    color: MUTED,
-    fontSize: 13,
-    fontWeight: 800,
-  },
-
-  heroCard: {
-    padding: 24,
-    borderRadius: 26,
-    background:
-      "linear-gradient(180deg, rgba(255,255,255,0.92), rgba(255,255,255,0.78))",
-    border: "1px solid rgba(255,255,255,0.75)",
-    boxShadow: "0 24px 80px rgba(15, 23, 42, 0.12)",
-    backdropFilter: "blur(14px)",
-  },
-
-  heroCardIcon: {
-    width: 54,
-    height: 54,
-    borderRadius: 18,
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    color: ORANGE_DARK,
-    background: ORANGE_SOFT,
-    border: `1px solid ${ORANGE_BORDER}`,
-    marginBottom: 18,
-  },
-
-  heroCardTitle: {
-    margin: 0,
-    color: TEXT,
-    fontSize: 21,
-    lineHeight: 1.25,
-    fontWeight: 900,
-    letterSpacing: "-0.03em",
-  },
-
-  heroCardText: {
-    margin: "10px 0 0",
-    color: MUTED,
-    fontSize: 14,
-    lineHeight: 1.7,
-    fontWeight: 600,
-  },
-
-  heroStats: {
-    marginTop: 20,
-    display: "grid",
-    gridTemplateColumns: "1fr 1fr",
-    gap: 10,
-  },
-
-  benefits: {
-    maxWidth: 1180,
-    margin: "0 auto",
-    padding: "0 20px 34px",
-    display: "grid",
-    gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
-    gap: 16,
-  },
-
-  benefitCard: {
-    padding: 20,
-    borderRadius: 20,
-    background: SURFACE,
-    border: `1px solid ${BORDER}`,
-    display: "flex",
-    alignItems: "flex-start",
-    gap: 14,
-    boxShadow: "0 14px 40px rgba(15, 23, 42, 0.05)",
-  },
-
-  benefitIcon: {
-    width: 42,
-    height: 42,
-    borderRadius: 14,
-    flexShrink: 0,
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    color: ORANGE_DARK,
-    background: ORANGE_SOFT,
-    border: `1px solid ${ORANGE_BORDER}`,
-  },
-
-  benefitTitle: {
-    margin: 0,
-    color: TEXT,
-    fontSize: 15,
-    fontWeight: 900,
-  },
-
-  benefitText: {
-    margin: "6px 0 0",
-    color: MUTED,
-    fontSize: 13,
-    lineHeight: 1.6,
-    fontWeight: 600,
-  },
-
-  formSection: {
-    maxWidth: 1180,
-    margin: "0 auto",
-    padding: "24px 20px 54px",
-    display: "grid",
-    gridTemplateColumns: "minmax(280px, 0.42fr) minmax(0, 0.58fr)",
-    gap: 24,
-    alignItems: "start",
-  },
-
-  formIntro: {
-    position: "sticky",
-    top: 24,
-    padding: 24,
-    borderRadius: 24,
-    background: "#111827",
-    border: `1px solid ${ORANGE_BORDER}`,
-    boxShadow: "0 20px 60px rgba(15, 23, 42, 0.16)",
-  },
-
-  formEyebrow: {
-    margin: "0 0 10px",
-    color: ORANGE,
-    fontSize: 11,
-    fontWeight: 900,
-    letterSpacing: "0.1em",
-    textTransform: "uppercase",
-  },
-
-  formTitle: {
-    margin: 0,
-    color: "#FFFFFF",
-    fontSize: 28,
-    lineHeight: 1.15,
-    fontWeight: 900,
-    letterSpacing: "-0.04em",
-  },
-
-  formDescription: {
-    margin: "12px 0 0",
-    color: "#D1D5DB",
-    fontSize: 14,
-    lineHeight: 1.7,
-    fontWeight: 600,
-  },
-
-  formCard: {
-    padding: 22,
-    borderRadius: 26,
-    background: SURFACE,
-    border: `1px solid ${BORDER}`,
-    boxShadow: "0 24px 80px rgba(15, 23, 42, 0.09)",
-  },
-
-  warningBox: {
-    marginBottom: 16,
-    padding: 14,
-    borderRadius: 16,
-    background: "#FFF7ED",
-    border: "1px solid #FED7AA",
-    color: ORANGE_DARK,
-    fontSize: 13,
-    lineHeight: 1.6,
-    fontWeight: 800,
-  },
-
-  reassurance: {
-    padding: "0 20px 64px",
-  },
-
-  reassuranceInner: {
-    maxWidth: 1180,
-    margin: "0 auto",
-    padding: 28,
-    borderRadius: 26,
-    background:
-      "linear-gradient(135deg, rgba(239,159,39,0.14), rgba(255,255,255,0.9))",
-    border: `1px solid ${ORANGE_BORDER}`,
-    display: "grid",
-    gridTemplateColumns: "minmax(0, 0.48fr) minmax(0, 0.52fr)",
-    gap: 24,
-    alignItems: "center",
-  },
-
-  reassuranceEyebrow: {
-    margin: "0 0 8px",
-    color: ORANGE_DARK,
-    fontSize: 11,
-    fontWeight: 900,
-    letterSpacing: "0.1em",
-    textTransform: "uppercase",
-  },
-
-  reassuranceTitle: {
-    margin: 0,
-    color: TEXT,
-    fontSize: 28,
-    lineHeight: 1.2,
-    fontWeight: 900,
-    letterSpacing: "-0.04em",
-  },
-
-  reassuranceText: {
-    margin: 0,
-    color: MUTED,
-    fontSize: 15,
-    lineHeight: 1.8,
-    fontWeight: 600,
-  },
-};

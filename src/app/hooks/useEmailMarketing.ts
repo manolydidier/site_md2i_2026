@@ -10,19 +10,39 @@ import type {
   GroupFormData,
   Campaign,
   CampaignStatus,
+  CrmStatusOption,
+  CrmStatusOptionFormData,
 } from "@/app/types/email-marketing";
 
 interface UseContactsOptions {
   pageSize?: number;
   groupId?: string;
   crmStatus?: string;
+  crmStatusOptionId?: string;
   crmSource?: string;
+}
+
+async function readJsonSafe<T = any>(res: Response): Promise<T | null> {
+  const text = await res.text();
+
+  if (!text) {
+    return null;
+  }
+
+  try {
+    return JSON.parse(text) as T;
+  } catch {
+    return {
+      error: text || `Réponse non JSON. Status HTTP: ${res.status}`,
+    } as T;
+  }
 }
 
 export function useContacts({
   pageSize = 20,
   groupId,
   crmStatus,
+  crmStatusOptionId,
   crmSource,
 }: UseContactsOptions = {}) {
   const [contacts, setContacts] = useState<Contact[]>([]);
@@ -55,11 +75,17 @@ export function useContacts({
         params.set("crmStatus", crmStatus);
       }
 
+      if (crmStatusOptionId) {
+        params.set("crmStatusOptionId", crmStatusOptionId);
+      }
+
       if (crmSource) {
         params.set("crmSource", crmSource);
       }
 
-      const res = await fetch(`/api/contacts?${params.toString()}`);
+      const res = await fetch(`/api/contacts?${params.toString()}`, {
+        cache: "no-store",
+      });
 
       if (!res.ok) {
         throw new Error("Erreur lors du chargement des contacts");
@@ -67,15 +93,18 @@ export function useContacts({
 
       const data: PaginatedResponse<Contact> = await res.json();
 
-      setContacts(data.data);
-      setTotal(data.total);
-      setTotalPages(data.totalPages);
+      setContacts(Array.isArray(data.data) ? data.data : []);
+      setTotal(Number(data.total || 0));
+      setTotalPages(Number(data.totalPages || 0));
     } catch (err) {
       setError(err instanceof Error ? err.message : "Erreur inconnue");
+      setContacts([]);
+      setTotal(0);
+      setTotalPages(0);
     } finally {
       setLoading(false);
     }
-  }, [page, pageSize, search, groupId, crmStatus, crmSource]);
+  }, [page, pageSize, search, groupId, crmStatus, crmStatusOptionId, crmSource]);
 
   useEffect(() => {
     fetchContacts();
@@ -84,7 +113,7 @@ export function useContacts({
   // Reset page quand les filtres changent
   useEffect(() => {
     setPage(1);
-  }, [search, groupId, crmStatus, crmSource]);
+  }, [search, groupId, crmStatus, crmStatusOptionId, crmSource]);
 
   const createContact = useCallback(
     async (data: ContactFormData) => {
@@ -97,8 +126,8 @@ export function useContacts({
       });
 
       if (!res.ok) {
-        const err = await res.json();
-        throw new Error(err.error?.message || err.error || "Erreur création");
+        const err = await res.json().catch(() => null);
+        throw new Error(err?.error?.message || err?.error || "Erreur création");
       }
 
       await fetchContacts();
@@ -120,7 +149,9 @@ export function useContacts({
 
       if (!res.ok) {
         const err = await res.json().catch(() => null);
-        throw new Error(err?.error?.message || err?.error || "Erreur mise à jour");
+        throw new Error(
+          err?.error?.message || err?.error || "Erreur mise à jour"
+        );
       }
 
       await fetchContacts();
@@ -192,7 +223,9 @@ export function useGroups() {
     setLoading(true);
 
     try {
-      const res = await fetch("/api/groups");
+      const res = await fetch("/api/groups", {
+        cache: "no-store",
+      });
 
       if (!res.ok) {
         throw new Error("Erreur lors du chargement des groupes");
@@ -200,7 +233,7 @@ export function useGroups() {
 
       const data = await res.json();
 
-      setGroups(data);
+      setGroups(Array.isArray(data) ? data : []);
     } finally {
       setLoading(false);
     }
@@ -275,6 +308,139 @@ export function useGroups() {
   };
 }
 
+// ─── Hook pour les statuts CRM dynamiques ─────────────────────────────────────
+
+export function useCrmStatuses() {
+  const [statuses, setStatuses] = useState<CrmStatusOption[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const fetchStatuses = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+
+    try {
+      /**
+       * includeInactive=1 est utile pour afficher aussi les statuts désactivés.
+       * Si ta route ne gère pas encore ce paramètre, elle peut simplement l’ignorer.
+       */
+      const res = await fetch("/api/crm/statuses?includeInactive=1", {
+        method: "GET",
+        cache: "no-store",
+      });
+
+      const data = await readJsonSafe<CrmStatusOption[] | { error?: string }>(
+        res
+      );
+
+      if (!res.ok) {
+        throw new Error(
+          !Array.isArray(data) && data?.error
+            ? data.error
+            : "Erreur chargement statuts CRM."
+        );
+      }
+
+      setStatuses(Array.isArray(data) ? data : []);
+    } catch (err) {
+      const message =
+        err instanceof Error
+          ? err.message
+          : "Erreur inconnue pendant le chargement des statuts CRM.";
+
+      setError(message);
+      setStatuses([]);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchStatuses();
+  }, [fetchStatuses]);
+
+  const createStatus = useCallback(
+    async (data: CrmStatusOptionFormData) => {
+      const res = await fetch("/api/crm/statuses", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(data),
+      });
+
+      const json = await readJsonSafe<CrmStatusOption & { error?: string }>(
+        res
+      );
+
+      if (!res.ok || !json) {
+        throw new Error(json?.error || "Erreur création statut CRM.");
+      }
+
+      await fetchStatuses();
+
+      return json as CrmStatusOption;
+    },
+    [fetchStatuses]
+  );
+
+  const updateStatus = useCallback(
+    async (id: string, data: Partial<CrmStatusOptionFormData>) => {
+      const res = await fetch(`/api/crm/statuses/${id}`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(data),
+      });
+
+      const json = await readJsonSafe<CrmStatusOption & { error?: string }>(
+        res
+      );
+
+      if (!res.ok || !json) {
+        throw new Error(json?.error || "Erreur modification statut CRM.");
+      }
+
+      await fetchStatuses();
+
+      return json as CrmStatusOption;
+    },
+    [fetchStatuses]
+  );
+
+  const disableStatus = useCallback(
+    async (id: string) => {
+      const res = await fetch(`/api/crm/statuses/${id}`, {
+        method: "DELETE",
+      });
+
+      const json = await readJsonSafe<{ success?: boolean; error?: string }>(
+        res
+      );
+
+      if (!res.ok) {
+        throw new Error(json?.error || "Erreur désactivation statut CRM.");
+      }
+
+      await fetchStatuses();
+
+      return json;
+    },
+    [fetchStatuses]
+  );
+
+  return {
+    statuses,
+    loading,
+    error,
+    refetch: fetchStatuses,
+    createStatus,
+    updateStatus,
+    disableStatus,
+  };
+}
+
 // ─── Hook pour les campagnes ──────────────────────────────────────────────────
 
 export function useCampaigns() {
@@ -287,7 +453,9 @@ export function useCampaigns() {
     setLoading(true);
 
     try {
-      const res = await fetch(`/api/campaigns?page=${page}&pageSize=10`);
+      const res = await fetch(`/api/campaigns?page=${page}&pageSize=10`, {
+        cache: "no-store",
+      });
 
       if (!res.ok) {
         throw new Error("Erreur lors du chargement des campagnes");
@@ -295,8 +463,8 @@ export function useCampaigns() {
 
       const data = await res.json();
 
-      setCampaigns(data.data);
-      setTotal(data.total);
+      setCampaigns(Array.isArray(data.data) ? data.data : []);
+      setTotal(Number(data.total || 0));
     } finally {
       setLoading(false);
     }
@@ -364,9 +532,13 @@ export function useCampaignStatus(campaignId: string | null, active: boolean) {
   useEffect(() => {
     if (!campaignId || !active) return;
 
+    let interval: ReturnType<typeof setInterval>;
+
     const poll = async () => {
       try {
-        const res = await fetch(`/api/campaigns/${campaignId}/status`);
+        const res = await fetch(`/api/campaigns/${campaignId}/status`, {
+          cache: "no-store",
+        });
 
         if (!res.ok) return;
 
@@ -388,7 +560,7 @@ export function useCampaignStatus(campaignId: string | null, active: boolean) {
 
     poll();
 
-    const interval = setInterval(poll, 2000);
+    interval = setInterval(poll, 2000);
 
     return () => clearInterval(interval);
   }, [campaignId, active]);

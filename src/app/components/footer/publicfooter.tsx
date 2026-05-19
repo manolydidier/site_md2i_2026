@@ -1,18 +1,32 @@
-'use client' // Indique à Next.js que ce composant doit être rendu côté client.
+'use client'
 
-// Importe Link de Next.js pour la navigation interne.
+import Image from 'next/image'
 import Link from 'next/link'
+import { useEffect, useMemo, useRef, useState } from 'react'
 
-// Importe les hooks React nécessaires au composant.
-import { useState, useMemo, useEffect, useRef } from 'react'
-
-// Importe le contexte de thème déjà utilisé dans ton projet.
 import { useTheme } from '@/app/context/ThemeContext'
 
-// Couleur orange principale de la marque.
 const ORANGE = '#EF9F27'
 
-// Définition des liens principaux de navigation.
+const MD2I_LAT = -18.9189858
+const MD2I_LNG = 47.5422889
+
+const MD2I_ADDRESS = 'MD2I Madagascar, Lot VA 20 E Tsiadana, Antananarivo 101, Madagascar'
+const MD2I_LOCATION_LABEL = 'MD2I Madagascar — Tsiadana, Antananarivo'
+const MD2I_EMAIL = 'madagascar@md2i.eu'
+const MD2I_PHONE_DISPLAY = '+261 20 22 627 26'
+const MD2I_PHONE_HREF = '+261202262726'
+
+const MD2I_MARKER_LOGO = '/logo.png'
+
+const GOOGLE_MAP_QUERY = encodeURIComponent(`${MD2I_LAT},${MD2I_LNG}`)
+const GOOGLE_MAP_PLACE_QUERY = encodeURIComponent('MD2I Madagascar')
+const GOOGLE_MAP_PLACE_ID = 'ChIJ9zlRPv99DyERlaFmlacBd_c'
+
+const GOOGLE_MAP_EMBED_URL = `https://www.google.com/maps?q=${GOOGLE_MAP_QUERY}&z=17&output=embed`
+const GOOGLE_MAP_SEARCH_URL = `https://www.google.com/maps/search/?api=1&query=${GOOGLE_MAP_PLACE_QUERY}&query_place_id=${GOOGLE_MAP_PLACE_ID}`
+const GOOGLE_MAP_DIRECTIONS_URL = `https://www.google.com/maps/dir/?api=1&destination=${GOOGLE_MAP_QUERY}`
+
 const LINKS = [
   {
     href: '/',
@@ -82,9 +96,18 @@ const LINKS = [
     ),
     color: '#EF4444',
   },
+  {
+    href: '/contact-commercial',
+    label: 'Contact commercial',
+    icon: (
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+        <path d="M22 12h-4l-3 9L9 3l-3 9H2" />
+      </svg>
+    ),
+    color: ORANGE,
+  },
 ]
 
-// Définition des services rapides affichés dans le footer.
 const SERVICES = [
   { href: '/services#web', label: 'Développement web', icon: '⚡' },
   { href: '/services#mobile', label: 'Applications mobiles', icon: '📱' },
@@ -94,7 +117,6 @@ const SERVICES = [
   { href: '/services#formation', label: 'Formation digitale', icon: '🎓' },
 ]
 
-// Liste des réseaux sociaux ou contacts rapides.
 const SOCIALS = [
   {
     label: 'LinkedIn',
@@ -113,12 +135,25 @@ const SOCIALS = [
   },
   {
     label: 'Email',
-    href: 'mailto:contact@md2i.mg',
+    href: `mailto:${MD2I_EMAIL}`,
     icon: <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><rect x="2" y="4" width="20" height="16" rx="2" /><polyline points="2,4 12,13 22,4" /></svg>,
   },
 ]
 
-// Fonction qui retourne tous les tokens de design selon le thème clair/sombre.
+type VisitorLocation = {
+  latitude: number
+  longitude: number
+  accuracy?: number | null
+}
+
+type SubscribeResult = {
+  type: 'created' | 'updated'
+  title: string
+  message: string
+  email: string
+  companyName?: string | null
+}
+
 function tokens(dark: boolean) {
   return {
     bg: dark ? '#0C0C10' : '#F7F7F9',
@@ -133,55 +168,42 @@ function tokens(dark: boolean) {
     iconBorder: dark ? 'rgba(255,255,255,.09)' : 'rgba(0,0,0,.08)',
     orangeSoft: dark ? 'rgba(239,159,39,.13)' : 'rgba(239,159,39,.09)',
     orangeBorder: 'rgba(239,159,39,.30)',
+    mapOverlay: dark
+      ? 'linear-gradient(180deg, rgba(12,12,16,.10) 0%, rgba(12,12,16,.02) 28%, rgba(12,12,16,.18) 100%)'
+      : 'linear-gradient(180deg, rgba(255,255,255,.10) 0%, rgba(255,255,255,.02) 28%, rgba(247,247,249,.24) 100%)',
   }
 }
 
-// Hook pour faire apparaître doucement le footer au scroll.
 function useFadeIn() {
-  // Référence de l’élément observé.
   const ref = useRef<HTMLDivElement>(null)
-
-  // État indiquant si l’élément est visible.
   const [visible, setVisible] = useState(false)
 
-  // Effet qui branche l’IntersectionObserver.
   useEffect(() => {
-    // Récupère l’élément réel.
     const el = ref.current
 
-    // Si l’élément n’existe pas encore, on arrête.
     if (!el) return
 
-    // Crée l’observer.
     const observer = new IntersectionObserver(
       ([entry]) => {
-        // Si l’élément entre dans l’écran.
         if (entry.isIntersecting) {
-          // On le rend visible.
           setVisible(true)
-
-          // Puis on arrête l’observation.
           observer.disconnect()
         }
       },
       { threshold: 0.1 }
     )
 
-    // On commence l’observation.
     observer.observe(el)
 
-    // Nettoyage au démontage.
     return () => observer.disconnect()
   }, [])
 
-  // Retourne la ref et l’état.
   return { ref, visible }
 }
 
-// Petit séparateur décoratif entre la page et le footer.
 function FooterSeparator({ dark }: { dark: boolean }) {
   return (
-    <div className='mt-36' style={{ position: 'relative', height: 80, overflow: 'hidden', marginBottom: -2 }}>
+    <div className="mt-36" style={{ position: 'relative', height: 80, overflow: 'hidden', marginBottom: -2 }}>
       <svg
         viewBox="0 0 1440 80"
         preserveAspectRatio="none"
@@ -221,55 +243,145 @@ function FooterSeparator({ dark }: { dark: boolean }) {
   )
 }
 
-// Composant principal du footer public.
+function buildDirectionsUrl(location?: VisitorLocation | null) {
+  if (!location) return GOOGLE_MAP_DIRECTIONS_URL
+
+  const origin = encodeURIComponent(`${location.latitude},${location.longitude}`)
+
+  return `https://www.google.com/maps/dir/?api=1&origin=${origin}&destination=${GOOGLE_MAP_QUERY}`
+}
+
 export default function PublicFooter() {
-  // Récupère le thème courant depuis le contexte.
   const { dark } = useTheme()
 
-  // Calcule les tokens uniquement quand le thème change.
   const t = useMemo(() => tokens(dark), [dark])
 
-  // État pour le champ newsletter.
   const [email, setEmail] = useState('')
+  const [subscribeResult, setSubscribeResult] = useState<SubscribeResult | null>(null)
+  const [subscribeLoading, setSubscribeLoading] = useState(false)
+  const [subscribeError, setSubscribeError] = useState('')
 
-  // État pour savoir si l’inscription a réussi.
-  const [subscribed, setSubscribed] = useState(false)
+  const [visitorLocation, setVisitorLocation] = useState<VisitorLocation | null>(null)
+  const [locationLoading, setLocationLoading] = useState(false)
+  const [locationMessage, setLocationMessage] = useState('')
 
-  // Active l’animation d’apparition générale du footer.
   const { ref: rootRef, visible } = useFadeIn()
 
-  // Fonction appelée quand on clique sur s’abonner.
-  const handleSubscribe = () => {
-    // Vérification simple de l’email.
-    if (!email.includes('@')) return
-
-    // Affiche le message de succès.
-    setSubscribed(true)
-
-    // Vide le champ.
-    setEmail('')
-
-    // Cache le message après 4 secondes.
-    setTimeout(() => setSubscribed(false), 4000)
-  }
-
-  // Fonction utilitaire pour générer les styles d’apparition progressive.
   const fadeStyle = (delay: number) => ({
     opacity: visible ? 1 : 0,
     transform: visible ? 'translateY(0)' : 'translateY(22px)',
     transition: `opacity .65s ease ${delay}s, transform .65s ease ${delay}s`,
   })
 
+  const handleSubscribe = async () => {
+    const cleanEmail = email.trim().toLowerCase()
+
+    setSubscribeError('')
+    setSubscribeResult(null)
+
+    if (!cleanEmail || !cleanEmail.includes('@')) {
+      setSubscribeError('Veuillez saisir une adresse email valide.')
+      return
+    }
+
+    setSubscribeLoading(true)
+
+    try {
+      const res = await fetch('/api/public/newsletter-contact', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          email: cleanEmail,
+          source: 'PUBLIC_FOOTER_NEWSLETTER',
+          pageUrl: typeof window !== 'undefined' ? window.location.href : null,
+          location: visitorLocation,
+        }),
+      })
+
+      const data = await res.json().catch(() => null)
+
+      if (!res.ok || !data?.success) {
+        throw new Error(data?.error || 'Impossible d’ajouter ce contact.')
+      }
+
+      const created = Boolean(data.created)
+
+      setSubscribeResult({
+        type: created ? 'created' : 'updated',
+        title: created ? 'Bienvenue chez MD2I' : 'Contact déjà enregistré',
+        message: created
+          ? 'Votre email a bien été ajouté au CRM. Nous pourrons vous envoyer nos actualités, offres utiles et informations produits.'
+          : 'Ce contact existait déjà dans le CRM. Ses informations ont été complétées et mises à jour.',
+        email: data.contact?.email || cleanEmail,
+        companyName: data.contact?.companyName || null,
+      })
+
+      setEmail('')
+
+      setTimeout(() => setSubscribeResult(null), 7000)
+    } catch (error) {
+      setSubscribeError(
+        error instanceof Error
+          ? error.message
+          : 'Erreur pendant l’inscription.'
+      )
+    } finally {
+      setSubscribeLoading(false)
+    }
+  }
+
+  const handleUseMyLocation = () => {
+    setLocationMessage('')
+
+    if (typeof navigator === 'undefined' || !navigator.geolocation) {
+      setLocationMessage('La géolocalisation n’est pas disponible sur ce navigateur.')
+
+      window.open(GOOGLE_MAP_DIRECTIONS_URL, '_blank', 'noopener,noreferrer')
+
+      return
+    }
+
+    setLocationLoading(true)
+
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        const nextLocation = {
+          latitude: position.coords.latitude,
+          longitude: position.coords.longitude,
+          accuracy: position.coords.accuracy,
+        }
+
+        setVisitorLocation(nextLocation)
+        setLocationLoading(false)
+        setLocationMessage('Position détectée. Ouverture de l’itinéraire Google Maps.')
+
+        window.open(buildDirectionsUrl(nextLocation), '_blank', 'noopener,noreferrer')
+      },
+      () => {
+        setLocationLoading(false)
+        setLocationMessage('Localisation refusée. Ouverture de Google Maps sans position de départ.')
+
+        window.open(GOOGLE_MAP_DIRECTIONS_URL, '_blank', 'noopener,noreferrer')
+      },
+      {
+        enableHighAccuracy: true,
+        timeout: 10000,
+        maximumAge: 60000,
+      }
+    )
+  }
+
   return (
     <>
-      {/* Bloc de styles internes du footer. */}
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=Inter:wght@400;500;600;700;800&display=swap');
 
         .fnl-input:focus { outline: none; border-color: rgba(239,159,39,.45) !important; }
         .fnl-input::placeholder { color: ${t.subtleText}; }
 
-        .fnl-btn:hover { opacity: .86; transform: translateY(-1px); }
+        .fnl-btn:hover { opacity: .9; transform: translateY(-1px); }
         .fnl-btn:active { transform: scale(.97); }
 
         .fsoc:hover {
@@ -286,6 +398,7 @@ export default function PublicFooter() {
         .flegal:hover { color: ${ORANGE} !important; }
 
         .badge-available { animation: pulseGreen 2.4s ease-in-out infinite; }
+
         @keyframes pulseGreen {
           0%, 100% { box-shadow: 0 0 0 0 rgba(34,197,94,.35); }
           50% { box-shadow: 0 0 0 7px rgba(34,197,94,.0); }
@@ -329,6 +442,78 @@ export default function PublicFooter() {
           color: #fff !important;
         }
 
+        .footer-location-btn:hover {
+          transform: translateY(-1px);
+          border-color: rgba(239,159,39,.42) !important;
+          background: rgba(239,159,39,.12) !important;
+        }
+
+        .footer-success-card {
+          position: relative;
+          overflow: hidden;
+          padding: 14px 14px 14px 15px;
+          border-radius: 16px;
+          animation: footerSuccessIn .38s ease both;
+        }
+
+        .footer-success-card::before {
+          content: '';
+          position: absolute;
+          inset: -60px auto auto -60px;
+          width: 130px;
+          height: 130px;
+          border-radius: 999px;
+          background: rgba(255,255,255,.22);
+          pointer-events: none;
+        }
+
+        .footer-success-card::after {
+          content: '';
+          position: absolute;
+          right: -35px;
+          bottom: -45px;
+          width: 110px;
+          height: 110px;
+          border-radius: 999px;
+          background: rgba(255,255,255,.15);
+          pointer-events: none;
+        }
+
+        .footer-success-icon {
+          width: 34px;
+          height: 34px;
+          border-radius: 12px;
+          background: rgba(255,255,255,.24);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          flex-shrink: 0;
+        }
+
+        @keyframes footerSuccessIn {
+          from {
+            opacity: 0;
+            transform: translateY(8px) scale(.98);
+          }
+
+          to {
+            opacity: 1;
+            transform: translateY(0) scale(1);
+          }
+        }
+
+        @keyframes md2iMarkerPulse {
+          0%, 100% {
+            opacity: .72;
+            transform: scale(.92);
+          }
+
+          50% {
+            opacity: .18;
+            transform: scale(1.18);
+          }
+        }
+
         .footer-shell {
           max-width: 1460px;
           margin: 0 auto;
@@ -339,7 +524,7 @@ export default function PublicFooter() {
             minmax(340px, 1.55fr)
             minmax(220px, .95fr)
             minmax(220px, .95fr)
-            minmax(340px, 1.2fr) !important;
+            minmax(360px, 1.2fr) !important;
           align-items: start;
         }
 
@@ -399,7 +584,8 @@ export default function PublicFooter() {
             flex-direction: column !important;
           }
 
-          .footer-map-cta {
+          .footer-map-cta,
+          .footer-location-btn {
             width: 100%;
             justify-content: center;
           }
@@ -452,12 +638,10 @@ export default function PublicFooter() {
         }
       `}</style>
 
-      {/* Affiche le séparateur au-dessus du footer. */}
       <FooterSeparator dark={dark} />
 
-      {/* Footer principal avec id stable */}
       <footer
-        id="public-footer" // Permet d’identifier clairement le footer dans le DOM si besoin.
+        id="public-footer"
         ref={rootRef}
         className="footer-root"
         style={{
@@ -467,12 +651,9 @@ export default function PublicFooter() {
           fontFamily: "'Inter', sans-serif",
         }}
       >
-        {/* Conteneur central élargi. */}
         <div className="footer-shell">
-          {/* Ligne de séparation au-dessus du contenu bas. */}
           <div style={{ height: 1, background: t.border, marginBottom: 40 }} />
 
-          {/* Grille principale du footer. */}
           <div
             className="fgrid-bottom"
             style={{
@@ -481,7 +662,6 @@ export default function PublicFooter() {
               marginBottom: 48,
             }}
           >
-            {/* Colonne identité / marque / newsletter */}
             <div className="fbrand footer-col-stretch" style={fadeStyle(0.06)}>
               <Link
                 href="/"
@@ -587,7 +767,9 @@ export default function PublicFooter() {
                   maxWidth: 420,
                 }}
               >
-                Nous accompagnons les entreprises dans leur transformation digitale — conseil, développement sur mesure et solutions IT innovantes à Madagascar et à l'international.
+                Nous accompagnons les entreprises dans leur transformation digitale — conseil,
+                développement sur mesure, logiciels métiers et solutions IT innovantes à Madagascar
+                et à l’international.
               </p>
 
               <div
@@ -599,11 +781,11 @@ export default function PublicFooter() {
                   marginBottom: 18,
                 }}
               >
-                {SOCIALS.map((s) => (
+                {SOCIALS.map((social) => (
                   <a
-                    key={s.label}
-                    href={s.href}
-                    aria-label={s.label}
+                    key={social.label}
+                    href={social.href}
+                    aria-label={social.label}
                     className="fsoc"
                     style={{
                       width: 40,
@@ -619,12 +801,11 @@ export default function PublicFooter() {
                       transition: 'all .18s ease',
                     }}
                   >
-                    {s.icon}
+                    {social.icon}
                   </a>
                 ))}
               </div>
 
-              {/* Carte newsletter */}
               <div
                 className="footer-newsletter-box"
                 style={{
@@ -642,7 +823,7 @@ export default function PublicFooter() {
                     marginBottom: 5,
                   }}
                 >
-                  Newsletter
+                  Recevoir les actualités MD2I
                 </p>
 
                 <p
@@ -653,23 +834,140 @@ export default function PublicFooter() {
                     marginBottom: 12,
                   }}
                 >
-                  Actualités IT et offres exclusives.
+                  Votre email sera ajouté au CRM comme nouveau contact. Le nom et
+                  l’entreprise seront complétés automatiquement si possible.
                 </p>
 
-                {subscribed ? (
+                {subscribeResult ? (
                   <div
+                    className="footer-success-card"
                     style={{
-                      padding: '10px 12px',
-                      borderRadius: 10,
-                      background: 'rgba(34,197,94,.10)',
-                      border: '1px solid rgba(34,197,94,.28)',
-                      color: '#22C55E',
-                      fontSize: 12.5,
-                      fontWeight: 500,
-                      textAlign: 'center',
+                      background:
+                        subscribeResult.type === 'created'
+                          ? 'linear-gradient(135deg, #16A34A, #22C55E)'
+                          : 'linear-gradient(135deg, #2563EB, #38BDF8)',
+                      border:
+                        subscribeResult.type === 'created'
+                          ? '1px solid rgba(187,247,208,.55)'
+                          : '1px solid rgba(191,219,254,.65)',
+                      color: '#fff',
+                      boxShadow:
+                        subscribeResult.type === 'created'
+                          ? '0 16px 36px rgba(34,197,94,.22)'
+                          : '0 16px 36px rgba(37,99,235,.20)',
                     }}
                   >
-                    ✓ Merci pour votre inscription !
+                    <div
+                      style={{
+                        position: 'relative',
+                        zIndex: 1,
+                        display: 'flex',
+                        gap: 12,
+                        alignItems: 'flex-start',
+                      }}
+                    >
+                      <span className="footer-success-icon">
+                        {subscribeResult.type === 'created' ? (
+                          <svg
+                            width="17"
+                            height="17"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="2.4"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                          >
+                            <path d="M20 6 9 17l-5-5" />
+                          </svg>
+                        ) : (
+                          <svg
+                            width="17"
+                            height="17"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="2.4"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                          >
+                            <path d="M21 12a9 9 0 1 1-3-6.7" />
+                            <path d="M21 3v6h-6" />
+                          </svg>
+                        )}
+                      </span>
+
+                      <div style={{ minWidth: 0 }}>
+                        <p
+                          style={{
+                            margin: 0,
+                            fontSize: 13.5,
+                            fontWeight: 800,
+                            letterSpacing: '-0.01em',
+                          }}
+                        >
+                          {subscribeResult.title}
+                        </p>
+
+                        <p
+                          style={{
+                            margin: '5px 0 0',
+                            fontSize: 12.3,
+                            lineHeight: 1.55,
+                            opacity: 0.92,
+                            fontWeight: 500,
+                          }}
+                        >
+                          {subscribeResult.message}
+                        </p>
+
+                        <div
+                          style={{
+                            marginTop: 10,
+                            padding: '8px 10px',
+                            borderRadius: 12,
+                            background: 'rgba(255,255,255,.18)',
+                            border: '1px solid rgba(255,255,255,.20)',
+                            display: 'grid',
+                            gap: 3,
+                          }}
+                        >
+                          <span
+                            style={{
+                              fontSize: 11,
+                              opacity: 0.8,
+                              fontWeight: 700,
+                              textTransform: 'uppercase',
+                              letterSpacing: '.06em',
+                            }}
+                          >
+                            Contact CRM
+                          </span>
+
+                          <strong
+                            style={{
+                              fontSize: 12.5,
+                              fontWeight: 800,
+                              wordBreak: 'break-word',
+                            }}
+                          >
+                            {subscribeResult.email}
+                          </strong>
+
+                          {subscribeResult.companyName && (
+                            <span
+                              style={{
+                                fontSize: 12,
+                                opacity: 0.86,
+                                wordBreak: 'break-word',
+                              }}
+                            >
+                              Entreprise détectée : {subscribeResult.companyName}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
                   </div>
                 ) : (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
@@ -696,6 +994,7 @@ export default function PublicFooter() {
                     <button
                       className="fnl-btn"
                       onClick={handleSubscribe}
+                      disabled={subscribeLoading}
                       style={{
                         padding: '11px 14px',
                         borderRadius: 11,
@@ -704,19 +1003,36 @@ export default function PublicFooter() {
                         color: '#fff',
                         fontSize: 13,
                         fontWeight: 700,
-                        cursor: 'pointer',
+                        cursor: subscribeLoading ? 'not-allowed' : 'pointer',
                         fontFamily: "'Inter', sans-serif",
                         transition: 'all .18s ease',
+                        opacity: subscribeLoading ? 0.68 : 1,
                       }}
                     >
-                      S'abonner →
+                      {subscribeLoading ? 'Ajout en cours...' : 'Ajouter mon email →'}
                     </button>
+
+                    {subscribeError && (
+                      <div
+                        style={{
+                          padding: '9px 11px',
+                          borderRadius: 10,
+                          background: 'rgba(239,68,68,.10)',
+                          border: '1px solid rgba(239,68,68,.25)',
+                          color: '#EF4444',
+                          fontSize: 12,
+                          lineHeight: 1.45,
+                          fontWeight: 600,
+                        }}
+                      >
+                        {subscribeError}
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
             </div>
 
-            {/* Colonne navigation */}
             <div className="footer-col-stretch" style={fadeStyle(0.12)}>
               <p
                 style={{
@@ -784,7 +1100,6 @@ export default function PublicFooter() {
               </div>
             </div>
 
-            {/* Colonne services */}
             <div className="footer-col-stretch" style={fadeStyle(0.18)}>
               <p
                 style={{
@@ -800,10 +1115,10 @@ export default function PublicFooter() {
               </p>
 
               <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                {SERVICES.map((s) => (
+                {SERVICES.map((service) => (
                   <Link
-                    key={s.href}
-                    href={s.href}
+                    key={service.href}
+                    href={service.href}
                     className="fnavlink"
                     style={{
                       display: 'flex',
@@ -830,7 +1145,7 @@ export default function PublicFooter() {
                         flexShrink: 0,
                       }}
                     >
-                      {s.icon}
+                      {service.icon}
                     </span>
 
                     <span
@@ -842,14 +1157,13 @@ export default function PublicFooter() {
                         transition: 'color .16s ease',
                       }}
                     >
-                      {s.label}
+                      {service.label}
                     </span>
                   </Link>
                 ))}
               </div>
             </div>
 
-            {/* Colonne droite : carte localisation */}
             <div className="fside footer-col-stretch" style={{ ...fadeStyle(0.26), display: 'flex', flexDirection: 'column', gap: 16 }}>
               <div
                 className="footer-map-card"
@@ -861,7 +1175,6 @@ export default function PublicFooter() {
                   boxShadow: dark ? '0 10px 30px rgba(0,0,0,.22)' : '0 10px 30px rgba(15,23,42,.08)',
                 }}
               >
-                {/* En-tête de la carte */}
                 <div
                   className="footer-map-top"
                   style={{
@@ -885,7 +1198,7 @@ export default function PublicFooter() {
                         color: t.text,
                       }}
                     >
-                      Notre localisation
+                      Localisation MD2I
                     </p>
 
                     <p
@@ -896,16 +1209,16 @@ export default function PublicFooter() {
                         lineHeight: 1.5,
                       }}
                     >
-                      Antananarivo, Madagascar
+                      {MD2I_LOCATION_LABEL}
                     </p>
                   </div>
 
                   <a
-                    href="https://www.openstreetmap.org/?mlat=-18.91&mlon=47.51#map=14/-18.91/47.51"
+                    href={GOOGLE_MAP_SEARCH_URL}
                     target="_blank"
                     rel="noreferrer"
                     className="footer-map-cta"
-                    aria-label="Ouvrir la carte dans OpenStreetMap"
+                    aria-label="Ouvrir MD2I dans Google Maps"
                     style={{
                       display: 'inline-flex',
                       alignItems: 'center',
@@ -938,11 +1251,10 @@ export default function PublicFooter() {
                       <path d="M3 10V3h7" />
                       <path d="M3 21l7-7" />
                     </svg>
-                    Ouvrir
+                    Google Maps
                   </a>
                 </div>
 
-                {/* Zone carte */}
                 <div
                   className="footer-map-box"
                   style={{
@@ -953,14 +1265,14 @@ export default function PublicFooter() {
                   }}
                 >
                   <iframe
-                    title="Localisation MD2I Antananarivo"
-                    src="https://www.openstreetmap.org/export/embed.html?bbox=47.4700,-18.9500,47.5500,-18.8700&layer=mapnik&marker=-18.9100,47.5100"
+                    title="Localisation MD2I Madagascar sur Google Maps"
+                    src={GOOGLE_MAP_EMBED_URL}
                     className="footer-map-frame"
                     style={{
                       width: '100%',
                       height: '100%',
                       border: 'none',
-                      opacity: 0.92,
+                      opacity: 0.96,
                       pointerEvents: 'auto',
                     }}
                     loading="lazy"
@@ -971,9 +1283,7 @@ export default function PublicFooter() {
                     style={{
                       position: 'absolute',
                       inset: 0,
-                      background: dark
-                        ? 'linear-gradient(180deg, rgba(12,12,16,.10) 0%, rgba(12,12,16,.02) 28%, rgba(12,12,16,.18) 100%)'
-                        : 'linear-gradient(180deg, rgba(255,255,255,.10) 0%, rgba(255,255,255,.02) 28%, rgba(247,247,249,.24) 100%)',
+                      background: t.mapOverlay,
                       pointerEvents: 'none',
                     }}
                   />
@@ -988,20 +1298,23 @@ export default function PublicFooter() {
                       gap: 8,
                       padding: '9px 12px',
                       borderRadius: 999,
-                      background: dark ? 'rgba(12,12,16,.72)' : 'rgba(255,255,255,.82)',
+                      background: dark ? 'rgba(12,12,16,.72)' : 'rgba(255,255,255,.86)',
                       border: `1px solid ${dark ? 'rgba(255,255,255,.08)' : 'rgba(0,0,0,.06)'}`,
                       backdropFilter: 'blur(10px)',
                       WebkitBackdropFilter: 'blur(10px)',
                       color: t.text,
                       fontSize: 12,
-                      fontWeight: 600,
+                      fontWeight: 700,
                       pointerEvents: 'none',
+                      boxShadow: dark
+                        ? '0 10px 24px rgba(0,0,0,.25)'
+                        : '0 10px 24px rgba(15,23,42,.10)',
                     }}
                   >
                     <span
                       style={{
-                        width: 20,
-                        height: 20,
+                        width: 22,
+                        height: 22,
                         borderRadius: '50%',
                         display: 'flex',
                         alignItems: 'center',
@@ -1009,75 +1322,110 @@ export default function PublicFooter() {
                         background: 'rgba(239,159,39,.16)',
                         color: ORANGE,
                         flexShrink: 0,
+                        overflow: 'hidden',
                       }}
                     >
-                      <svg
-                        width="11"
-                        height="11"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="2"
-                        strokeLinecap="round"
-                      >
-                        <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
-                        <circle cx="12" cy="10" r="3" />
-                      </svg>
+                      <Image
+                        src={MD2I_MARKER_LOGO}
+                        alt=""
+                        width={18}
+                        height={18}
+                        style={{
+                          objectFit: 'contain',
+                          display: 'block',
+                        }}
+                      />
                     </span>
-                    Antananarivo
+                    MD2I Madagascar
                   </div>
+
+                  <a
+                    href={GOOGLE_MAP_SEARCH_URL}
+                    target="_blank"
+                    rel="noreferrer"
+                    aria-label="Ouvrir MD2I Madagascar dans Google Maps"
+                    style={{
+                      position: 'absolute',
+                      left: '50%',
+                      top: '50%',
+                      transform: 'translate(-50%, -82%)',
+                      width: 58,
+                      height: 58,
+                      borderRadius: 20,
+                      background: dark ? 'rgba(12,12,16,.86)' : 'rgba(255,255,255,.94)',
+                      border: `2px solid ${ORANGE}`,
+                      boxShadow: `0 18px 42px ${ORANGE}55`,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      textDecoration: 'none',
+                      pointerEvents: 'auto',
+                    }}
+                  >
+                    <span
+                      style={{
+                        position: 'absolute',
+                        inset: -10,
+                        borderRadius: 28,
+                        background: 'rgba(239,159,39,.16)',
+                        animation: 'md2iMarkerPulse 2.4s ease-in-out infinite',
+                      }}
+                    />
+
+                    <Image
+                      src={MD2I_MARKER_LOGO}
+                      alt="MD2I Madagascar"
+                      width={38}
+                      height={38}
+                      style={{
+                        position: 'relative',
+                        zIndex: 2,
+                        objectFit: 'contain',
+                        display: 'block',
+                      }}
+                    />
+
+                    <span
+                      style={{
+                        position: 'absolute',
+                        left: '50%',
+                        bottom: -13,
+                        transform: 'translateX(-50%) rotate(45deg)',
+                        width: 18,
+                        height: 18,
+                        background: dark ? 'rgba(12,12,16,.86)' : 'rgba(255,255,255,.94)',
+                        borderRight: `2px solid ${ORANGE}`,
+                        borderBottom: `2px solid ${ORANGE}`,
+                      }}
+                    />
+                  </a>
 
                   <div
                     style={{
                       position: 'absolute',
-                      top: '50%',
                       left: '50%',
-                      transform: 'translate(-50%, -70%)',
+                      top: 'calc(50% + 30px)',
+                      transform: 'translateX(-50%)',
+                      padding: '7px 10px',
+                      borderRadius: 999,
+                      background: dark ? 'rgba(12,12,16,.78)' : 'rgba(255,255,255,.88)',
+                      border: `1px solid ${dark ? 'rgba(255,255,255,.08)' : 'rgba(0,0,0,.06)'}`,
+                      color: t.text,
+                      fontSize: 11.5,
+                      fontWeight: 800,
+                      boxShadow: dark
+                        ? '0 10px 24px rgba(0,0,0,.24)'
+                        : '0 10px 24px rgba(15,23,42,.10)',
+                      backdropFilter: 'blur(10px)',
+                      WebkitBackdropFilter: 'blur(10px)',
                       pointerEvents: 'none',
+                      whiteSpace: 'nowrap',
                     }}
                   >
-                    <div
-                      style={{
-                        position: 'relative',
-                        width: 26,
-                        height: 26,
-                        borderRadius: '50% 50% 50% 0',
-                        background: ORANGE,
-                        transform: 'rotate(-45deg)',
-                        boxShadow: `0 10px 25px ${ORANGE}66`,
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                      }}
-                    >
-                      <div
-                        style={{
-                          width: 8,
-                          height: 8,
-                          borderRadius: '50%',
-                          background: '#fff',
-                          transform: 'rotate(45deg)',
-                        }}
-                      />
-                    </div>
-
-                    <div
-                      style={{
-                        position: 'absolute',
-                        left: '50%',
-                        top: '100%',
-                        transform: 'translateX(-50%)',
-                        width: 28,
-                        height: 10,
-                        borderRadius: '50%',
-                        background: 'rgba(0,0,0,.18)',
-                        filter: 'blur(4px)',
-                      }}
-                    />
+                    Tsiadana, Antananarivo
                   </div>
                 </div>
 
-                {/* Coordonnées rapides */}
                 <div
                   className="footer-map-meta"
                   style={{
@@ -1087,11 +1435,55 @@ export default function PublicFooter() {
                     gap: 10,
                   }}
                 >
+                  <button
+                    type="button"
+                    onClick={handleUseMyLocation}
+                    className="footer-location-btn"
+                    style={{
+                      minHeight: 42,
+                      padding: '10px 12px',
+                      borderRadius: 12,
+                      border: `1px solid ${t.cardBorder}`,
+                      background: dark ? 'rgba(255,255,255,.03)' : 'rgba(255,255,255,.72)',
+                      color: t.text,
+                      cursor: 'pointer',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: 8,
+                      fontSize: 12.5,
+                      fontWeight: 700,
+                      transition: 'all .18s ease',
+                    }}
+                  >
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke={ORANGE} strokeWidth="2" strokeLinecap="round">
+                      <path d="M12 2v4" />
+                      <path d="M12 18v4" />
+                      <path d="M2 12h4" />
+                      <path d="M18 12h4" />
+                      <circle cx="12" cy="12" r="4" />
+                    </svg>
+                    {locationLoading ? 'Localisation...' : 'Me localiser et ouvrir l’itinéraire'}
+                  </button>
+
+                  {locationMessage && (
+                    <p
+                      style={{
+                        margin: 0,
+                        color: t.softText,
+                        fontSize: 11.5,
+                        lineHeight: 1.45,
+                      }}
+                    >
+                      {locationMessage}
+                    </p>
+                  )}
+
                   {[
                     {
                       color: '#10B981',
-                      text: 'Antananarivo, Madagascar',
-                      href: 'https://www.openstreetmap.org/?mlat=-18.91&mlon=47.51#map=14/-18.91/47.51',
+                      text: MD2I_ADDRESS,
+                      href: GOOGLE_MAP_SEARCH_URL,
                       external: true,
                       icon: (
                         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
@@ -1102,8 +1494,8 @@ export default function PublicFooter() {
                     },
                     {
                       color: '#3B82F6',
-                      text: 'contact@md2i.mg',
-                      href: 'mailto:contact@md2i.mg',
+                      text: MD2I_EMAIL,
+                      href: `mailto:${MD2I_EMAIL}`,
                       external: false,
                       icon: (
                         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
@@ -1114,8 +1506,8 @@ export default function PublicFooter() {
                     },
                     {
                       color: '#F59E0B',
-                      text: '+261 20 00 000 00',
-                      href: 'tel:+261200000000',
+                      text: MD2I_PHONE_DISPLAY,
+                      href: `tel:${MD2I_PHONE_HREF}`,
                       external: false,
                       icon: (
                         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
@@ -1167,22 +1559,18 @@ export default function PublicFooter() {
                       </div>
                     )
 
-                    if (item.external) {
-                      return (
-                        <a
-                          key={i}
-                          href={item.href}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="footer-contact-link"
-                          style={{ textDecoration: 'none' }}
-                        >
-                          {content}
-                        </a>
-                      )
-                    }
-
-                    return (
+                    return item.external ? (
+                      <a
+                        key={i}
+                        href={item.href}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="footer-contact-link"
+                        style={{ textDecoration: 'none' }}
+                      >
+                        {content}
+                      </a>
+                    ) : (
                       <a
                         key={i}
                         href={item.href}
@@ -1198,7 +1586,6 @@ export default function PublicFooter() {
             </div>
           </div>
 
-          {/* Bas du footer */}
           <div style={{ borderTop: `1px solid ${t.border}`, paddingTop: 22, ...fadeStyle(0.36) }}>
             <div
               className="fbottom"
@@ -1252,7 +1639,7 @@ export default function PublicFooter() {
                   border: `1px solid ${t.orangeBorder}`,
                 }}
               >
-                v3.0
+                v3.3
               </span>
             </div>
           </div>

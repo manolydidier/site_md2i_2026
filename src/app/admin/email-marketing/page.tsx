@@ -2,16 +2,26 @@
 "use client";
 
 import Link from "next/link";
-import { useState, type ReactNode } from "react";
-import { Mail, Users, LayoutGrid, Send, UserPlus, Plus, Zap } from "lucide-react";
+import { useState, type ReactNode, type CSSProperties } from "react";
+import {
+  Mail,
+  Users,
+  LayoutGrid,
+  Send,
+  UserPlus,
+  Plus,
+  Zap,
+  Tags,
+} from "lucide-react";
 
 import { ContactsTable } from "@/app/components/email-mrketing/ContactsTable";
 import { GroupsManager } from "@/app/components/email-mrketing/Groupsmanager";
 import { CampaignsList } from "@/app/components/email-mrketing/CampaignsList";
 import { CampaignForm } from "@/app/components/email-mrketing/CampaignForm";
+import { CrmStatusesManager } from "@/app/components/email-mrketing/CrmStatusesManager";
 import type { Campaign } from "@/app/types/email-marketing";
 
-type Tab = "campaigns" | "contacts" | "groups";
+type Tab = "campaigns" | "contacts" | "groups" | "crm-statuses";
 type View = "list" | "new" | "edit";
 
 const ORANGE = "#EF9F27";
@@ -34,6 +44,7 @@ export default function EmailMarketingPage() {
     { id: "campaigns", label: "Campagnes", icon: <Mail size={14} /> },
     { id: "contacts", label: "Contacts", icon: <Users size={14} /> },
     { id: "groups", label: "Groupes", icon: <LayoutGrid size={14} /> },
+    { id: "crm-statuses", label: "Statuts CRM", icon: <Tags size={14} /> },
   ];
 
   const handleNewCampaign = () => {
@@ -74,7 +85,9 @@ export default function EmailMarketingPage() {
 
               <div>
                 <h1 style={s.h1}>Email Marketing</h1>
-                <p style={s.subtitle}>Contacts, groupes et campagnes email</p>
+                <p style={s.subtitle}>
+                  Contacts, groupes, campagnes email et statuts CRM
+                </p>
               </div>
             </div>
           </div>
@@ -147,7 +160,7 @@ export default function EmailMarketingPage() {
             {activeTab === "contacts" && (
               <TabSection
                 label="Contacts"
-                subtitle="Gérez vos abonnés et leurs informations."
+                subtitle="Gérez vos abonnés, leurs informations CRM et leurs préférences email."
                 action={
                   <button type="button" style={s.btnSecondary}>
                     <UserPlus size={13} />
@@ -162,7 +175,7 @@ export default function EmailMarketingPage() {
             {activeTab === "groups" && (
               <TabSection
                 label="Groupes"
-                subtitle="Organisez vos contacts par segments."
+                subtitle="Organisez vos contacts par segments marketing."
                 action={
                   <button type="button" style={s.btnSecondary}>
                     <Plus size={13} />
@@ -171,6 +184,16 @@ export default function EmailMarketingPage() {
                 }
               >
                 <GroupsManager />
+              </TabSection>
+            )}
+
+            {activeTab === "crm-statuses" && (
+              <TabSection
+                label="Statuts CRM"
+                subtitle="Créez et personnalisez les statuts utilisés dans les contacts et les automatisations."
+                action={<span />}
+              >
+                <CrmStatusesManager />
               </TabSection>
             )}
           </>
@@ -207,7 +230,7 @@ function TabSection({
   );
 }
 
-const s: Record<string, React.CSSProperties> = {
+const s: Record<string, CSSProperties> = {
   page: {
     minHeight: "100vh",
     background: BG,
@@ -245,7 +268,7 @@ const s: Record<string, React.CSSProperties> = {
     alignItems: "flex-end",
     justifyContent: "space-between",
     gap: 16,
-    flexWrap: "wrap" as const,
+    flexWrap: "wrap",
   },
 
   titleLeft: {
@@ -288,7 +311,7 @@ const s: Record<string, React.CSSProperties> = {
     display: "flex",
     alignItems: "stretch",
     gap: 0,
-    overflowX: "auto" as const,
+    overflowX: "auto",
   },
 
   tabBtn: {
@@ -304,7 +327,7 @@ const s: Record<string, React.CSSProperties> = {
     border: "none",
     borderBottom: "2px solid transparent",
     cursor: "pointer",
-    whiteSpace: "nowrap" as const,
+    whiteSpace: "nowrap",
     marginBottom: -1,
     fontFamily: FONT,
     transition: "color 0.15s ease, border-color 0.15s ease",
@@ -312,7 +335,7 @@ const s: Record<string, React.CSSProperties> = {
 
   tabBtnActive: {
     color: ORANGE,
-    borderBottom: ORANGE,
+    borderBottom: `2px solid ${ORANGE}`,
   },
 
   content: {
@@ -335,7 +358,7 @@ const s: Record<string, React.CSSProperties> = {
     justifyContent: "space-between",
     gap: 14,
     marginBottom: 14,
-    flexWrap: "wrap" as const,
+    flexWrap: "wrap",
   },
 
   sectionLabel: {
@@ -343,7 +366,7 @@ const s: Record<string, React.CSSProperties> = {
     fontWeight: 600,
     color: SOFT_TEXT,
     letterSpacing: "0.1em",
-    textTransform: "uppercase" as const,
+    textTransform: "uppercase",
     marginBottom: 3,
   },
 
@@ -382,7 +405,7 @@ const s: Record<string, React.CSSProperties> = {
     alignItems: "center",
     gap: 6,
     cursor: "pointer",
-    whiteSpace: "nowrap" as const,
+    whiteSpace: "nowrap",
     flexShrink: 0,
     textDecoration: "none",
   },
@@ -401,7 +424,7 @@ const s: Record<string, React.CSSProperties> = {
     alignItems: "center",
     gap: 6,
     cursor: "pointer",
-    whiteSpace: "nowrap" as const,
+    whiteSpace: "nowrap",
     flexShrink: 0,
     textDecoration: "none",
   },

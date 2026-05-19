@@ -11,6 +11,7 @@ import {
   Clock,
   Edit3,
   Eye,
+  Loader2,
   Mail,
   Plus,
   Power,
@@ -88,6 +89,19 @@ type ContactGroup = {
   _count?: {
     contacts?: number;
   };
+};
+
+type CrmStatusOption = {
+  id: string;
+  key: string;
+  label: string;
+  color: string;
+  description?: string | null;
+  sortOrder: number;
+  isDefault: boolean;
+  isActive: boolean;
+  createdAt?: string;
+  updatedAt?: string;
 };
 
 type Automation = {
@@ -200,12 +214,65 @@ const CONDITION_OPERATOR_LABELS: Record<ConditionOperator, string> = {
   CHANGED_FROM: "change depuis",
 };
 
-const CRM_STATUS_OPTIONS = [
-  "NEW",
-  "PROSPECT",
-  "HOT_PROSPECT",
-  "CUSTOMER",
-  "INACTIVE",
+const CRM_SOURCE_OPTIONS = [
+  { value: "WEBSITE", label: "Site web" },
+  { value: "FACEBOOK", label: "Facebook" },
+  { value: "LINKEDIN", label: "LinkedIn" },
+  { value: "EMAIL_CAMPAIGN", label: "Campagne email" },
+  { value: "GOOGLE", label: "Google" },
+  { value: "DIRECT", label: "Direct" },
+  { value: "TENDER", label: "Appel d’offre" },
+  { value: "REFERRAL", label: "Recommandation" },
+  { value: "MANUAL", label: "Manuel" },
+  { value: "OTHER", label: "Autre" },
+];
+
+const FALLBACK_CRM_STATUS_OPTIONS: CrmStatusOption[] = [
+  {
+    id: "fallback-new",
+    key: "NEW",
+    label: "Nouveau",
+    color: "#64748b",
+    sortOrder: 1,
+    isDefault: true,
+    isActive: true,
+  },
+  {
+    id: "fallback-prospect",
+    key: "PROSPECT",
+    label: "Prospect",
+    color: "#0ea5e9",
+    sortOrder: 2,
+    isDefault: false,
+    isActive: true,
+  },
+  {
+    id: "fallback-hot-prospect",
+    key: "HOT_PROSPECT",
+    label: "Prospect chaud",
+    color: "#f97316",
+    sortOrder: 3,
+    isDefault: false,
+    isActive: true,
+  },
+  {
+    id: "fallback-customer",
+    key: "CUSTOMER",
+    label: "Client",
+    color: "#22c55e",
+    sortOrder: 4,
+    isDefault: false,
+    isActive: true,
+  },
+  {
+    id: "fallback-inactive",
+    key: "INACTIVE",
+    label: "Inactif",
+    color: "#94a3b8",
+    sortOrder: 5,
+    isDefault: false,
+    isActive: true,
+  },
 ];
 
 const BOOLEAN_OPTIONS = [
@@ -234,7 +301,41 @@ function isValueRequired(operator: ConditionOperator) {
   return !OPERATORS_WITHOUT_VALUE.includes(operator);
 }
 
-function getSuggestedName(form: Partial<FormState>) {
+function getDefaultCrmStatusKey(statuses: CrmStatusOption[]) {
+  const activeStatuses = statuses.filter((status) => status.isActive);
+
+  const defaultStatus = activeStatuses.find((status) => status.isDefault);
+
+  if (defaultStatus) {
+    return defaultStatus.key;
+  }
+
+  const prospectStatus = activeStatuses.find(
+    (status) => status.key === "PROSPECT"
+  );
+
+  if (prospectStatus) {
+    return prospectStatus.key;
+  }
+
+  return activeStatuses[0]?.key || "PROSPECT";
+}
+
+function getCrmStatusLabelByKey(statuses: CrmStatusOption[], key: string) {
+  if (!key) return "—";
+
+  return statuses.find((status) => status.key === key)?.label || key;
+}
+
+function getCrmStatusColorByKey(statuses: CrmStatusOption[], key: string) {
+  return statuses.find((status) => status.key === key)?.color || ORANGE;
+}
+
+function getSourceLabel(value: string) {
+  return CRM_SOURCE_OPTIONS.find((option) => option.value === value)?.label || value;
+}
+
+function getSuggestedName(form: Partial<FormState>, statuses: CrmStatusOption[]) {
   if (form.triggerEvent === "CONTACT_CREATED") {
     if (form.conditionOperator === "ALWAYS" || form.conditionField === "NONE") {
       return "Email de bienvenue";
@@ -261,6 +362,12 @@ function getSuggestedName(form: Partial<FormState>) {
     if (form.conditionValue === "CUSTOMER") return "Email client";
     if (form.conditionValue === "INACTIVE") return "Email de réactivation";
     if (form.conditionValue === "NEW") return "Email contact nouveau";
+
+    const label = getCrmStatusLabelByKey(statuses, form.conditionValue || "");
+
+    if (label && label !== "—") {
+      return `Email statut ${label}`;
+    }
   }
 
   if (
@@ -352,12 +459,21 @@ function getGroupNameById(groups: ContactGroup[], groupId: string) {
 function getConditionValueLabel(
   field: ConditionField,
   value: string,
-  groups: ContactGroup[]
+  groups: ContactGroup[],
+  crmStatuses: CrmStatusOption[]
 ) {
   if (!value) return "—";
 
   if (field === "GROUP_ID") {
     return getGroupNameById(groups, value);
+  }
+
+  if (field === "CRM_STATUS") {
+    return getCrmStatusLabelByKey(crmStatuses, value);
+  }
+
+  if (field === "CRM_SOURCE") {
+    return getSourceLabel(value);
   }
 
   if (field === "IS_ACTIVE" || field === "UNSUBSCRIBED") {
@@ -374,7 +490,8 @@ function getConditionLabel(
     conditionOperator: ConditionOperator;
     conditionValue: string;
   },
-  groups: ContactGroup[] = []
+  groups: ContactGroup[] = [],
+  crmStatuses: CrmStatusOption[] = []
 ) {
   const eventLabel = TRIGGER_EVENT_LABELS[automation.triggerEvent];
 
@@ -396,7 +513,8 @@ function getConditionLabel(
   const valueLabel = getConditionValueLabel(
     automation.conditionField,
     automation.conditionValue,
-    groups
+    groups,
+    crmStatuses
   );
 
   return `${eventLabel} · ${fieldLabel} ${operatorLabel} ${valueLabel}`;
@@ -421,6 +539,7 @@ function getFieldValuePlaceholder(field: ConditionField) {
   if (field === "LAST_NAME") return "Ravelojaona";
   if (field === "PHONE") return "+261...";
   if (field === "GROUP_ID") return "Choisir un groupe";
+  if (field === "CRM_STATUS") return "Choisir un statut CRM";
   if (field === "CRM_SOURCE") return "WEBSITE";
   if (field === "COMPANY_NAME") return "MD2I";
   if (field === "COUNTRY") return "Madagascar";
@@ -428,7 +547,11 @@ function getFieldValuePlaceholder(field: ConditionField) {
   return "Valeur";
 }
 
-function validateForm(form: FormState, groups: ContactGroup[]) {
+function validateForm(
+  form: FormState,
+  groups: ContactGroup[],
+  crmStatuses: CrmStatusOption[]
+) {
   if (!form.name.trim()) {
     return "Le nom de l’automatisation est requis.";
   }
@@ -460,6 +583,10 @@ function validateForm(form: FormState, groups: ContactGroup[]) {
     return "Aucun groupe disponible. Créez d’abord un groupe de contacts.";
   }
 
+  if (form.conditionField === "CRM_STATUS" && crmStatuses.length === 0) {
+    return "Aucun statut CRM disponible. Créez d’abord un statut CRM dans l’onglet Statuts CRM.";
+  }
+
   if (isValueRequired(form.conditionOperator) && !form.conditionValue.trim()) {
     return "Renseignez une valeur de condition.";
   }
@@ -467,10 +594,25 @@ function validateForm(form: FormState, groups: ContactGroup[]) {
   return null;
 }
 
+async function readJsonSafe<T = unknown>(res: Response): Promise<T | null> {
+  const text = await res.text();
+
+  if (!text) {
+    return null;
+  }
+
+  try {
+    return JSON.parse(text) as T;
+  } catch {
+    return null;
+  }
+}
+
 export default function EmailAutomationsPage() {
   const [automations, setAutomations] = useState<Automation[]>([]);
   const [draftCampaigns, setDraftCampaigns] = useState<DraftCampaign[]>([]);
   const [groups, setGroups] = useState<ContactGroup[]>([]);
+  const [crmStatuses, setCrmStatuses] = useState<CrmStatusOption[]>([]);
 
   const [form, setForm] = useState<FormState>(DEFAULT_FORM);
   const [initialForm, setInitialForm] = useState<FormState>(DEFAULT_FORM);
@@ -485,6 +627,17 @@ export default function EmailAutomationsPage() {
   } | null>(null);
 
   const isEditing = Boolean(form.id);
+
+  const activeCrmStatuses = useMemo(() => {
+    const active = crmStatuses
+      .filter((status) => status.isActive)
+      .sort((a, b) => {
+        if (a.sortOrder !== b.sortOrder) return a.sortOrder - b.sortOrder;
+        return a.label.localeCompare(b.label);
+      });
+
+    return active.length > 0 ? active : FALLBACK_CRM_STATUS_OPTIONS;
+  }, [crmStatuses]);
 
   const selectedCampaign = useMemo(() => {
     return (
@@ -516,7 +669,7 @@ export default function EmailAutomationsPage() {
     );
   }, [form, initialForm]);
 
-  const formError = validateForm(form, groups);
+  const formError = validateForm(form, groups, activeCrmStatuses);
 
   const previewSubject = selectedCampaign
     ? renderPreview(selectedCampaign.subject)
@@ -533,7 +686,7 @@ export default function EmailAutomationsPage() {
     setMessage(null);
 
     try {
-      const [automationRes, groupsRes] = await Promise.all([
+      const [automationRes, groupsRes, crmStatusesRes] = await Promise.all([
         fetch("/api/email-automations", {
           method: "GET",
           cache: "no-store",
@@ -542,31 +695,52 @@ export default function EmailAutomationsPage() {
           method: "GET",
           cache: "no-store",
         }),
+        fetch("/api/crm/statuses?includeInactive=1", {
+          method: "GET",
+          cache: "no-store",
+        }),
       ]);
 
-      const automationData = await automationRes.json();
+      const automationData = await readJsonSafe<{
+        automations?: Automation[];
+        draftCampaigns?: DraftCampaign[];
+        error?: string;
+      }>(automationRes);
 
       if (!automationRes.ok) {
         throw new Error(
-          automationData.error || "Impossible de charger les automatisations."
+          automationData?.error || "Impossible de charger les automatisations."
         );
       }
 
-      let groupsData: ContactGroup[] = [];
+      const groupsData = await readJsonSafe<ContactGroup[] | { error?: string }>(
+        groupsRes
+      );
 
-      if (groupsRes.ok) {
-        groupsData = await groupsRes.json();
-      } else {
-        const errorData = await groupsRes.json().catch(() => null);
-
+      if (!groupsRes.ok) {
         throw new Error(
-          errorData?.error || "Impossible de charger les groupes de contacts."
+          !Array.isArray(groupsData) && groupsData?.error
+            ? groupsData.error
+            : "Impossible de charger les groupes de contacts."
         );
       }
 
-      setAutomations(automationData.automations || []);
-      setDraftCampaigns(automationData.draftCampaigns || []);
+      const crmStatusesData = await readJsonSafe<
+        CrmStatusOption[] | { error?: string }
+      >(crmStatusesRes);
+
+      if (!crmStatusesRes.ok) {
+        throw new Error(
+          !Array.isArray(crmStatusesData) && crmStatusesData?.error
+            ? crmStatusesData.error
+            : "Impossible de charger les statuts CRM."
+        );
+      }
+
+      setAutomations(automationData?.automations || []);
+      setDraftCampaigns(automationData?.draftCampaigns || []);
       setGroups(Array.isArray(groupsData) ? groupsData : []);
+      setCrmStatuses(Array.isArray(crmStatusesData) ? crmStatusesData : []);
     } catch (error) {
       setMessage({
         type: "error",
@@ -601,9 +775,16 @@ export default function EmailAutomationsPage() {
   };
 
   const openCreateModal = () => {
-    const nextForm = {
+    const defaultStatusKey = getDefaultCrmStatusKey(activeCrmStatuses);
+
+    const nextForm: FormState = {
       ...DEFAULT_FORM,
+      conditionValue: "",
     };
+
+    if (nextForm.conditionField === "CRM_STATUS") {
+      nextForm.conditionValue = defaultStatusKey;
+    }
 
     setForm(nextForm);
     setInitialForm(nextForm);
@@ -629,6 +810,13 @@ export default function EmailAutomationsPage() {
       delayUnit: automation.delayUnit || "MINUTES",
       isActive: automation.isActive,
     };
+
+    if (
+      nextForm.conditionField === "CRM_STATUS" &&
+      !nextForm.conditionValue
+    ) {
+      nextForm.conditionValue = getDefaultCrmStatusKey(activeCrmStatuses);
+    }
 
     nextForm.trigger = mapDynamicToLegacyTrigger(nextForm);
 
@@ -682,8 +870,12 @@ export default function EmailAutomationsPage() {
         next.conditionValue = groups[0]?.id || "";
       }
 
+      if (next.conditionField === "CRM_STATUS" && !next.conditionValue) {
+        next.conditionValue = getDefaultCrmStatusKey(activeCrmStatuses);
+      }
+
       if (!next.name.trim()) {
-        next.name = getSuggestedName(next);
+        next.name = getSuggestedName(next, activeCrmStatuses);
       }
 
       next.trigger = mapDynamicToLegacyTrigger(next);
@@ -707,12 +899,16 @@ export default function EmailAutomationsPage() {
           next.triggerEvent === "CONTACT_UPDATED" ? "CHANGED_TO" : "EQUALS";
       }
 
-      if (conditionField === "CRM_STATUS" && !next.conditionValue) {
-        next.conditionValue = "PROSPECT";
+      if (conditionField === "CRM_STATUS") {
+        next.conditionValue = getDefaultCrmStatusKey(activeCrmStatuses);
       }
 
       if (conditionField === "GROUP_ID") {
         next.conditionValue = groups[0]?.id || "";
+      }
+
+      if (conditionField === "CRM_SOURCE") {
+        next.conditionValue = "WEBSITE";
       }
 
       if (
@@ -725,6 +921,7 @@ export default function EmailAutomationsPage() {
       if (
         conditionField !== "CRM_STATUS" &&
         conditionField !== "GROUP_ID" &&
+        conditionField !== "CRM_SOURCE" &&
         conditionField !== "IS_ACTIVE" &&
         conditionField !== "UNSUBSCRIBED" &&
         prev.conditionField !== conditionField
@@ -733,7 +930,7 @@ export default function EmailAutomationsPage() {
       }
 
       if (!next.name.trim()) {
-        next.name = getSuggestedName(next);
+        next.name = getSuggestedName(next, activeCrmStatuses);
       }
 
       next.trigger = mapDynamicToLegacyTrigger(next);
@@ -769,7 +966,7 @@ export default function EmailAutomationsPage() {
         isValueRequired(conditionOperator) &&
         !next.conditionValue
       ) {
-        next.conditionValue = "PROSPECT";
+        next.conditionValue = getDefaultCrmStatusKey(activeCrmStatuses);
       }
 
       if (
@@ -780,8 +977,16 @@ export default function EmailAutomationsPage() {
         next.conditionValue = groups[0]?.id || "";
       }
 
+      if (
+        next.conditionField === "CRM_SOURCE" &&
+        isValueRequired(conditionOperator) &&
+        !next.conditionValue
+      ) {
+        next.conditionValue = "WEBSITE";
+      }
+
       if (!next.name.trim()) {
-        next.name = getSuggestedName(next);
+        next.name = getSuggestedName(next, activeCrmStatuses);
       }
 
       next.trigger = mapDynamicToLegacyTrigger(next);
@@ -791,7 +996,7 @@ export default function EmailAutomationsPage() {
   };
 
   const handleSubmit = async () => {
-    const validationError = validateForm(form, groups);
+    const validationError = validateForm(form, groups, activeCrmStatuses);
 
     if (validationError) {
       setMessage({
@@ -835,10 +1040,10 @@ export default function EmailAutomationsPage() {
         }),
       });
 
-      const data = await res.json();
+      const data = await readJsonSafe<{ error?: string }>(res);
 
       if (!res.ok) {
-        throw new Error(data.error || "Erreur lors de la sauvegarde.");
+        throw new Error(data?.error || "Erreur lors de la sauvegarde.");
       }
 
       setMessage({
@@ -893,7 +1098,7 @@ export default function EmailAutomationsPage() {
       isActive: nextIsActive,
     };
 
-    const validationError = validateForm(nextForm, groups);
+    const validationError = validateForm(nextForm, groups, activeCrmStatuses);
 
     if (validationError) {
       setMessage({
@@ -931,11 +1136,11 @@ export default function EmailAutomationsPage() {
         }),
       });
 
-      const data = await res.json();
+      const data = await readJsonSafe<{ error?: string }>(res);
 
       if (!res.ok) {
         throw new Error(
-          data.error ||
+          data?.error ||
             `Erreur lors du changement de statut de “${automation.name}”.`
         );
       }
@@ -988,10 +1193,10 @@ export default function EmailAutomationsPage() {
         method: "DELETE",
       });
 
-      const data = await res.json();
+      const data = await readJsonSafe<{ error?: string }>(res);
 
       if (!res.ok) {
-        throw new Error(data.error || "Erreur lors de la suppression.");
+        throw new Error(data?.error || "Erreur lors de la suppression.");
       }
 
       setMessage({
@@ -1106,7 +1311,10 @@ export default function EmailAutomationsPage() {
         </div>
 
         {loading ? (
-          <div style={s.empty}>Chargement...</div>
+          <div style={s.empty}>
+            <Loader2 size={16} className="automation-spin" />
+            Chargement...
+          </div>
         ) : visibleAutomations.length === 0 ? (
           <div style={s.empty}>
             Aucune automatisation pour le moment. Cliquez sur “Nouvelle
@@ -1148,7 +1356,35 @@ export default function EmailAutomationsPage() {
                           {TRIGGER_EVENT_LABELS[automation.triggerEvent] ||
                             LEGACY_TRIGGER_LABELS[automation.trigger]}
                         </strong>
-                        <span>{getConditionLabel(automation, groups)}</span>
+                        <span>
+                          {getConditionLabel(
+                            automation,
+                            groups,
+                            activeCrmStatuses
+                          )}
+                        </span>
+
+                        {automation.conditionField === "CRM_STATUS" &&
+                          automation.conditionValue && (
+                            <span
+                              style={{
+                                ...s.crmStatusMiniBadge,
+                                color: getCrmStatusColorByKey(
+                                  activeCrmStatuses,
+                                  automation.conditionValue
+                                ),
+                                background: `${getCrmStatusColorByKey(
+                                  activeCrmStatuses,
+                                  automation.conditionValue
+                                )}18`,
+                              }}
+                            >
+                              {getCrmStatusLabelByKey(
+                                activeCrmStatuses,
+                                automation.conditionValue
+                              )}
+                            </span>
+                          )}
                       </div>
                     </td>
 
@@ -1497,9 +1733,23 @@ export default function EmailAutomationsPage() {
                             }
                             style={s.select}
                           >
-                            {CRM_STATUS_OPTIONS.map((status) => (
-                              <option key={status} value={status}>
-                                {status}
+                            {activeCrmStatuses.map((status) => (
+                              <option key={status.id} value={status.key}>
+                                {status.label} ({status.key})
+                              </option>
+                            ))}
+                          </select>
+                        ) : form.conditionField === "CRM_SOURCE" ? (
+                          <select
+                            value={form.conditionValue}
+                            onChange={(e) =>
+                              updateForm("conditionValue", e.target.value)
+                            }
+                            style={s.select}
+                          >
+                            {CRM_SOURCE_OPTIONS.map((source) => (
+                              <option key={source.value} value={source.value}>
+                                {source.label}
                               </option>
                             ))}
                           </select>
@@ -1564,7 +1814,8 @@ export default function EmailAutomationsPage() {
                           conditionOperator: form.conditionOperator,
                           conditionValue: form.conditionValue,
                         },
-                        groups
+                        groups,
+                        activeCrmStatuses
                       )}
                     </strong>
                   </div>
@@ -1702,7 +1953,8 @@ export default function EmailAutomationsPage() {
                         conditionOperator: form.conditionOperator,
                         conditionValue: form.conditionValue,
                       },
-                      groups
+                      groups,
+                      activeCrmStatuses
                     )}
                   </span>
                   <span>
@@ -1730,6 +1982,18 @@ export default function EmailAutomationsPage() {
           </section>
         </div>
       )}
+
+      <style jsx>{`
+        .automation-spin {
+          animation: automationSpin 0.8s linear infinite;
+        }
+
+        @keyframes automationSpin {
+          to {
+            transform: rotate(360deg);
+          }
+        }
+      `}</style>
     </div>
   );
 }
@@ -1961,7 +2225,7 @@ const s: Record<string, CSSProperties> = {
   triggerCell: {
     display: "flex",
     flexDirection: "column",
-    gap: 3,
+    gap: 5,
   },
 
   campaignCell: {
@@ -1972,6 +2236,14 @@ const s: Record<string, CSSProperties> = {
 
   muted: {
     color: SOFT_TEXT,
+  },
+
+  crmStatusMiniBadge: {
+    width: "fit-content",
+    padding: "4px 8px",
+    borderRadius: 999,
+    fontSize: 11,
+    fontWeight: 800,
   },
 
   delayBadge: {
@@ -2053,6 +2325,9 @@ const s: Record<string, CSSProperties> = {
     background: "#F9FAFB",
     color: MUTED,
     fontSize: 14,
+    display: "flex",
+    alignItems: "center",
+    gap: 8,
   },
 
   modalOverlay: {

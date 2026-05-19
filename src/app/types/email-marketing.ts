@@ -42,6 +42,37 @@ export interface CrmCompanyPreview {
   city?: string | null;
 }
 
+export interface CrmStatusOption {
+  id: string;
+  userId?: string;
+
+  key: string;
+  label: string;
+  color: string;
+  description?: string | null;
+
+  sortOrder: number;
+  isDefault: boolean;
+  isActive: boolean;
+
+  createdAt?: DateLike;
+  updatedAt?: DateLike;
+
+  _count?: {
+    contacts?: number;
+  };
+}
+
+export interface CrmStatusOptionFormData {
+  label: string;
+  key?: string;
+  color: string;
+  description?: string | null;
+  sortOrder: number;
+  isDefault: boolean;
+  isActive: boolean;
+}
+
 export interface ContactGroup {
   id: string;
   name: string;
@@ -58,24 +89,42 @@ export interface ContactGroup {
 export interface Contact {
   id: string;
   email: string;
+
   firstName?: string | null;
   lastName?: string | null;
   phone?: string | null;
+
   jobTitle?: string | null;
   companyName?: string | null;
   country?: string | null;
   city?: string | null;
   notes?: string | null;
+
   metadata?: Record<string, unknown> | null;
+
   isActive: boolean;
   unsubscribed: boolean;
+
+  /**
+   * Ancien statut enum conservé pour compatibilité.
+   */
   crmStatus?: CrmContactStatus | null;
+
+  /**
+   * Nouveau statut dynamique.
+   */
+  crmStatusOptionId?: string | null;
+  crmStatusOption?: CrmStatusOption | null;
+
   crmSource?: CrmLeadSource | null;
+
   consentDate?: DateLike | null;
   consentSource?: string | null;
+
   groupId?: string | null;
   crmCompanyId?: string | null;
   userId: string;
+
   createdAt: DateLike;
   updatedAt: DateLike;
 
@@ -143,8 +192,10 @@ export interface CampaignRecipient {
   campaignId: string;
   contactId: string;
   email: string;
+
   sent: boolean;
   delivered: boolean;
+
   openedAt?: DateLike | null;
   clickedAt?: DateLike | null;
   error?: string | null;

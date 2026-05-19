@@ -36,6 +36,15 @@ type DynamicTriggerEvent =
   | "EMAIL_CLICKED"
   | "MANUAL_START";
 
+type LegacyCrmStatus =
+  | "NEW"
+  | "PROSPECT"
+  | "HOT_PROSPECT"
+  | "CUSTOMER"
+  | "PARTNER"
+  | "INACTIVE"
+  | "LOST";
+
 type ContactAutomationSnapshot = {
   id: string;
   email: string;
@@ -47,11 +56,31 @@ type ContactAutomationSnapshot = {
   companyName: string | null;
   country: string | null;
   city: string | null;
+
+  /**
+   * Important :
+   * Pour les automatisations dynamiques, crmStatus contient la clé technique
+   * du statut dynamique si elle existe.
+   * Exemple : DEVIS_ENVOYE, HOT_PROSPECT, CUSTOMER.
+   */
   crmStatus: string | null;
+  crmStatusOptionId: string | null;
+  crmStatusOptionKey: string | null;
+
   crmSource: string | null;
   isActive: boolean;
   unsubscribed: boolean;
 };
+
+const LEGACY_CRM_STATUSES = new Set<string>([
+  "NEW",
+  "PROSPECT",
+  "HOT_PROSPECT",
+  "CUSTOMER",
+  "PARTNER",
+  "INACTIVE",
+  "LOST",
+]);
 
 function cleanString(value?: string | null) {
   const cleaned = String(value || "").trim();
@@ -97,7 +126,50 @@ function getContactInclude() {
         city: true,
       },
     },
+    crmStatusOption: {
+      select: {
+        id: true,
+        key: true,
+        label: true,
+        color: true,
+        description: true,
+        sortOrder: true,
+        isDefault: true,
+        isActive: true,
+      },
+    },
   };
+}
+
+function getAutomationStatusKey(contact: {
+  crmStatus: unknown;
+  crmStatusOption?: {
+    key: string;
+  } | null;
+}) {
+  if (contact.crmStatusOption?.key) {
+    return contact.crmStatusOption.key;
+  }
+
+  return contact.crmStatus ? String(contact.crmStatus) : null;
+}
+
+function getCompatibleLegacyCrmStatus(
+  requestedStatus: unknown,
+  dynamicStatusKey?: string | null
+): LegacyCrmStatus {
+  if (dynamicStatusKey && LEGACY_CRM_STATUSES.has(dynamicStatusKey)) {
+    return dynamicStatusKey as LegacyCrmStatus;
+  }
+
+  if (
+    typeof requestedStatus === "string" &&
+    LEGACY_CRM_STATUSES.has(requestedStatus)
+  ) {
+    return requestedStatus as LegacyCrmStatus;
+  }
+
+  return "NEW";
 }
 
 function toContactSnapshot(contact: {
@@ -112,10 +184,16 @@ function toContactSnapshot(contact: {
   country: string | null;
   city: string | null;
   crmStatus: unknown;
+  crmStatusOptionId?: string | null;
+  crmStatusOption?: {
+    key: string;
+  } | null;
   crmSource: unknown;
   isActive: boolean;
   unsubscribed: boolean;
 }): ContactAutomationSnapshot {
+  const crmStatusKey = getAutomationStatusKey(contact);
+
   return {
     id: contact.id,
     email: contact.email,
@@ -127,7 +205,9 @@ function toContactSnapshot(contact: {
     companyName: contact.companyName,
     country: contact.country,
     city: contact.city,
-    crmStatus: contact.crmStatus ? String(contact.crmStatus) : null,
+    crmStatus: crmStatusKey,
+    crmStatusOptionId: contact.crmStatusOptionId || null,
+    crmStatusOptionKey: contact.crmStatusOption?.key || null,
     crmSource: contact.crmSource ? String(contact.crmSource) : null,
     isActive: contact.isActive,
     unsubscribed: contact.unsubscribed,
@@ -161,6 +241,9 @@ async function startContactAutomationCompat(payload: {
     triggerEvent: payload.triggerEvent,
     previousCrmStatus: payload.previousContact?.crmStatus || null,
     currentCrmStatus: payload.currentContact?.crmStatus || null,
+    previousCrmStatusOptionId:
+      payload.previousContact?.crmStatusOptionId || null,
+    currentCrmStatusOptionId: payload.currentContact?.crmStatusOptionId || null,
     previousCrmSource: payload.previousContact?.crmSource || null,
     currentCrmSource: payload.currentContact?.crmSource || null,
   });
@@ -209,6 +292,36 @@ async function ensureGroupBelongsToUser(groupId: string | null, userId: string) 
   });
 
   return group.id;
+}
+
+async function ensureCrmStatusOptionBelongsToUser(
+  crmStatusOptionId: string | null,
+  userId: string
+) {
+  if (!crmStatusOptionId) {
+    return null;
+  }
+
+  const status = await prisma.crmStatusOption.findFirst({
+    where: {
+      id: crmStatusOptionId,
+      userId,
+      isActive: true,
+    },
+    select: {
+      id: true,
+      key: true,
+      label: true,
+      color: true,
+      isActive: true,
+    },
+  });
+
+  if (!status) {
+    throw new Error("Statut CRM introuvable ou non autorisé.");
+  }
+
+  return status;
 }
 
 async function logAutomationDiagnostic(userId: string, contactId?: string) {
@@ -318,6 +431,8 @@ export async function GET(req: NextRequest) {
   const search = searchParams.get("search") || "";
   const groupId = searchParams.get("groupId") || undefined;
   const crmStatus = searchParams.get("crmStatus") || undefined;
+  const crmStatusOptionId =
+    searchParams.get("crmStatusOptionId") || undefined;
   const crmSource = searchParams.get("crmSource") || undefined;
 
   logInfo("GET_FILTERS", {
@@ -327,6 +442,7 @@ export async function GET(req: NextRequest) {
     search,
     groupId: groupId || null,
     crmStatus: crmStatus || null,
+    crmStatusOptionId: crmStatusOptionId || null,
     crmSource: crmSource || null,
   });
 
@@ -338,6 +454,12 @@ export async function GET(req: NextRequest) {
     ...(crmStatus
       ? {
           crmStatus: crmStatus as any,
+        }
+      : {}),
+
+    ...(crmStatusOptionId
+      ? {
+          crmStatusOptionId,
         }
       : {}),
 
@@ -402,6 +524,26 @@ export async function GET(req: NextRequest) {
               crmCompany: {
                 is: {
                   name: {
+                    contains: search,
+                    mode: "insensitive" as const,
+                  },
+                },
+              },
+            },
+            {
+              crmStatusOption: {
+                is: {
+                  label: {
+                    contains: search,
+                    mode: "insensitive" as const,
+                  },
+                },
+              },
+            },
+            {
+              crmStatusOption: {
+                is: {
+                  key: {
                     contains: search,
                     mode: "insensitive" as const,
                   },
@@ -506,6 +648,7 @@ export async function POST(req: NextRequest) {
     logInfo("POST_SCHEMA_VALIDATION_SUCCESS", {
       email: maskEmail(data.email),
       crmStatus: data.crmStatus || "NEW",
+      crmStatusOptionId: data.crmStatusOptionId || null,
       crmSource: data.crmSource || "MANUAL",
       groupId: data.groupId || null,
       isActive: data.isActive ?? true,
@@ -517,10 +660,23 @@ export async function POST(req: NextRequest) {
       session.user.id
     );
 
+    const crmStatusOption = await ensureCrmStatusOptionBelongsToUser(
+      cleanString(data.crmStatusOptionId),
+      session.user.id
+    );
+
+    const legacyCrmStatus = getCompatibleLegacyCrmStatus(
+      data.crmStatus,
+      crmStatusOption?.key
+    );
+
     logInfo("POST_CONTACT_CREATE_START", {
       userId: session.user.id,
       email: maskEmail(data.email),
       groupId,
+      crmStatusOptionId: crmStatusOption?.id || null,
+      crmStatusOptionKey: crmStatusOption?.key || null,
+      legacyCrmStatus,
     });
 
     const contact = await prisma.$transaction(async (tx) => {
@@ -538,7 +694,8 @@ export async function POST(req: NextRequest) {
           city: cleanString(data.city),
           notes: cleanString(data.notes),
 
-          crmStatus: data.crmStatus || "NEW",
+          crmStatus: legacyCrmStatus as any,
+          crmStatusOptionId: crmStatusOption?.id || null,
           crmSource: data.crmSource || "MANUAL",
 
           isActive: data.isActive ?? true,
@@ -573,8 +730,10 @@ export async function POST(req: NextRequest) {
     logInfo("POST_CONTACT_CREATED", {
       contactId: contact.id,
       email: maskEmail(contact.email),
-      crmStatus: contact.crmStatus,
-      crmSource: contact.crmSource,
+      crmStatus: currentSnapshot.crmStatus,
+      crmStatusOptionId: currentSnapshot.crmStatusOptionId,
+      crmStatusOptionKey: currentSnapshot.crmStatusOptionKey,
+      crmSource: currentSnapshot.crmSource,
       isActive: contact.isActive,
       unsubscribed: contact.unsubscribed,
       groupId: contact.groupId || null,
@@ -621,6 +780,7 @@ export async function POST(req: NextRequest) {
       logInfo("POST_STATUS_TRIGGER_RESOLVED", {
         contactId: contact.id,
         crmStatus: currentSnapshot.crmStatus,
+        crmStatusOptionId: currentSnapshot.crmStatusOptionId,
         statusTrigger,
       });
 

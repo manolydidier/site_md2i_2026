@@ -225,7 +225,13 @@ async function handleEvent(event: ResendWebhookEvent) {
 
   await updateCampaignCounters(recipient.campaignId);
 }
-
+export async function GET() {
+  return NextResponse.json({
+    success: true,
+    service: "resend-webhook",
+    message: "Webhook Resend actif. Cette URL attend des requêtes POST de Resend.",
+  });
+}
 export async function POST(req: NextRequest) {
   try {
     const payload = await req.text();

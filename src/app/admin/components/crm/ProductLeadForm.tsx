@@ -51,7 +51,6 @@ type FormState = {
   message: string;
   consentEmail: boolean;
 
-  // Sécurité anti-spam
   website: string;
   submittedAt: number;
 };
@@ -63,25 +62,29 @@ const STEPS = [
     id: "need",
     label: "Besoin",
     title: "Votre besoin",
-    description: "Choisissez le produit ou service concerné et le type de demande.",
+    description:
+      "Choisissez le produit ou service concerné et le type de demande.",
   },
   {
     id: "contact",
     label: "Contact",
     title: "Vos coordonnées",
-    description: "Indiquez les informations nécessaires pour vous recontacter.",
+    description:
+      "Indiquez les informations nécessaires pour vous recontacter.",
   },
   {
     id: "company",
     label: "Entreprise",
     title: "Votre entreprise",
-    description: "Aidez-nous à mieux comprendre votre contexte professionnel.",
+    description:
+      "Aidez-nous à mieux comprendre votre contexte professionnel.",
   },
   {
     id: "message",
     label: "Message",
     title: "Votre message",
-    description: "Décrivez brièvement votre besoin pour recevoir une réponse adaptée.",
+    description:
+      "Décrivez brièvement votre besoin pour recevoir une réponse adaptée.",
   },
 ] as const;
 
@@ -414,7 +417,6 @@ export default function ProductLeadForm({
           message: form.message,
           consentEmail: form.consentEmail,
 
-          // Sécurité serveur
           website: form.website,
           submittedAt: form.submittedAt,
 
@@ -467,23 +469,25 @@ export default function ProductLeadForm({
   return (
     <form
       onSubmit={submit}
-      className={`${styles.form} ${variant === "premium" ? styles.formPremium : ""}`}
+      className={`${styles.form} ${
+        variant === "premium" ? styles.formPremium : ""
+      }`}
       noValidate
     >
       {!hideHeader && (
-      <div className={styles.header}>
-        <span className={styles.badge}>MD2I</span>
+        <div className={styles.header}>
+          <span className={styles.badge}>MD2I</span>
 
-        {title && <h2 className={styles.title}>{title}</h2>}
+          {title && <h2 className={styles.title}>{title}</h2>}
 
-        {description && <p className={styles.text}>{description}</p>}
+          {description && <p className={styles.text}>{description}</p>}
 
-        {finalProductName && (
-          <p className={styles.productLabel}>
-            Produit concerné : {finalProductName}
-          </p>
-        )}
-      </div>
+          {finalProductName && (
+            <p className={styles.productLabel}>
+              Produit concerné : {finalProductName}
+            </p>
+          )}
+        </div>
       )}
 
       <div className={styles.progressWrap} aria-label="Progression du formulaire">
@@ -521,6 +525,7 @@ export default function ProductLeadForm({
               }
             }}
             disabled={status === "loading" || index > currentStep}
+            aria-current={index === currentStep ? "step" : undefined}
           >
             <span className={styles.stepNumber}>{index + 1}</span>
             <span>{step.label}</span>

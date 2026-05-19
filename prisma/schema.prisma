@@ -50,6 +50,7 @@ model User {
   crmTenders       CrmTender[]
   crmTasks         CrmTask[]
   crmActivities    CrmActivity[]
+  crmStatusOptions CrmStatusOption[]
 
   @@index([email])
   @@index([username])
@@ -461,16 +462,25 @@ model Contact {
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
-  // CRM
+  // CRM - informations contact
   jobTitle      String?
   companyName   String?
   country       String?
   city          String?
-  notes         String?          @db.Text
-  crmStatus     CrmContactStatus @default(NEW)
-  crmSource     CrmLeadSource    @default(MANUAL)
+  notes         String?   @db.Text
   consentDate   DateTime?
   consentSource String?
+
+  // CRM - ancien statut enum, conservé temporairement pour compatibilité
+  // Tu pourras le supprimer plus tard quand tout ton code utilisera crmStatusOptionId.
+  crmStatus CrmContactStatus @default(NEW)
+
+  // CRM - statut dynamique
+  crmStatusOptionId String?
+  crmStatusOption   CrmStatusOption? @relation(fields: [crmStatusOptionId], references: [id], onDelete: SetNull)
+
+  // CRM - source encore en enum pour le moment
+  crmSource CrmLeadSource @default(MANUAL)
 
   crmCompanyId String?
   crmCompany   CrmCompany? @relation(fields: [crmCompanyId], references: [id], onDelete: SetNull)
@@ -483,35 +493,43 @@ model Contact {
   emailAutomationRuns   EmailAutomationRun[]
   emailAutomationEmails EmailAutomationEmail[]
 
+  // Email Marketing
   group            ContactGroup?        @relation(fields: [groupId], references: [id], onDelete: SetNull)
   groupMemberships ContactGroupMember[]
   user             User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
   recipients       CampaignRecipient[]
 
   @@unique([email, userId])
-  @@index([userId])
-  @@index([groupId])
-  @@index([crmCompanyId])
-  @@index([crmStatus])
-  @@index([crmSource])
-  @@index([createdAt])
-  @@index([isActive])
-  @@index([unsubscribed])
+  @@index([userId], map: "contacts_user_id_idx")
+  @@index([groupId], map: "contacts_group_id_idx")
+  @@index([crmCompanyId], map: "contacts_crm_company_id_idx")
+  @@index([crmStatus], map: "contacts_crm_status_idx")
+  @@index([crmStatusOptionId], map: "contacts_crm_status_option_id_idx")
+  @@index([crmSource], map: "contacts_crm_source_idx")
+  @@index([createdAt], map: "contacts_created_at_idx")
+  @@index([isActive], map: "contacts_is_active_idx")
+  @@index([unsubscribed], map: "contacts_unsubscribed_idx")
   // Index rapides pour les filtres CRM + pagination
-  @@index([userId, createdAt])
-  @@index([userId, groupId])
-  @@index([userId, crmStatus])
-  @@index([userId, crmSource])
-  @@index([userId, crmStatus, crmSource])
-  @@index([userId, groupId, crmStatus])
-  @@index([userId, groupId, crmSource])
-  @@index([userId, groupId, crmStatus, crmSource])
-  @@index([userId, isActive])
-  @@index([userId, unsubscribed])
-  @@index([userId, isActive, unsubscribed])
-  @@index([userId, crmStatus, createdAt])
-  @@index([userId, groupId, createdAt])
-  @@index([userId, groupId, crmStatus, crmSource, createdAt])
+  @@index([userId, createdAt], map: "contacts_user_created_idx")
+  @@index([userId, groupId], map: "contacts_user_group_idx")
+  @@index([userId, crmStatus], map: "contacts_user_crm_status_idx")
+  @@index([userId, crmStatusOptionId], map: "contacts_user_status_option_idx")
+  @@index([userId, crmSource], map: "contacts_user_crm_source_idx")
+  @@index([userId, crmStatus, crmSource], map: "contacts_user_status_source_idx")
+  @@index([userId, crmStatusOptionId, crmSource], map: "contacts_user_dyn_status_source_idx")
+  @@index([userId, groupId, crmStatus], map: "contacts_user_group_status_idx")
+  @@index([userId, groupId, crmStatusOptionId], map: "contacts_user_group_dyn_status_idx")
+  @@index([userId, groupId, crmSource], map: "contacts_user_group_source_idx")
+  @@index([userId, groupId, crmStatus, crmSource], map: "contacts_user_group_status_source_idx")
+  @@index([userId, groupId, crmStatusOptionId, crmSource], map: "contacts_user_group_dyn_status_source_idx")
+  @@index([userId, isActive], map: "contacts_user_active_idx")
+  @@index([userId, unsubscribed], map: "contacts_user_unsubscribed_idx")
+  @@index([userId, isActive, unsubscribed], map: "contacts_user_active_unsubscribed_idx")
+  @@index([userId, crmStatus, createdAt], map: "contacts_user_status_created_idx")
+  @@index([userId, crmStatusOptionId, createdAt], map: "contacts_user_dyn_status_created_idx")
+  @@index([userId, groupId, createdAt], map: "contacts_user_group_created_idx")
+  @@index([userId, groupId, crmStatus, crmSource, createdAt], map: "contacts_user_group_status_source_created_idx")
+  @@index([userId, groupId, crmStatusOptionId, crmSource, createdAt], map: "contacts_user_group_dyn_status_source_created_idx")
   @@map("contacts")
 }
 
@@ -1328,4 +1346,31 @@ enum CrmRequestType {
   MAINTENANCE
   TENDER
   OTHER
+}
+
+model CrmStatusOption {
+  id     String @id @default(cuid())
+  userId String @db.Uuid
+
+  key         String
+  label       String
+  color       String  @default("#f97316")
+  description String? @db.Text
+
+  sortOrder Int     @default(0)
+  isDefault Boolean @default(false)
+  isActive  Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  contacts Contact[]
+
+  @@unique([userId, key], map: "crm_status_options_user_key_unique")
+  @@index([userId], map: "crm_status_options_user_id_idx")
+  @@index([userId, isActive], map: "crm_status_options_user_active_idx")
+  @@index([userId, sortOrder], map: "crm_status_options_user_sort_idx")
+  @@index([userId, isDefault], map: "crm_status_options_user_default_idx")
+  @@map("crm_status_options")
 }

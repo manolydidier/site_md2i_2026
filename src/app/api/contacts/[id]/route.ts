@@ -32,6 +32,15 @@ type DynamicTriggerEvent =
   | "EMAIL_CLICKED"
   | "MANUAL_START";
 
+type LegacyCrmStatus =
+  | "NEW"
+  | "PROSPECT"
+  | "HOT_PROSPECT"
+  | "CUSTOMER"
+  | "PARTNER"
+  | "INACTIVE"
+  | "LOST";
+
 type ContactAutomationSnapshot = {
   id: string;
   email: string;
@@ -43,11 +52,29 @@ type ContactAutomationSnapshot = {
   companyName: string | null;
   country: string | null;
   city: string | null;
+
+  /**
+   * Pour l’automatisation, crmStatus contient la clé technique dynamique
+   * si crmStatusOption existe.
+   */
   crmStatus: string | null;
+  crmStatusOptionId: string | null;
+  crmStatusOptionKey: string | null;
+
   crmSource: string | null;
   isActive: boolean;
   unsubscribed: boolean;
 };
+
+const LEGACY_CRM_STATUSES = new Set<string>([
+  "NEW",
+  "PROSPECT",
+  "HOT_PROSPECT",
+  "CUSTOMER",
+  "PARTNER",
+  "INACTIVE",
+  "LOST",
+]);
 
 function cleanString(value?: string | null) {
   const cleaned = String(value || "").trim();
@@ -83,7 +110,50 @@ function getContactInclude() {
         city: true,
       },
     },
+    crmStatusOption: {
+      select: {
+        id: true,
+        key: true,
+        label: true,
+        color: true,
+        description: true,
+        sortOrder: true,
+        isDefault: true,
+        isActive: true,
+      },
+    },
   };
+}
+
+function getAutomationStatusKey(contact: {
+  crmStatus: unknown;
+  crmStatusOption?: {
+    key: string;
+  } | null;
+}) {
+  if (contact.crmStatusOption?.key) {
+    return contact.crmStatusOption.key;
+  }
+
+  return contact.crmStatus ? String(contact.crmStatus) : null;
+}
+
+function getCompatibleLegacyCrmStatus(
+  requestedStatus: unknown,
+  dynamicStatusKey?: string | null
+): LegacyCrmStatus {
+  if (dynamicStatusKey && LEGACY_CRM_STATUSES.has(dynamicStatusKey)) {
+    return dynamicStatusKey as LegacyCrmStatus;
+  }
+
+  if (
+    typeof requestedStatus === "string" &&
+    LEGACY_CRM_STATUSES.has(requestedStatus)
+  ) {
+    return requestedStatus as LegacyCrmStatus;
+  }
+
+  return "NEW";
 }
 
 function toContactSnapshot(contact: {
@@ -98,10 +168,16 @@ function toContactSnapshot(contact: {
   country: string | null;
   city: string | null;
   crmStatus: unknown;
+  crmStatusOptionId?: string | null;
+  crmStatusOption?: {
+    key: string;
+  } | null;
   crmSource: unknown;
   isActive: boolean;
   unsubscribed: boolean;
 }): ContactAutomationSnapshot {
+  const crmStatusKey = getAutomationStatusKey(contact);
+
   return {
     id: contact.id,
     email: contact.email,
@@ -113,7 +189,9 @@ function toContactSnapshot(contact: {
     companyName: contact.companyName,
     country: contact.country,
     city: contact.city,
-    crmStatus: contact.crmStatus ? String(contact.crmStatus) : null,
+    crmStatus: crmStatusKey,
+    crmStatusOptionId: contact.crmStatusOptionId || null,
+    crmStatusOptionKey: contact.crmStatusOption?.key || null,
     crmSource: contact.crmSource ? String(contact.crmSource) : null,
     isActive: contact.isActive,
     unsubscribed: contact.unsubscribed,
@@ -147,6 +225,8 @@ function hasRelevantContactChange(
     previousContact.country !== currentContact.country ||
     previousContact.city !== currentContact.city ||
     previousContact.crmStatus !== currentContact.crmStatus ||
+    previousContact.crmStatusOptionId !== currentContact.crmStatusOptionId ||
+    previousContact.crmStatusOptionKey !== currentContact.crmStatusOptionKey ||
     previousContact.crmSource !== currentContact.crmSource ||
     previousContact.isActive !== currentContact.isActive ||
     previousContact.unsubscribed !== currentContact.unsubscribed
@@ -168,6 +248,9 @@ async function startContactAutomationCompat(payload: {
     triggerEvent: payload.triggerEvent,
     previousCrmStatus: payload.previousContact?.crmStatus || null,
     currentCrmStatus: payload.currentContact?.crmStatus || null,
+    previousCrmStatusOptionId:
+      payload.previousContact?.crmStatusOptionId || null,
+    currentCrmStatusOptionId: payload.currentContact?.crmStatusOptionId || null,
     previousCrmSource: payload.previousContact?.crmSource || null,
     currentCrmSource: payload.currentContact?.crmSource || null,
   });
@@ -193,6 +276,36 @@ async function ensureGroupBelongsToUser(groupId: string | null, userId: string) 
   }
 
   return group.id;
+}
+
+async function ensureCrmStatusOptionBelongsToUser(
+  crmStatusOptionId: string | null,
+  userId: string
+) {
+  if (!crmStatusOptionId) {
+    return null;
+  }
+
+  const status = await prisma.crmStatusOption.findFirst({
+    where: {
+      id: crmStatusOptionId,
+      userId,
+      isActive: true,
+    },
+    select: {
+      id: true,
+      key: true,
+      label: true,
+      color: true,
+      isActive: true,
+    },
+  });
+
+  if (!status) {
+    throw new Error("Statut CRM introuvable ou non autorisé.");
+  }
+
+  return status;
 }
 
 export async function GET(
@@ -262,6 +375,12 @@ export async function PUT(
         country: true,
         city: true,
         crmStatus: true,
+        crmStatusOptionId: true,
+        crmStatusOption: {
+          select: {
+            key: true,
+          },
+        },
         crmSource: true,
         unsubscribed: true,
         isActive: true,
@@ -278,6 +397,16 @@ export async function PUT(
     const groupId = await ensureGroupBelongsToUser(
       cleanString(data.groupId),
       session.user.id
+    );
+
+    const crmStatusOption = await ensureCrmStatusOptionBelongsToUser(
+      cleanString(data.crmStatusOptionId),
+      session.user.id
+    );
+
+    const legacyCrmStatus = getCompatibleLegacyCrmStatus(
+      data.crmStatus,
+      crmStatusOption?.key
     );
 
     const updatedContact = await prisma.$transaction(async (tx) => {
@@ -298,7 +427,8 @@ export async function PUT(
           city: cleanString(data.city),
           notes: cleanString(data.notes),
 
-          crmStatus: data.crmStatus || "NEW",
+          crmStatus: legacyCrmStatus as any,
+          crmStatusOptionId: crmStatusOption?.id || null,
           crmSource: data.crmSource || "MANUAL",
 
           isActive: data.isActive ?? true,
@@ -370,12 +500,14 @@ export async function PUT(
       statusChanged,
       previousCrmStatus: previousSnapshot.crmStatus,
       currentCrmStatus: currentSnapshot.crmStatus,
+      previousCrmStatusOptionId: previousSnapshot.crmStatusOptionId,
+      currentCrmStatusOptionId: currentSnapshot.crmStatusOptionId,
       previousCrmSource: previousSnapshot.crmSource,
       currentCrmSource: currentSnapshot.crmSource,
       nextStatusTrigger,
     });
 
-    if (statusChanged && nextStatusTrigger) {
+    if (statusChanged) {
       if (
         currentSnapshot.crmStatus === "CUSTOMER" ||
         currentSnapshot.crmStatus === "INACTIVE"
@@ -391,33 +523,95 @@ export async function PUT(
         });
       }
 
+      /**
+       * Important pour les statuts dynamiques personnalisés.
+       *
+       * Pour les anciens statuts connus, on garde le trigger historique :
+       * CONTACT_STATUS_PROSPECT, CONTACT_STATUS_CUSTOMER, etc.
+       *
+       * Pour les nouveaux statuts dynamiques comme DEVIS_ENVOYE, il n’existe
+       * pas de LegacyTrigger dédié. On utilise CONTACT_CREATED comme fallback
+       * parce que ton mapping front actuel retombe aussi sur CONTACT_CREATED
+       * pour les statuts personnalisés, tout en envoyant triggerEvent:
+       * CONTACT_UPDATED.
+       */
+           const triggerForUpdate: LegacyAutomationTrigger =
+        nextStatusTrigger || "CONTACT_CREATED";
+
+      logInfo("PUT_START_STATUS_AUTOMATION_BEFORE", {
+        contactId: id,
+        trigger: triggerForUpdate,
+        triggerEvent: "CONTACT_UPDATED",
+        previousCrmStatus: previousSnapshot.crmStatus,
+        currentCrmStatus: currentSnapshot.crmStatus,
+        previousCrmStatusOptionId: previousSnapshot.crmStatusOptionId,
+        currentCrmStatusOptionId: currentSnapshot.crmStatusOptionId,
+        previousCrmStatusOptionKey: previousSnapshot.crmStatusOptionKey,
+        currentCrmStatusOptionKey: currentSnapshot.crmStatusOptionKey,
+      });
+
       await startContactAutomationCompat({
         userId: session.user.id,
         contactId: id,
-        trigger: nextStatusTrigger,
+        trigger: triggerForUpdate,
         triggerEvent: "CONTACT_UPDATED",
         previousContact: previousSnapshot,
         currentContact: currentSnapshot,
       });
-    }
 
-    // Sécurité transition :
-    // Pour éviter de lancer par erreur une automatisation CONTACT_CREATED avec l'ancien moteur,
-    // on ne déclenche ici que les changements de statut tant que automation-engine.ts n'est pas encore migré.
-    //
-    // Après migration complète de automation-engine.ts, on pourra remplacer le bloc ci-dessus
-    // par un lancement CONTACT_UPDATED générique pour tous les changements :
-    //
-    // if (contactChanged) {
-    //   await startContactAutomationCompat({
-    //     userId: session.user.id,
-    //     contactId: id,
-    //     trigger: nextStatusTrigger || "MANUAL_START",
-    //     triggerEvent: "CONTACT_UPDATED",
-    //     previousContact: previousSnapshot,
-    //     currentContact: currentSnapshot,
-    //   });
-    // }
+      logInfo("PUT_START_STATUS_AUTOMATION_AFTER", {
+        contactId: id,
+        trigger: triggerForUpdate,
+        triggerEvent: "CONTACT_UPDATED",
+      });
+    } else if (contactChanged) {
+      /**
+       * Déclenchement générique pour les autres conditions dynamiques :
+       * - changement de groupe
+       * - changement de source CRM
+       * - changement d’entreprise
+       * - changement de pays / ville
+       * - changement actif / désabonné
+       *
+       * On utilise CONTACT_CREATED comme fallback legacy parce que le front
+       * mappe aussi les déclencheurs dynamiques non legacy vers CONTACT_CREATED,
+       * tout en envoyant triggerEvent: CONTACT_UPDATED.
+       */
+      logInfo("PUT_START_GENERIC_UPDATED_AUTOMATION_BEFORE", {
+        contactId: id,
+        trigger: "CONTACT_CREATED",
+        triggerEvent: "CONTACT_UPDATED",
+        previousGroupId: previousSnapshot.groupId,
+        currentGroupId: currentSnapshot.groupId,
+        previousCrmSource: previousSnapshot.crmSource,
+        currentCrmSource: currentSnapshot.crmSource,
+        previousCompanyName: previousSnapshot.companyName,
+        currentCompanyName: currentSnapshot.companyName,
+        previousCountry: previousSnapshot.country,
+        currentCountry: currentSnapshot.country,
+        previousCity: previousSnapshot.city,
+        currentCity: currentSnapshot.city,
+      });
+
+      await startContactAutomationCompat({
+        userId: session.user.id,
+        contactId: id,
+        trigger: "CONTACT_CREATED",
+        triggerEvent: "CONTACT_UPDATED",
+        previousContact: previousSnapshot,
+        currentContact: currentSnapshot,
+      });
+
+      logInfo("PUT_START_GENERIC_UPDATED_AUTOMATION_AFTER", {
+        contactId: id,
+        trigger: "CONTACT_CREATED",
+        triggerEvent: "CONTACT_UPDATED",
+      });
+    } else {
+      logInfo("PUT_NO_RELEVANT_CHANGE_FOR_AUTOMATION", {
+        contactId: id,
+      });
+    }
 
     return NextResponse.json(updatedContact);
   } catch (err: unknown) {

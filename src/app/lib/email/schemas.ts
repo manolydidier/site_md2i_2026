@@ -102,8 +102,28 @@ const crmLeadSourceSchema = z.preprocess(
   ])
 );
 
+const crmStatusKeySchema = z
+  .string()
+  .trim()
+  .min(1, "La clé technique est obligatoire")
+  .max(80, "La clé technique est trop longue")
+  .regex(
+    /^[A-Z0-9_]+$/,
+    "La clé technique doit contenir uniquement des lettres majuscules, chiffres et underscores"
+  );
+
+const hexColorSchema = z
+  .string()
+  .trim()
+  .regex(/^#([0-9A-Fa-f]{3}|[0-9A-Fa-f]{6})$/, "Couleur invalide")
+  .default("#EF9F27");
+
 export const contactSchema = z.object({
-  email: z.string().trim().email("Email invalide"),
+  email: z
+    .string()
+    .trim()
+    .email("Email invalide")
+    .transform((value) => value.toLowerCase()),
 
   firstName: optionalText(100),
   lastName: optionalText(100),
@@ -118,7 +138,19 @@ export const contactSchema = z.object({
   city: optionalText(100),
   notes: optionalText(5000),
 
+  /**
+   * Ancien statut enum conservé pour compatibilité.
+   * On le garde tant que tout le CRM / automatisations n’utilise pas encore
+   * crmStatusOptionId.
+   */
   crmStatus: crmContactStatusSchema.default("NEW"),
+
+  /**
+   * Nouveau statut CRM dynamique.
+   * C’est ce champ que le nouveau ContactModal utilise.
+   */
+  crmStatusOptionId: optionalCuid,
+
   crmSource: crmLeadSourceSchema.default("MANUAL"),
 
   isActive: optionalBooleanDefault(true).default(true),
@@ -126,17 +158,17 @@ export const contactSchema = z.object({
 });
 
 export const groupSchema = z.object({
-  name: z.string().min(1, "Le nom est requis").max(100),
-  description: z.string().max(500).optional().nullable(),
+  name: z.string().trim().min(1, "Le nom est requis").max(100),
+  description: optionalText(500),
 });
 
 export const campaignSchema = z.object({
-  name: z.string().min(1, "Le nom est requis").max(200),
-  subject: z.string().min(1, "Le sujet est requis").max(500),
-  htmlContent: z.string().min(1, "Le contenu HTML est requis"),
+  name: z.string().trim().min(1, "Le nom est requis").max(200),
+  subject: z.string().trim().min(1, "Le sujet est requis").max(500),
+  htmlContent: z.string().trim().min(1, "Le contenu HTML est requis"),
 
-  fromName: z.string().min(1, "Le nom expéditeur est requis").max(100),
-  fromEmail: z.string().email("Email expéditeur invalide"),
+  fromName: z.string().trim().min(1, "Le nom expéditeur est requis").max(100),
+  fromEmail: z.string().trim().email("Email expéditeur invalide"),
   replyTo: optionalEmail,
 
   // Ancien système : un seul groupe.
@@ -149,6 +181,36 @@ export const campaignSchema = z.object({
   groupIds: z.array(z.string().cuid()).optional().default([]),
 });
 
+export const crmStatusOptionSchema = z.object({
+  label: z
+    .string()
+    .trim()
+    .min(1, "Le libellé du statut est obligatoire")
+    .max(120, "Le libellé est trop long"),
+
+  key: crmStatusKeySchema.optional(),
+
+  color: hexColorSchema,
+
+  description: optionalText(1000),
+
+  sortOrder: z.preprocess((value) => {
+    if (value === undefined || value === null || value === "") return 0;
+
+    if (typeof value === "string") {
+      const parsed = Number(value);
+      return Number.isFinite(parsed) ? parsed : 0;
+    }
+
+    return value;
+  }, z.number().int().default(0)),
+
+  isDefault: optionalBooleanDefault(false).default(false),
+  isActive: optionalBooleanDefault(true).default(true),
+});
+
+export const crmStatusOptionUpdateSchema = crmStatusOptionSchema.partial();
+
 export const sendTestSchema = z.object({
   campaignId: z.string().cuid(),
   testEmail: z.string().email("Email de test invalide"),
@@ -157,4 +219,8 @@ export const sendTestSchema = z.object({
 export type ContactInput = z.infer<typeof contactSchema>;
 export type GroupInput = z.infer<typeof groupSchema>;
 export type CampaignInput = z.infer<typeof campaignSchema>;
+export type CrmStatusOptionInput = z.infer<typeof crmStatusOptionSchema>;
+export type CrmStatusOptionUpdateInput = z.infer<
+  typeof crmStatusOptionUpdateSchema
+>;
 export type SendTestInput = z.infer<typeof sendTestSchema>;

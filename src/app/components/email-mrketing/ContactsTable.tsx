@@ -1,145 +1,126 @@
 "use client";
 
-import { useState } from "react";
-import { useContacts, useGroups } from "@/app/hooks/useEmailMarketing";
-import { ContactModal } from "./ContactModal";
-import { ImportContactsModal } from "./ImportContactsmodal";
-import type { Contact } from "@/app/types/email-marketing";
+import { useMemo, useState } from "react";
 import {
-  Search,
-  Plus,
-  Trash2,
-  Upload,
-  Download,
   ChevronLeft,
   ChevronRight,
-  Pencil,
-  Users,
+  Download,
+  Edit3,
   Filter,
-  RotateCcw,
   Loader2,
+  Mail,
+  Plus,
+  Search,
+  Trash2,
+  UserRound,
+  Users,
+  X,
 } from "lucide-react";
 
+import {
+  useContacts,
+  useCrmStatuses,
+  useGroups,
+} from "@/app/hooks/useEmailMarketing";
+import type { Contact } from "@/app/types/email-marketing";
+import { ContactModal } from "./ContactModal";
 import styles from "./ContactsTable.module.css";
 
-type TableContact = Contact & {
-  groupId?: string | null;
-  notes?: string | null;
-  jobTitle?: string | null;
-  companyName?: string | null;
-  country?: string | null;
-  city?: string | null;
-  phone?: string | null;
-  isActive?: boolean;
-  unsubscribed?: boolean;
-  crmStatus?: string | null;
-  crmSource?: string | null;
-  group?: {
-    id: string;
-    name: string;
-  } | null;
-};
-
-function getContactName(contact: Contact) {
-  const name = [contact.firstName, contact.lastName]
-    .filter(Boolean)
-    .join(" ")
-    .trim();
-
-  return name || "Sans nom";
-}
-
-function getCrmStatusLabel(status?: string | null) {
-  const labels: Record<string, string> = {
-    NEW: "Nouveau",
-    PROSPECT: "Prospect",
-    HOT_PROSPECT: "Chaud",
-    CUSTOMER: "Client",
-    PARTNER: "Partenaire",
-    INACTIVE: "Inactif",
-    LOST: "Perdu",
-  };
-
-  return labels[status || ""] || status || "—";
-}
-
-function getCrmSourceLabel(source?: string | null) {
-  const labels: Record<string, string> = {
-    WEBSITE: "Site web",
-    FACEBOOK: "Facebook",
-    LINKEDIN: "LinkedIn",
-    EMAIL_CAMPAIGN: "Email",
-    GOOGLE: "Google",
-    DIRECT: "Direct",
-    TENDER: "Appel d’offre",
-    REFERRAL: "Recommandation",
-    MANUAL: "Manuel",
-    OTHER: "Autre",
-  };
-
-  return labels[source || ""] || source || "—";
-}
-
-const CRM_STATUS_OPTIONS = [
-  { value: "NEW", label: "Nouveau" },
-  { value: "PROSPECT", label: "Prospect" },
-  { value: "HOT_PROSPECT", label: "Prospect chaud" },
-  { value: "CUSTOMER", label: "Client" },
-  { value: "PARTNER", label: "Partenaire" },
-  { value: "INACTIVE", label: "Inactif" },
-  { value: "LOST", label: "Perdu" },
-];
-
-const CRM_SOURCE_OPTIONS = [
+const CRM_SOURCES = [
+  { value: "MANUAL", label: "Manuel" },
   { value: "WEBSITE", label: "Site web" },
   { value: "FACEBOOK", label: "Facebook" },
   { value: "LINKEDIN", label: "LinkedIn" },
-  { value: "EMAIL_CAMPAIGN", label: "Email" },
+  { value: "EMAIL_CAMPAIGN", label: "Campagne email" },
   { value: "GOOGLE", label: "Google" },
   { value: "DIRECT", label: "Direct" },
   { value: "TENDER", label: "Appel d’offre" },
   { value: "REFERRAL", label: "Recommandation" },
-  { value: "MANUAL", label: "Manuel" },
   { value: "OTHER", label: "Autre" },
 ];
 
-function buildContactUpdatePayload(contact: TableContact, nextCrmStatus: string) {
-  return {
-    email: contact.email,
-    firstName: contact.firstName || null,
-    lastName: contact.lastName || null,
-    phone: contact.phone || null,
+function formatDate(value?: string | Date | null) {
+  if (!value) return "—";
 
-    groupId: contact.group?.id || contact.groupId || null,
+  const date = new Date(value);
 
-    jobTitle: contact.jobTitle || null,
-    companyName: contact.companyName || null,
-    country: contact.country || null,
-    city: contact.city || null,
-    notes: contact.notes || null,
+  if (Number.isNaN(date.getTime())) {
+    return "—";
+  }
 
-    crmStatus: nextCrmStatus,
-    crmSource: contact.crmSource || "MANUAL",
+  return date.toLocaleDateString("fr-FR", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+  });
+}
 
-    isActive: contact.isActive ?? true,
-    unsubscribed: contact.unsubscribed ?? false,
-  };
+function getContactName(contact: Contact) {
+  const fullName = `${contact.firstName || ""} ${contact.lastName || ""}`.trim();
+
+  return fullName || contact.email;
+}
+
+function getStatusLabel(
+  contact: Contact,
+  statuses: { id: string; key: string; label: string }[]
+) {
+  if (contact.crmStatusOption?.label) {
+    return contact.crmStatusOption.label;
+  }
+
+  if (contact.crmStatusOptionId) {
+    const status = statuses.find((item) => item.id === contact.crmStatusOptionId);
+
+    if (status) return status.label;
+  }
+
+  if (contact.crmStatus) {
+    const status = statuses.find((item) => item.key === contact.crmStatus);
+
+    return status?.label || contact.crmStatus;
+  }
+
+  return "—";
+}
+
+function getStatusColor(
+  contact: Contact,
+  statuses: { id: string; key: string; color: string }[]
+) {
+  if (contact.crmStatusOption?.color) {
+    return contact.crmStatusOption.color;
+  }
+
+  if (contact.crmStatusOptionId) {
+    const status = statuses.find((item) => item.id === contact.crmStatusOptionId);
+
+    if (status) return status.color;
+  }
+
+  if (contact.crmStatus) {
+    const status = statuses.find((item) => item.key === contact.crmStatus);
+
+    if (status) return status.color;
+  }
+
+  return "#64748b";
+}
+
+function getSourceLabel(value?: string | null) {
+  return CRM_SOURCES.find((source) => source.value === value)?.label || value || "—";
 }
 
 export function ContactsTable() {
-  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
-  const [editingContact, setEditingContact] = useState<Contact | null>(null);
-  const [showAddModal, setShowAddModal] = useState(false);
-  const [showImportModal, setShowImportModal] = useState(false);
-
-  const [filterGroupId, setFilterGroupId] = useState<string>("");
-  const [filterCrmStatus, setFilterCrmStatus] = useState<string>("");
-  const [filterCrmSource, setFilterCrmSource] = useState<string>("");
-
-  const [updatingStatusId, setUpdatingStatusId] = useState<string | null>(null);
-  const [quickActionError, setQuickActionError] = useState<string | null>(null);
-
   const { groups } = useGroups();
+  const { statuses, loading: statusesLoading } = useCrmStatuses();
+
+  const [groupId, setGroupId] = useState("");
+  const [crmStatusOptionId, setCrmStatusOptionId] = useState("");
+  const [crmSource, setCrmSource] = useState("");
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [editingContact, setEditingContact] = useState<Contact | null>(null);
+  const [modalOpen, setModalOpen] = useState(false);
 
   const {
     contacts,
@@ -151,273 +132,178 @@ export function ContactsTable() {
     setSearch,
     loading,
     error,
+    refetch,
     deleteContact,
     deleteMany,
-    refetch,
+    updateContact,
   } = useContacts({
-    groupId: filterGroupId || undefined,
-    crmStatus: filterCrmStatus || undefined,
-    crmSource: filterCrmSource || undefined,
+    pageSize: 20,
+    groupId: groupId || undefined,
+    crmStatusOptionId: crmStatusOptionId || undefined,
+    crmSource: crmSource || undefined,
   });
 
-  const hasActiveFilters =
-    Boolean(search) ||
-    Boolean(filterGroupId) ||
-    Boolean(filterCrmStatus) ||
-    Boolean(filterCrmSource);
+  const activeStatuses = useMemo(
+    () => statuses.filter((status) => status.isActive),
+    [statuses]
+  );
 
-  const selectedVisibleCount = contacts.filter((contact) =>
-    selectedIds.has(contact.id)
-  ).length;
+  const allCurrentPageSelected =
+    contacts.length > 0 && contacts.every((contact) => selectedIds.includes(contact.id));
 
-  const handleSearchChange = (value: string) => {
-    setSearch(value);
-    setPage(1);
-    setSelectedIds(new Set());
+  const hasFilters = Boolean(search || groupId || crmStatusOptionId || crmSource);
+
+  const openCreateModal = () => {
+    setEditingContact(null);
+    setModalOpen(true);
   };
 
-  const handleGroupChange = (value: string) => {
-    setFilterGroupId(value);
-    setPage(1);
-    setSelectedIds(new Set());
+  const openEditModal = (contact: Contact) => {
+    setEditingContact(contact);
+    setModalOpen(true);
   };
 
-  const handleStatusChange = (value: string) => {
-    setFilterCrmStatus(value);
-    setPage(1);
-    setSelectedIds(new Set());
+  const closeModal = () => {
+    setModalOpen(false);
+    setEditingContact(null);
   };
 
-  const handleSourceChange = (value: string) => {
-    setFilterCrmSource(value);
-    setPage(1);
-    setSelectedIds(new Set());
+  const handleSaved = () => {
+    closeModal();
+    refetch();
   };
 
-  const resetFilters = () => {
-    setSearch("");
-    setFilterGroupId("");
-    setFilterCrmStatus("");
-    setFilterCrmSource("");
-    setPage(1);
-    setSelectedIds(new Set());
-  };
+  const toggleSelectAll = () => {
+    if (allCurrentPageSelected) {
+      setSelectedIds((current) =>
+        current.filter((id) => !contacts.some((contact) => contact.id === id))
+      );
+      return;
+    }
 
-  const handlePageChange = (nextPage: number) => {
-    setPage(nextPage);
-    setSelectedIds(new Set());
+    setSelectedIds((current) =>
+      Array.from(new Set([...current, ...contacts.map((contact) => contact.id)]))
+    );
   };
 
   const toggleSelect = (id: string) => {
-    setSelectedIds((prev) => {
-      const next = new Set(prev);
-
-      if (next.has(id)) {
-        next.delete(id);
-      } else {
-        next.add(id);
-      }
-
-      return next;
-    });
-  };
-
-  const toggleAll = () => {
-    setSelectedIds((prev) => {
-      const next = new Set(prev);
-
-      if (selectedVisibleCount === contacts.length && contacts.length > 0) {
-        contacts.forEach((contact) => {
-          next.delete(contact.id);
-        });
-      } else {
-        contacts.forEach((contact) => {
-          next.add(contact.id);
-        });
-      }
-
-      return next;
-    });
-  };
-
-  const handleDeleteMany = async () => {
-    if (selectedIds.size === 0) return;
-
-    if (!confirm(`Supprimer ${selectedIds.size} contact(s) ?`)) return;
-
-    await deleteMany([...selectedIds]);
-
-    setSelectedIds(new Set());
-    refetch();
+    setSelectedIds((current) =>
+      current.includes(id)
+        ? current.filter((item) => item !== id)
+        : [...current, id]
+    );
   };
 
   const handleDeleteOne = async (contact: Contact) => {
-    if (!confirm(`Supprimer "${contact.email}" ?`)) return;
+    const confirmed = window.confirm(
+      `Supprimer le contact ${contact.email} ? Cette action est définitive.`
+    );
+
+    if (!confirmed) return;
 
     await deleteContact(contact.id);
+    setSelectedIds((current) => current.filter((id) => id !== contact.id));
+  };
 
-    setSelectedIds((prev) => {
-      const next = new Set(prev);
-      next.delete(contact.id);
-      return next;
+  const handleDeleteSelected = async () => {
+    if (selectedIds.length === 0) return;
+
+    const confirmed = window.confirm(
+      `Supprimer ${selectedIds.length} contact(s) sélectionné(s) ?`
+    );
+
+    if (!confirmed) return;
+
+    await deleteMany(selectedIds);
+    setSelectedIds([]);
+  };
+
+  const clearFilters = () => {
+    setSearch("");
+    setGroupId("");
+    setCrmStatusOptionId("");
+    setCrmSource("");
+    setPage(1);
+  };
+
+  const handleQuickStatusChange = async (contact: Contact, statusId: string) => {
+    await updateContact(contact.id, {
+      email: contact.email,
+      firstName: contact.firstName || null,
+      lastName: contact.lastName || null,
+      phone: contact.phone || null,
+      groupId: contact.groupId || null,
+
+      jobTitle: contact.jobTitle || null,
+      companyName: contact.companyName || null,
+      country: contact.country || null,
+      city: contact.city || null,
+      notes: contact.notes || null,
+
+      crmStatus: contact.crmStatus || "NEW",
+      crmStatusOptionId: statusId || null,
+      crmSource: contact.crmSource || "MANUAL",
+
+      isActive: contact.isActive,
+      unsubscribed: contact.unsubscribed,
     });
-
-    refetch();
   };
-
-  const handleQuickStatusChange = async (
-    contact: TableContact,
-    nextCrmStatus: string
-  ) => {
-    if (!nextCrmStatus || nextCrmStatus === contact.crmStatus) return;
-
-    setUpdatingStatusId(contact.id);
-    setQuickActionError(null);
-
-    try {
-      const res = await fetch(`/api/contacts/${contact.id}`, {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(buildContactUpdatePayload(contact, nextCrmStatus)),
-      });
-
-      const data = await res.json();
-
-      if (!res.ok) {
-        throw new Error(
-          data.error ||
-            `Impossible de changer le statut de ${contact.email}.`
-        );
-      }
-
-      await refetch();
-    } catch (err) {
-      setQuickActionError(
-        err instanceof Error
-          ? err.message
-          : "Erreur lors du changement de statut CRM."
-      );
-
-      await refetch();
-    } finally {
-      setUpdatingStatusId(null);
-    }
-  };
-
-  const handleExport = (format: "csv" | "xlsx") => {
-    const params = new URLSearchParams({
-      format,
-    });
-
-    if (search.trim()) {
-      params.set("search", search.trim());
-    }
-
-    if (filterGroupId) {
-      params.set("groupId", filterGroupId);
-    }
-
-    if (filterCrmStatus) {
-      params.set("crmStatus", filterCrmStatus);
-    }
-
-    if (filterCrmSource) {
-      params.set("crmSource", filterCrmSource);
-    }
-
-    window.open(`/api/contacts/export?${params.toString()}`);
-  };
-
-  const startPage = Math.max(
-    1,
-    Math.min(page - 2, Math.max(1, totalPages - 4))
-  );
-
-  const pageNumbers = Array.from(
-    { length: Math.min(5, totalPages) },
-    (_, i) => startPage + i
-  ).filter((p) => p <= totalPages);
 
   return (
-    <div className={styles.contactsTable}>
-      <div className={styles.contactsHead}>
+    <section className={styles.contactsTable}>
+      <header className={styles.contactsHead}>
         <div>
-          <div className={styles.sectionLabel}>Contacts CRM</div>
-
+          <div className={styles.sectionLabel}>Contacts</div>
           <p>
-            {hasActiveFilters
-              ? `${total.toLocaleString("fr-FR")} contact(s) trouvé(s)`
-              : `${total.toLocaleString("fr-FR")} contact(s) au total`}
+            {total} contact{total > 1 ? "s" : ""} dans votre base email
+            marketing.
           </p>
         </div>
 
         <div className={styles.actions}>
-          <button
-            type="button"
-            onClick={() => setShowImportModal(true)}
-            className={`${styles.btn} ${styles.btnSecondary}`}
-          >
-            <Upload size={16} />
-            Importer
-          </button>
-
           <div className={styles.exportWrap}>
-            <button
-              type="button"
-              className={`${styles.btn} ${styles.btnSecondary}`}
-            >
-              <Download size={16} />
+            <button type="button" className={`${styles.btn} ${styles.btnSecondary}`}>
+              <Download size={15} />
               Exporter
             </button>
 
             <div className={styles.exportMenu}>
-              <button type="button" onClick={() => handleExport("csv")}>
-                CSV
-              </button>
-
-              <button type="button" onClick={() => handleExport("xlsx")}>
-                Excel (.xlsx)
-              </button>
+              <button type="button">CSV</button>
+              <button type="button">Excel</button>
             </div>
           </div>
 
           <button
             type="button"
-            onClick={() => setShowAddModal(true)}
+            onClick={openCreateModal}
             className={`${styles.btn} ${styles.btnPrimary}`}
           >
-            <Plus size={16} />
+            <Plus size={15} />
             Ajouter
           </button>
         </div>
-      </div>
+      </header>
 
       <div className={styles.filters}>
         <div className={styles.searchBox}>
           <Search size={16} className={styles.inputIcon} />
-
           <input
-            type="text"
-            placeholder="Rechercher par email, prénom, nom, entreprise..."
             value={search}
-            onChange={(e) => handleSearchChange(e.target.value)}
+            onChange={(event) => setSearch(event.target.value)}
+            placeholder="Rechercher par email, nom, entreprise..."
           />
         </div>
 
         <div className={styles.selectBox}>
-          <Filter size={16} className={styles.inputIcon} />
-
+          <Users size={16} className={styles.inputIcon} />
           <select
-            value={filterGroupId}
-            onChange={(e) => handleGroupChange(e.target.value)}
+            value={groupId}
+            onChange={(event) => setGroupId(event.target.value)}
           >
             <option value="">Tous les groupes</option>
-
             {groups.map((group) => (
               <option key={group.id} value={group.id}>
-                {group.name} ({group._count?.contacts ?? 0})
+                {group.name}
               </option>
             ))}
           </select>
@@ -425,15 +311,16 @@ export function ContactsTable() {
 
         <div className={styles.selectBox}>
           <Filter size={16} className={styles.inputIcon} />
-
           <select
-            value={filterCrmStatus}
-            onChange={(e) => handleStatusChange(e.target.value)}
+            value={crmStatusOptionId}
+            onChange={(event) => setCrmStatusOptionId(event.target.value)}
+            disabled={statusesLoading}
           >
-            <option value="">Tous les statuts</option>
-
-            {CRM_STATUS_OPTIONS.map((status) => (
-              <option key={status.value} value={status.value}>
+            <option value="">
+              {statusesLoading ? "Chargement..." : "Tous les statuts"}
+            </option>
+            {activeStatuses.map((status) => (
+              <option key={status.id} value={status.id}>
                 {status.label}
               </option>
             ))}
@@ -441,15 +328,13 @@ export function ContactsTable() {
         </div>
 
         <div className={styles.selectBox}>
-          <Filter size={16} className={styles.inputIcon} />
-
+          <Mail size={16} className={styles.inputIcon} />
           <select
-            value={filterCrmSource}
-            onChange={(e) => handleSourceChange(e.target.value)}
+            value={crmSource}
+            onChange={(event) => setCrmSource(event.target.value)}
           >
             <option value="">Toutes les sources</option>
-
-            {CRM_SOURCE_OPTIONS.map((source) => (
+            {CRM_SOURCES.map((source) => (
               <option key={source.value} value={source.value}>
                 {source.label}
               </option>
@@ -457,34 +342,23 @@ export function ContactsTable() {
           </select>
         </div>
 
-        {hasActiveFilters && (
-          <button
-            type="button"
-            onClick={resetFilters}
-            className={`${styles.btn} ${styles.btnSecondary} ${styles.resetBtn}`}
-          >
-            <RotateCcw size={15} />
-            Réinitialiser
-          </button>
-        )}
+        <button
+          type="button"
+          onClick={clearFilters}
+          disabled={!hasFilters}
+          className={`${styles.btn} ${styles.btnSecondary} ${styles.resetBtn}`}
+        >
+          <X size={15} />
+          Réinitialiser
+        </button>
       </div>
 
-      {quickActionError && (
-        <div className={`${styles.selectionBar} ${styles.errorBar}`}>
-          <span>{quickActionError}</span>
-
-          <button type="button" onClick={() => setQuickActionError(null)}>
-            Fermer
-          </button>
-        </div>
-      )}
-
-      {selectedIds.size > 0 && (
+      {selectedIds.length > 0 && (
         <div className={styles.selectionBar}>
-          <span>{selectedIds.size} sélectionné(s)</span>
+          <span>{selectedIds.length} contact(s) sélectionné(s)</span>
 
-          <button type="button" onClick={handleDeleteMany}>
-            <Trash2 size={16} />
+          <button type="button" onClick={handleDeleteSelected}>
+            <Trash2 size={15} />
             Supprimer
           </button>
         </div>
@@ -497,73 +371,56 @@ export function ContactsTable() {
       )}
 
       <div className={styles.tableWrap}>
-        <table>
-          <thead>
-            <tr>
-              <th className={styles.checkCell}>
-                <input
-                  type="checkbox"
-                  checked={
-                    selectedVisibleCount === contacts.length &&
-                    contacts.length > 0
-                  }
-                  onChange={toggleAll}
-                  className={styles.checkbox}
-                />
-              </th>
+        {loading ? (
+          <div className={styles.emptyState}>
+            <div className={styles.spinner} />
+            <p>Chargement des contacts...</p>
+          </div>
+        ) : contacts.length === 0 ? (
+          <div className={styles.emptyState}>
+            <div className={styles.emptyIcon}>
+              <UserRound size={24} />
+            </div>
 
-              <th>Contact</th>
-              <th>Entreprise</th>
-              <th>Localisation</th>
-              <th>CRM</th>
-              <th>Groupe</th>
-              <th>Emailing</th>
-              <th>Ajouté le</th>
-              <th />
-            </tr>
-          </thead>
-
-          <tbody>
-            {loading ? (
+            <h3>Aucun contact trouvé</h3>
+            <p>Ajoutez un contact ou modifiez vos filtres.</p>
+          </div>
+        ) : (
+          <table>
+            <thead>
               <tr>
-                <td colSpan={9}>
-                  <div className={styles.emptyState}>
-                    <div className={styles.spinner} />
-                    <p>Chargement des contacts...</p>
-                  </div>
-                </td>
+                <th className={styles.checkCell}>
+                  <input
+                    type="checkbox"
+                    className={styles.checkbox}
+                    checked={allCurrentPageSelected}
+                    onChange={toggleSelectAll}
+                  />
+                </th>
+                <th>Contact</th>
+                <th>Entreprise</th>
+                <th>Localisation</th>
+                <th>Statut CRM</th>
+                <th>Groupe</th>
+                <th>Préférences</th>
+                <th>Date</th>
+                <th style={{ textAlign: "right" }}>Actions</th>
               </tr>
-            ) : contacts.length === 0 ? (
-              <tr>
-                <td colSpan={9}>
-                  <div className={styles.emptyState}>
-                    <div className={styles.emptyIcon}>
-                      <Users size={28} />
-                    </div>
+            </thead>
 
-                    <h3>Aucun contact trouvé</h3>
-
-                    <p>
-                      {hasActiveFilters
-                        ? "Aucun contact ne correspond aux filtres sélectionnés."
-                        : "Ajoutez ou importez vos premiers contacts."}
-                    </p>
-                  </div>
-                </td>
-              </tr>
-            ) : (
-              contacts.map((contact) => {
-                const tableContact = contact as TableContact;
-                const isUpdatingStatus = updatingStatusId === contact.id;
+            <tbody>
+              {contacts.map((contact) => {
+                const statusColor = getStatusColor(contact, activeStatuses);
+                const statusLabel = getStatusLabel(contact, activeStatuses);
 
                 return (
                   <tr key={contact.id}>
                     <td className={styles.checkCell}>
                       <input
                         type="checkbox"
-                        checked={selectedIds.has(contact.id)}
-                        onChange={() => toggleSelect(contact.id)}
                         className={styles.checkbox}
+                        checked={selectedIds.includes(contact.id)}
+                        onChange={() => toggleSelect(contact.id)}
                       />
                     </td>
 
@@ -572,78 +429,68 @@ export function ContactsTable() {
                         <span className={styles.contactName}>
                           {getContactName(contact)}
                         </span>
-
                         <span className={styles.email}>{contact.email}</span>
-
-                        {tableContact.phone && (
-                          <span className={styles.muted}>
-                            {tableContact.phone}
-                          </span>
+                        {contact.phone && (
+                          <span className={styles.muted}>{contact.phone}</span>
                         )}
-
-                        {tableContact.jobTitle && (
+                        {contact.jobTitle && (
                           <span className={styles.jobTitle}>
-                            {tableContact.jobTitle}
+                            {contact.jobTitle}
                           </span>
                         )}
                       </div>
                     </td>
 
                     <td>
-                      {tableContact.companyName ? (
-                        <div className={styles.companyBlock}>
-                          <span>{tableContact.companyName}</span>
-                        </div>
-                      ) : tableContact.crmCompany?.name ? (
-                        <div className={styles.companyBlock}>
-                          <span>{tableContact.crmCompany.name}</span>
-                        </div>
-                      ) : (
-                        <span className={styles.muted}>—</span>
-                      )}
+                      <div className={styles.companyBlock}>
+                        <span>{contact.companyName || "—"}</span>
+                        {contact.crmCompany?.name && (
+                          <span className={styles.muted}>
+                            CRM : {contact.crmCompany.name}
+                          </span>
+                        )}
+                      </div>
                     </td>
 
                     <td>
-                      {tableContact.city || tableContact.country ? (
-                        <div className={styles.locationBlock}>
-                          {tableContact.city && (
-                            <span>{tableContact.city}</span>
-                          )}
-
-                          {tableContact.country && (
-                            <span className={styles.muted}>
-                              {tableContact.country}
-                            </span>
-                          )}
-                        </div>
-                      ) : (
-                        <span className={styles.muted}>—</span>
-                      )}
+                      <div className={styles.locationBlock}>
+                        <span>{contact.city || "—"}</span>
+                        <span className={styles.muted}>
+                          {contact.country || "—"}
+                        </span>
+                      </div>
                     </td>
 
                     <td>
                       <div className={styles.crmMeta}>
+                        <span
+                          className={styles.status}
+                          style={{
+                            color: statusColor,
+                            background: `${statusColor}18`,
+                          }}
+                        >
+                          {statusLabel}
+                        </span>
+
                         <div className={styles.quickStatusWrap}>
                           <select
-                            value={tableContact.crmStatus || "NEW"}
-                            onChange={(e) =>
-                              handleQuickStatusChange(
-                                tableContact,
-                                e.target.value
-                              )
-                            }
-                            disabled={isUpdatingStatus}
+                            value={contact.crmStatusOptionId || contact.crmStatusOption?.id || ""}
                             className={styles.quickStatusSelect}
-                            title="Changer le statut CRM et déclencher les automatisations liées"
+                            onChange={(event) =>
+                              handleQuickStatusChange(contact, event.target.value)
+                            }
+                            disabled={statusesLoading}
                           >
-                            {CRM_STATUS_OPTIONS.map((status) => (
-                              <option key={status.value} value={status.value}>
+                            <option value="">Changer</option>
+                            {activeStatuses.map((status) => (
+                              <option key={status.id} value={status.id}>
                                 {status.label}
                               </option>
                             ))}
                           </select>
 
-                          {isUpdatingStatus && (
+                          {statusesLoading && (
                             <Loader2
                               size={14}
                               className={styles.quickStatusLoader}
@@ -651,57 +498,49 @@ export function ContactsTable() {
                           )}
                         </div>
 
-                        <span className={styles.quickStatusHelp}>
-                          {isUpdatingStatus
-                            ? "Mise à jour..."
-                            : `Actuel : ${getCrmStatusLabel(
-                                tableContact.crmStatus
-                              )}`}
-                        </span>
-
                         <span className={styles.sourcePill}>
-                          {getCrmSourceLabel(tableContact.crmSource)}
+                          {getSourceLabel(contact.crmSource)}
                         </span>
                       </div>
                     </td>
 
                     <td>
-                      {tableContact.group ? (
+                      {contact.group?.name ? (
                         <span className={styles.groupPill}>
-                          {tableContact.group.name}
+                          {contact.group.name}
                         </span>
                       ) : (
-                        <span className={styles.muted}>—</span>
+                        <span className={styles.muted}>Sans groupe</span>
                       )}
                     </td>
 
                     <td>
-                      {tableContact.unsubscribed ? (
+                      <div className={styles.crmMeta}>
                         <span
-                          className={`${styles.status} ${styles.statusRed}`}
+                          className={`${styles.status} ${
+                            contact.isActive
+                              ? styles.statusGreen
+                              : styles.statusGray
+                          }`}
                         >
-                          Désabonné
+                          {contact.isActive ? "Actif" : "Inactif"}
                         </span>
-                      ) : tableContact.isActive ? (
+
                         <span
-                          className={`${styles.status} ${styles.statusGreen}`}
+                          className={`${styles.status} ${
+                            contact.unsubscribed
+                              ? styles.statusRed
+                              : styles.statusBlue
+                          }`}
                         >
-                          Actif
+                          {contact.unsubscribed ? "Désabonné" : "Abonné"}
                         </span>
-                      ) : (
-                        <span
-                          className={`${styles.status} ${styles.statusGray}`}
-                        >
-                          Inactif
-                        </span>
-                      )}
+                      </div>
                     </td>
 
                     <td>
                       <span className={styles.date}>
-                        {new Date(contact.createdAt).toLocaleDateString(
-                          "fr-FR"
-                        )}
+                        {formatDate(contact.createdAt)}
                       </span>
                     </td>
 
@@ -709,10 +548,10 @@ export function ContactsTable() {
                       <div className={styles.rowActions}>
                         <button
                           type="button"
-                          onClick={() => setEditingContact(contact)}
+                          onClick={() => openEditModal(contact)}
                           title="Modifier"
                         >
-                          <Pencil size={16} />
+                          <Edit3 size={15} />
                         </button>
 
                         <button
@@ -721,84 +560,70 @@ export function ContactsTable() {
                           title="Supprimer"
                           className={styles.danger}
                         >
-                          <Trash2 size={16} />
+                          <Trash2 size={15} />
                         </button>
                       </div>
                     </td>
                   </tr>
                 );
-              })
-            )}
-          </tbody>
-        </table>
+              })}
+            </tbody>
+          </table>
+        )}
       </div>
 
       {totalPages > 1 && (
-        <div className={styles.pagination}>
+        <footer className={styles.pagination}>
           <p>
-            Page {page} sur {totalPages} · {total.toLocaleString("fr-FR")}{" "}
-            contacts
+            Page <strong>{page}</strong> sur <strong>{totalPages}</strong>
           </p>
 
           <div className={styles.paginationActions}>
             <button
               type="button"
-              onClick={() => handlePageChange(Math.max(1, page - 1))}
-              disabled={page === 1}
+              onClick={() => setPage(Math.max(1, page - 1))}
+              disabled={page <= 1}
               className={styles.pageBtn}
             >
-              <ChevronLeft size={16} />
+              <ChevronLeft size={15} />
             </button>
 
-            {pageNumbers.map((p) => (
-              <button
-                key={p}
-                type="button"
-                onClick={() => handlePageChange(p)}
-                className={`${styles.pageNumber} ${
-                  p === page ? styles.active : ""
-                }`}
-              >
-                {p}
-              </button>
-            ))}
+            {Array.from({ length: totalPages }).slice(0, 7).map((_, index) => {
+              const pageNumber = index + 1;
+
+              return (
+                <button
+                  key={pageNumber}
+                  type="button"
+                  onClick={() => setPage(pageNumber)}
+                  className={`${styles.pageNumber} ${
+                    page === pageNumber ? styles.active : ""
+                  }`}
+                >
+                  {pageNumber}
+                </button>
+              );
+            })}
 
             <button
               type="button"
-              onClick={() => handlePageChange(Math.min(totalPages, page + 1))}
-              disabled={page === totalPages}
+              onClick={() => setPage(Math.min(totalPages, page + 1))}
+              disabled={page >= totalPages}
               className={styles.pageBtn}
             >
-              <ChevronRight size={16} />
+              <ChevronRight size={15} />
             </button>
           </div>
-        </div>
+        </footer>
       )}
 
-      {(showAddModal || editingContact) && (
+      {modalOpen && (
         <ContactModal
           contact={editingContact}
-          onClose={() => {
-            setShowAddModal(false);
-            setEditingContact(null);
-          }}
-          onSave={() => {
-            setShowAddModal(false);
-            setEditingContact(null);
-            refetch();
-          }}
+          onClose={closeModal}
+          onSave={handleSaved}
         />
       )}
-
-      {showImportModal && (
-        <ImportContactsModal
-          onClose={() => setShowImportModal(false)}
-          onSuccess={() => {
-            setShowImportModal(false);
-            refetch();
-          }}
-        />
-      )}
-    </div>
+    </section>
   );
 }
