@@ -3,8 +3,11 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { motion, useReducedMotion } from 'framer-motion'
+import { useTranslation } from 'react-i18next'
 import api from '@/app/lib/axios'
 import { useTheme } from '@/app/context/ThemeContext'
+import { translateDynamicItems } from '@/app/i18n/dynamic'
+import { type Locale, normalizeLocale } from '@/app/i18n/settings'
 import s from './PublicProductsPage.module.css'
 
 interface Category {
@@ -75,9 +78,9 @@ function useScroll() {
   return { prog, top }
 }
 
-function formatPrice(value: Product['price']) {
+function formatPrice(value: Product['price'], locale: Locale) {
   if (value === null || value === undefined || value === '') {
-    return 'Sur devis'
+    return locale === 'en' ? 'On request' : 'Sur devis'
   }
 
   const numeric = Number(value)
@@ -86,7 +89,9 @@ function formatPrice(value: Product['price']) {
     return String(value)
   }
 
-  return `${new Intl.NumberFormat('fr-FR').format(numeric)} Ar`
+  return `${new Intl.NumberFormat(locale === 'en' ? 'en-US' : 'fr-FR').format(
+    numeric,
+  )} Ar`
 }
 
 function getProductIdentifier(product: Product) {
@@ -213,21 +218,22 @@ const IconChevron = ({ open }: { open: boolean }) => (
   </svg>
 )
 
-const SORT_OPTIONS: { key: SortKey; label: string }[] = [
-  { key: 'date-desc', label: 'Plus récent' },
-  { key: 'date-asc', label: 'Plus ancien' },
-  { key: 'price-asc', label: 'Prix croissant' },
-  { key: 'price-desc', label: 'Prix décroissant' },
-  { key: 'name-asc', label: 'Nom A → Z' },
-  { key: 'name-desc', label: 'Nom Z → A' },
+const SORT_OPTIONS: { key: SortKey; labelKey: string }[] = [
+  { key: 'date-desc', labelKey: 'productsPage.sort.dateDesc' },
+  { key: 'date-asc', labelKey: 'productsPage.sort.dateAsc' },
+  { key: 'price-asc', labelKey: 'productsPage.sort.priceAsc' },
+  { key: 'price-desc', labelKey: 'productsPage.sort.priceDesc' },
+  { key: 'name-asc', labelKey: 'productsPage.sort.nameAsc' },
+  { key: 'name-desc', labelKey: 'productsPage.sort.nameDesc' },
 ]
 
 // ─── ExcerptBlock ────────────────────────────────────────────────────────────
 
 function ExcerptBlock({ text }: { text: string | null }) {
+  const { t } = useTranslation()
   const [expanded, setExpanded] = useState(false)
 
-  const raw = text?.trim() || 'Aucune description disponible.'
+  const raw = text?.trim() || t('productsPage.card.noDescription')
   const isLong = raw.length > EXCERPT_LIMIT
 
   return (
@@ -245,7 +251,11 @@ function ExcerptBlock({ text }: { text: string | null }) {
             setExpanded((v) => !v)
           }}
         >
-          <span>{expanded ? 'Réduire' : 'Lire plus'}</span>
+          <span>
+            {expanded
+              ? t('productsPage.card.collapse')
+              : t('productsPage.card.readMore')}
+          </span>
 
           <svg
             viewBox="0 0 24 24"
@@ -280,12 +290,14 @@ function ProductCard({
   fmt: Intl.DateTimeFormat
   onNavigate: (href: string) => void
 }) {
+  const { t, i18n } = useTranslation()
   const cardRef = useRef<HTMLElement>(null)
   const glowRef = useRef<HTMLDivElement>(null)
   const prefersReducedMotion = useReducedMotion()
 
   const detailHref = getProductDetailHref(product)
   const leadHref = getProductLeadHref(product)
+  const locale = normalizeLocale(i18n.resolvedLanguage || i18n.language)
 
   const onMouseMove = (e: React.MouseEvent<HTMLElement>) => {
     if (prefersReducedMotion) return
@@ -327,7 +339,7 @@ function ProductCard({
     ? fmt.format(new Date(publishedValue))
     : null
 
-  const categoryLabel = product.category?.name || 'Catalogue'
+  const categoryLabel = product.category?.name || t('productsPage.card.catalog')
 
   return (
     <motion.article
@@ -372,7 +384,9 @@ function ProductCard({
       <div className={s.body}>
         <div className={s.cardHeader}>
           <div className={s.cardTopRow}>
-            <span className={s.cardEyebrow}>Solution MD2I</span>
+            <span className={s.cardEyebrow}>
+              {t('productsPage.card.eyebrow')}
+            </span>
 
             {publishedLabel && (
               <div className={s.dateLine}>
@@ -391,29 +405,37 @@ function ProductCard({
           <div className={s.cardMetaRow}>
             <div className={s.cardDetails}>
               <div className={s.detailItem}>
-                <span className={s.detailLabel}>Catégorie</span>
+                <span className={s.detailLabel}>
+                  {t('productsPage.card.category')}
+                </span>
                 <span className={s.detailValue}>{categoryLabel}</span>
               </div>
 
               {publishedLabel && (
                 <div className={s.detailItem}>
-                  <span className={s.detailLabel}>Mis à jour</span>
+                  <span className={s.detailLabel}>
+                    {t('productsPage.card.updated')}
+                  </span>
                   <span className={s.detailValue}>{publishedLabel}</span>
                 </div>
               )}
             </div>
 
             <div className={s.pricePanel}>
-              <span className={s.priceLabel}>Tarif</span>
-              <span className={s.cardPrice}>{formatPrice(product.price)}</span>
+              <span className={s.priceLabel}>
+                {t('productsPage.card.price')}
+              </span>
+              <span className={s.cardPrice}>
+                {formatPrice(product.price, locale)}
+              </span>
             </div>
           </div>
 
           <div className={s.cardActionRow}>
             <span className={s.cardCategoryInline}>
               {product.category?.name
-                ? `${product.category.name} · Fiche produit`
-                : 'Fiche produit'}
+                ? `${product.category.name} · ${t('productsPage.card.productSheet')}`
+                : t('productsPage.card.productSheet')}
             </span>
 
             <div className={s.cardButtons}>
@@ -425,7 +447,7 @@ function ProductCard({
                   onNavigate(detailHref)
                 }}
               >
-                Voir la fiche
+                {t('productsPage.card.viewSheet')}
               </button>
 
               <button
@@ -436,7 +458,7 @@ function ProductCard({
                   onNavigate(leadHref)
                 }}
               >
-                Demander une démo
+                {t('productsPage.card.requestDemo')}
                 <IconArrow />
               </button>
             </div>
@@ -453,6 +475,8 @@ export default function PublicProductsPage({ router }: PublicProductsPageProps) 
   const nextRouter = useRouter()
   const nav = router ?? nextRouter
   const { dark } = useTheme()
+  const { t, i18n } = useTranslation()
+  const locale = normalizeLocale(i18n.resolvedLanguage || i18n.language)
 
   const [mounted, setMounted] = useState(false)
   const [products, setProducts] = useState<Product[]>([])
@@ -487,12 +511,12 @@ export default function PublicProductsPage({ router }: PublicProductsPageProps) 
 
   const fmt = useMemo(
     () =>
-      new Intl.DateTimeFormat('fr-FR', {
+      new Intl.DateTimeFormat(locale === 'en' ? 'en-US' : 'fr-FR', {
         day: '2-digit',
         month: 'short',
         year: 'numeric',
       }),
-    [],
+    [locale],
   )
 
   useEffect(() => {
@@ -551,13 +575,19 @@ export default function PublicProductsPage({ router }: PublicProductsPageProps) 
 
     try {
       const response = await api.get('/api/product-categories')
-      setCategories(response.data.data)
+      const nextCategories = await translateDynamicItems<Category>(
+        response.data.data ?? [],
+        locale,
+        ['name'],
+      )
+
+      setCategories(nextCategories)
     } catch {
       setCategories([])
     } finally {
       setCatsLoading(false)
     }
-  }, [])
+  }, [locale])
 
   const fetchProducts = useCallback(
     async (
@@ -594,7 +624,15 @@ export default function PublicProductsPage({ router }: PublicProductsPageProps) 
 
         if (id !== reqId.current) return
 
-        setProducts(response.data.data ?? [])
+        const nextProducts = await translateDynamicItems<Product>(
+          response.data.data ?? [],
+          locale,
+          ['name', 'excerpt', 'category.name'],
+        )
+
+        if (id !== reqId.current) return
+
+        setProducts(nextProducts)
         setTotalPages(response.data.pagination?.totalPages ?? 1)
         setTotalItems(
           response.data.pagination?.total ?? response.data.data?.length ?? 0,
@@ -602,7 +640,7 @@ export default function PublicProductsPage({ router }: PublicProductsPageProps) 
       } catch {
         if (id !== reqId.current) return
 
-        setError('Impossible de charger les produits.')
+        setError(t('productsPage.errors.load'))
         setProducts([])
         setTotalPages(1)
         setTotalItems(0)
@@ -612,7 +650,7 @@ export default function PublicProductsPage({ router }: PublicProductsPageProps) 
         }
       }
     },
-    [],
+    [locale, t],
   )
 
   useEffect(() => {
@@ -759,29 +797,32 @@ export default function PublicProductsPage({ router }: PublicProductsPageProps) 
           <div className={s.heroLeft}>
             <div className={s.eyebrow}>
               <span className={s.eyebrowDot} />
-              Catalogue produits
+              {t('productsPage.heroEyebrow')}
             </div>
 
             <h1 className={s.heroTitle}>
-              Nos <em>Solutions</em>
+              {t('productsPage.titlePrefix')}{' '}
+              <em>{t('productsPage.titleEmphasis')}</em>
             </h1>
 
             <p className={s.heroSub}>
-              Logiciels, modules et outils métier conçus pour des équipes
-              exigeantes. Explorez notre catalogue, comparez les tarifs et
-              demandez directement une démonstration.
+              {t('productsPage.subtitle')}
             </p>
           </div>
 
           <div className={s.heroStats}>
             <div className={s.heroStat}>
               <div className={s.heroStatNum}>{!loading ? totalItems : '—'}</div>
-              <div className={s.heroStatLabel}>produits</div>
+              <div className={s.heroStatLabel}>
+                {t('productsPage.statsProducts')}
+              </div>
             </div>
 
             <div className={s.heroStat}>
               <div className={s.heroStatNum}>{categories.length || '—'}</div>
-              <div className={s.heroStatLabel}>catégories</div>
+              <div className={s.heroStatLabel}>
+                {t('productsPage.statsCategories')}
+              </div>
             </div>
           </div>
         </header>
@@ -796,7 +837,7 @@ export default function PublicProductsPage({ router }: PublicProductsPageProps) 
                 type="text"
                 value={search}
                 onChange={(e) => onSearch(e.target.value)}
-                placeholder="Rechercher une solution…"
+                placeholder={t('productsPage.searchPlaceholder')}
                 className={s.searchInput}
               />
 
@@ -805,7 +846,7 @@ export default function PublicProductsPage({ router }: PublicProductsPageProps) 
                   type="button"
                   className={s.iconBtn}
                   onClick={() => onSearch('')}
-                  aria-label="Effacer"
+                  aria-label={t('common.clear')}
                 >
                   <IconX />
                 </button>
@@ -832,7 +873,11 @@ export default function PublicProductsPage({ router }: PublicProductsPageProps) 
                   }}
                 >
                   <IconFilter />
-                  <span>{filterOpen ? 'Fermer filtres' : 'Afficher filtres'}</span>
+                  <span>
+                    {filterOpen
+                      ? t('productsPage.filtersClose')
+                      : t('productsPage.filtersOpen')}
+                  </span>
 
                   {activeFilterCount > 0 && (
                     <span className={s.dropBadge}>{activeFilterCount}</span>
@@ -851,9 +896,11 @@ export default function PublicProductsPage({ router }: PublicProductsPageProps) 
                   <div className={s.dropPanelInner}>
                     <div className={s.dropPanelHeader}>
                       <div>
-                        <div className={s.dropPanelTitle}>Filtres</div>
+                        <div className={s.dropPanelTitle}>
+                          {t('productsPage.filtersTitle')}
+                        </div>
                         <div className={s.dropPanelHint}>
-                          Fermeture automatique après 6 secondes
+                          {t('productsPage.panelAutoClose')}
                         </div>
                       </div>
 
@@ -864,13 +911,15 @@ export default function PublicProductsPage({ router }: PublicProductsPageProps) 
                           setFilterOpen(false)
                           clearAutoClose()
                         }}
-                        aria-label="Fermer les filtres"
+                        aria-label={t('productsPage.closeFilters')}
                       >
                         <IconX />
                       </button>
                     </div>
 
-                    <div className={s.dropLabel}>Catégories</div>
+                    <div className={s.dropLabel}>
+                      {t('productsPage.categories')}
+                    </div>
 
                     <div className={s.catList}>
                       <button
@@ -880,7 +929,7 @@ export default function PublicProductsPage({ router }: PublicProductsPageProps) 
                         }`}
                         onClick={() => onCat('')}
                       >
-                        Toutes
+                        {t('productsPage.allCategories')}
                       </button>
 
                       {!catsLoading &&
@@ -904,13 +953,13 @@ export default function PublicProductsPage({ router }: PublicProductsPageProps) 
                     </div>
 
                     <div className={s.dropLabel} style={{ marginTop: 16 }}>
-                      Prix
+                      {t('productsPage.price')}
                     </div>
 
                     <div className={s.fieldGrid}>
                       <div className={s.field}>
                         <label className={s.fieldLabel} htmlFor="min-price">
-                          Prix min
+                          {t('productsPage.minPrice')}
                         </label>
 
                         <input
@@ -926,7 +975,7 @@ export default function PublicProductsPage({ router }: PublicProductsPageProps) 
 
                       <div className={s.field}>
                         <label className={s.fieldLabel} htmlFor="max-price">
-                          Prix max
+                          {t('productsPage.maxPrice')}
                         </label>
 
                         <input
@@ -942,7 +991,7 @@ export default function PublicProductsPage({ router }: PublicProductsPageProps) 
                     </div>
 
                     <div className={s.dropLabel} style={{ marginTop: 16 }}>
-                      Visuel
+                      {t('productsPage.visual')}
                     </div>
 
                     <div className={s.switchRow}>
@@ -953,7 +1002,7 @@ export default function PublicProductsPage({ router }: PublicProductsPageProps) 
                         }`}
                         onClick={() => onImageMode('all')}
                       >
-                        Tous
+                        {t('productsPage.allImages')}
                       </button>
 
                       <button
@@ -963,7 +1012,7 @@ export default function PublicProductsPage({ router }: PublicProductsPageProps) 
                         }`}
                         onClick={() => onImageMode('with-image')}
                       >
-                        Avec image
+                        {t('productsPage.withImage')}
                       </button>
 
                       <button
@@ -975,7 +1024,7 @@ export default function PublicProductsPage({ router }: PublicProductsPageProps) 
                         }`}
                         onClick={() => onImageMode('without-image')}
                       >
-                        Sans image
+                        {t('productsPage.withoutImage')}
                       </button>
                     </div>
                   </div>
@@ -1001,7 +1050,11 @@ export default function PublicProductsPage({ router }: PublicProductsPageProps) 
                   }}
                 >
                   <IconSort />
-                  <span>{sortOpen ? 'Fermer tri' : 'Afficher tri'}</span>
+                  <span>
+                    {sortOpen
+                      ? t('productsPage.sortClose')
+                      : t('productsPage.sortOpen')}
+                  </span>
                   <IconChevron open={sortOpen} />
                 </button>
 
@@ -1015,9 +1068,11 @@ export default function PublicProductsPage({ router }: PublicProductsPageProps) 
                   <div className={s.dropPanelInner}>
                     <div className={s.dropPanelHeader}>
                       <div>
-                        <div className={s.dropPanelTitle}>Tri</div>
+                        <div className={s.dropPanelTitle}>
+                          {t('productsPage.sortTitle')}
+                        </div>
                         <div className={s.dropPanelHint}>
-                          Fermeture automatique après 6 secondes
+                          {t('productsPage.panelAutoClose')}
                         </div>
                       </div>
 
@@ -1028,13 +1083,15 @@ export default function PublicProductsPage({ router }: PublicProductsPageProps) 
                           setSortOpen(false)
                           clearAutoClose()
                         }}
-                        aria-label="Fermer le tri"
+                        aria-label={t('productsPage.closeSort')}
                       >
                         <IconX />
                       </button>
                     </div>
 
-                    <div className={s.dropLabel}>Trier par</div>
+                    <div className={s.dropLabel}>
+                      {t('productsPage.sortBy')}
+                    </div>
 
                     {SORT_OPTIONS.map((option) => (
                       <button
@@ -1045,7 +1102,7 @@ export default function PublicProductsPage({ router }: PublicProductsPageProps) 
                         }`}
                         onClick={() => onSort(option.key)}
                       >
-                        {option.label}
+                        {t(option.labelKey)}
 
                         {sort === option.key && (
                           <span className={s.sortCheck}>✓</span>
@@ -1058,7 +1115,7 @@ export default function PublicProductsPage({ router }: PublicProductsPageProps) 
 
               {hasFilters && (
                 <button type="button" className={s.clearBtn} onClick={clear}>
-                  Tout effacer
+                  {t('common.clearAll')}
                 </button>
               )}
             </div>
@@ -1088,7 +1145,7 @@ export default function PublicProductsPage({ router }: PublicProductsPageProps) 
 
               {minPrice.trim() && (
                 <span className={s.chip}>
-                  Min {formatPrice(minPrice)}
+                  Min {formatPrice(minPrice, locale)}
 
                   <button type="button" onClick={() => onMinPrice('')}>
                     <IconX />
@@ -1098,7 +1155,7 @@ export default function PublicProductsPage({ router }: PublicProductsPageProps) 
 
               {maxPrice.trim() && (
                 <span className={s.chip}>
-                  Max {formatPrice(maxPrice)}
+                  Max {formatPrice(maxPrice, locale)}
 
                   <button type="button" onClick={() => onMaxPrice('')}>
                     <IconX />
@@ -1108,7 +1165,7 @@ export default function PublicProductsPage({ router }: PublicProductsPageProps) 
 
               {imageMode === 'with-image' && (
                 <span className={s.chip}>
-                  Avec image
+                  {t('productsPage.withImage')}
 
                   <button type="button" onClick={() => onImageMode('all')}>
                     <IconX />
@@ -1118,7 +1175,7 @@ export default function PublicProductsPage({ router }: PublicProductsPageProps) 
 
               {imageMode === 'without-image' && (
                 <span className={s.chip}>
-                  Sans image
+                  {t('productsPage.withoutImage')}
 
                   <button type="button" onClick={() => onImageMode('all')}>
                     <IconX />
@@ -1131,15 +1188,13 @@ export default function PublicProductsPage({ router }: PublicProductsPageProps) 
           <div className={s.resultsMeta}>
             <span className={s.resultsCount}>
               {!loading
-                ? `${totalItems} solution${totalItems > 1 ? 's' : ''} disponible${
-                    totalItems > 1 ? 's' : ''
-                  }`
-                : 'Chargement…'}
+                ? t('productsPage.resultCount', { count: totalItems })
+                : t('common.loading')}
             </span>
 
             {totalPages > 1 && !loading && (
               <span className={s.pagePill}>
-                Page {page} / {totalPages}
+                {t('common.page', { page, total: totalPages })}
               </span>
             )}
           </div>
@@ -1168,15 +1223,13 @@ export default function PublicProductsPage({ router }: PublicProductsPageProps) 
               <IconSearch />
             </div>
 
-            <h2>Aucune solution trouvée</h2>
+            <h2>{t('productsPage.emptyTitle')}</h2>
 
-            <p>
-              Essayez un autre mot-clé ou réinitialisez les filtres actifs.
-            </p>
+            <p>{t('productsPage.emptyText')}</p>
 
             {hasFilters && (
               <button type="button" className={s.resetBtn} onClick={clear}>
-                Réinitialiser les filtres
+                {t('common.resetFilters')}
               </button>
             )}
           </div>
@@ -1241,7 +1294,7 @@ export default function PublicProductsPage({ router }: PublicProductsPageProps) 
         type="button"
         className={`${s.scrollTop} ${top ? s.scrollTopShow : ''}`}
         onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
-        aria-label="Retour en haut"
+        aria-label={t('common.scrollTop')}
       >
         <IconUp />
       </button>

@@ -1,7 +1,7 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
+import { T } from '@/app/i18n/T'
 import styles from './apropos.module.css'
-import ContactPage from '../contact/contact'
 
 export const metadata: Metadata = {
   title: 'À propos | MD2I',
@@ -201,53 +201,76 @@ export default function AboutPage() {
         <div className={styles.container}>
           <div className={styles.heroShell}>
             <div className={styles.heroMain}>
-              <span className={styles.badge}>Le cabinet MD2I</span>
+              <span className={styles.badge}>
+                <T k="aboutPage.heroBadge">Le cabinet MD2I</T>
+              </span>
 
               <h1 className={styles.heroTitle}>
-                Une présence discrète dans la forme,
+                <T k="aboutPage.heroTitleLine1">
+                  Une présence discrète dans la forme,
+                </T>
                 <br />
-                solide dans l’exécution
+                <T k="aboutPage.heroTitleLine2">
+                  solide dans l’exécution
+                </T>
               </h1>
 
               <p className={styles.heroText}>
-                Depuis 1987, MD2I conçoit et déploie des solutions logicielles,
-                des méthodes et des dispositifs d’accompagnement dédiés à la
-                gestion, au suivi et à l’évaluation des projets de développement.
-                Le cabinet agit avec une priorité constante : produire des outils
-                clairs, robustes et durables, réellement utiles aux équipes.
+                <T k="aboutPage.heroText">
+                  Depuis 1987, MD2I conçoit et déploie des solutions
+                  logicielles, des méthodes et des dispositifs
+                  d’accompagnement dédiés à la gestion, au suivi et à
+                  l’évaluation des projets de développement. Le cabinet agit
+                  avec une priorité constante : produire des outils clairs,
+                  robustes et durables, réellement utiles aux équipes.
+                </T>
               </p>
 
               <div className={styles.heroActions}>
                 <Link href="/portfolio" className={`${styles.btn} ${styles.btnPrimary}`}>
-                  Voir nos références
+                  <T k="aboutPage.referencesCta">Voir nos références</T>
                 </Link>
                 <Link href="/contact" className={`${styles.btn} ${styles.btnSecondary}`}>
-                  Nous contacter
+                  <T k="aboutPage.contactCta">Nous contacter</T>
                 </Link>
               </div>
             </div>
 
             <aside className={styles.heroPanel}>
               <div className={styles.heroPanelIntro}>
-                <span className={styles.heroPanelLabel}>Coordination</span>
+                <span className={styles.heroPanelLabel}>
+                  <T k="aboutPage.panelLabel">Coordination</T>
+                </span>
                 <p>
-                  Une organisation resserrée, des pôles identifiés et des points
-                  de contact directs pour chaque besoin métier.
+                  <T k="aboutPage.panelText">
+                    Une organisation resserrée, des pôles identifiés et des
+                    points de contact directs pour chaque besoin métier.
+                  </T>
                 </p>
               </div>
 
               <div className={styles.heroMetrics}>
                 <div>
                   <strong>1987</strong>
-                  <span>Création du cabinet</span>
+                  <span>
+                    <T k="aboutPage.metrics.created">Création du cabinet</T>
+                  </span>
                 </div>
                 <div>
                   <strong>54</strong>
-                  <span>Pays et ensembles régionaux</span>
+                  <span>
+                    <T k="aboutPage.metrics.countries">
+                      Pays et ensembles régionaux
+                    </T>
+                  </span>
                 </div>
                 <div>
                   <strong>2</strong>
-                  <span>Implantations principales</span>
+                  <span>
+                    <T k="aboutPage.metrics.offices">
+                      Implantations principales
+                    </T>
+                  </span>
                 </div>
               </div>
             </aside>
@@ -258,20 +281,37 @@ export default function AboutPage() {
       <section className={styles.section}>
         <div className={styles.container}>
           <div className={styles.sectionHead}>
-            <span className={styles.sectionKicker}>Repères clés</span>
-            <h2>Quelques chiffres pour situer MD2I</h2>
+            <span className={styles.sectionKicker}>
+              <T k="aboutPage.sections.figuresKicker">Repères clés</T>
+            </span>
+            <h2>
+              <T k="aboutPage.sections.figuresTitle">
+                Quelques chiffres pour situer MD2I
+              </T>
+            </h2>
             <p>
-              Une lecture rapide des repères qui traduisent l’ancienneté,
-              l’ouverture internationale et la capacité d’intervention du cabinet.
+              <T k="aboutPage.sections.figuresText">
+                Une lecture rapide des repères qui traduisent l’ancienneté,
+                l’ouverture internationale et la capacité d’intervention du
+                cabinet.
+              </T>
             </p>
           </div>
 
           <div className={styles.statsGrid}>
-            {keyFigures.map((item) => (
+            {keyFigures.map((item, index) => (
               <article key={item.label} className={styles.statCard}>
                 <div className={styles.statValue}>{item.value}</div>
-                <div className={styles.statLabel}>{item.label}</div>
-                <p>{item.text}</p>
+                <div className={styles.statLabel}>
+                  <T k={`aboutPage.keyFigures.${index}.label`}>
+                    {item.label}
+                  </T>
+                </div>
+                <p>
+                  <T k={`aboutPage.keyFigures.${index}.text`}>
+                    {item.text}
+                  </T>
+                </p>
               </article>
             ))}
           </div>
@@ -282,13 +322,23 @@ export default function AboutPage() {
         <div className={styles.container}>
           <div className={styles.editorialBand}>
             <div>
-              <span className={styles.sectionKicker}>Positionnement</span>
-              <h2>Des outils utiles, une méthode lisible, un accompagnement durable</h2>
+              <span className={styles.sectionKicker}>
+                <T k="aboutPage.sections.positioningKicker">Positionnement</T>
+              </span>
+              <h2>
+                <T k="aboutPage.sections.positioningTitle">
+                  Des outils utiles, une méthode lisible, un accompagnement
+                  durable
+                </T>
+              </h2>
             </div>
             <p>
-              MD2I privilégie une approche sobre : limiter la complexité visuelle,
-              clarifier les usages et concentrer l’effort sur la qualité des
-              processus, la fiabilité des données et la continuité du support.
+              <T k="aboutPage.sections.positioningText">
+                MD2I privilégie une approche sobre : limiter la complexité
+                visuelle, clarifier les usages et concentrer l’effort sur la
+                qualité des processus, la fiabilité des données et la
+                continuité du support.
+              </T>
             </p>
           </div>
         </div>
@@ -297,12 +347,20 @@ export default function AboutPage() {
       <section className={styles.section}>
         <div className={styles.container}>
           <div className={styles.sectionHead}>
-            <span className={styles.sectionKicker}>Historique</span>
-            <h2>Une trajectoire construite dans la durée</h2>
+            <span className={styles.sectionKicker}>
+              <T k="aboutPage.sections.historyKicker">Historique</T>
+            </span>
+            <h2>
+              <T k="aboutPage.sections.historyTitle">
+                Une trajectoire construite dans la durée
+              </T>
+            </h2>
             <p>
-              L’évolution du cabinet reflète une continuité claire : expertise
-              métier, développement d’outils, ouverture internationale et appui
-              durable aux utilisateurs.
+              <T k="aboutPage.sections.historyText">
+                L’évolution du cabinet reflète une continuité claire :
+                expertise métier, développement d’outils, ouverture
+                internationale et appui durable aux utilisateurs.
+              </T>
             </p>
           </div>
 
@@ -311,9 +369,21 @@ export default function AboutPage() {
               <article key={item.title} className={styles.timelineItem}>
                 <div className={styles.timelineMarker}>{index + 1}</div>
                 <div className={styles.timelineContent}>
-                  <div className={styles.timelineYear}>{item.year}</div>
-                  <h3>{item.title}</h3>
-                  <p>{item.text}</p>
+                  <div className={styles.timelineYear}>
+                    <T k={`aboutPage.history.${index}.year`}>
+                      {item.year}
+                    </T>
+                  </div>
+                  <h3>
+                    <T k={`aboutPage.history.${index}.title`}>
+                      {item.title}
+                    </T>
+                  </h3>
+                  <p>
+                    <T k={`aboutPage.history.${index}.text`}>
+                      {item.text}
+                    </T>
+                  </p>
                 </div>
               </article>
             ))}
@@ -324,39 +394,70 @@ export default function AboutPage() {
       <section className={`${styles.section} ${styles.sectionSoft}`}>
         <div className={styles.container}>
           <div className={styles.sectionHead}>
-            <span className={styles.sectionKicker}>L’équipe</span>
-            <h2>Les équipes, leurs domaines et leurs coordonnées</h2>
+            <span className={styles.sectionKicker}>
+              <T k="aboutPage.sections.teamKicker">L’équipe</T>
+            </span>
+            <h2>
+              <T k="aboutPage.sections.teamTitle">
+                Les équipes, leurs domaines et leurs coordonnées
+              </T>
+            </h2>
             <p>
-              Chaque carte présente un domaine d’intervention, un rôle clair et
-              des coordonnées directes pour orienter rapidement les demandes.
+              <T k="aboutPage.sections.teamText">
+                Chaque carte présente un domaine d’intervention, un rôle clair
+                et des coordonnées directes pour orienter rapidement les
+                demandes.
+              </T>
             </p>
           </div>
 
           <div className={styles.membersGrid}>
-            {teamMembers.map((member) => (
+            {teamMembers.map((member, index) => (
               <article key={member.name + member.role} className={styles.memberCard}>
                 <div className={styles.memberTop}>
                   <div className={styles.memberAvatar}>{member.initials}</div>
                   <div className={styles.memberHeading}>
-                    <h3>{member.name}</h3>
-                    <p className={styles.memberRole}>{member.role}</p>
-                    <span className={styles.memberTag}>{member.domain}</span>
+                    <h3>
+                      <T k={`aboutPage.teamMembers.${index}.name`}>
+                        {member.name}
+                      </T>
+                    </h3>
+                    <p className={styles.memberRole}>
+                      <T k={`aboutPage.teamMembers.${index}.role`}>
+                        {member.role}
+                      </T>
+                    </p>
+                    <span className={styles.memberTag}>
+                      <T k={`aboutPage.teamMembers.${index}.domain`}>
+                        {member.domain}
+                      </T>
+                    </span>
                   </div>
                 </div>
 
-                <p className={styles.memberBio}>{member.bio}</p>
+                <p className={styles.memberBio}>
+                  <T k={`aboutPage.teamMembers.${index}.bio`}>
+                    {member.bio}
+                  </T>
+                </p>
 
                 <div className={styles.memberMeta}>
                   <div>
-                    <span>Email</span>
+                    <span>
+                      <T k="aboutPage.memberMeta.email">Email</T>
+                    </span>
                     <a href={`mailto:${member.email}`}>{member.email}</a>
                   </div>
                   <div>
-                    <span>Téléphone</span>
+                    <span>
+                      <T k="aboutPage.memberMeta.phone">Téléphone</T>
+                    </span>
                     <a href={`tel:${member.phone.replace(/\s+/g, '')}`}>{member.phone}</a>
                   </div>
                   <div>
-                    <span>Localisation</span>
+                    <span>
+                      <T k="aboutPage.memberMeta.location">Localisation</T>
+                    </span>
                     <strong>{member.location}</strong>
                   </div>
                 </div>
@@ -369,24 +470,45 @@ export default function AboutPage() {
       <section className={styles.section}>
         <div className={styles.container}>
           <div className={styles.sectionHead}>
-            <span className={styles.sectionKicker}>Organisation</span>
-            <h2>Une structure pensée pour couvrir tout le cycle d’intervention</h2>
+            <span className={styles.sectionKicker}>
+              <T k="aboutPage.sections.organisationKicker">Organisation</T>
+            </span>
+            <h2>
+              <T k="aboutPage.sections.organisationTitle">
+                Une structure pensée pour couvrir tout le cycle d’intervention
+              </T>
+            </h2>
             <p>
-              Le cabinet articule plusieurs pôles complémentaires afin de relier
-              conception, développement, qualité, formation et maintenance.
+              <T k="aboutPage.sections.organisationText">
+                Le cabinet articule plusieurs pôles complémentaires afin de
+                relier conception, développement, qualité, formation et
+                maintenance.
+              </T>
             </p>
           </div>
 
           <div className={styles.teamGrid}>
-            {teamUnits.map((unit) => (
+            {teamUnits.map((unit, unitIndex) => (
               <article key={unit.title} className={styles.teamCard}>
                 <div className={styles.teamCardTop}>
-                  <h3>{unit.title}</h3>
-                  <p className={styles.teamSubtitle}>{unit.subtitle}</p>
+                  <h3>
+                    <T k={`aboutPage.teamUnits.${unitIndex}.title`}>
+                      {unit.title}
+                    </T>
+                  </h3>
+                  <p className={styles.teamSubtitle}>
+                    <T k={`aboutPage.teamUnits.${unitIndex}.subtitle`}>
+                      {unit.subtitle}
+                    </T>
+                  </p>
                 </div>
                 <ul className={styles.teamList}>
-                  {unit.points.map((point) => (
-                    <li key={point}>{point}</li>
+                  {unit.points.map((point, pointIndex) => (
+                    <li key={point}>
+                      <T k={`aboutPage.teamUnits.${unitIndex}.points.${pointIndex}`}>
+                        {point}
+                      </T>
+                    </li>
                   ))}
                 </ul>
               </article>
@@ -398,20 +520,36 @@ export default function AboutPage() {
       <section className={`${styles.section} ${styles.sectionSoft}`}>
         <div className={styles.container}>
           <div className={styles.sectionHead}>
-            <span className={styles.sectionKicker}>Notre approche</span>
-            <h2>Ce qui guide notre manière d’intervenir</h2>
+            <span className={styles.sectionKicker}>
+              <T k="aboutPage.sections.approachKicker">Notre approche</T>
+            </span>
+            <h2>
+              <T k="aboutPage.sections.approachTitle">
+                Ce qui guide notre manière d’intervenir
+              </T>
+            </h2>
             <p>
-              Au-delà des outils, MD2I défend une méthode de travail fondée sur
-              la compréhension des usages, la qualité d’exécution et la
-              continuité de l’accompagnement.
+              <T k="aboutPage.sections.approachText">
+                Au-delà des outils, MD2I défend une méthode de travail fondée
+                sur la compréhension des usages, la qualité d’exécution et la
+                continuité de l’accompagnement.
+              </T>
             </p>
           </div>
 
           <div className={styles.commitmentGrid}>
-            {commitments.map((item) => (
+            {commitments.map((item, index) => (
               <article key={item.title} className={styles.commitmentCard}>
-                <h3>{item.title}</h3>
-                <p>{item.text}</p>
+                <h3>
+                  <T k={`aboutPage.commitments.${index}.title`}>
+                    {item.title}
+                  </T>
+                </h3>
+                <p>
+                  <T k={`aboutPage.commitments.${index}.text`}>
+                    {item.text}
+                  </T>
+                </p>
               </article>
             ))}
           </div>
@@ -422,34 +560,52 @@ export default function AboutPage() {
         <div className={styles.container}>
           <div className={styles.twoCol}>
             <div className={styles.panel}>
-              <span className={styles.sectionKicker}>Implantation</span>
-              <h2>Un ancrage historique et une présence opérationnelle</h2>
+              <span className={styles.sectionKicker}>
+                <T k="aboutPage.sections.locationKicker">Implantation</T>
+              </span>
+              <h2>
+                <T k="aboutPage.sections.locationTitle">
+                  Un ancrage historique et une présence opérationnelle
+                </T>
+              </h2>
 
               <div className={styles.officeGrid}>
-                {offices.map((office) => (
+                {offices.map((office, index) => (
                   <div key={office.title} className={styles.officeCard}>
                     <h3>{office.title}</h3>
-                    <p>{office.text}</p>
+                    <p>
+                      <T k={`aboutPage.offices.${index}.text`}>
+                        {office.text}
+                      </T>
+                    </p>
                   </div>
                 ))}
               </div>
             </div>
 
             <div className={styles.panel}>
-              <span className={styles.sectionKicker}>Principes</span>
-              <h2>Les standards que nous nous imposons</h2>
+              <span className={styles.sectionKicker}>
+                <T k="aboutPage.sections.principlesKicker">Principes</T>
+              </span>
+              <h2>
+                <T k="aboutPage.sections.principlesTitle">
+                  Les standards que nous nous imposons
+                </T>
+              </h2>
 
               <div className={styles.pillWrap}>
-                {principles.map((item) => (
+                {principles.map((item, index) => (
                   <span key={item} className={styles.pill}>
-                    {item}
+                    <T k={`aboutPage.principles.${index}`}>{item}</T>
                   </span>
                 ))}
               </div>
 
               <p className={styles.panelNote}>
-                Cette exigence se retrouve dans la conception des outils,
-                l’accompagnement des utilisateurs et la qualité des livrables.
+                <T k="aboutPage.sections.principlesText">
+                  Cette exigence se retrouve dans la conception des outils,
+                  l’accompagnement des utilisateurs et la qualité des livrables.
+                </T>
               </p>
             </div>
           </div>
@@ -459,23 +615,33 @@ export default function AboutPage() {
       <section className={`${styles.section} ${styles.ctaSection}`}>
         <div className={styles.container}>
           <div className={styles.ctaCard}>
-            <span className={styles.sectionKicker}>Aller plus loin</span>
-            <h2>Un besoin précis ? Contactez directement le bon interlocuteur</h2>
+            <span className={styles.sectionKicker}>
+              <T k="aboutPage.sections.ctaKicker">Aller plus loin</T>
+            </span>
+            <h2>
+              <T k="aboutPage.sections.ctaTitle">
+                Un besoin précis ? Contactez directement le bon interlocuteur
+              </T>
+            </h2>
             <p>
-              Retrouvez la page Contact pour écrire au cabinet, obtenir une
-              démonstration, demander une présentation ou être mis en relation
-              avec l’équipe la plus adaptée.
+              <T k="aboutPage.sections.ctaText">
+                Retrouvez la page Contact pour écrire au cabinet, obtenir une
+                démonstration, demander une présentation ou être mis en
+                relation avec l’équipe la plus adaptée.
+              </T>
             </p>
 
             <div className={styles.heroActions}>
               <Link href="/contact" className={`${styles.btn} ${styles.btnPrimary}`}>
-                Aller à la page contact
+                <T k="aboutPage.sections.ctaButton">
+                  Aller à la page contact
+                </T>
               </Link>
             </div>
           </div>
         </div>
       </section>
-      <ContactPage/>
+      {/* <ContactPage/> */}
     </main>
   )
 }

@@ -1,13 +1,16 @@
 'use client'
 import { SessionProvider } from 'next-auth/react'
 import { ThemeProvider } from './context/ThemeContext'
+import { I18nProvider } from './i18n/I18nProvider'
 
 export default function Providers({ children }: { children: React.ReactNode }) {
   return (
     <SessionProvider>
-      <ThemeProvider>
-        {children}
-      </ThemeProvider>
+      <I18nProvider>
+        <ThemeProvider>
+          {children}
+        </ThemeProvider>
+      </I18nProvider>
     </SessionProvider>
   )
 }

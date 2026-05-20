@@ -1,37 +1,54 @@
+import type { TFunction } from 'i18next'
 import type { Slide } from '../types'
 
-export function getFeatureContent(slide: Slide) {
+function translateText(t: TFunction | undefined, key: string, defaultValue: string) {
+  return t ? String(t(key, { defaultValue })) : defaultValue
+}
+
+function feature(
+  t: TFunction | undefined,
+  key: string,
+  title: string,
+  text: string
+) {
+  return {
+    title: translateText(t, `homeHero.features.${key}.title`, title),
+    text: translateText(t, `homeHero.features.${key}.text`, text),
+  }
+}
+
+export function getFeatureContent(slide: Slide, t?: TFunction) {
   switch (slide.object) {
     case 'network':
       return {
-        tl: { title: 'Couverture internationale', text: 'Déploiement de solutions digitales pour projets et institutions sur plusieurs territoires.' },
-        tr: { title: 'Interopérabilité', text: 'Systèmes connectés, échanges de données et intégration fluide avec vos outils existants.' },
-        bl: { title: 'Pilotage financier', text: 'Suivi, reporting et gestion structurée pour environnements complexes et multi-acteurs.' },
-        br: { title: 'Accompagnement', text: "Conseil, formation et assistance pour sécuriser l'adoption et la montée en charge." },
+        tl: feature(t, 'network.tl', 'Couverture internationale', 'Déploiement de solutions digitales pour projets et institutions sur plusieurs territoires.'),
+        tr: feature(t, 'network.tr', 'Interopérabilité', 'Systèmes connectés, échanges de données et intégration fluide avec vos outils existants.'),
+        bl: feature(t, 'network.bl', 'Pilotage financier', 'Suivi, reporting et gestion structurée pour environnements complexes et multi-acteurs.'),
+        br: feature(t, 'network.br', 'Accompagnement', "Conseil, formation et assistance pour sécuriser l'adoption et la montée en charge."),
       }
 
     case 'cube':
       return {
-        tl: { title: 'Architecture scalable', text: 'Conception de plateformes robustes, prêtes pour la croissance et les fortes charges.' },
-        tr: { title: 'APIs & microservices', text: 'Découpage modulaire, maintenance simplifiée et intégration rapide entre services.' },
-        bl: { title: 'Performance', text: 'Temps de réponse optimisés et expérience fluide sur web, mobile et systèmes métiers.' },
-        br: { title: 'Déploiement maîtrisé', text: 'De la conception au passage en production avec une approche sécurisée et progressive.' },
+        tl: feature(t, 'cube.tl', 'Architecture scalable', 'Conception de plateformes robustes, prêtes pour la croissance et les fortes charges.'),
+        tr: feature(t, 'cube.tr', 'APIs & microservices', 'Découpage modulaire, maintenance simplifiée et intégration rapide entre services.'),
+        bl: feature(t, 'cube.bl', 'Performance', 'Temps de réponse optimisés et expérience fluide sur web, mobile et systèmes métiers.'),
+        br: feature(t, 'cube.br', 'Déploiement maîtrisé', 'De la conception au passage en production avec une approche sécurisée et progressive.'),
       }
 
     case 'shield':
       return {
-        tl: { title: 'Protection des données', text: 'Mesures de sécurité renforcées pour protéger les flux critiques et les informations sensibles.' },
-        tr: { title: 'Audit & conformité', text: 'Évaluation des risques, recommandations et mise en conformité adaptée à votre contexte.' },
-        bl: { title: 'Haute disponibilité', text: 'Infrastructure pensée pour la continuité de service et la résilience opérationnelle.' },
-        br: { title: 'Supervision', text: "Surveillance, alerting et contrôle de l'intégrité de votre système d'information." },
+        tl: feature(t, 'shield.tl', 'Protection des données', 'Mesures de sécurité renforcées pour protéger les flux critiques et les informations sensibles.'),
+        tr: feature(t, 'shield.tr', 'Audit & conformité', 'Évaluation des risques, recommandations et mise en conformité adaptée à votre contexte.'),
+        bl: feature(t, 'shield.bl', 'Haute disponibilité', 'Infrastructure pensée pour la continuité de service et la résilience opérationnelle.'),
+        br: feature(t, 'shield.br', 'Supervision', "Surveillance, alerting et contrôle de l'intégrité de votre système d'information."),
       }
 
     case 'dna':
       return {
-        tl: { title: 'Formation sur mesure', text: 'Programmes adaptés aux métiers, au niveau des équipes et aux objectifs de transformation.' },
-        tr: { title: 'Coaching opérationnel', text: "Accompagnement concret pour accélérer l'appropriation des outils et méthodes digitales." },
-        bl: { title: 'Montée en compétences', text: "Approche progressive pour renforcer durablement l'autonomie des équipes." },
-        br: { title: 'Transformation durable', text: 'Vision, méthode et suivi pour inscrire le changement dans le temps.' },
+        tl: feature(t, 'dna.tl', 'Formation sur mesure', 'Programmes adaptés aux métiers, au niveau des équipes et aux objectifs de transformation.'),
+        tr: feature(t, 'dna.tr', 'Coaching opérationnel', "Accompagnement concret pour accélérer l'appropriation des outils et méthodes digitales."),
+        bl: feature(t, 'dna.bl', 'Montée en compétences', "Approche progressive pour renforcer durablement l'autonomie des équipes."),
+        br: feature(t, 'dna.br', 'Transformation durable', 'Vision, méthode et suivi pour inscrire le changement dans le temps.'),
       }
 
     default:

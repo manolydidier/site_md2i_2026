@@ -2,8 +2,11 @@
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
+import { useTranslation } from 'react-i18next'
 import api from '@/app/lib/axios'
 import { useTheme } from '@/app/context/ThemeContext'
+import { translateDynamicItems } from '@/app/i18n/dynamic'
+import { type Locale, normalizeLocale } from '@/app/i18n/settings'
 import grapesjs, { Editor } from 'grapesjs'
 import 'grapesjs/dist/css/grapes.min.css'
 
@@ -38,6 +41,25 @@ type CanvasEventHandlers = {
   handleAnchorClick: (e: Event) => void
 }
 
+type GrapesComponentInput = Parameters<Editor['setComponents']>[0]
+type GrapesStyleInput = Parameters<Editor['setStyle']>[0]
+
+type GrapesComponentNode = {
+  set: (key: string, value: unknown) => void
+  components?: () => {
+    length: number
+    forEach: (callback: (component: GrapesComponentNode) => void) => void
+  }
+}
+
+type GrapesStyleReceiver = {
+  addStyle: (style: Record<string, string>) => void
+}
+
+type EditorWithEventHandlers = Editor & {
+  __eventHandlers?: CanvasEventHandlers
+}
+
 function getUiColors(dark: boolean) {
   return {
     buttonBg: dark ? 'rgba(15, 23, 42, 0.82)' : 'rgba(255,255,255,.92)',
@@ -60,23 +82,25 @@ function getUiColors(dark: boolean) {
   }
 }
 
-function formatPrice(value: Product['price']) {
+function formatPrice(value: Product['price'], locale: Locale) {
   if (value === null || value === undefined || value === '') {
-    return 'Prix sur demande'
+    return locale === 'en' ? 'Price on request' : 'Prix sur demande'
   }
 
   const numeric = Number(value)
 
   if (!Number.isFinite(numeric)) return String(value)
 
-  return `${new Intl.NumberFormat('fr-FR').format(numeric)} Ar`
+  return `${new Intl.NumberFormat(locale === 'en' ? 'en-US' : 'fr-FR').format(
+    numeric,
+  )} Ar`
 }
 
-function formatDate(value?: string | null) {
-  if (!value) return 'Non renseigné'
+function formatDate(value: string | null | undefined, locale: Locale) {
+  if (!value) return locale === 'en' ? 'Not specified' : 'Non renseigné'
 
   try {
-    return new Intl.DateTimeFormat('fr-FR', {
+    return new Intl.DateTimeFormat(locale === 'en' ? 'en-US' : 'fr-FR', {
       day: '2-digit',
       month: 'long',
       year: 'numeric',
@@ -169,7 +193,7 @@ function syncEmbeddedTheme(editor: Editor, dark: boolean) {
     themeRoot.style.minHeight = '100%'
   }
 
-  const wrapper = editor.getWrapper() as any
+  const wrapper = editor.getWrapper() as GrapesStyleReceiver | null
 
   if (wrapper) {
     wrapper.addStyle({
@@ -217,6 +241,8 @@ export default function ProductDetailClient() {
   const params = useParams()
   const router = useRouter()
   const { dark } = useTheme()
+  const { t, i18n } = useTranslation()
+  const locale = normalizeLocale(i18n.resolvedLanguage || i18n.language)
   const slugOrId = params?.slugOrId as string
 
   const mountRef = useRef<HTMLDivElement>(null)
@@ -257,6 +283,7 @@ export default function ProductDetailClient() {
 
   useEffect(() => {
     if (!slugOrId) return
+    let cancelled = false
 
     ;(async () => {
       try {
@@ -265,20 +292,33 @@ export default function ProductDetailClient() {
 
         const res = await api.get<Product>(`/api/products/public/${slugOrId}`)
         const nextProduct = res.data
+        const [translatedProduct] = await translateDynamicItems<Product>(
+          [nextProduct],
+          locale,
+          ['name', 'excerpt', 'category.name'],
+        )
 
-        setProduct(nextProduct)
+        if (cancelled) return
+
+        setProduct(translatedProduct ?? nextProduct)
 
         if (nextProduct?.slug && slugOrId !== nextProduct.slug) {
           router.replace(`/produits/${nextProduct.slug}`)
         }
       } catch (err) {
         console.error(err)
-        setError('Impossible de charger ce produit.')
+        if (!cancelled) {
+          setError(t('productsPage.errors.load'))
+        }
       } finally {
-        setLoading(false)
+        if (!cancelled) setLoading(false)
       }
     })()
-  }, [slugOrId, router])
+
+    return () => {
+      cancelled = true
+    }
+  }, [slugOrId, router, locale, t])
 
   useEffect(() => {
     return () => clearDetailTimer()
@@ -391,18 +431,18 @@ export default function ProductDetailClient() {
       })
 
       if (product.gjsComponents) {
-        editor.setComponents(product.gjsComponents as any)
+        editor.setComponents(product.gjsComponents as GrapesComponentInput)
       } else if (product.gjsHtml) {
         editor.setComponents(product.gjsHtml)
       }
 
       if (product.gjsStyles) {
-        editor.setStyle(product.gjsStyles as any)
+        editor.setStyle(product.gjsStyles as GrapesStyleInput)
       }
 
       const allComponents = editor.getComponents()
 
-      const disableComponent = (component: any) => {
+      const disableComponent = (component: GrapesComponentNode) => {
         if (component && component.set) {
           component.set('editable', false)
           component.set('draggable', false)
@@ -415,14 +455,16 @@ export default function ProductDetailClient() {
           component.set('badge', null)
 
           if (component.components && component.components().length > 0) {
-            component.components().forEach((child: any) =>
+            component.components().forEach((child) =>
               disableComponent(child),
             )
           }
         }
       }
 
-      allComponents.forEach((component: any) => disableComponent(component))
+      allComponents.forEach((component) =>
+        disableComponent(component as unknown as GrapesComponentNode),
+      )
 
       const setupCanvas = () => {
         try {
@@ -579,7 +621,7 @@ export default function ProductDetailClient() {
           canvasDoc.body.addEventListener('paste', preventPaste)
           canvasDoc.body.addEventListener('click', handleAnchorClick, true)
 
-          ;(editor as any).__eventHandlers = {
+          ;(editor as EditorWithEventHandlers).__eventHandlers = {
             preventDrag,
             preventContextMenu,
             preventSelectStart,
@@ -622,9 +664,8 @@ export default function ProductDetailClient() {
 
         try {
           const canvasDoc = currentEditor.Canvas?.getDocument()
-          const handlers = (currentEditor as any).__eventHandlers as
-            | CanvasEventHandlers
-            | undefined
+          const handlers = (currentEditor as EditorWithEventHandlers)
+            .__eventHandlers
 
           if (canvasDoc && handlers) {
             canvasDoc.body.removeEventListener(
@@ -703,7 +744,7 @@ export default function ProductDetailClient() {
             color: ui.mutedText,
           }}
         >
-          Chargement…
+          {t('productDetail.loading')}
         </div>
       </div>
     )
@@ -723,7 +764,7 @@ export default function ProductDetailClient() {
             color: ui.mutedText,
           }}
         >
-          {error || 'Produit introuvable.'}
+          {error || t('productDetail.notFound')}
         </p>
 
         <button
@@ -741,7 +782,7 @@ export default function ProductDetailClient() {
             boxShadow: '0 14px 30px rgba(239,159,39,.30)',
           }}
         >
-          Retour
+          {t('productDetail.back')}
         </button>
       </div>
     )
@@ -766,7 +807,7 @@ export default function ProductDetailClient() {
         >
           <button
             onClick={goBack}
-            aria-label="Retour"
+            aria-label={t('productDetail.back')}
             style={{
               display: 'inline-flex',
               alignItems: 'center',
@@ -797,7 +838,7 @@ export default function ProductDetailClient() {
             >
               <path d="M19 12H5M12 5l-7 7 7 7" />
             </svg>
-            Retour
+            {t('productDetail.back')}
           </button>
 
           <div
@@ -884,7 +925,7 @@ export default function ProductDetailClient() {
                   lineHeight: 1.8,
                 }}
               >
-                {product.excerpt?.trim() || 'Aucun extrait disponible.'}
+                {product.excerpt?.trim() || t('productsPage.card.noDescription')}
               </div>
 
               <div
@@ -915,7 +956,7 @@ export default function ProductDetailClient() {
                       marginBottom: '8px',
                     }}
                   >
-                    Prix
+                    {t('productsPage.card.price')}
                   </div>
 
                   <div
@@ -926,7 +967,7 @@ export default function ProductDetailClient() {
                       letterSpacing: '-.02em',
                     }}
                   >
-                    {formatPrice(product.price)}
+                    {formatPrice(product.price, locale)}
                   </div>
                 </div>
 
@@ -950,7 +991,7 @@ export default function ProductDetailClient() {
                       marginBottom: '8px',
                     }}
                   >
-                    Publication
+                    {t('productDetail.publication')}
                   </div>
 
                   <div
@@ -960,7 +1001,7 @@ export default function ProductDetailClient() {
                       color: ui.panelText,
                     }}
                   >
-                    {formatDate(product.publishedAt || product.createdAt)}
+                    {formatDate(product.publishedAt || product.createdAt, locale)}
                   </div>
                 </div>
               </div>
@@ -991,7 +1032,7 @@ export default function ProductDetailClient() {
                     gap: '10px',
                   }}
                 >
-                  Demander une démo / un devis
+                  {t('productDetail.requestQuote')}
                   <svg
                     width="16"
                     height="16"
@@ -1020,7 +1061,7 @@ export default function ProductDetailClient() {
                     cursor: 'pointer',
                   }}
                 >
-                  Voir tous les produits
+                  {t('productDetail.viewAllProducts')}
                 </button>
               </div>
 
@@ -1180,7 +1221,7 @@ export default function ProductDetailClient() {
         >
           <button
             onClick={goBack}
-            aria-label="Retour"
+            aria-label={t('productDetail.back')}
             style={{
               display: 'inline-flex',
               alignItems: 'center',
@@ -1218,12 +1259,12 @@ export default function ProductDetailClient() {
             >
               <path d="M19 12H5M12 5l-7 7 7 7" />
             </svg>
-            Retour
+            {t('productDetail.back')}
           </button>
 
           <button
             onClick={() => router.push(leadHref)}
-            aria-label="Demander une démonstration ou un devis"
+            aria-label={t('productDetail.requestDemoAria')}
             style={{
               display: 'inline-flex',
               alignItems: 'center',
@@ -1251,7 +1292,7 @@ export default function ProductDetailClient() {
               e.currentTarget.style.filter = 'none'
             }}
           >
-            Demander une démo
+            {t('productDetail.requestDemo')}
             <svg
               width="16"
               height="16"
@@ -1279,7 +1320,7 @@ export default function ProductDetailClient() {
                 setDetailVisible(true)
                 startDetailAutoClose()
               }}
-              aria-label="Afficher les détails"
+              aria-label={t('productDetail.showDetails')}
               style={{
                 display: 'inline-flex',
                 alignItems: 'center',
@@ -1317,7 +1358,7 @@ export default function ProductDetailClient() {
               >
                 <path d="M12 5v14M5 12h14" />
               </svg>
-              Afficher les détails
+              {t('productDetail.showDetails')}
             </button>
           )}
         </div>
@@ -1366,7 +1407,7 @@ export default function ProductDetailClient() {
                       color: ui.panelMuted,
                     }}
                   >
-                    Détails produit
+                    {t('productDetail.detailsTitle')}
                   </div>
 
                   <div
@@ -1377,7 +1418,7 @@ export default function ProductDetailClient() {
                       lineHeight: 1.4,
                     }}
                   >
-                    Fermeture automatique après 6 secondes
+                    {t('productDetail.autoClose')}
                   </div>
                 </div>
 
@@ -1386,7 +1427,7 @@ export default function ProductDetailClient() {
                     setDetailVisible(false)
                     clearDetailTimer()
                   }}
-                  aria-label="Fermer les détails"
+                  aria-label={t('productDetail.closeDetails')}
                   style={{
                     width: '34px',
                     height: '34px',
@@ -1486,7 +1527,7 @@ export default function ProductDetailClient() {
                     letterSpacing: '-.01em',
                   }}
                 >
-                  {formatPrice(product.price)}
+                  {formatPrice(product.price, locale)}
                 </div>
 
                 <div
@@ -1496,7 +1537,7 @@ export default function ProductDetailClient() {
                     fontWeight: 600,
                   }}
                 >
-                  {formatDate(product.publishedAt || product.createdAt)}
+                  {formatDate(product.publishedAt || product.createdAt, locale)}
                 </div>
               </div>
 
@@ -1520,7 +1561,7 @@ export default function ProductDetailClient() {
                   boxShadow: '0 12px 26px rgba(239,159,39,.28)',
                 }}
               >
-                Demander une démo / un devis
+                {t('productDetail.requestQuote')}
                 <svg
                   width="15"
                   height="15"

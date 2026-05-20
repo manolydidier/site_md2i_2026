@@ -1,9 +1,10 @@
 'use client';
 
 import React, { useEffect, useMemo, useRef, useState } from "react";
+import type { TFunction } from "i18next";
+import { useTranslation } from "react-i18next";
 import { useTheme } from "@/app/context/ThemeContext";
 import { createPortal } from "react-dom";
-import AnimatedMD2ILogo from "@/app/components/AnimatedMD2ILogo";
 import service from "./service.jpg";
 
 type IconProps = {
@@ -19,6 +20,15 @@ type ServiceCategory =
   | "Compétences";
 
 type ModalTab = "overview" | "missions" | "livrables" | "impacts";
+
+type ServiceCategoryId =
+  | "pilotage"
+  | "transformation"
+  | "infrastructure"
+  | "dataAi"
+  | "skills";
+
+type CategoryFilter = ServiceCategoryId | "all";
 
 type Service = {
   id: string;
@@ -178,7 +188,7 @@ const Icons = {
 
 /* ───────────────────────── DATA ───────────────────────── */
 
-const services: Service[] = [
+const baseServices: Service[] = [
   {
     id: "project",
     category: "Pilotage",
@@ -541,6 +551,80 @@ const services: Service[] = [
   },
 ];
 
+const CATEGORY_ORDER: ServiceCategoryId[] = [
+  "pilotage",
+  "transformation",
+  "infrastructure",
+  "dataAi",
+  "skills",
+];
+
+const CATEGORY_FALLBACKS: Record<ServiceCategoryId, string> = {
+  pilotage: "Pilotage",
+  transformation: "Transformation",
+  infrastructure: "Infrastructure",
+  dataAi: "Data & IA",
+  skills: "Compétences",
+};
+
+const SERVICE_CATEGORY_IDS: Record<string, ServiceCategoryId> = {
+  project: "pilotage",
+  institution: "pilotage",
+  digital: "transformation",
+  software: "transformation",
+  hydraulic: "infrastructure",
+  accounting: "transformation",
+  studies: "dataAi",
+  ai: "dataAi",
+  training: "skills",
+};
+
+function getServiceCategoryId(serviceId: string): ServiceCategoryId {
+  return SERVICE_CATEGORY_IDS[serviceId] ?? "transformation";
+}
+
+function translateText(t: TFunction, key: string, defaultValue: string) {
+  return String(t(key, { defaultValue }));
+}
+
+function translateArray(t: TFunction, key: string, values: string[]) {
+  return values.map((value, index) =>
+    translateText(t, `${key}.${index}`, value)
+  );
+}
+
+function localizeServices(t: TFunction): Service[] {
+  return baseServices.map((service) => {
+    const key = `servicesPage.services.${service.id}`;
+    const categoryId = getServiceCategoryId(service.id);
+
+    return {
+      ...service,
+      category: translateText(
+        t,
+        `servicesPage.categories.${categoryId}`,
+        service.category
+      ),
+      title: translateText(t, `${key}.title`, service.title),
+      shortLabel: translateText(t, `${key}.shortLabel`, service.shortLabel),
+      badge: translateText(t, `${key}.badge`, service.badge),
+      description: translateText(t, `${key}.description`, service.description),
+      detailTitle: translateText(t, `${key}.detailTitle`, service.detailTitle),
+      illustrationLabel: translateText(
+        t,
+        `${key}.illustrationLabel`,
+        service.illustrationLabel
+      ),
+      intro: translateText(t, `${key}.intro`, service.intro),
+      missions: translateArray(t, `${key}.missions`, service.missions),
+      livrables: translateArray(t, `${key}.livrables`, service.livrables),
+      impacts: translateArray(t, `${key}.impacts`, service.impacts),
+      examples: translateArray(t, `${key}.examples`, service.examples),
+      kpi: translateText(t, `${key}.kpi`, service.kpi),
+    };
+  });
+}
+
 /* ──────────────────────── HOOKS ──────────────────────── */
 
 function useVisible<T extends HTMLElement>(threshold = 0.14) {
@@ -549,8 +633,8 @@ function useVisible<T extends HTMLElement>(threshold = 0.14) {
 
   useEffect(() => {
     if (!ref.current || typeof window === "undefined" || !("IntersectionObserver" in window)) {
-      setVisible(true);
-      return;
+      const timer = globalThis.setTimeout(() => setVisible(true), 0);
+      return () => globalThis.clearTimeout(timer);
     }
 
     const obs = new IntersectionObserver(
@@ -594,42 +678,6 @@ function useReducedMotion() {
 }
 
 /* ────────────────────── SMALL PARTS ───────────────────── */
-
-function SectionPill({
-  label,
-  theme,
-}: {
-  label: string;
-  theme: ReturnType<typeof serviceTokens>;
-}) {
-  return (
-    <div
-      style={{
-        display: "inline-flex",
-        alignItems: "center",
-        gap: 8,
-        padding: "8px 14px",
-        borderRadius: 999,
-        background: theme.badgeBg,
-        border: `1px solid ${theme.badgeBorder}`,
-      }}
-    >
-      <div style={{ width: 6, height: 6, borderRadius: "50%", background: theme.accent }} />
-      <span
-        style={{
-          fontSize: "0.7rem",
-          fontWeight: 800,
-          letterSpacing: "0.14em",
-          textTransform: "uppercase",
-          color: theme.accent,
-          fontFamily: "'Inter', sans-serif",
-        }}
-      >
-        {label}
-      </span>
-    </div>
-  );
-}
 
 function StatCard({
   title,
@@ -760,7 +808,7 @@ function FilterButton({
 function CTAButton({
   theme,
   href = "#contact",
-  label = "Nous contacter",
+  label,
   filled = false,
 }: {
   theme: ReturnType<typeof serviceTokens>;
@@ -768,7 +816,10 @@ function CTAButton({
   label?: string;
   filled?: boolean;
 }) {
+  const { t } = useTranslation();
   const [hovered, setHovered] = useState(false);
+  const buttonLabel =
+    label ?? t("servicesPage.actions.contact", { defaultValue: "Nous contacter" });
 
   return (
     <a
@@ -796,7 +847,7 @@ function CTAButton({
         transform: hovered ? "translateY(-1px)" : "translateY(0)",
       }}
     >
-      {label}
+      {buttonLabel}
       <span
         style={{
           display: "inline-flex",
@@ -888,6 +939,7 @@ function FeaturedService({
   onOpen: (service: Service) => void;
   reduceMotion: boolean;
 }) {
+  const { t } = useTranslation();
   const { Icon } = service;
 
   return (
@@ -1054,7 +1106,9 @@ function FeaturedService({
               }}
             >
               <Icons.Sparkles color={theme.accent} size={14} />
-              Service vedette
+              {t("servicesPage.featured.label", {
+                defaultValue: "Service vedette",
+              })}
             </span>
             <span
               style={{
@@ -1115,7 +1169,9 @@ function FeaturedService({
                 fontFamily: "'Inter', sans-serif",
               }}
             >
-              Valeur ajoutée principale
+              {t("servicesPage.featured.valueTitle", {
+                defaultValue: "Valeur ajoutée principale",
+              })}
             </div>
             <div
               style={{
@@ -1174,7 +1230,9 @@ function FeaturedService({
               gap: 10,
             }}
           >
-            Voir le détail
+            {t("servicesPage.actions.viewDetail", {
+              defaultValue: "Voir le détail",
+            })}
             <Icons.ArrowRight color="#FFFFFF" size={15} />
           </button>
           <CTAButton theme={theme} />
@@ -1201,6 +1259,7 @@ function ServiceCard({
   delay: number;
   reduceMotion: boolean;
 }) {
+  const { t } = useTranslation();
   const [hovered, setHovered] = useState(false);
   const [ref, visible] = useVisible<HTMLButtonElement>(0.08);
   const { Icon } = service;
@@ -1402,7 +1461,9 @@ function ServiceCard({
             fontFamily: "'Inter', sans-serif",
           }}
         >
-          Voir le détail
+          {t("servicesPage.actions.viewDetail", {
+            defaultValue: "Voir le détail",
+          })}
         </span>
         <Icons.ChevronRight color={service.accent} size={13} />
       </div>
@@ -1421,16 +1482,19 @@ function ServiceModal({
   onClose: () => void;
   theme: ReturnType<typeof serviceTokens>;
 }) {
+  const { t } = useTranslation();
   const [activeTab, setActiveTab] = useState<ModalTab>("overview");
   const [isMounted, setIsMounted] = useState(false);
   const panelRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
-    setActiveTab("overview");
+    const timer = window.setTimeout(() => setActiveTab("overview"), 0);
+    return () => window.clearTimeout(timer);
   }, [service]);
 
   useEffect(() => {
-    setIsMounted(true);
+    const timer = window.setTimeout(() => setIsMounted(true), 0);
+    return () => window.clearTimeout(timer);
   }, []);
 
   useEffect(() => {
@@ -1478,10 +1542,30 @@ function ServiceModal({
   }, [isMounted, onClose]);
 
   const tabLabels: { key: ModalTab; label: string }[] = [
-    { key: "overview", label: "Vue d'ensemble" },
-    { key: "missions", label: "Missions" },
-    { key: "livrables", label: "Livrables" },
-    { key: "impacts", label: "Résultats" },
+    {
+      key: "overview",
+      label: t("servicesPage.modal.tabs.overview", {
+        defaultValue: "Vue d'ensemble",
+      }),
+    },
+    {
+      key: "missions",
+      label: t("servicesPage.modal.tabs.missions", {
+        defaultValue: "Missions",
+      }),
+    },
+    {
+      key: "livrables",
+      label: t("servicesPage.modal.tabs.livrables", {
+        defaultValue: "Livrables",
+      }),
+    },
+    {
+      key: "impacts",
+      label: t("servicesPage.modal.tabs.impacts", {
+        defaultValue: "Résultats",
+      }),
+    },
   ];
 
   if (!isMounted) return null;
@@ -1684,7 +1768,9 @@ function ServiceModal({
                       fontFamily: "'Inter', sans-serif",
                     }}
                   >
-                    Domaine d'expertise
+                    {t("servicesPage.modal.domain", {
+                      defaultValue: "Domaine d'expertise",
+                    })}
                   </div>
                   <div
                     style={{
@@ -1701,7 +1787,7 @@ function ServiceModal({
 
                 <button
                   type="button"
-                  aria-label="Fermer"
+                  aria-label={t("common.close", { defaultValue: "Fermer" })}
                   onClick={onClose}
                   className="md2i-modal-close"
                   style={{
@@ -1786,7 +1872,9 @@ function ServiceModal({
                       fontFamily: "'Inter', sans-serif",
                     }}
                   >
-                    Positionnement
+                    {t("servicesPage.modal.positioning", {
+                      defaultValue: "Positionnement",
+                    })}
                   </div>
                   <p
                     style={{
@@ -1804,7 +1892,9 @@ function ServiceModal({
 
               {activeTab === "missions" && (
                 <DetailBlock
-                  title="Missions typiques"
+                  title={t("servicesPage.modal.missionsTitle", {
+                    defaultValue: "Missions typiques",
+                  })}
                   items={service.missions}
                   accent={service.accent}
                   theme={theme}
@@ -1813,7 +1903,9 @@ function ServiceModal({
 
               {activeTab === "livrables" && (
                 <DetailBlock
-                  title="Livrables et outils produits"
+                  title={t("servicesPage.modal.livrablesTitle", {
+                    defaultValue: "Livrables et outils produits",
+                  })}
                   items={service.livrables}
                   accent={service.accent}
                   theme={theme}
@@ -1822,7 +1914,9 @@ function ServiceModal({
 
               {activeTab === "impacts" && (
                 <DetailBlock
-                  title="Impacts et bénéfices attendus"
+                  title={t("servicesPage.modal.impactsTitle", {
+                    defaultValue: "Impacts et bénéfices attendus",
+                  })}
                   items={service.impacts}
                   accent={service.accent}
                   theme={theme}
@@ -1843,7 +1937,13 @@ function ServiceModal({
                 gap: 12,
               }}
             >
-              <CTAButton theme={theme} filled label="Parler à MD2I" />
+              <CTAButton
+                theme={theme}
+                filled
+                label={t("servicesPage.actions.talk", {
+                  defaultValue: "Parler à MD2I",
+                })}
+              />
               <button
                 type="button"
                 onClick={onClose}
@@ -1860,7 +1960,7 @@ function ServiceModal({
                   fontFamily: "'Inter', sans-serif",
                 }}
               >
-                Fermer
+                {t("common.close", { defaultValue: "Fermer" })}
               </button>
             </div>
           </div>
@@ -1875,10 +1975,12 @@ function ServiceModal({
 
 export default function MD2IServicesSection() {
   const { dark } = useTheme();
+  const { t } = useTranslation();
+  const services = useMemo(() => localizeServices(t), [t]);
   const reduceMotion = useReducedMotion();
 
   const [mounted, setMounted] = useState(false);
-  const [selectedCategory, setSelectedCategory] = useState<ServiceCategory | "Tous">("Tous");
+  const [selectedCategory, setSelectedCategory] = useState<CategoryFilter>("all");
   const [selectedService, setSelectedService] = useState<Service | null>(null);
   const [previewServiceId, setPreviewServiceId] = useState<string>(services[0].id);
   const sectionRef = useRef<HTMLElement | null>(null);
@@ -1889,26 +1991,40 @@ export default function MD2IServicesSection() {
   const [ctaRef, ctaVisible] = useVisible<HTMLDivElement>(0.12);
 
   useEffect(() => {
-    setMounted(true);
+    const timer = window.setTimeout(() => setMounted(true), 0);
+    return () => window.clearTimeout(timer);
   }, []);
 
   const T = useMemo(() => serviceTokens(dark), [dark]);
 
-  const categories = useMemo<(ServiceCategory | "Tous")[]>(
-    () => ["Tous", ...Array.from(new Set(services.map((s) => s.category)))],
-    []
+  const categories = useMemo(
+    () => [
+      {
+        id: "all" as CategoryFilter,
+        label: t("servicesPage.filters.all", { defaultValue: "Tous" }),
+      },
+      ...CATEGORY_ORDER.map((id) => ({
+        id,
+        label: t(`servicesPage.categories.${id}`, {
+          defaultValue: CATEGORY_FALLBACKS[id],
+        }),
+      })),
+    ],
+    [t]
   );
 
   const filteredServices = useMemo(() => {
-    if (selectedCategory === "Tous") return services;
-    return services.filter((s) => s.category === selectedCategory);
-  }, [selectedCategory]);
+    if (selectedCategory === "all") return services;
+    return services.filter((service) => getServiceCategoryId(service.id) === selectedCategory);
+  }, [selectedCategory, services]);
 
   useEffect(() => {
     if (!filteredServices.some((s) => s.id === previewServiceId)) {
-      setPreviewServiceId(filteredServices[0]?.id ?? services[0].id);
+      const nextPreviewId = filteredServices[0]?.id ?? services[0].id;
+      const timer = window.setTimeout(() => setPreviewServiceId(nextPreviewId), 0);
+      return () => window.clearTimeout(timer);
     }
-  }, [filteredServices, previewServiceId]);
+  }, [filteredServices, previewServiceId, services]);
 
   const previewService =
     filteredServices.find((s) => s.id === previewServiceId) ??
@@ -1990,7 +2106,7 @@ export default function MD2IServicesSection() {
                   }`,
                 }}
               />
-              MD2I Madagascar
+              {t("servicesPage.hero.kicker", { defaultValue: "MD2I Madagascar" })}
             </div>
 
             <div style={{ textAlign: "center", display: "grid", gap: 16 }}>
@@ -2009,9 +2125,17 @@ export default function MD2IServicesSection() {
                     : "0 2px 14px rgba(0,0,0,.12)",
                 }}
               >
-                Des expertises{" "}
-                <em style={{ fontStyle: "normal", color: T.accent }}>structurées</em> pour des
-                projets à fort impact
+                {t("servicesPage.hero.titlePrefix", {
+                  defaultValue: "Des expertises",
+                })}{" "}
+                <em style={{ fontStyle: "normal", color: T.accent }}>
+                  {t("servicesPage.hero.titleEmphasis", {
+                    defaultValue: "structurées",
+                  })}
+                </em>{" "}
+                {t("servicesPage.hero.titleSuffix", {
+                  defaultValue: "pour des projets à fort impact",
+                })}
               </h2>
               <p
                 style={{
@@ -2024,9 +2148,10 @@ export default function MD2IServicesSection() {
                   letterSpacing: "-0.01em",
                 }}
               >
-                MD2I Madagascar accompagne les institutions publiques, les projets de développement
-                et les organisations partenaires avec une approche fondée sur la rigueur,
-                la lisibilité des processus, la digitalisation et l'adaptation au terrain.
+                {t("servicesPage.hero.subtitle", {
+                  defaultValue:
+                    "MD2I Madagascar accompagne les institutions publiques, les projets de développement et les organisations partenaires avec une approche fondée sur la rigueur, la lisibilité des processus, la digitalisation et l'adaptation au terrain.",
+                })}
               </p>
             </div>
           </div>
@@ -2041,17 +2166,25 @@ export default function MD2IServicesSection() {
             }}
           >
             <StatCard
-              title="d'expérience au service des institutions et des projets"
+              title={t("servicesPage.stats.experience", {
+                defaultValue:
+                  "d'expérience au service des institutions et des projets",
+              })}
               value="21+"
               theme={T}
             />
             <StatCard
-              title="domaines d'expertise structurés dans cette section"
+              title={t("servicesPage.stats.domains", {
+                defaultValue: "domaines d'expertise structurés dans cette section",
+              })}
               value="9"
               theme={T}
             />
             <StatCard
-              title="approche : conseil, outils, gouvernance, données et renforcement"
+              title={t("servicesPage.stats.approach", {
+                defaultValue:
+                  "approche : conseil, outils, gouvernance, données et renforcement",
+              })}
               value="360°"
               theme={T}
             />
@@ -2130,7 +2263,9 @@ export default function MD2IServicesSection() {
                       fontFamily: "'Inter', sans-serif",
                     }}
                   >
-                    Explorer les expertises
+                    {t("servicesPage.sidebar.kicker", {
+                      defaultValue: "Explorer les expertises",
+                    })}
                   </div>
                   <div
                     style={{
@@ -2141,7 +2276,9 @@ export default function MD2IServicesSection() {
                       fontFamily: "'Georgia', serif",
                     }}
                   >
-                    Filtres de services
+                    {t("servicesPage.sidebar.title", {
+                      defaultValue: "Filtres de services",
+                    })}
                   </div>
                   <div
                     style={{
@@ -2151,17 +2288,20 @@ export default function MD2IServicesSection() {
                       fontFamily: "'Inter', sans-serif",
                     }}
                   >
-                    Filtrer rapidement les domaines d'expertise.
+                    {t("servicesPage.sidebar.text", {
+                      defaultValue:
+                        "Filtrer rapidement les domaines d'expertise.",
+                    })}
                   </div>
                 </div>
 
                 <div className="md2i-filters-column">
                   {categories.map((category) => (
                     <FilterButton
-                      key={category}
-                      label={category}
-                      active={selectedCategory === category}
-                      onClick={() => setSelectedCategory(category)}
+                      key={category.id}
+                      label={category.label}
+                      active={selectedCategory === category.id}
+                      onClick={() => setSelectedCategory(category.id)}
                       theme={T}
                     />
                   ))}
@@ -2238,7 +2378,10 @@ export default function MD2IServicesSection() {
                 fontFamily: "'Georgia', serif",
               }}
             >
-              Besoin d'une expertise claire, structurée et directement opérationnelle ?
+              {t("servicesPage.cta.title", {
+                defaultValue:
+                  "Besoin d'une expertise claire, structurée et directement opérationnelle ?",
+              })}
             </h3>
             <p
               style={{
@@ -2250,9 +2393,10 @@ export default function MD2IServicesSection() {
                 fontFamily: "'Inter', sans-serif",
               }}
             >
-              MD2I intervient à l'interface entre conseil, ingénierie, transformation numérique,
-              données et renforcement institutionnel, avec des solutions alignées sur les réalités
-              de terrain et les exigences des partenaires.
+              {t("servicesPage.cta.text", {
+                defaultValue:
+                  "MD2I intervient à l'interface entre conseil, ingénierie, transformation numérique, données et renforcement institutionnel, avec des solutions alignées sur les réalités de terrain et les exigences des partenaires.",
+              })}
             </p>
           </div>
 

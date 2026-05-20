@@ -1,7 +1,9 @@
 'use client'
 
+import type { TFunction } from 'i18next'
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
 import { useEffect, useId, useMemo, useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 
 import s from './OrganisationSection.module.css'
 import { useTheme } from '@/app/context/ThemeContext'
@@ -30,7 +32,7 @@ type Unit = {
   illustrationCaption: string
 }
 
-const units: Unit[] = [
+const unitDefinitions: Unit[] = [
   {
     title: 'Développement commercial & accompagnement client',
     image:
@@ -158,6 +160,45 @@ const units: Unit[] = [
       'Le pôle technique transforme la vision métier en solution stable, testée et prête à servir.',
   },
 ]
+
+function translateText(t: TFunction, key: string, defaultValue: string) {
+  return String(t(key, { defaultValue }))
+}
+
+function translateArray(t: TFunction, key: string, values: string[]) {
+  return values.map((value, index) =>
+    translateText(t, `${key}.${index}`, value)
+  )
+}
+
+function localizeUnits(t: TFunction): Unit[] {
+  return unitDefinitions.map((unit, index) => {
+    const baseKey = `homeOrganisation.units.${index}`
+
+    return {
+      ...unit,
+      title: translateText(t, `${baseKey}.title`, unit.title),
+      alt: translateText(t, `${baseKey}.alt`, unit.alt),
+      tag: translateText(t, `${baseKey}.tag`, unit.tag),
+      text: translateText(t, `${baseKey}.text`, unit.text),
+      longText: translateText(t, `${baseKey}.longText`, unit.longText),
+      points: translateArray(t, `${baseKey}.points`, unit.points),
+      stats: unit.stats.map((stat, statIndex) => ({
+        ...stat,
+        label: translateText(t, `${baseKey}.stats.${statIndex}.label`, stat.label),
+      })),
+      details: translateArray(t, `${baseKey}.details`, unit.details),
+      process: translateArray(t, `${baseKey}.process`, unit.process),
+      tools: translateArray(t, `${baseKey}.tools`, unit.tools),
+      benefits: translateArray(t, `${baseKey}.benefits`, unit.benefits),
+      illustrationCaption: translateText(
+        t,
+        `${baseKey}.illustrationCaption`,
+        unit.illustrationCaption
+      ),
+    }
+  })
+}
 
 function useLockBodyScroll(locked: boolean) {
   useEffect(() => {
@@ -328,7 +369,9 @@ function CloseIcon() {
 
 export default function OrganisationSection() {
   const { dark } = useTheme()
+  const { t: translate } = useTranslation()
   const prefersReducedMotion = useReducedMotion()
+  const units = useMemo(() => localizeUnits(translate), [translate])
 
   const [activeIndex, setActiveIndex] = useState(0)
   const [glassOn, setGlassOn] = useState(false)
@@ -403,7 +446,7 @@ export default function OrganisationSection() {
 
   const currentHeadline = useMemo(
     () => `${activeIndex + 1}/${units.length} • ${units[activeIndex].tag}`,
-    [activeIndex]
+    [activeIndex, units]
   )
 
   return (
@@ -423,29 +466,31 @@ export default function OrganisationSection() {
             <div>
               <span className={s.eyebrow}>
                 <span className={s.eyebrowDot} />
-                Organisation
+                {translate('homeOrganisation.eyebrow')}
               </span>
 
               <h2 className={s.title} id="organisation-title">
-                Une organisation pensée pour des <em>solutions fiables</em>, agiles et durables
+                {translate('homeOrganisation.titlePrefix')}{' '}
+                <em>{translate('homeOrganisation.titleEmphasis')}</em>
+                {translate('homeOrganisation.titleSuffix')}
               </h2>
             </div>
 
             <div className={s.headRight}>
               <p className={s.lead}>
-                MD2I s&apos;appuie sur une organisation claire et complémentaire, structurée autour
-                de trois pôles d&apos;expertise. Chaque pôle joue un rôle précis dans la chaîne de
-                valeur, du besoin initial jusqu&apos;au déploiement, au suivi et à l&apos;amélioration.
+                {translate('homeOrganisation.lead')}
               </p>
 
               <div className={s.pills}>
-                <span className={s.pill}>3 pôles d&apos;expertise</span>
+                <span className={s.pill}>{translate('homeOrganisation.pill')}</span>
                
               </div>
 
               <div className={s.headMeta}>
                 <div className={s.progressTop}>
-                  <span className={s.progressLabel}>Parcours actif</span>
+                  <span className={s.progressLabel}>
+                    {translate('homeOrganisation.activePath')}
+                  </span>
                   <span className={s.progressValue}>{currentHeadline}</span>
                 </div>
 
@@ -473,7 +518,12 @@ export default function OrganisationSection() {
                     type="button"
                     className={`${s.railNode} ${isActive ? s.active : ''} ${isPassed ? s.passed : ''}`}
                     onClick={() => scrollToCard(index)}
-                    aria-label={`Aller à ${unit.title}`}
+                    aria-label={String(
+                      translate('homeOrganisation.goToUnit', {
+                        title: unit.title,
+                        defaultValue: `Aller à ${unit.title}`,
+                      })
+                    )}
                   >
                     {unit.num}
                     <span className={s.railConnector} />
@@ -569,7 +619,7 @@ export default function OrganisationSection() {
                           className={s.actionPrimary}
                           onClick={() => openModal(index)}
                         >
-                          Voir le détail
+                          {translate('homeOrganisation.actions.viewDetail')}
                           <ArrowIcon />
                         </button>
 
@@ -578,7 +628,7 @@ export default function OrganisationSection() {
                           className={s.actionGhost}
                           onClick={() => scrollToCard(index)}
                         >
-                          Explorer ce pôle
+                          {translate('homeOrganisation.actions.explore')}
                         </button>
                       </div>
                     </div>
@@ -597,22 +647,21 @@ export default function OrganisationSection() {
           transition={{ duration: 0.65, ease: [0.22, 1, 0.36, 1] }}
         >
           <div className={s.ctaCopy}>
-            <span className={s.ctaEyebrow}>Méthode intégrée</span>
-            <h3 className={s.ctaTitle}>Un parcours fluide entre relation, analyse et exécution</h3>
+            <span className={s.ctaEyebrow}>{translate('homeOrganisation.cta.eyebrow')}</span>
+            <h3 className={s.ctaTitle}>{translate('homeOrganisation.cta.title')}</h3>
             <p className={s.ctaText}>
-              Cette organisation permet de réduire les frictions, de mieux sécuriser les décisions
-              et d&apos;assurer des livrables plus lisibles, plus fiables et plus durables.
+              {translate('homeOrganisation.cta.text')}
             </p>
           </div>
 
           <div className={s.ctaActions}>
             <button type="button" className={s.actionPrimary} onClick={() => openModal(activeIndex)}>
-              Ouvrir le pôle actif
+              {translate('homeOrganisation.actions.openActive')}
               <ArrowIcon />
             </button>
 
             <a href="#contact" className={s.actionGhostLink}>
-              Contacter l&apos;équipe
+              {translate('homeOrganisation.actions.contactTeam')}
             </a>
           </div>
         </motion.div>
@@ -641,7 +690,12 @@ export default function OrganisationSection() {
               transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
               onClick={(event) => event.stopPropagation()}
             >
-              <button type="button" className={s.closeBtn} onClick={closeModal} aria-label="Fermer la fenêtre">
+              <button
+                type="button"
+                className={s.closeBtn}
+                onClick={closeModal}
+                aria-label={translate('homeOrganisation.modal.closeWindow')}
+              >
                 <CloseIcon />
               </button>
 
@@ -668,7 +722,7 @@ export default function OrganisationSection() {
               </div>
 
               <div className={s.modalBody}>
-                <span className={s.modalKicker}>Vue détaillée</span>
+                <span className={s.modalKicker}>{translate('homeOrganisation.modal.kicker')}</span>
                 <h3 id={modalTitleId} className={s.modalTitle}>
                   {selectedUnit.title}
                 </h3>
@@ -678,7 +732,7 @@ export default function OrganisationSection() {
 
                 <div className={s.modalGrid}>
                   <section className={s.detailCard}>
-                    <h4 className={s.detailTitle}>Ce que fait ce pôle</h4>
+                    <h4 className={s.detailTitle}>{translate('homeOrganisation.modal.what')}</h4>
                     <ul className={s.detailList}>
                       {selectedUnit.details.map((item) => (
                         <li key={item} className={s.detailItem}>
@@ -690,7 +744,7 @@ export default function OrganisationSection() {
                   </section>
 
                   <section className={s.detailCard}>
-                    <h4 className={s.detailTitle}>Bénéfices</h4>
+                    <h4 className={s.detailTitle}>{translate('homeOrganisation.modal.benefits')}</h4>
                     <ul className={s.detailList}>
                       {selectedUnit.benefits.map((item) => (
                         <li key={item} className={s.detailItem}>
@@ -703,7 +757,7 @@ export default function OrganisationSection() {
                 </div>
 
                 <section className={s.processBox}>
-                  <h4 className={s.detailTitle}>Processus type</h4>
+                  <h4 className={s.detailTitle}>{translate('homeOrganisation.modal.process')}</h4>
 
                   <div className={s.processList}>
                     {selectedUnit.process.map((step, stepIndex) => (
@@ -716,7 +770,7 @@ export default function OrganisationSection() {
                 </section>
 
                 <section className={s.toolsSection}>
-                  <h4 className={s.detailTitle}>Outils & leviers</h4>
+                  <h4 className={s.detailTitle}>{translate('homeOrganisation.modal.tools')}</h4>
                   <div className={s.toolsWrap}>
                     {selectedUnit.tools.map((tool) => (
                       <span key={tool} className={s.toolChip}>
@@ -730,17 +784,17 @@ export default function OrganisationSection() {
                   <div className={s.modalNav}>
                     <button type="button" className={s.actionGhost} onClick={showPrevious}>
                       <ChevronLeftIcon />
-                      Précédent
+                      {translate('homeOrganisation.actions.previous')}
                     </button>
 
                     <button type="button" className={s.actionGhost} onClick={showNext}>
-                      Suivant
+                      {translate('homeOrganisation.actions.next')}
                       <ChevronRightIcon />
                     </button>
                   </div>
 
                   <button type="button" className={s.actionPrimary} onClick={closeModal}>
-                    Fermer
+                    {translate('common.close')}
                     <CloseIcon />
                   </button>
                 </div>

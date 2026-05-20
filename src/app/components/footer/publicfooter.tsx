@@ -3,6 +3,7 @@
 import Image from 'next/image'
 import Link from 'next/link'
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 
 import { useTheme } from '@/app/context/ThemeContext'
 
@@ -253,8 +254,35 @@ function buildDirectionsUrl(location?: VisitorLocation | null) {
 
 export default function PublicFooter() {
   const { dark } = useTheme()
+  const { t: translate } = useTranslation()
 
   const t = useMemo(() => tokens(dark), [dark])
+  const links = useMemo(
+    () =>
+      LINKS.map((link, index) => ({
+        ...link,
+        label: translate(`footer.links.${index}`, { defaultValue: link.label }),
+      })),
+    [translate]
+  )
+  const services = useMemo(
+    () =>
+      SERVICES.map((service, index) => ({
+        ...service,
+        label: translate(`footer.services.${index}`, {
+          defaultValue: service.label,
+        }),
+      })),
+    [translate]
+  )
+  const legalLinks = useMemo(
+    () => [
+      translate('footer.legal.mentions'),
+      translate('footer.legal.privacy'),
+      translate('footer.legal.terms'),
+    ],
+    [translate]
+  )
 
   const [email, setEmail] = useState('')
   const [subscribeResult, setSubscribeResult] = useState<SubscribeResult | null>(null)
@@ -280,7 +308,7 @@ export default function PublicFooter() {
     setSubscribeResult(null)
 
     if (!cleanEmail || !cleanEmail.includes('@')) {
-      setSubscribeError('Veuillez saisir une adresse email valide.')
+      setSubscribeError(translate('footer.newsletter.validation.email'))
       return
     }
 
@@ -303,17 +331,19 @@ export default function PublicFooter() {
       const data = await res.json().catch(() => null)
 
       if (!res.ok || !data?.success) {
-        throw new Error(data?.error || 'Impossible d’ajouter ce contact.')
+        throw new Error(data?.error || translate('footer.newsletter.errors.add'))
       }
 
       const created = Boolean(data.created)
 
       setSubscribeResult({
         type: created ? 'created' : 'updated',
-        title: created ? 'Bienvenue chez MD2I' : 'Contact déjà enregistré',
+        title: created
+          ? translate('footer.newsletter.success.createdTitle')
+          : translate('footer.newsletter.success.updatedTitle'),
         message: created
-          ? 'Votre email a bien été ajouté au CRM. Nous pourrons vous envoyer nos actualités, offres utiles et informations produits.'
-          : 'Ce contact existait déjà dans le CRM. Ses informations ont été complétées et mises à jour.',
+          ? translate('footer.newsletter.success.createdMessage')
+          : translate('footer.newsletter.success.updatedMessage'),
         email: data.contact?.email || cleanEmail,
         companyName: data.contact?.companyName || null,
       })
@@ -325,7 +355,7 @@ export default function PublicFooter() {
       setSubscribeError(
         error instanceof Error
           ? error.message
-          : 'Erreur pendant l’inscription.'
+          : translate('footer.newsletter.errors.generic')
       )
     } finally {
       setSubscribeLoading(false)
@@ -336,7 +366,7 @@ export default function PublicFooter() {
     setLocationMessage('')
 
     if (typeof navigator === 'undefined' || !navigator.geolocation) {
-      setLocationMessage('La géolocalisation n’est pas disponible sur ce navigateur.')
+      setLocationMessage(translate('footer.location.unavailable'))
 
       window.open(GOOGLE_MAP_DIRECTIONS_URL, '_blank', 'noopener,noreferrer')
 
@@ -355,13 +385,13 @@ export default function PublicFooter() {
 
         setVisitorLocation(nextLocation)
         setLocationLoading(false)
-        setLocationMessage('Position détectée. Ouverture de l’itinéraire Google Maps.')
+        setLocationMessage(translate('footer.location.detected'))
 
         window.open(buildDirectionsUrl(nextLocation), '_blank', 'noopener,noreferrer')
       },
       () => {
         setLocationLoading(false)
-        setLocationMessage('Localisation refusée. Ouverture de Google Maps sans position de départ.')
+        setLocationMessage(translate('footer.location.denied'))
 
         window.open(GOOGLE_MAP_DIRECTIONS_URL, '_blank', 'noopener,noreferrer')
       },
@@ -723,7 +753,7 @@ export default function PublicFooter() {
                       marginTop: 3,
                     }}
                   >
-                    Cabinet IT &amp; Solutions digitales
+                    {translate('footer.brand.tagline')}
                   </div>
                 </div>
               </Link>
@@ -753,7 +783,7 @@ export default function PublicFooter() {
                       flexShrink: 0,
                     }}
                   />
-                  Disponible pour nouveaux projets
+                  {translate('footer.brand.availability')}
                 </span>
               </div>
 
@@ -767,9 +797,7 @@ export default function PublicFooter() {
                   maxWidth: 420,
                 }}
               >
-                Nous accompagnons les entreprises dans leur transformation digitale — conseil,
-                développement sur mesure, logiciels métiers et solutions IT innovantes à Madagascar
-                et à l’international.
+                {translate('footer.brand.description')}
               </p>
 
               <div
@@ -823,7 +851,7 @@ export default function PublicFooter() {
                     marginBottom: 5,
                   }}
                 >
-                  Recevoir les actualités MD2I
+                  {translate('footer.newsletter.title')}
                 </p>
 
                 <p
@@ -834,8 +862,7 @@ export default function PublicFooter() {
                     marginBottom: 12,
                   }}
                 >
-                  Votre email sera ajouté au CRM comme nouveau contact. Le nom et
-                  l’entreprise seront complétés automatiquement si possible.
+                  {translate('footer.newsletter.text')}
                 </p>
 
                 {subscribeResult ? (
@@ -941,7 +968,7 @@ export default function PublicFooter() {
                               letterSpacing: '.06em',
                             }}
                           >
-                            Contact CRM
+                            {translate('footer.newsletter.crmContact')}
                           </span>
 
                           <strong
@@ -962,7 +989,9 @@ export default function PublicFooter() {
                                 wordBreak: 'break-word',
                               }}
                             >
-                              Entreprise détectée : {subscribeResult.companyName}
+                              {translate('footer.newsletter.companyDetected', {
+                                company: subscribeResult.companyName,
+                              })}
                             </span>
                           )}
                         </div>
@@ -1009,7 +1038,9 @@ export default function PublicFooter() {
                         opacity: subscribeLoading ? 0.68 : 1,
                       }}
                     >
-                      {subscribeLoading ? 'Ajout en cours...' : 'Ajouter mon email →'}
+                      {subscribeLoading
+                        ? translate('footer.newsletter.adding')
+                        : translate('footer.newsletter.addEmail')}
                     </button>
 
                     {subscribeError && (
@@ -1044,11 +1075,11 @@ export default function PublicFooter() {
                   marginBottom: 16,
                 }}
               >
-                Navigation
+                {translate('footer.sections.navigation')}
               </p>
 
               <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                {LINKS.map((link) => (
+                {links.map((link) => (
                   <Link
                     key={link.href}
                     href={link.href}
@@ -1111,11 +1142,11 @@ export default function PublicFooter() {
                   marginBottom: 16,
                 }}
               >
-                Services
+                {translate('footer.sections.services')}
               </p>
 
               <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                {SERVICES.map((service) => (
+                {services.map((service) => (
                   <Link
                     key={service.href}
                     href={service.href}
@@ -1198,7 +1229,7 @@ export default function PublicFooter() {
                         color: t.text,
                       }}
                     >
-                      Localisation MD2I
+                      {translate('footer.location.title')}
                     </p>
 
                     <p
@@ -1218,7 +1249,7 @@ export default function PublicFooter() {
                     target="_blank"
                     rel="noreferrer"
                     className="footer-map-cta"
-                    aria-label="Ouvrir MD2I dans Google Maps"
+                    aria-label={translate('footer.location.openMaps')}
                     style={{
                       display: 'inline-flex',
                       alignItems: 'center',
@@ -1265,7 +1296,7 @@ export default function PublicFooter() {
                   }}
                 >
                   <iframe
-                    title="Localisation MD2I Madagascar sur Google Maps"
+                    title={translate('footer.location.mapTitle')}
                     src={GOOGLE_MAP_EMBED_URL}
                     className="footer-map-frame"
                     style={{
@@ -1343,7 +1374,7 @@ export default function PublicFooter() {
                     href={GOOGLE_MAP_SEARCH_URL}
                     target="_blank"
                     rel="noreferrer"
-                    aria-label="Ouvrir MD2I Madagascar dans Google Maps"
+                    aria-label={translate('footer.location.openMaps')}
                     style={{
                       position: 'absolute',
                       left: '50%',
@@ -1374,7 +1405,7 @@ export default function PublicFooter() {
 
                     <Image
                       src={MD2I_MARKER_LOGO}
-                      alt="MD2I Madagascar"
+                      alt={translate('footer.location.logoAlt')}
                       width={38}
                       height={38}
                       style={{
@@ -1463,7 +1494,9 @@ export default function PublicFooter() {
                       <path d="M18 12h4" />
                       <circle cx="12" cy="12" r="4" />
                     </svg>
-                    {locationLoading ? 'Localisation...' : 'Me localiser et ouvrir l’itinéraire'}
+                    {locationLoading
+                      ? translate('footer.location.locating')
+                      : translate('footer.location.useMyLocation')}
                   </button>
 
                   {locationMessage && (
@@ -1600,7 +1633,7 @@ export default function PublicFooter() {
               <p style={{ fontSize: 12, color: t.subtleText }}>
                 © {new Date().getFullYear()}{' '}
                 <span style={{ color: ORANGE, fontWeight: 600 }}>MD2I</span>
-                {' '}— Tous droits réservés. Conçu avec soin à Madagascar 🇲🇬
+                {' '}{translate('footer.legal.rights')}
               </p>
 
               <div
@@ -1611,7 +1644,7 @@ export default function PublicFooter() {
                   flexWrap: 'wrap',
                 }}
               >
-                {['Mentions légales', 'Confidentialité', 'CGU'].map((item) => (
+                {legalLinks.map((item) => (
                   <Link
                     key={item}
                     href="#"

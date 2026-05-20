@@ -5,7 +5,9 @@ import Image from 'next/image'
 import { usePathname } from 'next/navigation'
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { createPortal } from 'react-dom'
+import { useTranslation } from 'react-i18next'
 import { useTheme } from '../context/ThemeContext'
+import { LANGUAGE_OPTIONS, normalizeLocale } from '../i18n/settings'
 import logo from '../../assets/logo.png'
 
 const ORANGE = '#EF9F27'
@@ -24,48 +26,41 @@ type NavItem = {
   children?: NavChild[]
 }
 
-const LINKS: NavItem[] = [
-  { href: '/', label: 'Accueil' },
-  { href: '/services', label: 'Services' },
-  { href: '/reference', label: 'Références' },
-  { href: '/produits', label: 'Produits' },
-  { href: '/a-propos', label: 'À propos' },
+type NavChildDefinition = {
+  href: string
+  labelKey: string
+  descriptionKey?: string
+}
+
+type NavItemDefinition = {
+  href: string
+  labelKey: string
+  descriptionKey?: string
+  children?: NavChildDefinition[]
+}
+
+const LINK_DEFS: NavItemDefinition[] = [
+  { href: '/', labelKey: 'navbar.links.home' },
+  { href: '/services', labelKey: 'navbar.links.services' },
+  { href: '/reference', labelKey: 'navbar.links.references' },
+  { href: '/produits', labelKey: 'navbar.links.products' },
+  { href: '/a-propos', labelKey: 'navbar.links.about' },
   {
     href: '/contact',
-    label: 'Contact',
+    labelKey: 'navbar.links.contact',
     children: [
       {
         href: '/contact',
-        label: 'Contact général',
-        description: 'Écrire à l’équipe MD2I',
+        labelKey: 'navbar.links.contactGeneral',
+        descriptionKey: 'navbar.links.contactGeneralDescription',
       },
       {
         href: '/contact-commercial',
-        label: 'Contact commercial',
-        description: 'Demander un devis, une démo ou un rappel',
+        labelKey: 'navbar.links.contactCommercial',
+        descriptionKey: 'navbar.links.contactCommercialDescription',
       },
     ],
   },
-]
-
-const SEARCH_LINKS = LINKS.flatMap((item) => {
-  if (!item.children?.length) return [item]
-
-  return [
-    {
-      href: item.href,
-      label: item.label,
-      description: item.description,
-    },
-    ...item.children,
-  ]
-})
-
-const LANGUAGES = [
-  { code: 'FR', flag: '🇫🇷', label: 'Français' },
-  { code: 'EN', flag: '🇬🇧', label: 'English' },
-  { code: 'DE', flag: '🇩🇪', label: 'Deutsch' },
-  { code: 'MG', flag: '🇲🇬', label: 'Malagasy' },
 ]
 
 const SearchIcon = () => (
@@ -196,11 +191,14 @@ function SearchModal({
   open,
   onClose,
   dark,
+  links,
 }: {
   open: boolean
   onClose: () => void
   dark: boolean
+  links: NavItem[]
 }) {
+  const { t: translate } = useTranslation()
   const [query, setQuery] = useState('')
   const inputRef = useRef<HTMLInputElement>(null)
   const overlayRef = useRef<HTMLDivElement>(null)
@@ -209,11 +207,12 @@ function SearchModal({
   useEffect(() => {
     if (!open) return
 
-    setQuery('')
+    const id = window.setTimeout(() => {
+      setQuery('')
+      inputRef.current?.focus()
+    }, 60)
 
-    const id = setTimeout(() => inputRef.current?.focus(), 60)
-
-    return () => clearTimeout(id)
+    return () => window.clearTimeout(id)
   }, [open])
 
   useEffect(() => {
@@ -255,7 +254,7 @@ function SearchModal({
 
   if (!open) return null
 
-  const filtered = SEARCH_LINKS.filter((item) =>
+  const filtered = links.filter((item) =>
     item.label.toLowerCase().includes(query.toLowerCase())
   )
 
@@ -308,7 +307,7 @@ function SearchModal({
             ref={inputRef}
             value={query}
             onChange={(event) => setQuery(event.target.value)}
-            placeholder="Rechercher une page..."
+            placeholder={translate('navbar.search.placeholder')}
             style={{
               flex: 1,
               border: 'none',
@@ -330,7 +329,7 @@ function SearchModal({
               padding: '4px 8px',
             }}
           >
-            Échap
+            {translate('navbar.search.escape')}
           </kbd>
         </div>
 
@@ -343,7 +342,7 @@ function SearchModal({
                 fontSize: 14,
               }}
             >
-              Commencez à taper pour chercher dans le site.
+              {translate('navbar.search.hint')}
             </div>
           ) : filtered.length > 0 ? (
             filtered.map((item) => (
@@ -377,7 +376,7 @@ function SearchModal({
                 fontSize: 14,
               }}
             >
-              Aucun résultat pour “{query}”.
+              {translate('navbar.search.noResults', { query })}
             </div>
           )}
         </div>
@@ -396,6 +395,7 @@ function NavToggleButton({
   onClick: () => void
   dark: boolean
 }) {
+  const { t: translate } = useTranslation()
   const [tooltipVisible, setTooltipVisible] = useState(false)
   const [ripples, setRipples] = useState<number[]>([])
   const tooltipTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -461,7 +461,9 @@ function NavToggleButton({
           transition: 'opacity .2s ease, transform .2s ease',
         }}
       >
-        {navbarVisible ? 'Masquer la navigation' : 'Afficher la navigation'}
+        {navbarVisible
+          ? translate('navbar.navigation.hide')
+          : translate('navbar.navigation.show')}
       </div>
 
       <button
@@ -469,7 +471,9 @@ function NavToggleButton({
         onMouseEnter={showTooltip}
         onMouseLeave={hideTooltip}
         aria-label={
-          navbarVisible ? 'Masquer la navigation' : 'Afficher la navigation'
+          navbarVisible
+            ? translate('navbar.navigation.hide')
+            : translate('navbar.navigation.show')
         }
         style={{
           position: 'fixed',
@@ -526,12 +530,12 @@ function NavToggleButton({
 export default function PublicNavbar() {
   const pathname = usePathname()
   const { dark, toggleTheme } = useTheme()
+  const { t: translate, i18n } = useTranslation()
 
   const [mounted, setMounted] = useState(false)
   const [mobileOpen, setMobileOpen] = useState(false)
   const [searchOpen, setSearchOpen] = useState(false)
   const [langOpen, setLangOpen] = useState(false)
-  const [currentLang, setCurrentLang] = useState(LANGUAGES[0])
   const [scrolled, setScrolled] = useState(false)
   const [visible, setVisible] = useState(true)
   const [manualHidden, setManualHidden] = useState(false)
@@ -543,11 +547,53 @@ export default function PublicNavbar() {
   const lastScroll = useRef(0)
 
   const t = useMemo(() => tokens(dark, scrolled), [dark, scrolled])
+  const currentLocale = normalizeLocale(i18n.resolvedLanguage || i18n.language)
+  const currentLang =
+    LANGUAGE_OPTIONS.find((language) => language.code === currentLocale) ??
+    LANGUAGE_OPTIONS[0]
+
+  const links = useMemo<NavItem[]>(
+    () =>
+      LINK_DEFS.map((item) => ({
+        href: item.href,
+        label: translate(item.labelKey),
+        description: item.descriptionKey
+          ? translate(item.descriptionKey)
+          : undefined,
+        children: item.children?.map((child) => ({
+          href: child.href,
+          label: translate(child.labelKey),
+          description: child.descriptionKey
+            ? translate(child.descriptionKey)
+            : undefined,
+        })),
+      })),
+    [translate],
+  )
+
+  const searchLinks = useMemo(
+    () =>
+      links.flatMap((item) => {
+        if (!item.children?.length) return [item]
+
+        return [
+          {
+            href: item.href,
+            label: item.label,
+            description: item.description,
+          },
+          ...item.children,
+        ]
+      }),
+    [links],
+  )
 
   const navbarShown = visible && !manualHidden
 
   useEffect(() => {
-    setMounted(true)
+    const id = window.setTimeout(() => setMounted(true), 0)
+
+    return () => window.clearTimeout(id)
   }, [])
 
   useEffect(() => {
@@ -615,9 +661,13 @@ export default function PublicNavbar() {
   }, [])
 
   useEffect(() => {
-    setMobileOpen(false)
-    setLangOpen(false)
-    setOpenDesktopMenu(null)
+    const id = window.setTimeout(() => {
+      setMobileOpen(false)
+      setLangOpen(false)
+      setOpenDesktopMenu(null)
+    }, 0)
+
+    return () => window.clearTimeout(id)
   }, [pathname])
 
   useEffect(() => {
@@ -630,10 +680,13 @@ export default function PublicNavbar() {
     }
   }, [mobileOpen, searchOpen])
 
-  const handleLangSelect = useCallback((lang: (typeof LANGUAGES)[0]) => {
-    setCurrentLang(lang)
-    setLangOpen(false)
-  }, [])
+  const handleLangSelect = useCallback(
+    (lang: (typeof LANGUAGE_OPTIONS)[number]) => {
+      i18n.changeLanguage(lang.code)
+      setLangOpen(false)
+    },
+    [i18n],
+  )
 
   const isActive = (href: string) => {
     if (href === '/') return pathname === '/'
@@ -779,6 +832,7 @@ export default function PublicNavbar() {
         open={searchOpen}
         onClose={() => setSearchOpen(false)}
         dark={dark}
+        links={searchLinks}
       />
 
       <header
@@ -913,7 +967,7 @@ export default function PublicNavbar() {
                     textOverflow: 'ellipsis',
                   }}
                 >
-                  Cabinet IT &amp; Solutions digitales
+                  {translate('navbar.brand.tagline')}
                 </span>
               </div>
             </Link>
@@ -926,7 +980,7 @@ export default function PublicNavbar() {
                 gap: 2,
               }}
             >
-              {LINKS.map((link) => {
+              {links.map((link) => {
                 const active = isItemActive(link)
                 const hasChildren = Boolean(link.children?.length)
                 const menuOpen = openDesktopMenu === link.href
@@ -1069,7 +1123,7 @@ export default function PublicNavbar() {
             <button
               className="pro-icon"
               onClick={() => setSearchOpen(true)}
-              aria-label="Recherche"
+              aria-label={translate('navbar.search.aria')}
               style={iconBtn}
             >
               <SearchIcon />
@@ -1078,7 +1132,11 @@ export default function PublicNavbar() {
             <button
               className="pro-icon"
               onClick={toggleTheme}
-              aria-label={dark ? 'Mode clair' : 'Mode sombre'}
+              aria-label={
+                dark
+                  ? translate('navbar.theme.light')
+                  : translate('navbar.theme.dark')
+              }
               style={iconBtn}
             >
               {dark ? <SunIcon /> : <MoonIcon />}
@@ -1090,6 +1148,7 @@ export default function PublicNavbar() {
                 onClick={() => setLangOpen((value) => !value)}
                 aria-expanded={langOpen}
                 aria-haspopup="listbox"
+                aria-label={translate('navbar.language.menu')}
                 style={{
                   ...iconBtn,
                   width: 'auto',
@@ -1100,8 +1159,7 @@ export default function PublicNavbar() {
                   fontWeight: 600,
                 }}
               >
-                <span style={{ fontSize: 15 }}>{currentLang.flag}</span>
-                <span>{currentLang.code}</span>
+                <span>{currentLang.shortLabel}</span>
                 <ChevronDown open={langOpen} />
               </button>
 
@@ -1126,12 +1184,14 @@ export default function PublicNavbar() {
                     WebkitBackdropFilter: 'blur(16px)',
                   }}
                 >
-                  {LANGUAGES.map((lang) => {
+                  {LANGUAGE_OPTIONS.map((lang) => {
                     const selected = currentLang.code === lang.code
 
                     return (
                       <li
                         key={lang.code}
+                        role="option"
+                        aria-selected={selected}
                         className="pro-lang-item"
                         onClick={() => handleLangSelect(lang)}
                         style={{
@@ -1147,7 +1207,7 @@ export default function PublicNavbar() {
                           fontWeight: selected ? 700 : 500,
                         }}
                       >
-                        <span>{lang.flag}</span>
+                        <span>{lang.shortLabel}</span>
                         <span>{lang.label}</span>
                       </li>
                     )
@@ -1160,7 +1220,7 @@ export default function PublicNavbar() {
               className="pro-mobile-toggle pro-icon"
               onClick={() => setMobileOpen((value) => !value)}
               aria-expanded={mobileOpen}
-              aria-label="Menu mobile"
+              aria-label={translate('navbar.mobileMenu')}
               style={{
                 ...iconBtn,
                 display: 'none',
@@ -1210,7 +1270,7 @@ export default function PublicNavbar() {
             }}
           >
             <div style={{ display: 'grid', gap: 4 }}>
-              {LINKS.map((link) => {
+              {links.map((link) => {
                 const active = isItemActive(link)
 
                 if (link.children?.length) {
@@ -1329,7 +1389,7 @@ export default function PublicNavbar() {
                 flexWrap: 'wrap',
               }}
             >
-              {LANGUAGES.map((lang) => {
+              {LANGUAGE_OPTIONS.map((lang) => {
                 const selected = currentLang.code === lang.code
 
                 return (
@@ -1352,8 +1412,7 @@ export default function PublicNavbar() {
                       fontWeight: selected ? 700 : 600,
                     }}
                   >
-                    <span>{lang.flag}</span>
-                    <span>{lang.code}</span>
+                    <span>{lang.shortLabel}</span>
                   </button>
                 )
               })}

@@ -1,13 +1,16 @@
 'use client'
 
 import { useMemo, useRef } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useTheme } from '../../../context/ThemeContext'
 import { useHero3DScene } from '../hooks/useHero3DScene'
+import { getLocalizedSlides } from './data/slides'
 import type { HeroTheme, Mode } from './types'
 import styles from './Hero3D.module.css'
 
 export default function Hero3D() {
   const { dark } = useTheme()
+  const { t } = useTranslation()
   const mode: Mode = dark ? 'dark' : 'light'
 
   const rootRef            = useRef<HTMLDivElement>(null)
@@ -65,7 +68,9 @@ export default function Hero3D() {
     styles,
   }), [])
 
-  useHero3DScene(mode, theme, heroRefs)
+  const slides = useMemo(() => getLocalizedSlides(t), [t])
+
+  useHero3DScene(mode, theme, heroRefs, slides, t)
 
   return (
     <div

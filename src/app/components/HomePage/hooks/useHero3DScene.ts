@@ -1,13 +1,13 @@
 'use client'
 
 import { useEffect, useRef } from 'react'
+import type { TFunction } from 'i18next'
 import * as THREE from 'three'
-import { SLIDES, STATS } from '../herosection/data/slides'
 import { animateCounter, easeInOutCubic, easeOutBack } from '../herosection/utils/animations'
 import { getFeatureContent } from '../herosection/utils/featureContent'
 import { makeObject } from '../herosection/three/builders'
 import { buildHaloMesh, buildParticleSystem } from '../herosection/scene/createParticles'
-import type { HeroTheme, Mode } from '../herosection/types'
+import type { HeroTheme, Mode, Slide } from '../herosection/types'
 
 type Refs = {
   rootRef: React.RefObject<HTMLDivElement | null>
@@ -30,7 +30,14 @@ type Refs = {
   styles: Record<string, string>
 }
 
-export function useHero3DScene(mode: Mode, theme: HeroTheme, refs: Refs, showParticles = true) {
+export function useHero3DScene(
+  mode: Mode,
+  theme: HeroTheme,
+  refs: Refs,
+  slides: Slide[],
+  t: TFunction,
+  showParticles = true
+) {
   const currentSlideRef    = useRef(0)
   const transitioningRef   = useRef(false)
   const currentObjRef      = useRef<THREE.Group | null>(null)
@@ -167,7 +174,7 @@ export function useHero3DScene(mode: Mode, theme: HeroTheme, refs: Refs, showPar
     // ── Rendu UI ──────────────────────────────────────────────────────────
     function renderButtons(slideIndex: number) {
       btnsEl.innerHTML = ''
-      SLIDES[slideIndex].btns.forEach((btn) => {
+      slides[slideIndex].btns.forEach((btn) => {
         const button = document.createElement('button')
         button.className = `${refs.styles.heroBtn} ${btn.cls === 'primary' ? refs.styles.primary : refs.styles.secondary}`
         button.textContent = btn.label
@@ -176,7 +183,7 @@ export function useHero3DScene(mode: Mode, theme: HeroTheme, refs: Refs, showPar
     }
 
     function setFeatureContent(slideIndex: number) {
-      const features = getFeatureContent(SLIDES[slideIndex])
+      const features = getFeatureContent(slides[slideIndex], t)
       const set = (ref: React.RefObject<HTMLElement | null>, val: string) => {
         if (ref.current) ref.current.textContent = val
       }
@@ -215,7 +222,7 @@ export function useHero3DScene(mode: Mode, theme: HeroTheme, refs: Refs, showPar
     }
 
     function setContent(idx: number, instant: boolean) {
-      const s = SLIDES[idx]
+      const s = slides[idx]
       if (!instant) animateTextOut()
 
       timers.push(setTimeout(() => {
@@ -231,7 +238,7 @@ export function useHero3DScene(mode: Mode, theme: HeroTheme, refs: Refs, showPar
           textEls().forEach((el) => { el.style.opacity = '1'; el.style.transform = 'translateY(0)' })
         }
 
-        progressEl.style.width = `${(idx / (SLIDES.length - 1)) * 100}%`
+        progressEl.style.width = `${(idx / (slides.length - 1)) * 100}%`
         Array.from(stepsEl.children).forEach((child, i) => {
           child.classList.toggle(refs.styles.active, i === idx)
         })
@@ -259,7 +266,7 @@ export function useHero3DScene(mode: Mode, theme: HeroTheme, refs: Refs, showPar
       if (transitioningRef.current || idx === currentSlideRef.current) return
       transitioningRef.current = true
 
-      const s = SLIDES[idx]
+      const s = slides[idx]
       setContent(idx, false)
       updateParticleSystem(s.color)
 
@@ -339,7 +346,7 @@ export function useHero3DScene(mode: Mode, theme: HeroTheme, refs: Refs, showPar
 
     // ── Navigation dots ───────────────────────────────────────────────────
     stepsEl.innerHTML = ''
-    SLIDES.forEach((_, i) => {
+    slides.forEach((_, i) => {
       const dot    = document.createElement('div')
       dot.className = `${refs.styles.heroDot}${i === 0 ? ` ${refs.styles.active}` : ''}`
       dot.onclick   = () => transitionTo(i)
@@ -373,8 +380,8 @@ export function useHero3DScene(mode: Mode, theme: HeroTheme, refs: Refs, showPar
     // }
 
     // ── Particules — ajout unique ─────────────────────────────────────────
-    const particles = buildParticleSystem(SLIDES[0].color, mode)
-    const halo      = buildHaloMesh(SLIDES[0].color, mode)
+    const particles = buildParticleSystem(slides[0].color, mode)
+    const halo      = buildHaloMesh(slides[0].color, mode)
     particles.visible = showParticles
     halo.visible      = showParticles
     scene.add(particles)
@@ -443,7 +450,7 @@ export function useHero3DScene(mode: Mode, theme: HeroTheme, refs: Refs, showPar
     resize()
 
     // ── Objet initial ─────────────────────────────────────────────────────
-    currentObjRef.current = makeObject(SLIDES[0].object, SLIDES[0].color, mode, addShadow)
+    currentObjRef.current = makeObject(slides[0].object, slides[0].color, mode, addShadow)
     currentObjRef.current.position.set(0, 0, 0)
     currentObjRef.current.scale.setScalar(0.56)
     scene.add(currentObjRef.current)
@@ -452,7 +459,7 @@ autoSlideInterval = setInterval(() => {
   if (transitioningRef.current) return
 
   const current = currentSlideRef.current
-  const next = current >= SLIDES.length - 1 ? 0 : current + 1
+  const next = current >= slides.length - 1 ? 0 : current + 1
 
   transitionTo(next)
 }, 5000)
@@ -534,7 +541,7 @@ autoSlideInterval = setInterval(() => {
       // root.removeEventListener('touchstart',  onTouchStart)
       // root.removeEventListener('touchmove',   onTouchMove)
       // root.removeEventListener('touchend',    onTouchEnd)
-if (autoSlideInterval) clearInterval(autoSlideInterval)
+      if (autoSlideInterval) clearInterval(autoSlideInterval)
       scene.traverse((obj) => {
         const mesh = obj as THREE.Mesh
         mesh.geometry?.dispose()
@@ -544,5 +551,5 @@ if (autoSlideInterval) clearInterval(autoSlideInterval)
 
       renderer.dispose()
     }
-  }, [mode, theme, refs, showParticles])
+  }, [mode, theme, refs, slides, t, showParticles])
 }

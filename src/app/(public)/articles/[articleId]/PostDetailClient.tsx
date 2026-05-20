@@ -2,8 +2,11 @@
 
 import React, { useEffect, useRef, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
+import { useTranslation } from 'react-i18next'
 import api from '@/app/lib/axios'
 import { useTheme } from '@/app/context/ThemeContext'
+import { translateDynamicItems } from '@/app/i18n/dynamic'
+import { normalizeLocale } from '@/app/i18n/settings'
 import grapesjs, { Editor } from 'grapesjs'
 import 'grapesjs/dist/css/grapes.min.css'
 
@@ -30,6 +33,25 @@ type CanvasEventHandlers = {
   preventCopy: (e: Event) => boolean | void
   preventPaste: (e: Event) => boolean | void
   handleAnchorClick: (e: Event) => void
+}
+
+type GrapesComponentInput = Parameters<Editor['setComponents']>[0]
+type GrapesStyleInput = Parameters<Editor['setStyle']>[0]
+
+type GrapesComponentNode = {
+  set: (key: string, value: unknown) => void
+  components?: () => {
+    length: number
+    forEach: (callback: (component: GrapesComponentNode) => void) => void
+  }
+}
+
+type GrapesStyleReceiver = {
+  addStyle: (style: Record<string, string>) => void
+}
+
+type EditorWithEventHandlers = Editor & {
+  __eventHandlers?: CanvasEventHandlers
 }
 
 function getUiColors(dark: boolean) {
@@ -88,7 +110,7 @@ function syncEmbeddedTheme(editor: Editor, dark: boolean) {
     themeRoot.style.minHeight = '100%'
   }
 
-  const wrapper = editor.getWrapper() as any
+  const wrapper = editor.getWrapper() as GrapesStyleReceiver | null
   if (wrapper) {
     wrapper.addStyle({
       'background-color': pageBg,
@@ -130,6 +152,8 @@ export default function PostDetailClient() {
   const params = useParams()
   const router = useRouter()
   const { dark } = useTheme()
+  const { t, i18n } = useTranslation()
+  const locale = normalizeLocale(i18n.resolvedLanguage || i18n.language)
   const articleId = params?.articleId as string
 
   const mountRef = useRef<HTMLDivElement>(null)
@@ -144,20 +168,36 @@ export default function PostDetailClient() {
 
   useEffect(() => {
     if (!articleId) return
-;(async () => {
+    let cancelled = false
+
+    ;(async () => {
       try {
         setLoading(true)
         setError(null)
-        const res = await api.get(`/api/posts/${articleId}`)
-        setPost(res.data)
+        const res = await api.get<Post>(`/api/posts/${articleId}`)
+        const [translatedPost] = await translateDynamicItems<Post>(
+          [res.data],
+          locale,
+          ['title', 'excerpt'],
+        )
+
+        if (!cancelled) {
+          setPost(translatedPost ?? res.data)
+        }
       } catch (err) {
         console.error(err)
-        setError('Impossible de charger ce post.')
+        if (!cancelled) {
+          setError(t('articlesPage.errors.load'))
+        }
       } finally {
-        setLoading(false)
+        if (!cancelled) setLoading(false)
       }
     })()
-  }, [articleId])
+
+    return () => {
+      cancelled = true
+    }
+  }, [articleId, locale, t])
 
   useEffect(() => {
     if (!mountRef.current || !post) return
@@ -243,20 +283,20 @@ export default function PostDetailClient() {
       })
 
       if (post.gjsComponents) {
-        editor.setComponents(post.gjsComponents as any)
+        editor.setComponents(post.gjsComponents as GrapesComponentInput)
       } else if (post.gjsHtml) {
         editor.setComponents(post.gjsHtml)
       }
 
       if (post.gjsStyles) {
-        editor.setStyle(post.gjsStyles as any)
+        editor.setStyle(post.gjsStyles as GrapesStyleInput)
       } else if (post.gjsCss) {
         editor.setStyle(post.gjsCss)
       }
 
       const allComponents = editor.getComponents()
 
-      const disableComponent = (component: any) => {
+      const disableComponent = (component: GrapesComponentNode) => {
         if (component && component.set) {
           component.set('editable', false)
           component.set('draggable', false)
@@ -269,12 +309,14 @@ export default function PostDetailClient() {
           component.set('badge', null)
 
           if (component.components && component.components().length > 0) {
-            component.components().forEach((child: any) => disableComponent(child))
+            component.components().forEach((child) => disableComponent(child))
           }
         }
       }
 
-      allComponents.forEach((component: any) => disableComponent(component))
+      allComponents.forEach((component) =>
+        disableComponent(component as unknown as GrapesComponentNode)
+      )
 
       const setupCanvas = () => {
         try {
@@ -400,7 +442,7 @@ export default function PostDetailClient() {
           canvasDoc.body.addEventListener('paste', preventPaste)
           canvasDoc.body.addEventListener('click', handleAnchorClick, true)
 
-          ;(editor as any).__eventHandlers = {
+          ;(editor as EditorWithEventHandlers).__eventHandlers = {
             preventDrag,
             preventContextMenu,
             preventSelectStart,
@@ -438,7 +480,7 @@ export default function PostDetailClient() {
         const currentEditor = gjsRef.current
         try {
           const canvasDoc = currentEditor.Canvas?.getDocument()
-          const handlers = (currentEditor as any).__eventHandlers as CanvasEventHandlers | undefined
+          const handlers = (currentEditor as EditorWithEventHandlers).__eventHandlers
           if (canvasDoc && handlers) {
             canvasDoc.body.removeEventListener('dragstart', handlers.preventDrag)
             canvasDoc.body.removeEventListener('drop', handlers.preventDrag)
@@ -470,7 +512,9 @@ export default function PostDetailClient() {
   if (loading) {
     return (
       <div className="flex min-h-screen items-center justify-center" style={{ background: ui.appBg }}>
-        <div className="text-sm" style={{ color: ui.mutedText }}>Chargement…</div>
+        <div className="text-sm" style={{ color: ui.mutedText }}>
+          {t('postDetail.loading')}
+        </div>
       </div>
     )
   }
@@ -478,7 +522,9 @@ export default function PostDetailClient() {
   if (error || !post) {
     return (
       <div className="flex min-h-screen flex-col items-center justify-center gap-4 px-6" style={{ background: ui.appBg }}>
-        <p className="text-sm" style={{ color: ui.mutedText }}>{error || 'Post introuvable.'}</p>
+        <p className="text-sm" style={{ color: ui.mutedText }}>
+          {error || t('postDetail.notFound')}
+        </p>
         <button
           onClick={() => router.back()}
           style={{
@@ -494,7 +540,7 @@ export default function PostDetailClient() {
             boxShadow: '0 14px 30px rgba(239,159,39,.30)',
           }}
         >
-          Retour
+          {t('postDetail.back')}
         </button>
       </div>
     )
@@ -596,7 +642,7 @@ export default function PostDetailClient() {
         >
           <button
             onClick={() => router.back()}
-            aria-label="Retour"
+            aria-label={t('postDetail.back')}
             style={{
               display: 'inline-flex',
               alignItems: 'center',

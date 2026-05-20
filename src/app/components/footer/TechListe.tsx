@@ -1,101 +1,39 @@
 'use client'
 
-/* -------------------------------------------------------------------------- */
-/*                                   IMPORTS                                  */
-/* -------------------------------------------------------------------------- */
-
-// On importe React ainsi que les hooks nécessaires pour gérer
-// l'état local, les effets, les mémorisations et les références DOM.
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-
-// On importe createPortal pour afficher la modale dans un vrai portal,
-// en dehors de l'arbre visuel direct du composant.
 import { createPortal } from 'react-dom'
-
-// On réutilise le contexte de thème déjà présent dans l'application.
 import { useTheme } from '@/app/context/ThemeContext'
 
-/* -------------------------------------------------------------------------- */
-/*                                    TYPES                                   */
-/* -------------------------------------------------------------------------- */
-
-// Type représentant une technologie individuelle.
 type TechItem = {
-  // Nom complet de la technologie.
   name: string
-
-  // Version courte / fallback si aucun logo n'existe.
   short: string
-
-  // URL éventuelle du logo.
   logo?: string
-
-  // Niveau de maîtrise.
   level?: 'Débutant' | 'Intermédiaire' | 'Avancé' | 'Expert'
-
-  // Nombre d'années d'expérience.
   years?: number
-
-  // Description courte.
   description?: string
-
-  // Indique si la techno est certifiée.
   certified?: boolean
-
-  // Indique si la techno est "trending".
   trending?: boolean
-
-  // Indique si c'est une techno ajoutée récemment.
   isNew?: boolean
-
-  // Quelques projets liés à cette techno.
   projects?: string[]
 }
 
-// Type représentant une catégorie de technologies.
 type TechCategory = {
-  // Titre de la catégorie.
   title: string
-
-  // Description courte de la catégorie.
   description: string
-
-  // Couleur visuelle associée à la catégorie.
   color: string
-
-  // Taille prévue dans la grille.
   size: 'normal' | 'wide'
-
-  // Liste des technologies.
   items: TechItem[]
-
-  // Permet éventuellement de masquer une catégorie.
   hidden?: boolean
 }
 
-// Modes d'affichage disponibles.
-type ViewMode = 'grid' | 'list' | 'compact'
-
-// Types de tri disponibles.
+type ViewMode = 'grid' | 'list' | 'compact' | 'marquee'
 type SortBy = 'name' | 'level' | 'years' | 'trending'
 
-/* -------------------------------------------------------------------------- */
-/*                              CONSTANTES DESIGN                             */
-/* -------------------------------------------------------------------------- */
-
-// Couleur orange principale utilisée comme accent.
 const ORANGE = '#EF9F27'
-
-// Couleur chaude secondaire pour les dégradés.
 const GOLD = '#F7C060'
-
-// Couleur plus claire pour les halos subtils.
 const CREAM = '#FFD382'
-
-// Nombre maximum d'éléments comparés dans la modale.
 const MAX_COMPARE = 2
 
-// Ordre numérique des niveaux pour permettre le tri.
 const LEVEL_ORDER = {
   Expert: 4,
   Avancé: 3,
@@ -103,85 +41,58 @@ const LEVEL_ORDER = {
   Débutant: 1,
 }
 
-/* -------------------------------------------------------------------------- */
-/*                              HELPERS / UTILITIES                           */
-/* -------------------------------------------------------------------------- */
-
-// Construit une URL Simple Icons à partir d'un slug et d'une couleur.
 function si(slug: string, color: string) {
-  // On retire le # de la couleur pour correspondre au format attendu.
   return `https://cdn.simpleicons.org/${slug}/${color.replace('#', '')}`
 }
 
-// Retourne tous les tokens visuels du composant selon le thème clair ou sombre.
 function getTokens(dark: boolean) {
   return {
-    // On garde l'info de thème si on veut faire des variantes plus bas.
     dark,
 
-    // Fond global de la section.
     bg: dark ? '#0F0D0A' : '#ffffff',
 
-    // Surfaces glass / premium.
     surface1: dark ? 'rgba(27, 23, 18, 0.74)' : 'rgba(255, 255, 255, 0.64)',
     surface2: dark ? 'rgba(24, 21, 16, 0.88)' : 'rgba(255, 255, 255, 0.82)',
     surface3: dark ? 'rgba(18, 16, 13, 0.96)' : '#FFFFFF',
 
-    // Surface douce secondaire.
     panel: dark ? 'rgba(32, 28, 22, 0.68)' : 'rgba(255, 250, 242, 0.82)',
-
-    // Surface plus dense.
     panelStrong: dark ? 'rgba(24, 21, 16, 0.96)' : 'rgba(255, 255, 255, 0.92)',
 
-    // Fond principal des cartes.
     cardBg: dark
       ? 'linear-gradient(180deg, rgba(255,255,255,0.03), transparent), rgba(24,21,16,0.88)'
       : 'linear-gradient(180deg, rgba(255,255,255,0.42), transparent), rgba(255,255,255,0.82)',
 
-    // Fond des items.
     itemBg: dark ? 'rgba(255,255,255,0.035)' : 'rgba(255,255,255,0.72)',
-
-    // Fond hover.
     itemHover: dark ? 'rgba(255,255,255,0.06)' : 'rgba(255,255,255,0.94)',
 
-    // Couleurs de texte.
     text: dark ? '#F5EFE8' : '#15110B',
     softText: dark ? '#C1B8AD' : '#514B43',
     subtleText: dark ? '#91877B' : '#8F877E',
 
-    // Bordures.
     border: dark ? 'rgba(255,255,255,0.07)' : 'rgba(17, 12, 7, 0.08)',
     borderStrong: dark ? 'rgba(239, 159, 39, 0.24)' : 'rgba(239, 159, 39, 0.18)',
     itemBorder: dark ? 'rgba(255,255,255,0.08)' : 'rgba(17, 12, 7, 0.08)',
 
-    // Ombres.
     shadowSm: dark ? '0 4px 12px rgba(0,0,0,0.24)' : '0 4px 12px rgba(18, 15, 11, 0.05)',
     shadowMd: dark ? '0 18px 38px rgba(0,0,0,0.34)' : '0 18px 38px rgba(20, 15, 10, 0.08)',
     shadowLg: dark ? '0 30px 70px rgba(0,0,0,0.46)' : '0 26px 60px rgba(24, 18, 11, 0.12)',
 
-    // Accent.
     accent: ORANGE,
     accent2: GOLD,
     accent3: CREAM,
 
-    // Fond doux d'accent.
     accentSoft: dark ? 'rgba(239, 159, 39, 0.12)' : 'rgba(239, 159, 39, 0.08)',
 
-    // Couleur succès.
     success: '#22C55E',
 
-    // Fond glass de la barre sticky.
     stickyBg: dark
       ? 'linear-gradient(180deg, rgba(255,255,255,0.03), transparent), rgba(27, 23, 18, 0.82)'
       : 'linear-gradient(180deg, rgba(255,255,255,0.03), transparent), rgba(255,255,255,0.70)',
 
-    // Bordure de la barre sticky.
     stickyBorder: dark ? 'rgba(255, 208, 128, 0.16)' : 'rgba(239, 159, 39, 0.16)',
 
-    // Backdrop de la modale.
     modalBackdrop: dark ? 'rgba(0,0,0,0.64)' : 'rgba(8, 7, 6, 0.42)',
 
-    // Halos de fond.
     orb1: dark
       ? 'radial-gradient(circle at top left, rgba(239,159,39,0.20), transparent 24%)'
       : 'radial-gradient(circle at top left, rgba(239,159,39,0.10), transparent 24%)',
@@ -194,25 +105,21 @@ function getTokens(dark: boolean) {
       ? 'radial-gradient(circle at 50% 100%, rgba(255, 211, 130, 0.08), transparent 30%)'
       : 'radial-gradient(circle at 50% 100%, rgba(255, 211, 130, 0.06), transparent 30%)',
 
-    // Grille décorative.
     gridPattern: dark
       ? 'linear-gradient(rgba(255, 200, 120, 0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(255, 200, 120, 0.03) 1px, transparent 1px)'
       : 'linear-gradient(rgba(239, 159, 39, 0.04) 1px, transparent 1px), linear-gradient(90deg, rgba(239, 159, 39, 0.04) 1px, transparent 1px)',
   }
 }
 
-// Remplacer la fonction getCategoryFrame par celle-ci (couleur unifiée)
 function getCategoryFrame(dark: boolean) {
-  const unifiedColor = ORANGE // Couleur unique pour toutes les catégories
-  
+  const unifiedColor = ORANGE
+
   return {
     border: dark ? `${unifiedColor}22` : `${unifiedColor}18`,
     insetGlow: dark
       ? `inset 0 1px 0 rgba(255,255,255,0.03)`
       : `inset 0 1px 0 rgba(255,255,255,0.55)`,
-    outerGlow: dark
-      ? `0 10px 30px ${unifiedColor}12`
-      : `0 10px 26px ${unifiedColor}0D`,
+    outerGlow: dark ? `0 10px 30px ${unifiedColor}12` : `0 10px 26px ${unifiedColor}0D`,
     topLine: `linear-gradient(90deg, transparent 0%, ${unifiedColor}55 35%, ${unifiedColor}80 50%, ${unifiedColor}55 65%, transparent 100%)`,
     softOverlay: dark
       ? `linear-gradient(135deg, ${unifiedColor}10 0%, transparent 55%)`
@@ -220,12 +127,9 @@ function getCategoryFrame(dark: boolean) {
   }
 }
 
-// Trie une liste d'items selon le mode demandé.
 function sortItems(items: TechItem[], sortBy: SortBy) {
-  // Copie du tableau pour éviter de muter l'original.
   const next = [...items]
 
-  // Tri selon le critère demandé.
   if (sortBy === 'level') {
     next.sort(
       (a, b) =>
@@ -240,15 +144,9 @@ function sortItems(items: TechItem[], sortBy: SortBy) {
     next.sort((a, b) => a.name.localeCompare(b.name))
   }
 
-  // On renvoie le tableau trié.
   return next
 }
 
-/* -------------------------------------------------------------------------- */
-/*                                  DONNÉES                                   */
-/* -------------------------------------------------------------------------- */
-
-// Données de démonstration des catégories techniques.
 const TECH_CATEGORIES: TechCategory[] = [
   {
     title: 'Frontend',
@@ -646,11 +544,6 @@ const TECH_CATEGORIES: TechCategory[] = [
   },
 ]
 
-/* -------------------------------------------------------------------------- */
-/*                             PETITS COMPOSANTS UI                           */
-/* -------------------------------------------------------------------------- */
-
-// Sélecteur du mode d'affichage.
 function ViewSelector({
   view,
   setView,
@@ -660,14 +553,13 @@ function ViewSelector({
   setView: (view: ViewMode) => void
   theme: ReturnType<typeof getTokens>
 }) {
-  // Liste des modes possibles.
   const modes: { key: ViewMode; label: string }[] = [
     { key: 'grid', label: 'Grille' },
     { key: 'list', label: 'Liste' },
     { key: 'compact', label: 'Compact' },
+    { key: 'marquee', label: 'Marquee' },
   ]
 
-  // Rendu.
   return (
     <div
       style={{
@@ -679,6 +571,7 @@ function ViewSelector({
         border: `1px solid ${theme.stickyBorder}`,
         backdropFilter: 'blur(12px)',
         WebkitBackdropFilter: 'blur(12px)',
+        flexWrap: 'wrap',
       }}
     >
       {modes.map((mode) => (
@@ -712,7 +605,6 @@ function ViewSelector({
   )
 }
 
-// Sélecteur du mode de tri.
 function SortSelector({
   sortBy,
   setSortBy,
@@ -722,7 +614,6 @@ function SortSelector({
   setSortBy: (sort: SortBy) => void
   theme: ReturnType<typeof getTokens>
 }) {
-  // Rendu.
   return (
     <select
       value={sortBy}
@@ -751,15 +642,7 @@ function SortSelector({
   )
 }
 
-// Petit badge réutilisable.
-function Badge({
-  text,
-  color,
-}: {
-  text: string
-  color: string
-}) {
-  // Rendu.
+function Badge({ text, color }: { text: string; color: string }) {
   return (
     <span
       style={{
@@ -777,6 +660,7 @@ function Badge({
         fontWeight: 700,
         letterSpacing: '0.05em',
         textTransform: 'uppercase',
+        whiteSpace: 'nowrap',
       }}
     >
       {text}
@@ -784,9 +668,7 @@ function Badge({
   )
 }
 
-// Affichage du niveau sous forme d'étoiles.
 function Stars({ level }: { level: string }) {
-  // Mapping niveau -> nombre d'étoiles.
   const levels = {
     Débutant: 1,
     Intermédiaire: 2,
@@ -794,10 +676,8 @@ function Stars({ level }: { level: string }) {
     Expert: 4,
   }
 
-  // Nombre d'étoiles à allumer.
   const count = levels[level as keyof typeof levels] || 2
 
-  // Rendu.
   return (
     <div style={{ display: 'flex', gap: 2 }}>
       {[1, 2, 3, 4].map((index) => (
@@ -815,18 +695,9 @@ function Stars({ level }: { level: string }) {
   )
 }
 
-// Tooltip léger utilisé en vue compacte.
-function Tooltip({
-  children,
-  text,
-}: {
-  children: React.ReactNode
-  text: string
-}) {
-  // État d'affichage.
+function Tooltip({ children, text }: { children: React.ReactNode; text: string }) {
   const [show, setShow] = useState(false)
 
-  // Rendu.
   return (
     <div
       style={{ position: 'relative', display: 'inline-block' }}
@@ -862,11 +733,6 @@ function Tooltip({
   )
 }
 
-/* -------------------------------------------------------------------------- */
-/*                                PORTAL MODAL                                */
-/* -------------------------------------------------------------------------- */
-
-// Gère la racine portal de la modale.
 function CompareModalPortal({
   children,
   isOpen,
@@ -874,13 +740,9 @@ function CompareModalPortal({
   children: React.ReactNode
   isOpen: boolean
 }) {
-  // État de montage client.
   const [mounted, setMounted] = useState(false)
-
-  // Référence vers la racine DOM du portal.
   const [portalRoot, setPortalRoot] = useState<HTMLElement | null>(null)
 
-  // Création / récupération de la racine.
   useEffect(() => {
     setMounted(true)
 
@@ -903,20 +765,13 @@ function CompareModalPortal({
     }
   }, [])
 
-  // Rien tant que ce n'est pas prêt.
   if (!mounted || !portalRoot || !isOpen) {
     return null
   }
 
-  // Rendu portal.
   return createPortal(children, portalRoot)
 }
 
-/* -------------------------------------------------------------------------- */
-/*                          COMPOSANTS DE CONTENU                             */
-/* -------------------------------------------------------------------------- */
-
-// Composant affichant une techno.
 function TechItemComponent({
   item,
   theme,
@@ -930,10 +785,8 @@ function TechItemComponent({
   onCompare: (item: TechItem) => void
   isSelected: boolean
 }) {
-  // Hover local.
   const [hovered, setHovered] = useState(false)
 
-  // Cas de la vue compacte.
   if (viewMode === 'compact') {
     return (
       <Tooltip text={`${item.name} — ${item.level || 'Intermédiaire'} · ${item.years || 2}+ ans`}>
@@ -990,7 +843,6 @@ function TechItemComponent({
     )
   }
 
-  // Cas grid / list.
   return (
     <button
       type="button"
@@ -1004,7 +856,9 @@ function TechItemComponent({
         gap: 14,
         padding: '16px 16px',
         borderRadius: 18,
-        border: `1px solid ${isSelected ? theme.accent : hovered ? theme.borderStrong : theme.itemBorder}`,
+        border: `1px solid ${
+          isSelected ? theme.accent : hovered ? theme.borderStrong : theme.itemBorder
+        }`,
         background: hovered ? theme.itemHover : theme.itemBg,
         cursor: 'pointer',
         textAlign: 'left',
@@ -1029,11 +883,7 @@ function TechItemComponent({
         }}
       >
         {item.logo ? (
-          <img
-            src={item.logo}
-            alt={item.name}
-            style={{ width: 24, height: 24, objectFit: 'contain' }}
-          />
+          <img src={item.logo} alt={item.name} style={{ width: 24, height: 24, objectFit: 'contain' }} />
         ) : (
           <span
             style={{
@@ -1155,7 +1005,411 @@ function TechItemComponent({
   )
 }
 
-// Carte d'une catégorie.
+function TechMarqueeItem({
+  item,
+  theme,
+  onCompare,
+  isSelected,
+}: {
+  item: TechItem
+  theme: ReturnType<typeof getTokens>
+  onCompare: (item: TechItem) => void
+  isSelected: boolean
+}) {
+  const [hovered, setHovered] = useState(false)
+
+  return (
+    <button
+      type="button"
+      onClick={() => onCompare(item)}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+      style={{
+        width: 'clamp(236px, 28vw, 286px)',
+        minHeight: 132,
+        flex: '0 0 clamp(236px, 28vw, 286px)',
+        padding: 18,
+        borderRadius: 22,
+        border: `1px solid ${
+          isSelected ? theme.accent : hovered ? theme.borderStrong : theme.itemBorder
+        }`,
+        background: hovered
+          ? theme.itemHover
+          : `linear-gradient(180deg, rgba(255,255,255,0.06), transparent), ${theme.itemBg}`,
+        cursor: 'pointer',
+        textAlign: 'left',
+        display: 'flex',
+        flexDirection: 'column',
+        justifyContent: 'space-between',
+        gap: 14,
+        boxShadow: hovered ? theme.shadowMd : theme.shadowSm,
+        transform: hovered ? 'translateY(-3px)' : 'translateY(0)',
+        transition: 'all 0.24s ease',
+        backdropFilter: 'blur(14px)',
+        WebkitBackdropFilter: 'blur(14px)',
+      }}
+    >
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'flex-start',
+          justifyContent: 'space-between',
+          gap: 12,
+        }}
+      >
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 12,
+            minWidth: 0,
+          }}
+        >
+          <div
+            style={{
+              width: 44,
+              height: 44,
+              flexShrink: 0,
+              borderRadius: 15,
+              background: theme.panel,
+              border: `1px solid ${theme.itemBorder}`,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.08)',
+            }}
+          >
+            {item.logo ? (
+              <img src={item.logo} alt={item.name} style={{ width: 25, height: 25, objectFit: 'contain' }} />
+            ) : (
+              <span
+                style={{
+                  color: theme.text,
+                  fontFamily: '"DM Sans", sans-serif',
+                  fontSize: 12,
+                  fontWeight: 800,
+                }}
+              >
+                {item.short}
+              </span>
+            )}
+          </div>
+
+          <div style={{ minWidth: 0 }}>
+            <strong
+              style={{
+                display: 'block',
+                color: theme.text,
+                fontFamily: '"DM Sans", sans-serif',
+                fontSize: 15,
+                fontWeight: 800,
+                letterSpacing: '-0.02em',
+                whiteSpace: 'nowrap',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+              }}
+            >
+              {item.name}
+            </strong>
+
+            <span
+              style={{
+                display: 'block',
+                marginTop: 4,
+                color: theme.subtleText,
+                fontFamily: '"DM Sans", sans-serif',
+                fontSize: 11.5,
+                fontWeight: 600,
+              }}
+            >
+              {item.years || 2}+ ans d’expérience
+            </span>
+          </div>
+        </div>
+
+        {isSelected && (
+          <span
+            style={{
+              width: 24,
+              height: 24,
+              flexShrink: 0,
+              borderRadius: 999,
+              background: `linear-gradient(135deg, ${theme.accent}, ${theme.accent2})`,
+              color: '#FFFFFF',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontSize: 11,
+              boxShadow: '0 0 0 6px rgba(239,159,39,0.10)',
+            }}
+          >
+            ✓
+          </span>
+        )}
+      </div>
+
+      <p
+        style={{
+          margin: 0,
+          minHeight: 34,
+          color: theme.softText,
+          fontFamily: '"DM Sans", sans-serif',
+          fontSize: 12,
+          lineHeight: 1.45,
+          display: '-webkit-box',
+          WebkitLineClamp: 2,
+          WebkitBoxOrient: 'vertical',
+          overflow: 'hidden',
+        }}
+      >
+        {item.description || 'Technologie utilisée dans des projets modernes.'}
+      </p>
+
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          gap: 10,
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          {item.level && <Stars level={item.level} />}
+
+          <span
+            style={{
+              color: theme.softText,
+              fontFamily: '"DM Sans", sans-serif',
+              fontSize: 11.5,
+              fontWeight: 700,
+            }}
+          >
+            {item.level || 'Intermédiaire'}
+          </span>
+        </div>
+
+        <div style={{ display: 'flex', gap: 6 }}>
+          {item.trending && <Badge text="Trend" color="#F59E0B" />}
+          {item.certified && <Badge text="Certif" color="#8B5CF6" />}
+        </div>
+      </div>
+    </button>
+  )
+}
+
+function TechCategoryMarquee({
+  category,
+  index,
+  theme,
+  sortBy,
+  selectedForCompare,
+  onCompare,
+}: {
+  category: TechCategory
+  index: number
+  theme: ReturnType<typeof getTokens>
+  sortBy: SortBy
+  selectedForCompare: TechItem | null
+  onCompare: (item: TechItem) => void
+}) {
+  const items = sortItems(category.items, sortBy)
+
+  if (!items.length) {
+    return null
+  }
+
+  const repeatedItems = [...items, ...items]
+  const frame = getCategoryFrame(theme.dark)
+  const animationName = index % 2 === 0 ? 'techMarqueeLeft' : 'techMarqueeRight'
+  const duration = Math.max(28, items.length * 6)
+
+  return (
+    <article
+      className="tech-marquee-lane"
+      style={{
+        position: 'relative',
+        overflow: 'hidden',
+        borderRadius: 28,
+        padding: '24px 0 26px',
+        background: theme.cardBg,
+        border: `1px solid ${frame.border}`,
+        boxShadow: `${theme.shadowSm}, ${frame.outerGlow}`,
+        backdropFilter: 'blur(18px)',
+        WebkitBackdropFilter: 'blur(18px)',
+      }}
+    >
+      <div
+        aria-hidden
+        style={{
+          position: 'absolute',
+          inset: 0,
+          background: frame.softOverlay,
+          pointerEvents: 'none',
+        }}
+      />
+
+      <div
+        aria-hidden
+        style={{
+          position: 'absolute',
+          top: 0,
+          left: 24,
+          right: 24,
+          height: 1.5,
+          background: frame.topLine,
+          pointerEvents: 'none',
+        }}
+      />
+
+      <div
+        aria-hidden
+        style={{
+          position: 'absolute',
+          top: -80,
+          right: -90,
+          width: 220,
+          height: 220,
+          borderRadius: '50%',
+          background: `${category.color}18`,
+          filter: 'blur(54px)',
+          pointerEvents: 'none',
+        }}
+      />
+
+      <div
+        style={{
+          position: 'relative',
+          zIndex: 1,
+          padding: '0 24px',
+          marginBottom: 18,
+          display: 'flex',
+          alignItems: 'flex-end',
+          justifyContent: 'space-between',
+          gap: 18,
+          flexWrap: 'wrap',
+        }}
+      >
+        <div>
+          <div
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 10,
+              marginBottom: 8,
+            }}
+          >
+            <span
+              style={{
+                width: 7,
+                height: 7,
+                borderRadius: '50%',
+                background: theme.accent,
+                boxShadow: `0 0 0 5px ${theme.accentSoft}`,
+              }}
+            />
+
+            <span
+              style={{
+                color: theme.accent,
+                fontFamily: '"Roboto", "Syne", sans-serif',
+                fontSize: 10.5,
+                fontWeight: 800,
+                letterSpacing: '0.16em',
+                textTransform: 'uppercase',
+              }}
+            >
+              Catégorie
+            </span>
+          </div>
+
+          <h3
+            style={{
+              margin: 0,
+              color: theme.text,
+              fontFamily: '"Fraunces", serif',
+              fontSize: 'clamp(25px, 2.4vw, 36px)',
+              fontWeight: 400,
+              lineHeight: 1.08,
+              letterSpacing: '-0.03em',
+            }}
+          >
+            {category.title}
+          </h3>
+
+          <p
+            style={{
+              maxWidth: 620,
+              margin: '8px 0 0',
+              color: theme.softText,
+              fontFamily: '"DM Sans", sans-serif',
+              fontSize: 13.5,
+              lineHeight: 1.7,
+            }}
+          >
+            {category.description}
+          </p>
+        </div>
+
+        <span
+          style={{
+            minHeight: 32,
+            padding: '0 13px',
+            borderRadius: 999,
+            background: theme.itemBg,
+            border: `1px solid ${theme.itemBorder}`,
+            color: theme.subtleText,
+            display: 'inline-flex',
+            alignItems: 'center',
+            fontFamily: '"DM Sans", sans-serif',
+            fontSize: 11,
+            fontWeight: 800,
+            letterSpacing: '0.04em',
+            textTransform: 'uppercase',
+          }}
+        >
+          {items.length} techno{items.length > 1 ? 's' : ''}
+        </span>
+      </div>
+
+      <div
+        style={{
+          position: 'relative',
+          zIndex: 1,
+          overflow: 'hidden',
+          padding: '4px 0',
+          maskImage:
+            'linear-gradient(90deg, transparent 0%, black 8%, black 92%, transparent 100%)',
+          WebkitMaskImage:
+            'linear-gradient(90deg, transparent 0%, black 8%, black 92%, transparent 100%)',
+        }}
+      >
+        <div
+          className="tech-marquee-track"
+          style={{
+            display: 'flex',
+            width: 'max-content',
+            gap: 14,
+            paddingLeft: 24,
+            paddingRight: 24,
+            animation: `${animationName} ${duration}s linear infinite`,
+            willChange: 'transform',
+          }}
+        >
+          {repeatedItems.map((item, itemIndex) => (
+            <TechMarqueeItem
+              key={`${category.title}-${item.name}-${itemIndex}`}
+              item={item}
+              theme={theme}
+              onCompare={onCompare}
+              isSelected={selectedForCompare?.name === item.name}
+            />
+          ))}
+        </div>
+      </div>
+    </article>
+  )
+}
+
 function TechCategoryCard({
   category,
   theme,
@@ -1171,18 +1425,13 @@ function TechCategoryCard({
   selectedForCompare: TechItem | null
   onCompare: (item: TechItem) => void
 }) {
-  // Tri des items.
   const items = sortItems(category.items, sortBy)
-
-  // Styles de cadrage doux.
   const frame = getCategoryFrame(theme.dark)
 
-  // Rien si vide.
   if (!items.length) {
     return null
   }
 
-  // Rendu.
   return (
     <article
       style={{
@@ -1192,19 +1441,16 @@ function TechCategoryCard({
         padding: viewMode === 'compact' ? 18 : 22,
         background: theme.cardBg,
         border: `1px solid ${frame.border}`,
-        // boxShadow: `${theme.shadowMd}, ${frame.outerGlow}, ${frame.insetGlow}`,
         backdropFilter: 'blur(16px)',
         WebkitBackdropFilter: 'blur(16px)',
         transition: 'transform 0.24s ease, box-shadow 0.24s ease, border-color 0.24s ease',
       }}
       onMouseEnter={(e) => {
         e.currentTarget.style.transform = 'translateY(-2px)'
-        // e.currentTarget.style.boxShadow = `${theme.shadowLg}, 0 12px 34px ${category.color}16, ${frame.insetGlow}`
         e.currentTarget.style.borderColor = theme.dark ? `${category.color}30` : `${category.color}24`
       }}
       onMouseLeave={(e) => {
         e.currentTarget.style.transform = 'translateY(0)'
-        // e.currentTarget.style.boxShadow = `${theme.shadowMd}, ${frame.outerGlow}, ${frame.insetGlow}`
         e.currentTarget.style.borderColor = frame.border
       }}
     >
@@ -1264,25 +1510,17 @@ function TechCategoryCard({
             flexWrap: 'wrap',
           }}
         >
-          <div
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: 10,
-            }}
-          >
-      
-
-<div
-  style={{
-    width: 6,
-    height: 6,
-    borderRadius: '50%',
-    background: theme.accent,  // ← utilise l'orange unifié
-    boxShadow: `0 0 0 3px ${theme.accentSoft}`,  // ← halo plus subtil
-    flexShrink: 0,
-  }}
-/>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <div
+              style={{
+                width: 6,
+                height: 6,
+                borderRadius: '50%',
+                background: theme.accent,
+                boxShadow: `0 0 0 3px ${theme.accentSoft}`,
+                flexShrink: 0,
+              }}
+            />
 
             <h3
               style={{
@@ -1359,11 +1597,6 @@ function TechCategoryCard({
   )
 }
 
-/* -------------------------------------------------------------------------- */
-/*                                MODALE COMPARE                              */
-/* -------------------------------------------------------------------------- */
-
-// Modale de comparaison.
 function CompareModal({
   items,
   onClose,
@@ -1375,7 +1608,6 @@ function CompareModal({
   theme: ReturnType<typeof getTokens>
   isOpen: boolean
 }) {
-  // On bloque le scroll du body quand la modale est ouverte.
   useEffect(() => {
     if (!isOpen) {
       return
@@ -1398,12 +1630,10 @@ function CompareModal({
     }
   }, [isOpen, onClose])
 
-  // Pas de rendu si fermée.
   if (!isOpen || items.length === 0) {
     return null
   }
 
-  // Rendu.
   return (
     <CompareModalPortal isOpen={isOpen}>
       <div
@@ -1571,11 +1801,7 @@ function CompareModal({
                     }}
                   >
                     {item.logo ? (
-                      <img
-                        src={item.logo}
-                        alt={item.name}
-                        style={{ width: 34, height: 34, objectFit: 'contain' }}
-                      />
+                      <img src={item.logo} alt={item.name} style={{ width: 34, height: 34, objectFit: 'contain' }} />
                     ) : (
                       <span
                         style={{
@@ -1602,13 +1828,7 @@ function CompareModal({
                     {item.name}
                   </h3>
 
-                  <div
-                    style={{
-                      display: 'flex',
-                      justifyContent: 'center',
-                      marginTop: 8,
-                    }}
-                  >
+                  <div style={{ display: 'flex', justifyContent: 'center', marginTop: 8 }}>
                     {item.level && <Stars level={item.level} />}
                   </div>
                 </div>
@@ -1729,11 +1949,6 @@ function CompareModal({
   )
 }
 
-/* -------------------------------------------------------------------------- */
-/*                              STICKY FILTER BAR                             */
-/* -------------------------------------------------------------------------- */
-
-// Barre sticky premium.
 function StickyFilterBar({
   viewMode,
   setViewMode,
@@ -1753,7 +1968,6 @@ function StickyFilterBar({
   visible: boolean
   theme: ReturnType<typeof getTokens>
 }) {
-  // Rendu.
   return (
     <div
       style={{
@@ -1785,14 +1999,7 @@ function StickyFilterBar({
           flexWrap: 'wrap',
         }}
       >
-        <div
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: 10,
-            flexWrap: 'wrap',
-          }}
-        >
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
           <span
             style={{
               width: 6,
@@ -1835,14 +2042,7 @@ function StickyFilterBar({
           </span>
         </div>
 
-        <div
-          style={{
-            display: 'flex',
-            gap: 8,
-            alignItems: 'center',
-            flexWrap: 'wrap',
-          }}
-        >
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
           <ViewSelector view={viewMode} setView={setViewMode} theme={theme} />
           <SortSelector sortBy={sortBy} setSortBy={setSortBy} theme={theme} />
         </div>
@@ -1851,58 +2051,31 @@ function StickyFilterBar({
   )
 }
 
-/* -------------------------------------------------------------------------- */
-/*                              COMPOSANT PRINCIPAL                           */
-/* -------------------------------------------------------------------------- */
-
-// Composant principal de la tech list.
 export default function TechListe() {
-  // On récupère l'information de thème.
   const { dark } = useTheme()
-
-  // On calcule les tokens visuels selon le thème.
   const theme = useMemo(() => getTokens(dark), [dark])
 
-  // État du mode de vue.
-  const [viewMode, setViewMode] = useState<ViewMode>('grid')
-
-  // État du tri.
+  const [viewMode, setViewMode] = useState<ViewMode>('marquee')
   const [sortBy, setSortBy] = useState<SortBy>('name')
-
-  // Item en attente de comparaison.
   const [selectedForCompare, setSelectedForCompare] = useState<TechItem | null>(null)
-
-  // Liste des items réellement comparés.
   const [compareItems, setCompareItems] = useState<TechItem[]>([])
-
-  // Ouverture / fermeture de la modale.
   const [showCompareModal, setShowCompareModal] = useState(false)
-
-  // Technologie mise en avant.
   const [techOfTheDay, setTechOfTheDay] = useState<TechItem | null>(null)
-
-  // Visibilité de la barre sticky.
   const [stickyVisible, setStickyVisible] = useState(false)
-
-  // Animation d’apparition du hero.
   const [headVisible, setHeadVisible] = useState(false)
 
-  // Référence du bloc hero.
   const heroRef = useRef<HTMLDivElement | null>(null)
-
-  // Référence pour annuler le timer de sélection.
   const selectionTimeoutRef = useRef<number | null>(null)
 
-  // Catégories visibles uniquement.
-  const visibleCategories = TECH_CATEGORIES.filter((category) => !category.hidden)
+  const visibleCategories = useMemo(() => {
+    return TECH_CATEGORIES.filter((category) => !category.hidden)
+  }, [])
 
-  // Nombre total de technologies.
   const totalTechnologies = useMemo(
     () => visibleCategories.reduce((total, category) => total + category.items.length, 0),
     [visibleCategories]
   )
 
-  // Nombre total de technos certifiées.
   const totalCertified = useMemo(
     () =>
       visibleCategories
@@ -1911,7 +2084,6 @@ export default function TechListe() {
     [visibleCategories]
   )
 
-  // Nombre total de technos tendance.
   const totalTrending = useMemo(
     () =>
       visibleCategories
@@ -1920,22 +2092,16 @@ export default function TechListe() {
     [visibleCategories]
   )
 
-  // Effet d’apparition du hero.
   useEffect(() => {
     const timer = window.setTimeout(() => setHeadVisible(true), 80)
-
     return () => window.clearTimeout(timer)
   }, [])
 
-  // Choisit une techno mise en avant aléatoirement.
   useEffect(() => {
     const allTechs = visibleCategories.flatMap((category) => category.items)
     setTechOfTheDay(allTechs[Math.floor(Math.random() * allTechs.length)] || null)
   }, [visibleCategories])
 
-  // Cet effet ne sert plus qu’à afficher le sticky quand le hero sort.
-  // Le fait qu’il soit borné avant le footer est maintenant géré
-  // par la structure du DOM : sticky + section sont dans un wrapper commun.
   useEffect(() => {
     const observer = new IntersectionObserver(
       ([entry]) => {
@@ -1954,7 +2120,6 @@ export default function TechListe() {
     return () => observer.disconnect()
   }, [])
 
-  // Nettoyage du timer à la destruction du composant.
   useEffect(() => {
     return () => {
       if (selectionTimeoutRef.current) {
@@ -1963,7 +2128,6 @@ export default function TechListe() {
     }
   }, [])
 
-  // Gestion du clic de comparaison.
   const handleCompare = useCallback(
     (item: TechItem) => {
       if (selectedForCompare?.name === item.name) {
@@ -2001,12 +2165,10 @@ export default function TechListe() {
     [selectedForCompare]
   )
 
-  // Texte méta affiché dans le hero.
   const currentMeta = useMemo(() => {
     return `Mode ${viewMode} • tri ${sortBy}`
   }, [sortBy, viewMode])
 
-  // Rendu principal.
   return (
     <>
       <style>{`
@@ -2034,6 +2196,35 @@ export default function TechListe() {
           }
         }
 
+        @keyframes techMarqueeLeft {
+          0% {
+            transform: translate3d(0, 0, 0);
+          }
+          100% {
+            transform: translate3d(-50%, 0, 0);
+          }
+        }
+
+        @keyframes techMarqueeRight {
+          0% {
+            transform: translate3d(-50%, 0, 0);
+          }
+          100% {
+            transform: translate3d(0, 0, 0);
+          }
+        }
+
+        .tech-marquee-lane:hover .tech-marquee-track {
+          animation-play-state: paused;
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+          .tech-marquee-track {
+            animation: none !important;
+            transform: none !important;
+          }
+        }
+
         @media (max-width: 900px) {
           .tech-grid-responsive {
             grid-template-columns: 1fr !important;
@@ -2041,16 +2232,7 @@ export default function TechListe() {
         }
       `}</style>
 
-      {/* IMPORTANT :
-          Ce wrapper contient à la fois le sticky et toute la section tech.
-          Comme ça, le sticky est borné par cette zone.
-          Il s’arrête donc naturellement avant le footer. */}
-      <div
-        style={{
-          position: 'relative',
-          overflow: 'visible',
-        }}
-      >
+      <div style={{ position: 'relative', overflow: 'visible' }}>
         <StickyFilterBar
           viewMode={viewMode}
           setViewMode={setViewMode}
@@ -2196,7 +2378,11 @@ export default function TechListe() {
                       textShadow: '0 2px 18px rgba(0,0,0,0.08)',
                     }}
                   >
-                    Une stack pensée pour des <em style={{ color: theme.accent, fontStyle: 'normal' }}>solutions fiables</em>, premium et durables
+                    Une stack pensée pour des{' '}
+                    <em style={{ color: theme.accent, fontStyle: 'normal' }}>
+                      solutions fiables
+                    </em>
+                    , premium et durables
                   </h2>
                 </div>
 
@@ -2221,13 +2407,7 @@ export default function TechListe() {
                     Cette section présente les technologies maîtrisées, leur niveau, leur maturité et leur place dans les projets. L’objectif est d’avoir une lecture plus éditoriale, plus claire et plus haut de gamme que la version précédente.
                   </p>
 
-                  <div
-                    style={{
-                      display: 'flex',
-                      flexWrap: 'wrap',
-                      gap: 8,
-                    }}
-                  >
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
                     {['liquid glass', 'comparaison rapide', 'lecture premium'].map((pill) => (
                       <span
                         key={pill}
@@ -2251,13 +2431,7 @@ export default function TechListe() {
                     ))}
                   </div>
 
-                  <div
-                    style={{
-                      display: 'grid',
-                      gap: 10,
-                      marginTop: 2,
-                    }}
-                  >
+                  <div style={{ display: 'grid', gap: 10, marginTop: 2 }}>
                     <div
                       style={{
                         display: 'flex',
@@ -2309,8 +2483,10 @@ export default function TechListe() {
                             viewMode === 'grid'
                               ? '38%'
                               : viewMode === 'list'
-                              ? '68%'
-                              : '100%',
+                                ? '68%'
+                                : viewMode === 'compact'
+                                  ? '100%'
+                                  : '86%',
                           borderRadius: 999,
                           background: `linear-gradient(90deg, ${theme.accent}, ${theme.accent2})`,
                           boxShadow: '0 0 16px rgba(239,159,39,0.25)',
@@ -2396,14 +2572,7 @@ export default function TechListe() {
                   WebkitBackdropFilter: 'blur(16px)',
                 }}
               >
-                <div
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 14,
-                    flexWrap: 'wrap',
-                  }}
-                >
+                <div style={{ display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap' }}>
                   <div
                     style={{
                       width: 52,
@@ -2463,38 +2632,52 @@ export default function TechListe() {
               </div>
             ) : null}
 
-            <div
-              className="tech-grid-responsive"
-              style={{
-                display: 'grid',
-                gridTemplateColumns:
-                  viewMode === 'compact'
-                    ? 'repeat(auto-fit, minmax(300px, 1fr))'
-                    : 'repeat(2, minmax(0, 1fr))',
-                gap: 18,
-              }}
-            >
-              {visibleCategories.map((category) => (
-                <div
-                  key={category.title}
-                  style={{
-                    gridColumn:
-                      category.size === 'wide' && viewMode !== 'compact'
-                        ? '1 / -1'
-                        : 'auto',
-                  }}
-                >
-                  <TechCategoryCard
+            {viewMode === 'marquee' ? (
+              <div style={{ display: 'grid', gap: 22 }}>
+                {visibleCategories.map((category, index) => (
+                  <TechCategoryMarquee
+                    key={category.title}
                     category={category}
+                    index={index}
                     theme={theme}
-                    viewMode={viewMode}
                     sortBy={sortBy}
                     selectedForCompare={selectedForCompare}
                     onCompare={handleCompare}
                   />
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            ) : (
+              <div
+                className="tech-grid-responsive"
+                style={{
+                  display: 'grid',
+                  gridTemplateColumns:
+                    viewMode === 'compact'
+                      ? 'repeat(auto-fit, minmax(300px, 1fr))'
+                      : 'repeat(2, minmax(0, 1fr))',
+                  gap: 18,
+                }}
+              >
+                {visibleCategories.map((category) => (
+                  <div
+                    key={category.title}
+                    style={{
+                      gridColumn:
+                        category.size === 'wide' && viewMode !== 'compact' ? '1 / -1' : 'auto',
+                    }}
+                  >
+                    <TechCategoryCard
+                      category={category}
+                      theme={theme}
+                      viewMode={viewMode}
+                      sortBy={sortBy}
+                      selectedForCompare={selectedForCompare}
+                      onCompare={handleCompare}
+                    />
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         </section>
       </div>

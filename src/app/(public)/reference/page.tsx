@@ -1,8 +1,17 @@
 "use client";
 
 import Link from "next/link";
+import type {
+  LeafletMouseEvent,
+  Map as LeafletMap,
+  Marker,
+  TileLayer,
+} from "leaflet";
 import type { ReactNode } from "react";
+import { useTranslation } from "react-i18next";
 import { useTheme } from "@/app/context/ThemeContext";
+import { translateDynamicItems } from "@/app/i18n/dynamic";
+import { normalizeLocale } from "@/app/i18n/settings";
 import { useEffect, useRef, useState, useCallback, useMemo } from "react";
 
 interface Reference {
@@ -29,6 +38,7 @@ interface Reference {
 
 type SortBy = "date" | "impact" | "client";
 type ViewMode = "map" | "list";
+type ReferenceDisplayMode = "list" | "card";
 
 const ORANGE = "#EF9F27";
 
@@ -341,6 +351,7 @@ function ToolbarActions({
   viewMode: ViewMode;
   t: ReturnType<typeof getTokens>;
 }) {
+  const { t: translate } = useTranslation();
   const isListMode = viewMode === "list";
 
   return (
@@ -359,7 +370,7 @@ function ToolbarActions({
       <Link
         href="/"
         className="command-toggle"
-        title="Retour à l’accueil"
+        title={translate("referencePage.toolbar.homeTitle")}
         style={{
           height: 38,
           padding: "0 13px",
@@ -379,7 +390,7 @@ function ToolbarActions({
         }}
       >
         <span style={{ fontSize: 14, lineHeight: 1 }}>←</span>
-        <span>Accueil</span>
+        <span>{translate("referencePage.toolbar.home")}</span>
       </Link>
 
       <button
@@ -387,7 +398,11 @@ function ToolbarActions({
         onClick={onToggle}
         className="command-toggle"
         aria-pressed={open}
-        title={open ? "Masquer les outils" : "Afficher les outils"}
+        title={
+          open
+            ? translate("referencePage.toolbar.hideTools")
+            : translate("referencePage.toolbar.showTools")
+        }
         style={{
           height: 38,
           padding: "0 13px",
@@ -414,7 +429,7 @@ function ToolbarActions({
           }}
         />
 
-        <span>Outils</span>
+        <span>{translate("referencePage.toolbar.tools")}</span>
 
         <span
           style={{
@@ -448,6 +463,8 @@ function ProjectTabs({
   t: ReturnType<typeof getTokens>;
   sticky?: boolean;
 }) {
+  const { t: translate } = useTranslation();
+
   if (projects.length <= 1) return null;
 
   return (
@@ -480,15 +497,25 @@ function ProjectTabs({
             textTransform: "uppercase",
           }}
         >
-          {projects.length} projets dans ce pays
+          {translate("referencePage.projectCount", {
+            count: projects.length,
+          })}
         </span>
 
         <div style={{ display: "flex", gap: 8 }}>
-          <IconButton onClick={onPrev} label="Projet précédent" t={t}>
+          <IconButton
+            onClick={onPrev}
+            label={translate("referencePage.project.previous")}
+            t={t}
+          >
             ←
           </IconButton>
 
-          <IconButton onClick={onNext} label="Projet suivant" t={t}>
+          <IconButton
+            onClick={onNext}
+            label={translate("referencePage.project.next")}
+            t={t}
+          >
             →
           </IconButton>
         </div>
@@ -563,8 +590,684 @@ function ProjectTabs({
   );
 }
 
+function ReferenceDisplaySwitch({
+  value,
+  onChange,
+  t,
+}: {
+  value: ReferenceDisplayMode;
+  onChange: (value: ReferenceDisplayMode) => void;
+  t: ReturnType<typeof getTokens>;
+}) {
+  const { t: translate } = useTranslation();
+
+  return (
+    <div
+      className="reference-display-switch"
+      style={{
+        display: "inline-flex",
+        padding: 4,
+        borderRadius: 999,
+        background: t.inputBg,
+        border: `1px solid ${t.border}`,
+      }}
+    >
+      {[
+        { key: "list" as const, label: translate("referencePage.display.list") },
+        { key: "card" as const, label: translate("referencePage.display.cards") },
+      ].map((item) => {
+        const active = value === item.key;
+
+        return (
+          <button
+            key={item.key}
+            type="button"
+            onClick={() => onChange(item.key)}
+            style={{
+              height: 34,
+              padding: "0 13px",
+              borderRadius: 999,
+              border: "none",
+              background: active ? ORANGE : "transparent",
+              color: active ? "#1A0D00" : t.textSoft,
+              cursor: "pointer",
+              fontSize: 12,
+              fontWeight: 900,
+              transition: "background .18s ease, color .18s ease",
+            }}
+          >
+            {item.label}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+function ReferenceMiniTag({
+  children,
+  t,
+  accent = false,
+}: {
+  children: ReactNode;
+  t: ReturnType<typeof getTokens>;
+  accent?: boolean;
+}) {
+  return (
+    <span
+      style={{
+        minHeight: 24,
+        padding: "0 9px",
+        borderRadius: 999,
+        display: "inline-flex",
+        alignItems: "center",
+        background: accent ? t.orangeSoft : t.inputBg,
+        border: `1px solid ${accent ? t.orangeBorder : t.border}`,
+        color: accent ? ORANGE : t.textSoft,
+        fontSize: 10,
+        fontWeight: 850,
+        letterSpacing: "0.02em",
+        whiteSpace: "nowrap",
+      }}
+    >
+      {children}
+    </span>
+  );
+}
+
+function ReferenceTechPreview({
+  reference,
+  t,
+  max = 4,
+}: {
+  reference: Reference;
+  t: ReturnType<typeof getTokens>;
+  max?: number;
+}) {
+  const technologies = reference.technologies || [];
+  const visible = technologies.slice(0, max);
+  const hiddenCount = Math.max(0, technologies.length - visible.length);
+
+  if (!technologies.length) return null;
+
+  return (
+    <div
+      className="reference-tech-preview"
+      style={{
+        display: "flex",
+        flexWrap: "wrap",
+        gap: 6,
+      }}
+    >
+      {visible.map((technology) => (
+        <ReferenceMiniTag key={technology} t={t}>
+          {technology}
+        </ReferenceMiniTag>
+      ))}
+
+      {hiddenCount > 0 && <ReferenceMiniTag t={t}>+{hiddenCount}</ReferenceMiniTag>}
+    </div>
+  );
+}
+
+function ReferenceListItem({
+  reference,
+  t,
+  onOpen,
+}: {
+  reference: Reference;
+  t: ReturnType<typeof getTokens>;
+  onOpen: (reference: Reference) => void;
+}) {
+  const { t: translate } = useTranslation();
+  const descriptionItems = [
+    ...(reference.technologies || []).slice(0, 4),
+    ...(reference.tags || []).slice(0, 3).map((tag) => `#${tag}`),
+  ];
+
+  return (
+    <article
+      className="reference-classic-item"
+      style={{
+        display: "grid",
+        gridTemplateColumns: "minmax(260px, 0.42fr) minmax(0, 0.58fr)",
+        gap: 28,
+        alignItems: "stretch",
+        padding: 22,
+        borderRadius: 28,
+        background: t.cardBg,
+        border: `1px solid ${t.border}`,
+        boxShadow: "none",
+      }}
+    >
+      <div
+        className="reference-classic-media"
+        style={{
+          display: "grid",
+          gap: 14,
+          alignContent: "start",
+        }}
+      >
+        <div>
+          <p
+            style={{
+              margin: "0 0 8px",
+              color: ORANGE,
+              fontSize: 11,
+              fontWeight: 950,
+              letterSpacing: "0.12em",
+              textTransform: "uppercase",
+            }}
+          >
+            {reference.code?.toUpperCase() || "REF"}
+          </p>
+
+          <h3
+            style={{
+              margin: 0,
+              color: t.text,
+              fontSize: 25,
+              lineHeight: 1.08,
+              fontWeight: 950,
+              letterSpacing: "-0.055em",
+            }}
+          >
+            {reference.country}
+          </h3>
+        </div>
+
+        <div
+          style={{
+            position: "relative",
+            height: 230,
+            overflow: "hidden",
+            borderRadius: 24,
+            background: t.inputBg,
+            border: `1px solid ${t.border}`,
+          }}
+        >
+          <img
+            src={safeImage(reference.image)}
+            alt={reference.title}
+            loading="lazy"
+            style={{
+              width: "100%",
+              height: "100%",
+              objectFit: "cover",
+            }}
+          />
+
+          <div
+            style={{
+              position: "absolute",
+              inset: 0,
+              background:
+                "linear-gradient(to top, rgba(0,0,0,0.48), rgba(0,0,0,0.04) 62%, transparent)",
+            }}
+          />
+
+          <div
+            style={{
+              position: "absolute",
+              left: 14,
+              right: 14,
+              bottom: 14,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              gap: 10,
+            }}
+          >
+            <span
+              style={{
+                minHeight: 30,
+                padding: "0 12px",
+                borderRadius: 999,
+                background: ORANGE,
+                color: "#1A0D00",
+                display: "inline-flex",
+                alignItems: "center",
+                fontSize: 11,
+                fontWeight: 950,
+              }}
+            >
+              {reference.category}
+            </span>
+
+            <span
+              style={{
+                minHeight: 30,
+                padding: "0 12px",
+                borderRadius: 999,
+                background: "rgba(255,255,255,0.16)",
+                color: "#FFFFFF",
+                display: "inline-flex",
+                alignItems: "center",
+                fontSize: 11,
+                fontWeight: 850,
+                backdropFilter: "blur(10px)",
+              }}
+            >
+              {reference.date}
+            </span>
+          </div>
+        </div>
+      </div>
+
+      <div
+        className="reference-classic-content"
+        style={{
+          minWidth: 0,
+          display: "flex",
+          flexDirection: "column",
+          justifyContent: "space-between",
+          gap: 22,
+        }}
+      >
+        <div>
+          <h3
+            style={{
+              margin: "0 0 14px",
+              color: t.text,
+              fontSize: "clamp(22px, 2.4vw, 32px)",
+              lineHeight: 1.08,
+              fontWeight: 950,
+              letterSpacing: "-0.055em",
+            }}
+          >
+            {reference.country}
+            {reference.client ? (
+              <>
+                {" "}
+                <span style={{ color: t.textMuted, fontWeight: 800 }}>
+                  · {reference.client}
+                </span>
+              </>
+            ) : null}
+          </h3>
+
+          <ul
+            style={{
+              display: "grid",
+              gap: 9,
+              margin: "0 0 22px",
+              padding: 0,
+              listStyle: "none",
+            }}
+          >
+            <li className="reference-classic-info-row">
+              <b>{translate("referencePage.list.interventionTitle")} :</b>
+              <span>{reference.title}</span>
+            </li>
+
+            <li className="reference-classic-info-row">
+              <b>{translate("referencePage.list.interventionType")} :</b>
+              <span>{reference.category}</span>
+            </li>
+
+            <li className="reference-classic-info-row">
+              <b>{translate("referencePage.list.period")} :</b>
+              <span>{reference.date}</span>
+            </li>
+
+            {reference.impact ? (
+              <li className="reference-classic-info-row">
+                <b>{translate("referencePage.metrics.impact")} :</b>
+                <span>{reference.impact}</span>
+              </li>
+            ) : null}
+          </ul>
+
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 12,
+              marginBottom: 14,
+            }}
+          >
+            <h4
+              style={{
+                margin: 0,
+                color: t.text,
+                fontSize: 15,
+                fontWeight: 950,
+                letterSpacing: "-0.02em",
+              }}
+            >
+              {translate("referencePage.list.description")}
+            </h4>
+
+            <span
+              style={{
+                height: 1,
+                flex: 1,
+                background: t.border,
+              }}
+            />
+          </div>
+
+          <div
+            style={{
+              marginBottom: descriptionItems.length ? 16 : 0,
+            }}
+          >
+            <RichHtml html={reference.excerpt} color={t.textSoft} clamp={3} />
+          </div>
+
+          {descriptionItems.length > 0 ? (
+            <ul
+              className="reference-classic-checklist"
+              style={{
+                display: "grid",
+                gap: 9,
+                margin: 0,
+                padding: 0,
+                listStyle: "none",
+              }}
+            >
+              {descriptionItems.map((item) => (
+                <li
+                  key={item}
+                  style={{
+                    display: "flex",
+                    alignItems: "flex-start",
+                    gap: 10,
+                    color: t.textSoft,
+                    fontSize: 13,
+                    lineHeight: 1.55,
+                    fontWeight: 650,
+                  }}
+                >
+                  <span
+                    style={{
+                      width: 18,
+                      height: 18,
+                      marginTop: 1,
+                      flexShrink: 0,
+                      borderRadius: 5,
+                      background: t.orangeSoft,
+                      border: `1px solid ${t.orangeBorder}`,
+                      color: ORANGE,
+                      display: "inline-flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      fontSize: 11,
+                      fontWeight: 950,
+                    }}
+                  >
+                    ✓
+                  </span>
+
+                  <span>{item}</span>
+                </li>
+              ))}
+            </ul>
+          ) : null}
+        </div>
+
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            gap: 12,
+            flexWrap: "wrap",
+            paddingTop: 18,
+            borderTop: `1px solid ${t.border}`,
+          }}
+        >
+          <div
+            style={{
+              display: "flex",
+              flexWrap: "wrap",
+              gap: 7,
+            }}
+          >
+            <ReferenceMiniTag t={t} accent>
+              {reference.category}
+            </ReferenceMiniTag>
+
+            <ReferenceMiniTag t={t}>{reference.country}</ReferenceMiniTag>
+
+            {(reference.technologies || []).slice(0, 3).map((technology) => (
+              <ReferenceMiniTag key={technology} t={t}>
+                {technology}
+              </ReferenceMiniTag>
+            ))}
+          </div>
+
+          <div
+            className="reference-classic-actions"
+            style={{
+              display: "flex",
+              gap: 8,
+              flexWrap: "wrap",
+            }}
+          >
+            <button
+              type="button"
+              onClick={() => onOpen(reference)}
+              style={{
+                height: 40,
+                padding: "0 16px",
+                borderRadius: 999,
+                border: "none",
+                background: ORANGE,
+                color: "#1A0D00",
+                cursor: "pointer",
+                fontSize: 12,
+                fontWeight: 950,
+              }}
+            >
+              {translate("referencePage.actions.viewDetails")}
+            </button>
+
+            <Link
+              href={`/contact-commercial?reference=${getReferenceParam(reference)}`}
+              style={{
+                height: 40,
+                padding: "0 16px",
+                borderRadius: 999,
+                border: `1px solid ${t.border}`,
+                background: t.inputBg,
+                color: t.text,
+                display: "inline-flex",
+                alignItems: "center",
+                justifyContent: "center",
+                textDecoration: "none",
+                fontSize: 12,
+                fontWeight: 900,
+              }}
+            >
+              {translate("referencePage.actions.similarProject")}
+            </Link>
+          </div>
+        </div>
+      </div>
+    </article>
+  );
+}
+
+function ReferenceCardItem({
+  reference,
+  t,
+  onOpen,
+}: {
+  reference: Reference;
+  t: ReturnType<typeof getTokens>;
+  onOpen: (reference: Reference) => void;
+}) {
+  const { t: translate } = useTranslation();
+
+  return (
+    <article
+      className="reference-card-clean"
+      style={{
+        overflow: "hidden",
+        borderRadius: 24,
+        background: t.cardBg,
+        border: `1px solid ${t.border}`,
+        boxShadow: "none",
+      }}
+    >
+      <div
+        style={{
+          position: "relative",
+          height: 156,
+          overflow: "hidden",
+          background: t.inputBg,
+        }}
+      >
+        <img
+          src={safeImage(reference.image)}
+          alt={reference.title}
+          loading="lazy"
+          style={{
+            width: "100%",
+            height: "100%",
+            objectFit: "cover",
+          }}
+        />
+
+        <div
+          style={{
+            position: "absolute",
+            inset: 0,
+            background:
+              "linear-gradient(to top, rgba(0,0,0,0.62), rgba(0,0,0,0.10) 65%, transparent)",
+          }}
+        />
+
+        <div
+          style={{
+            position: "absolute",
+            left: 12,
+            right: 12,
+            top: 12,
+            display: "flex",
+            justifyContent: "space-between",
+            gap: 8,
+          }}
+        >
+          <span
+            style={{
+              background: ORANGE,
+              color: "#1A0D00",
+              padding: "6px 10px",
+              borderRadius: 999,
+              fontSize: 10,
+              fontWeight: 950,
+            }}
+          >
+            {reference.category}
+          </span>
+
+          <span
+            style={{
+              background: "rgba(255,255,255,0.16)",
+              color: "#FFFFFF",
+              padding: "6px 10px",
+              borderRadius: 999,
+              fontSize: 10,
+              fontWeight: 850,
+              backdropFilter: "blur(8px)",
+            }}
+          >
+            {reference.country}
+          </span>
+        </div>
+      </div>
+
+      <div
+        style={{
+          padding: 16,
+          display: "grid",
+          gap: 13,
+        }}
+      >
+        <div>
+          <p
+            style={{
+              margin: "0 0 6px",
+              color: ORANGE,
+              fontSize: 11,
+              fontWeight: 900,
+            }}
+          >
+            {reference.client} · {reference.date}
+          </p>
+
+          <h3
+            style={{
+              margin: 0,
+              color: t.text,
+              fontSize: 17,
+              lineHeight: 1.22,
+              fontWeight: 950,
+              letterSpacing: "-0.04em",
+            }}
+          >
+            {reference.title}
+          </h3>
+        </div>
+
+        <RichHtml html={reference.excerpt} color={t.textSoft} clamp={2} />
+
+        <ReferenceTechPreview reference={reference} t={t} max={4} />
+
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "1fr 1fr",
+            gap: 8,
+          }}
+        >
+          <button
+            type="button"
+            onClick={() => onOpen(reference)}
+            style={{
+              height: 38,
+              borderRadius: 999,
+              border: "none",
+              background: ORANGE,
+              color: "#1A0D00",
+              cursor: "pointer",
+              fontSize: 12,
+              fontWeight: 950,
+            }}
+          >
+            {translate("referencePage.actions.details")}
+          </button>
+
+          <Link
+            href={`/contact-commercial?reference=${getReferenceParam(reference)}`}
+            style={{
+              height: 38,
+              borderRadius: 999,
+              border: `1px solid ${t.border}`,
+              background: t.inputBg,
+              color: t.text,
+              display: "inline-flex",
+              alignItems: "center",
+              justifyContent: "center",
+              textDecoration: "none",
+              fontSize: 12,
+              fontWeight: 900,
+            }}
+          >
+            {translate("referencePage.actions.similar")}
+          </Link>
+        </div>
+      </div>
+    </article>
+  );
+}
+
 export default function MapReferences() {
   const { dark } = useTheme();
+  const { t: translate, i18n } = useTranslation();
+  const locale = normalizeLocale(i18n.resolvedLanguage || i18n.language);
   const t = getTokens(dark);
 
   const darkRef = useRef(dark);
@@ -575,6 +1278,8 @@ export default function MapReferences() {
   const [isMapReady, setIsMapReady] = useState(false);
 
   const [viewMode, setViewMode] = useState<ViewMode>("map");
+  const [referenceDisplayMode, setReferenceDisplayMode] =
+    useState<ReferenceDisplayMode>("list");
   const [commandBarOpen, setCommandBarOpen] = useState(true);
 
   const [searchQuery, setSearchQuery] = useState("");
@@ -591,9 +1296,9 @@ export default function MapReferences() {
   } | null>(null);
 
   const mapContainerRef = useRef<HTMLDivElement>(null);
-  const leafletMapRef = useRef<any>(null);
-  const tileLayerRef = useRef<any>(null);
-  const markersRef = useRef<{ [key: string]: any[] }>({});
+  const leafletMapRef = useRef<LeafletMap | null>(null);
+  const tileLayerRef = useRef<TileLayer | null>(null);
+  const markersRef = useRef<Record<string, Marker[]>>({});
   const hideTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const [tooltipData, setTooltipData] = useState<{
@@ -631,6 +1336,11 @@ export default function MapReferences() {
   }, [commandBarOpen]);
 
   useEffect(() => {
+    setSelectedCategories([]);
+    setSelectedTags([]);
+  }, [locale]);
+
+  useEffect(() => {
     const loadReferences = async () => {
       try {
         setLoading(true);
@@ -645,13 +1355,19 @@ export default function MapReferences() {
           throw new Error(data?.error || "Erreur de chargement");
         }
 
-        setReferences(Array.isArray(data.data) ? data.data : []);
+        const nextReferences = await translateDynamicItems<Reference>(
+          Array.isArray(data.data) ? data.data : [],
+          locale,
+          ["country", "title", "excerpt", "details", "category", "impact"]
+        );
+
+        setReferences(nextReferences);
       } catch (error) {
         console.error(error);
         setReferences([]);
 
         setShowNotification({
-          message: "Impossible de charger les références publiques.",
+          message: translate("referencePage.notifications.loadError"),
           type: "error",
         });
       } finally {
@@ -660,7 +1376,7 @@ export default function MapReferences() {
     };
 
     loadReferences();
-  }, []);
+  }, [locale, translate]);
 
   const showTemporaryNotification = useCallback(
     (message: string, type: "success" | "info" | "error" = "success") => {
@@ -932,7 +1648,7 @@ export default function MapReferences() {
 
       markersRef.current[country].push(marker);
 
-      marker.on("mouseover", (event: any) => {
+      marker.on("mouseover", (event: LeafletMouseEvent) => {
         if (hideTimerRef.current) clearTimeout(hideTimerRef.current);
         if (!mapContainerRef.current) return;
 
@@ -967,6 +1683,11 @@ export default function MapReferences() {
 
   useEffect(() => {
     let cancelled = false;
+    let initializedContainer:
+      | (HTMLDivElement & {
+          _leaflet_id?: number;
+        })
+      | null = null;
 
     const initMap = async () => {
       if (!mapContainerRef.current || leafletMapRef.current) return;
@@ -974,8 +1695,8 @@ export default function MapReferences() {
       const container = mapContainerRef.current;
       const L = (await import("leaflet")).default;
 
-      // @ts-ignore
-      delete L.Icon.Default.prototype._getIconUrl;
+      delete (L.Icon.Default.prototype as { _getIconUrl?: unknown })
+        ._getIconUrl;
 
       L.Icon.Default.mergeOptions({
         iconRetinaUrl:
@@ -988,6 +1709,7 @@ export default function MapReferences() {
       const rawContainer = container as HTMLDivElement & {
         _leaflet_id?: number;
       };
+      initializedContainer = rawContainer;
 
       if (rawContainer._leaflet_id) {
         delete rawContainer._leaflet_id;
@@ -1045,13 +1767,9 @@ export default function MapReferences() {
         leafletMapRef.current = null;
       }
 
-      if (mapContainerRef.current) {
-        const rawContainer = mapContainerRef.current as HTMLDivElement & {
-          _leaflet_id?: number;
-        };
-
-        if (rawContainer._leaflet_id) {
-          delete rawContainer._leaflet_id;
+      if (initializedContainer) {
+        if (initializedContainer._leaflet_id) {
+          delete initializedContainer._leaflet_id;
         }
       }
 
@@ -1100,7 +1818,10 @@ export default function MapReferences() {
       duration: 0.8,
     });
 
-    showTemporaryNotification("Carte recentrée.", "info");
+    showTemporaryNotification(
+      translate("referencePage.notifications.mapRecentered"),
+      "info"
+    );
   };
 
   const focusFilteredReferences = async () => {
@@ -1117,7 +1838,10 @@ export default function MapReferences() {
       animate: true,
     });
 
-    showTemporaryNotification("Vue ajustée aux résultats.", "info");
+    showTemporaryNotification(
+      translate("referencePage.notifications.resultsAdjusted"),
+      "info"
+    );
   };
 
   const openProjectDetails = (reference: Reference) => {
@@ -1188,21 +1912,24 @@ export default function MapReferences() {
     setSelectedYears([]);
     setSelectedTags([]);
 
-    showTemporaryNotification("Filtres réinitialisés.", "info");
+    showTemporaryNotification(
+      translate("referencePage.notifications.filtersReset"),
+      "info"
+    );
   };
 
   const exportToCSV = () => {
     const headers = [
-      "Client",
-      "Projet",
-      "Pays",
-      "Catégorie",
-      "Date",
-      "Impact",
-      "Technologies",
+      translate("referencePage.csv.client"),
+      translate("referencePage.csv.project"),
+      translate("referencePage.csv.country"),
+      translate("referencePage.csv.category"),
+      translate("referencePage.csv.date"),
+      translate("referencePage.csv.impact"),
+      translate("referencePage.csv.technologies"),
       "Tags",
-      "Extrait",
-      "Détails",
+      translate("referencePage.csv.excerpt"),
+      translate("referencePage.csv.details"),
     ];
 
     const rows = filteredReferences.map((reference) => [
@@ -1237,7 +1964,10 @@ export default function MapReferences() {
 
     URL.revokeObjectURL(url);
 
-    showTemporaryNotification("Export CSV réussi.", "success");
+    showTemporaryNotification(
+      translate("referencePage.notifications.exportSuccess"),
+      "success"
+    );
   };
 
   const ttLeft = (() => {
@@ -1420,11 +2150,19 @@ export default function MapReferences() {
           background: ${dark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.05)"};
         }
 
-        .clamp-2 {
+        .clamp-2,
+        .clamp-3 {
           display: -webkit-box;
-          -webkit-line-clamp: 2;
           -webkit-box-orient: vertical;
           overflow: hidden;
+        }
+
+        .clamp-2 {
+          -webkit-line-clamp: 2;
+        }
+
+        .clamp-3 {
+          -webkit-line-clamp: 3;
         }
 
         .tabs-scroll::-webkit-scrollbar {
@@ -1449,7 +2187,8 @@ export default function MapReferences() {
         .project-tab,
         .ui-icon-button,
         .command-toggle,
-        .reference-card {
+        .reference-card-clean,
+        .reference-classic-item {
           transition:
             transform .18s ease,
             border-color .18s ease,
@@ -1466,10 +2205,34 @@ export default function MapReferences() {
           box-shadow: ${dark ? "0 10px 24px rgba(0,0,0,.28)" : "0 10px 24px rgba(17,17,17,.08)"};
         }
 
-        .reference-card:hover {
-          transform: translateY(-4px);
-          border-color: rgba(239,159,39,0.36) !important;
-          box-shadow: ${dark ? "0 20px 52px rgba(0,0,0,.36)" : "0 20px 52px rgba(17,17,17,.12)"} !important;
+        .reference-card-clean:hover,
+        .reference-classic-item:hover {
+          transform: translateY(-2px);
+          border-color: rgba(239,159,39,0.34) !important;
+          box-shadow: ${dark ? "0 18px 44px rgba(0,0,0,.30)" : "0 18px 44px rgba(17,17,17,.08)"} !important;
+        }
+
+        .reference-display-switch button:hover {
+          color: ${ORANGE};
+        }
+
+        .reference-classic-info-row {
+          display: grid;
+          grid-template-columns: 178px minmax(0, 1fr);
+          gap: 12px;
+          color: ${dark ? "#F8F4EF" : "#111111"};
+          font-size: 13.5px;
+          line-height: 1.5;
+        }
+
+        .reference-classic-info-row b {
+          color: ${dark ? "#F8F4EF" : "#111111"};
+          font-weight: 950;
+        }
+
+        .reference-classic-info-row span {
+          color: ${dark ? "rgba(248,244,239,0.68)" : "rgba(17,17,17,0.66)"};
+          font-weight: 650;
         }
 
         .leaflet-control-zoom {
@@ -1484,7 +2247,7 @@ export default function MapReferences() {
         }
 
         @media (max-width: 1180px) {
-          .reference-list-grid {
+          .reference-results-cards {
             grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
           }
         }
@@ -1525,10 +2288,27 @@ export default function MapReferences() {
           .modal-content-padding {
             padding: 24px !important;
           }
+
+          .reference-list-header {
+            grid-template-columns: 1fr !important;
+          }
+
+          .reference-list-header > div:last-child {
+            justify-items: start !important;
+          }
+
+          .reference-classic-item {
+            grid-template-columns: 1fr !important;
+          }
+
+          .reference-classic-info-row {
+            grid-template-columns: 1fr !important;
+            gap: 3px !important;
+          }
         }
 
         @media (max-width: 760px) {
-          .reference-list-grid {
+          .reference-results-cards {
             grid-template-columns: 1fr !important;
           }
 
@@ -1563,6 +2343,24 @@ export default function MapReferences() {
 
           .reference-modal-hero {
             height: 230px !important;
+          }
+
+          .reference-classic-item {
+            padding: 16px !important;
+            border-radius: 22px !important;
+          }
+
+          .reference-classic-media > div:nth-child(2) {
+            height: 190px !important;
+          }
+
+          .reference-classic-actions {
+            width: 100%;
+          }
+
+          .reference-classic-actions button,
+          .reference-classic-actions a {
+            width: 100%;
           }
         }
       `}</style>
@@ -1639,7 +2437,7 @@ export default function MapReferences() {
                     textTransform: "uppercase",
                   }}
                 >
-                  Références mondiales
+                  {translate("referencePage.hero.kicker")}
                 </p>
 
                 <h1
@@ -1653,7 +2451,7 @@ export default function MapReferences() {
                     letterSpacing: "-0.055em",
                   }}
                 >
-                  Carte interactive des projets MD2I
+                  {translate("referencePage.hero.title")}
                 </h1>
 
                 <p
@@ -1666,9 +2464,7 @@ export default function MapReferences() {
                     fontWeight: 650,
                   }}
                 >
-                  Explorez les références par pays, secteur, technologie et
-                  année. Basculez en mode liste pour parcourir les projets plus
-                  facilement.
+                  {translate("referencePage.hero.text")}
                 </p>
               </div>
 
@@ -1735,8 +2531,8 @@ export default function MapReferences() {
               overflowY: "auto",
               padding: commandBarOpen ? "96px 22px 34px" : "28px 22px 34px",
               background: dark
-                ? "radial-gradient(circle at top left, rgba(239,159,39,0.10), transparent 34%), #09090B"
-                : "radial-gradient(circle at top left, rgba(239,159,39,0.13), transparent 34%), #F7F4EE",
+                ? "radial-gradient(circle at top left, rgba(239,159,39,0.08), transparent 34%), #09090B"
+                : "radial-gradient(circle at top left, rgba(239,159,39,0.09), transparent 34%), #F7F4EE",
               transition: "padding 0.2s ease",
               animation: "listIn 0.22s ease",
             }}
@@ -1748,6 +2544,7 @@ export default function MapReferences() {
               }}
             >
               <header
+                className="reference-list-header"
                 style={{
                   marginBottom: 22,
                   display: "grid",
@@ -1767,7 +2564,7 @@ export default function MapReferences() {
                       textTransform: "uppercase",
                     }}
                   >
-                    Références MD2I
+                    {translate("referencePage.listHeader.kicker")}
                   </p>
 
                   <h1
@@ -1780,7 +2577,7 @@ export default function MapReferences() {
                       letterSpacing: "-0.06em",
                     }}
                   >
-                    Réalisations et projets clients
+                    {translate("referencePage.listHeader.title")}
                   </h1>
 
                   <p
@@ -1793,89 +2590,102 @@ export default function MapReferences() {
                       fontWeight: 650,
                     }}
                   >
-                    Parcourez les références MD2I sous forme de cartes claires,
-                    filtrables et orientées décision.
+                    {translate("referencePage.listHeader.text")}
                   </p>
                 </div>
 
                 <div
                   style={{
-                    display: "flex",
-                    gap: 8,
-                    flexWrap: "wrap",
-                    justifyContent: "flex-end",
+                    display: "grid",
+                    gap: 10,
+                    justifyItems: "end",
                   }}
                 >
-                  <div
-                    style={{
-                      minWidth: 105,
-                      padding: "12px 14px",
-                      borderRadius: 18,
-                      background: t.glassStrong,
-                      border: `1px solid ${t.border}`,
-                      boxShadow: t.shadowSoft,
-                    }}
-                  >
-                    <strong
-                      style={{
-                        display: "block",
-                        color: t.text,
-                        fontSize: 22,
-                        lineHeight: 1,
-                        fontWeight: 950,
-                        letterSpacing: "-0.04em",
-                      }}
-                    >
-                      {filteredReferences.length}
-                    </strong>
-
-                    <span
-                      style={{
-                        color: t.textMuted,
-                        fontSize: 10,
-                        fontWeight: 900,
-                        letterSpacing: "0.08em",
-                        textTransform: "uppercase",
-                      }}
-                    >
-                      Projets
-                    </span>
-                  </div>
+                  <ReferenceDisplaySwitch
+                    value={referenceDisplayMode}
+                    onChange={setReferenceDisplayMode}
+                    t={t}
+                  />
 
                   <div
                     style={{
-                      minWidth: 105,
-                      padding: "12px 14px",
-                      borderRadius: 18,
-                      background: t.glassStrong,
-                      border: `1px solid ${t.border}`,
-                      boxShadow: t.shadowSoft,
+                      display: "flex",
+                      gap: 8,
+                      flexWrap: "wrap",
+                      justifyContent: "flex-end",
                     }}
                   >
-                    <strong
+                    <div
                       style={{
-                        display: "block",
-                        color: t.text,
-                        fontSize: 22,
-                        lineHeight: 1,
-                        fontWeight: 950,
-                        letterSpacing: "-0.04em",
+                        minWidth: 105,
+                        padding: "12px 14px",
+                        borderRadius: 18,
+                        background: t.glassStrong,
+                        border: `1px solid ${t.border}`,
+                        boxShadow: "none",
                       }}
                     >
-                      {stats.countries}
-                    </strong>
+                      <strong
+                        style={{
+                          display: "block",
+                          color: t.text,
+                          fontSize: 22,
+                          lineHeight: 1,
+                          fontWeight: 950,
+                          letterSpacing: "-0.04em",
+                        }}
+                      >
+                        {filteredReferences.length}
+                      </strong>
 
-                    <span
+                      <span
+                        style={{
+                          color: t.textMuted,
+                          fontSize: 10,
+                          fontWeight: 900,
+                          letterSpacing: "0.08em",
+                          textTransform: "uppercase",
+                        }}
+                      >
+                        {translate("referencePage.stats.projects")}
+                      </span>
+                    </div>
+
+                    <div
                       style={{
-                        color: t.textMuted,
-                        fontSize: 10,
-                        fontWeight: 900,
-                        letterSpacing: "0.08em",
-                        textTransform: "uppercase",
+                        minWidth: 105,
+                        padding: "12px 14px",
+                        borderRadius: 18,
+                        background: t.glassStrong,
+                        border: `1px solid ${t.border}`,
+                        boxShadow: "none",
                       }}
                     >
-                      Pays
-                    </span>
+                      <strong
+                        style={{
+                          display: "block",
+                          color: t.text,
+                          fontSize: 22,
+                          lineHeight: 1,
+                          fontWeight: 950,
+                          letterSpacing: "-0.04em",
+                        }}
+                      >
+                        {stats.countries}
+                      </strong>
+
+                      <span
+                        style={{
+                          color: t.textMuted,
+                          fontSize: 10,
+                          fontWeight: 900,
+                          letterSpacing: "0.08em",
+                          textTransform: "uppercase",
+                        }}
+                      >
+                        {translate("referencePage.stats.countries")}
+                      </span>
+                    </div>
                   </div>
                 </div>
               </header>
@@ -1902,9 +2712,9 @@ export default function MapReferences() {
                       fontWeight: 800,
                     }}
                   >
-                    {activeFiltersCount} filtre
-                    {activeFiltersCount > 1 ? "s" : ""} actif
-                    {activeFiltersCount > 1 ? "s" : ""}
+                    {translate("referencePage.activeFilters", {
+                      count: activeFiltersCount,
+                    })}
                   </span>
 
                   <button
@@ -1922,7 +2732,7 @@ export default function MapReferences() {
                       fontWeight: 900,
                     }}
                   >
-                    Réinitialiser
+                    {translate("referencePage.actions.reset")}
                   </button>
                 </div>
               )}
@@ -1940,218 +2750,41 @@ export default function MapReferences() {
                     textAlign: "center",
                   }}
                 >
-                  Aucune référence ne correspond aux filtres actuels.
+                  {translate("referencePage.empty.filtered")}
                 </div>
               ) : (
                 <div
-                  className="reference-list-grid"
+                  className={
+                    referenceDisplayMode === "list"
+                      ? "reference-results-list"
+                      : "reference-results-cards"
+                  }
                   style={{
                     display: "grid",
-                    gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
-                    gap: 16,
+                    gap: referenceDisplayMode === "list" ? 18 : 16,
+                    gridTemplateColumns:
+                      referenceDisplayMode === "list"
+                        ? "1fr"
+                        : "repeat(3, minmax(0, 1fr))",
                   }}
                 >
-                  {filteredReferences.map((reference) => (
-                    <article
-                      key={reference.id}
-                      className="reference-card"
-                      style={{
-                        overflow: "hidden",
-                        borderRadius: 26,
-                        background: t.cardBg,
-                        border: `1px solid ${t.border}`,
-                        boxShadow: t.shadowSoft,
-                      }}
-                    >
-                      <div
-                        style={{
-                          position: "relative",
-                          height: 178,
-                          overflow: "hidden",
-                        }}
-                      >
-                        <img
-                          src={safeImage(reference.image)}
-                          alt={reference.title}
-                          loading="lazy"
-                          style={{
-                            width: "100%",
-                            height: "100%",
-                            objectFit: "cover",
-                          }}
-                        />
-
-                        <div
-                          style={{
-                            position: "absolute",
-                            inset: 0,
-                            background:
-                              "linear-gradient(to top, rgba(0,0,0,0.78), rgba(0,0,0,0.12) 60%, transparent)",
-                          }}
-                        />
-
-                        <div
-                          style={{
-                            position: "absolute",
-                            left: 14,
-                            right: 14,
-                            top: 14,
-                            display: "flex",
-                            justifyContent: "space-between",
-                            gap: 8,
-                          }}
-                        >
-                          <span
-                            style={{
-                              background: ORANGE,
-                              color: "#1A0D00",
-                              padding: "6px 10px",
-                              borderRadius: 999,
-                              fontSize: 10,
-                              fontWeight: 950,
-                            }}
-                          >
-                            {reference.category}
-                          </span>
-
-                          <span
-                            style={{
-                              background: "rgba(255,255,255,0.16)",
-                              color: "white",
-                              padding: "6px 10px",
-                              borderRadius: 999,
-                              fontSize: 10,
-                              fontWeight: 850,
-                              backdropFilter: "blur(8px)",
-                            }}
-                          >
-                            {reference.country}
-                          </span>
-                        </div>
-
-                        <div
-                          style={{
-                            position: "absolute",
-                            left: 14,
-                            right: 14,
-                            bottom: 14,
-                          }}
-                        >
-                          <p
-                            style={{
-                              margin: "0 0 5px",
-                              color: ORANGE,
-                              fontSize: 11,
-                              fontWeight: 900,
-                            }}
-                          >
-                            {reference.client} · {reference.date}
-                          </p>
-
-                          <h3
-                            style={{
-                              margin: 0,
-                              color: "#FFFFFF",
-                              fontSize: 18,
-                              lineHeight: 1.2,
-                              fontWeight: 950,
-                              letterSpacing: "-0.04em",
-                            }}
-                          >
-                            {reference.title}
-                          </h3>
-                        </div>
-                      </div>
-
-                      <div
-                        style={{
-                          padding: 18,
-                          display: "grid",
-                          gap: 14,
-                        }}
-                      >
-                        <RichHtml
-                          html={reference.excerpt}
-                          color={t.textSoft}
-                          clamp={2}
-                        />
-
-                        <div
-                          style={{
-                            display: "flex",
-                            flexWrap: "wrap",
-                            gap: 6,
-                            minHeight: 28,
-                          }}
-                        >
-                          {(reference.technologies || [])
-                            .slice(0, 4)
-                            .map((technology) => (
-                              <span
-                                key={technology}
-                                style={{
-                                  padding: "5px 8px",
-                                  borderRadius: 999,
-                                  background: t.inputBg,
-                                  border: `1px solid ${t.border}`,
-                                  color: t.textSoft,
-                                  fontSize: 10,
-                                  fontWeight: 800,
-                                }}
-                              >
-                                {technology}
-                              </span>
-                            ))}
-                        </div>
-
-                        <div
-                          style={{
-                            display: "grid",
-                            gridTemplateColumns: "1fr 1fr",
-                            gap: 8,
-                          }}
-                        >
-                          <button
-                            type="button"
-                            onClick={() => openProjectDetails(reference)}
-                            style={{
-                              height: 38,
-                              borderRadius: 999,
-                              border: "none",
-                              background: ORANGE,
-                              color: "#1A0D00",
-                              cursor: "pointer",
-                              fontSize: 12,
-                              fontWeight: 950,
-                            }}
-                          >
-                            Détails
-                          </button>
-
-                          <Link
-                            href={`/contact-commercial?reference=${getReferenceParam(
-                              reference
-                            )}`}
-                            style={{
-                              height: 38,
-                              borderRadius: 999,
-                              border: `1px solid ${t.border}`,
-                              background: t.inputBg,
-                              color: t.text,
-                              display: "inline-flex",
-                              alignItems: "center",
-                              justifyContent: "center",
-                              textDecoration: "none",
-                              fontSize: 12,
-                              fontWeight: 900,
-                            }}
-                          >
-                            Projet similaire
-                          </Link>
-                        </div>
-                      </div>
-                    </article>
-                  ))}
+                  {filteredReferences.map((reference) =>
+                    referenceDisplayMode === "list" ? (
+                      <ReferenceListItem
+                        key={reference.id}
+                        reference={reference}
+                        t={t}
+                        onOpen={openProjectDetails}
+                      />
+                    ) : (
+                      <ReferenceCardItem
+                        key={reference.id}
+                        reference={reference}
+                        t={t}
+                        onOpen={openProjectDetails}
+                      />
+                    )
+                  )}
                 </div>
               )}
             </div>
@@ -2202,7 +2835,7 @@ export default function MapReferences() {
 
                 <input
                   type="text"
-                  placeholder="Rechercher un client, pays, projet, technologie..."
+                  placeholder={translate("referencePage.command.searchPlaceholder")}
                   value={searchQuery}
                   onChange={(event) => setSearchQuery(event.target.value)}
                   style={{
@@ -2267,7 +2900,9 @@ export default function MapReferences() {
                     whiteSpace: "nowrap",
                   }}
                 >
-                  {viewMode === "map" ? "☷ Liste" : "🌍 Carte"}
+                  {viewMode === "map"
+                    ? translate("referencePage.command.switchList")
+                    : translate("referencePage.command.switchMap")}
                 </button>
 
                 {viewMode === "map" && (
@@ -2292,7 +2927,7 @@ export default function MapReferences() {
                         whiteSpace: "nowrap",
                       }}
                     >
-                      ⊙ Voir résultats
+                      {translate("referencePage.command.viewResults")}
                     </button>
 
                     <button
@@ -2315,7 +2950,7 @@ export default function MapReferences() {
                         whiteSpace: "nowrap",
                       }}
                     >
-                      ↺ Recentrer
+                      {translate("referencePage.command.recenter")}
                     </button>
                   </>
                 )}
@@ -2342,7 +2977,7 @@ export default function MapReferences() {
                     whiteSpace: "nowrap",
                   }}
                 >
-                  ⚙️ Filtres
+                  {translate("referencePage.command.filters")}
                   {activeFiltersCount > 0 && (
                     <span
                       style={{
@@ -2384,7 +3019,7 @@ export default function MapReferences() {
                     whiteSpace: "nowrap",
                   }}
                 >
-                  ⬇ Export
+                  {translate("referencePage.command.export")}
                 </button>
               </div>
 
@@ -2398,25 +3033,25 @@ export default function MapReferences() {
               >
                 <StatCard
                   value={String(stats.countries)}
-                  label="Pays"
+                  label={translate("referencePage.stats.countries")}
                   icon="🌍"
                   t={t}
                 />
                 <StatCard
                   value={String(stats.projects)}
-                  label="Projets"
+                  label={translate("referencePage.stats.projects")}
                   icon="📍"
                   t={t}
                 />
                 <StatCard
                   value={String(stats.sectors)}
-                  label="Secteurs"
+                  label={translate("referencePage.stats.sectors")}
                   icon="◼"
                   t={t}
                 />
                 <StatCard
                   value={String(stats.technologies)}
-                  label="Techs"
+                  label={translate("referencePage.stats.techs")}
                   icon="⚙️"
                   t={t}
                 />
@@ -2466,7 +3101,7 @@ export default function MapReferences() {
                     textTransform: "uppercase",
                   }}
                 >
-                  Exploration
+                  {translate("referencePage.filters.kicker")}
                 </p>
 
                 <h2
@@ -2478,12 +3113,12 @@ export default function MapReferences() {
                     letterSpacing: "-0.04em",
                   }}
                 >
-                  Filtres avancés
+                  {translate("referencePage.filters.title")}
                 </h2>
               </div>
 
               <IconButton
-                label="Fermer les filtres"
+                label={translate("referencePage.filters.close")}
                 t={t}
                 onClick={() => setFilterPanelOpen(false)}
               >
@@ -2491,17 +3126,17 @@ export default function MapReferences() {
               </IconButton>
             </div>
 
-            <FilterBlock title="Trier par" t={t}>
+            <FilterBlock title={translate("referencePage.filters.sortBy")} t={t}>
               {(["date", "impact", "client"] as const).map((option) => (
                 <FilterChip
                   key={option}
                   active={sortBy === option}
                   label={
                     option === "date"
-                      ? "Date"
+                      ? translate("referencePage.sort.date")
                       : option === "impact"
-                        ? "Impact"
-                        : "Client"
+                        ? translate("referencePage.sort.impact")
+                        : translate("referencePage.sort.client")
                   }
                   onClick={() => setSortBy(option)}
                   t={t}
@@ -2509,7 +3144,7 @@ export default function MapReferences() {
               ))}
             </FilterBlock>
 
-            <FilterBlock title="Catégories" t={t}>
+            <FilterBlock title={translate("referencePage.filters.categories")} t={t}>
               {allCategories.map((category) => (
                 <FilterChip
                   key={category}
@@ -2521,7 +3156,7 @@ export default function MapReferences() {
               ))}
             </FilterBlock>
 
-            <FilterBlock title="Technologies" t={t}>
+            <FilterBlock title={translate("referencePage.filters.technologies")} t={t}>
               {allTechnologies.slice(0, 18).map((technology) => (
                 <FilterChip
                   key={technology}
@@ -2533,7 +3168,7 @@ export default function MapReferences() {
               ))}
             </FilterBlock>
 
-            <FilterBlock title="Tags" t={t}>
+            <FilterBlock title={translate("referencePage.filters.tags")} t={t}>
               {allTags.slice(0, 22).map((tag) => (
                 <FilterChip
                   key={tag}
@@ -2545,7 +3180,7 @@ export default function MapReferences() {
               ))}
             </FilterBlock>
 
-            <FilterBlock title="Années" t={t}>
+            <FilterBlock title={translate("referencePage.filters.years")} t={t}>
               {allYears.map((year) => (
                 <FilterChip
                   key={year}
@@ -2572,7 +3207,7 @@ export default function MapReferences() {
                   fontWeight: 900,
                 }}
               >
-                Réinitialiser tous les filtres
+                {translate("referencePage.actions.resetAll")}
               </button>
             )}
           </aside>
@@ -2591,7 +3226,7 @@ export default function MapReferences() {
               background: "transparent",
             }}
           >
-            Chargement de la carte…
+            {translate("referencePage.loading.map")}
           </div>
         )}
 
@@ -2612,7 +3247,7 @@ export default function MapReferences() {
               boxShadow: t.shadowSoft,
             }}
           >
-            Chargement des références…
+            {translate("referencePage.loading.references")}
           </div>
         )}
 
@@ -2633,7 +3268,7 @@ export default function MapReferences() {
               boxShadow: t.shadowSoft,
             }}
           >
-            Aucune référence publiée trouvée.
+            {translate("referencePage.empty.published")}
           </div>
         )}
 
@@ -2799,7 +3434,7 @@ export default function MapReferences() {
                       cursor: "pointer",
                     }}
                   >
-                    Voir les détails
+                    {translate("referencePage.actions.viewDetails")}
                   </button>
                 </div>
               </div>
@@ -2936,8 +3571,9 @@ export default function MapReferences() {
                           backdropFilter: "blur(8px)",
                         }}
                       >
-                        {modalData.projects.length} projet
-                        {modalData.projects.length > 1 ? "s" : ""} dans ce pays
+                        {translate("referencePage.projectCount", {
+                          count: modalData.projects.length,
+                        })}
                       </span>
                     </div>
 
@@ -3022,7 +3658,7 @@ export default function MapReferences() {
                             textTransform: "uppercase",
                           }}
                         >
-                          Résumé du projet
+                          {translate("referencePage.modal.summary")}
                         </p>
 
                         <RichHtml
@@ -3049,7 +3685,7 @@ export default function MapReferences() {
                             textTransform: "uppercase",
                           }}
                         >
-                          Détails de la mission
+                          {translate("referencePage.modal.details")}
                         </p>
 
                         <RichHtml
@@ -3088,7 +3724,7 @@ export default function MapReferences() {
                               textTransform: "uppercase",
                             }}
                           >
-                            Informations clés
+                            {translate("referencePage.modal.keyInfo")}
                           </p>
 
                           <div
@@ -3100,14 +3736,14 @@ export default function MapReferences() {
                           >
                             <MetricCard
                               icon="🌍"
-                              label="Pays"
+                              label={translate("referencePage.metrics.country")}
                               value={modalActiveProject.country}
                               t={t}
                             />
 
                             <MetricCard
                               icon="🏢"
-                              label="Client"
+                              label={translate("referencePage.metrics.client")}
                               value={modalActiveProject.client}
                               t={t}
                             />
@@ -3115,7 +3751,7 @@ export default function MapReferences() {
                             {modalActiveProject.team && (
                               <MetricCard
                                 icon="👥"
-                                label="Équipe"
+                                label={translate("referencePage.metrics.team")}
                                 value={modalActiveProject.team}
                                 t={t}
                               />
@@ -3124,7 +3760,7 @@ export default function MapReferences() {
                             {modalActiveProject.duration && (
                               <MetricCard
                                 icon="⏱️"
-                                label="Durée"
+                                label={translate("referencePage.metrics.duration")}
                                 value={modalActiveProject.duration}
                                 t={t}
                               />
@@ -3133,7 +3769,7 @@ export default function MapReferences() {
                             {modalActiveProject.budget && (
                               <MetricCard
                                 icon="💰"
-                                label="Budget"
+                                label={translate("referencePage.metrics.budget")}
                                 value={modalActiveProject.budget}
                                 t={t}
                               />
@@ -3142,7 +3778,7 @@ export default function MapReferences() {
                             {modalActiveProject.impact && (
                               <MetricCard
                                 icon="📈"
-                                label="Impact"
+                                label={translate("referencePage.metrics.impact")}
                                 value={modalActiveProject.impact}
                                 t={t}
                               />
@@ -3170,7 +3806,7 @@ export default function MapReferences() {
                             textDecoration: "none",
                           }}
                         >
-                          Je veux une solution similaire →
+                          {translate("referencePage.actions.wantSimilar")}
                         </Link>
 
                         <button
@@ -3193,7 +3829,7 @@ export default function MapReferences() {
                             cursor: "pointer",
                           }}
                         >
-                          Fermer
+                          {translate("common.close")}
                         </button>
                       </div>
                     </aside>
@@ -3220,7 +3856,7 @@ export default function MapReferences() {
                           textTransform: "uppercase",
                         }}
                       >
-                        Technologies utilisées
+                        {translate("referencePage.modal.technologies")}
                       </p>
 
                       <div
@@ -3273,7 +3909,7 @@ export default function MapReferences() {
                           textTransform: "uppercase",
                         }}
                       >
-                        Tags
+                        {translate("referencePage.modal.tags")}
                       </p>
 
                       <div
@@ -3298,7 +3934,9 @@ export default function MapReferences() {
                               }));
 
                               showTemporaryNotification(
-                                `Filtre ajouté : #${tag}`,
+                                translate("referencePage.notifications.tagAdded", {
+                                  tag,
+                                }),
                                 "info"
                               );
                             }}

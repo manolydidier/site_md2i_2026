@@ -3,8 +3,11 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { motion, useReducedMotion } from 'framer-motion'
+import { useTranslation } from 'react-i18next'
 import api from '@/app/lib/axios'
 import { useTheme } from '@/app/context/ThemeContext'
+import { translateDynamicItems } from '@/app/i18n/dynamic'
+import { normalizeLocale } from '@/app/i18n/settings'
 import s from './PublicArticlesPage.module.css'
 
 interface Category {
@@ -118,17 +121,18 @@ const IconChevron = ({ open }: { open: boolean }) => (
   </svg>
 )
 
-const SORT_OPTIONS: { key: SortKey; label: string }[] = [
-  { key: 'date-desc', label: 'Plus récent' },
-  { key: 'date-asc', label: 'Plus ancien' },
-  { key: 'title-asc', label: 'A → Z' },
-  { key: 'title-desc', label: 'Z → A' },
+const SORT_OPTIONS: { key: SortKey; labelKey: string }[] = [
+  { key: 'date-desc', labelKey: 'articlesPage.sort.dateDesc' },
+  { key: 'date-asc', labelKey: 'articlesPage.sort.dateAsc' },
+  { key: 'title-asc', labelKey: 'articlesPage.sort.titleAsc' },
+  { key: 'title-desc', labelKey: 'articlesPage.sort.titleDesc' },
 ]
 
 /* ── Excerpt with expand/collapse ── */
 function ExcerptBlock({ text }: { text: string | null }) {
+  const { t } = useTranslation()
   const [expanded, setExpanded] = useState(false)
-  const raw = text?.trim() || 'Aucun extrait disponible.'
+  const raw = text?.trim() || t('articlesPage.card.noExcerpt')
   const isLong = raw.length > EXCERPT_LIMIT
 
   return (
@@ -145,7 +149,11 @@ function ExcerptBlock({ text }: { text: string | null }) {
             setExpanded((v) => !v)
           }}
         >
-          <span>{expanded ? 'Voir moins' : 'Voir plus'}</span>
+          <span>
+            {expanded
+              ? t('articlesPage.card.collapse')
+              : t('articlesPage.card.readMore')}
+          </span>
           <svg
             viewBox="0 0 24 24"
             fill="none"
@@ -178,6 +186,7 @@ function ArticleCard({
   fmt: Intl.DateTimeFormat
   onNavigate: (id: string) => void
 }) {
+  const { t } = useTranslation()
   const cardRef = useRef<HTMLElement>(null)
   const glowRef = useRef<HTMLDivElement>(null)
   const prefersReducedMotion = useReducedMotion()
@@ -262,7 +271,7 @@ function ArticleCard({
               onNavigate(a.id)
             }}
           >
-            Lire l'article <IconArrow />
+            {t('articlesPage.card.readArticle')} <IconArrow />
           </button>
         </div>
       </div>
@@ -275,6 +284,8 @@ export default function PublicArticlesPage({ router }: PublicArticlesPageProps) 
   const nextRouter = useRouter()
   const nav = router ?? nextRouter
   const { dark } = useTheme()
+  const { t, i18n } = useTranslation()
+  const locale = normalizeLocale(i18n.resolvedLanguage || i18n.language)
 
   const [mounted, setMounted] = useState(false)
   const [articles, setArticles] = useState<Article[]>([])
@@ -302,12 +313,12 @@ export default function PublicArticlesPage({ router }: PublicArticlesPageProps) 
 
   const fmt = useMemo(
     () =>
-      new Intl.DateTimeFormat('fr-FR', {
+      new Intl.DateTimeFormat(locale === 'en' ? 'en-US' : 'fr-FR', {
         day: '2-digit',
         month: 'long',
         year: 'numeric',
       }),
-    []
+    [locale]
   )
 
   useEffect(() => {
@@ -333,13 +344,19 @@ export default function PublicArticlesPage({ router }: PublicArticlesPageProps) 
     setCatsLoading(true)
     try {
       const r = await api.get('/api/categories')
-      setCategories(r.data ?? [])
+      const nextCategories = await translateDynamicItems<Category>(
+        r.data ?? [],
+        locale,
+        ['name'],
+      )
+
+      setCategories(nextCategories)
     } catch {
       setCategories([])
     } finally {
       setCatsLoading(false)
     }
-  }, [])
+  }, [locale])
 
   const fetchArticles = useCallback(async (p: number, kw: string, cat: string, sortKey: SortKey) => {
     setLoading(true)
@@ -354,19 +371,27 @@ export default function PublicArticlesPage({ router }: PublicArticlesPageProps) 
       const r = await api.get<ArticlesResponse>(`/api/articles/public?${q}`)
       if (id !== reqId.current) return
 
-      setArticles(r.data.data ?? [])
+      const nextArticles = await translateDynamicItems<Article>(
+        r.data.data ?? [],
+        locale,
+        ['title', 'excerpt', 'category.name'],
+      )
+
+      if (id !== reqId.current) return
+
+      setArticles(nextArticles)
       setTotalPages(r.data.pagination?.totalPages ?? 1)
       setTotalItems(r.data.pagination?.total ?? r.data.data?.length ?? 0)
     } catch {
       if (id !== reqId.current) return
-      setError('Impossible de charger les articles.')
+      setError(t('articlesPage.errors.load'))
       setArticles([])
       setTotalPages(1)
       setTotalItems(0)
     } finally {
       if (id === reqId.current) setLoading(false)
     }
-  }, [])
+  }, [locale, t])
 
   useEffect(() => {
     fetchCats()
@@ -409,7 +434,10 @@ export default function PublicArticlesPage({ router }: PublicArticlesPageProps) 
 
   const hasFilters = search.trim() !== '' || selCat !== ''
   const activeCat = categories.find((c) => c.slug === selCat)
-  const activeSortLabel = SORT_OPTIONS.find((o) => o.key === sort)?.label ?? 'Trier'
+  const activeSortOption = SORT_OPTIONS.find((o) => o.key === sort)
+  const activeSortLabel = activeSortOption
+    ? t(activeSortOption.labelKey)
+    : t('articlesPage.sortBy')
 
   const pages = useMemo(() => {
     const ps: (number | '…')[] = []
@@ -438,30 +466,33 @@ export default function PublicArticlesPage({ router }: PublicArticlesPageProps) 
           <div className={s.heroLeft}>
             <div className={s.eyebrow}>
               <span className={s.eyebrowDot} />
-              Actualités &amp; Publications
+              {t('articlesPage.heroEyebrow')}
             </div>
 
             <h1 className={s.heroTitle}>
-              Nos dernières
+              {t('articlesPage.titlePrefix')}
               <br />
-              <em>Actualités</em>
+              <em>{t('articlesPage.titleEmphasis')}</em>
             </h1>
 
             <p className={s.heroSub}>
-              Découvrez nos publications, nouveautés et informations sur nos activités
-              et projets. Restez au fait des dernières tendances IT.
+              {t('articlesPage.subtitle')}
             </p>
           </div>
 
           <div className={s.heroStats}>
             <div className={s.heroStat}>
               <div className={s.heroStatNum}>{!loading ? totalItems : '—'}</div>
-              <div className={s.heroStatLabel}>articles</div>
+              <div className={s.heroStatLabel}>
+                {t('articlesPage.statsArticles')}
+              </div>
             </div>
 
             <div className={s.heroStat}>
               <div className={s.heroStatNum}>{categories.length || '—'}</div>
-              <div className={s.heroStatLabel}>catégories</div>
+              <div className={s.heroStatLabel}>
+                {t('articlesPage.statsCategories')}
+              </div>
             </div>
           </div>
         </header>
@@ -475,12 +506,12 @@ export default function PublicArticlesPage({ router }: PublicArticlesPageProps) 
                 type="text"
                 value={search}
                 onChange={(e) => onSearch(e.target.value)}
-                placeholder="Rechercher…"
+                placeholder={t('articlesPage.searchPlaceholder')}
                 className={s.searchInput}
               />
 
               {search && (
-                <button className={s.iconBtn} onClick={() => onSearch('')} aria-label="Effacer">
+                <button className={s.iconBtn} onClick={() => onSearch('')} aria-label={t('common.clear')}>
                   <IconX />
                 </button>
               )}
@@ -496,14 +527,20 @@ export default function PublicArticlesPage({ router }: PublicArticlesPageProps) 
                   }}
                 >
                   <IconFilter />
-                  <span>Filtrer</span>
+                  <span>
+                    {filterOpen
+                      ? t('articlesPage.filtersClose')
+                      : t('articlesPage.filtersOpen')}
+                  </span>
                   {selCat && <span className={s.dropBadge}>1</span>}
                   <IconChevron open={filterOpen} />
                 </button>
 
                 <div className={`${s.dropPanel} ${filterOpen ? s.dropPanelOpen : ''}`}>
                   <div className={s.dropPanelInner}>
-                    <div className={s.dropLabel}>Catégories</div>
+                    <div className={s.dropLabel}>
+                      {t('articlesPage.categories')}
+                    </div>
 
                     <div className={s.catList}>
                       <button
@@ -513,7 +550,7 @@ export default function PublicArticlesPage({ router }: PublicArticlesPageProps) 
                           setFilterOpen(false)
                         }}
                       >
-                        Toutes
+                        {t('articlesPage.allCategories')}
                       </button>
 
                       {!catsLoading &&
@@ -552,7 +589,9 @@ export default function PublicArticlesPage({ router }: PublicArticlesPageProps) 
 
                 <div className={`${s.dropPanel} ${s.dropPanelRight} ${sortOpen ? s.dropPanelOpen : ''}`}>
                   <div className={s.dropPanelInner}>
-                    <div className={s.dropLabel}>Trier par</div>
+                    <div className={s.dropLabel}>
+                      {t('articlesPage.sortBy')}
+                    </div>
 
                     {SORT_OPTIONS.map((o) => (
                       <button
@@ -560,7 +599,7 @@ export default function PublicArticlesPage({ router }: PublicArticlesPageProps) 
                         className={`${s.sortOpt} ${sort === o.key ? s.sortOptActive : ''}`}
                         onClick={() => onSort(o.key)}
                       >
-                        {o.label}
+                        {t(o.labelKey)}
                         {sort === o.key && <span className={s.sortCheck}>✓</span>}
                       </button>
                     ))}
@@ -570,7 +609,7 @@ export default function PublicArticlesPage({ router }: PublicArticlesPageProps) 
 
               {hasFilters && (
                 <button className={s.clearBtn} onClick={clear}>
-                  Tout effacer
+                  {t('common.clearAll')}
                 </button>
               )}
             </div>
@@ -589,7 +628,7 @@ export default function PublicArticlesPage({ router }: PublicArticlesPageProps) 
 
               {search.trim() && (
                 <span className={s.chip}>
-                  "{search.trim()}"
+                  &quot;{search.trim()}&quot;
                   <button onClick={() => onSearch('')}>
                     <IconX />
                   </button>
@@ -600,12 +639,14 @@ export default function PublicArticlesPage({ router }: PublicArticlesPageProps) 
 
           <div className={s.resultsMeta}>
             <span className={s.resultsCount}>
-              {!loading ? `${totalItems} résultat${totalItems > 1 ? 's' : ''}` : 'Chargement…'}
+              {!loading
+                ? t('articlesPage.resultCount', { count: totalItems })
+                : t('common.loading')}
             </span>
 
             {totalPages > 1 && !loading && (
               <span className={s.pagePill}>
-                Page {page} / {totalPages}
+                {t('common.page', { page, total: totalPages })}
               </span>
             )}
           </div>
@@ -632,11 +673,11 @@ export default function PublicArticlesPage({ router }: PublicArticlesPageProps) 
             <div className={s.emptyIcon}>
               <IconSearch />
             </div>
-            <h2>Aucune actualité trouvée</h2>
-            <p>Essayez un autre mot-clé ou réinitialisez les filtres.</p>
+            <h2>{t('articlesPage.emptyTitle')}</h2>
+            <p>{t('articlesPage.emptyText')}</p>
             {hasFilters && (
               <button className={s.resetBtn} onClick={clear}>
-                Réinitialiser
+                {t('common.resetFilters')}
               </button>
             )}
           </div>
@@ -689,7 +730,7 @@ export default function PublicArticlesPage({ router }: PublicArticlesPageProps) 
       <button
         className={`${s.scrollTop} ${top ? s.scrollTopShow : ''}`}
         onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
-        aria-label="Retour en haut"
+        aria-label={t('common.scrollTop')}
       >
         <IconUp />
       </button>

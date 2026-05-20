@@ -1,7 +1,11 @@
 "use client";
 
+import type { TFunction } from "i18next";
 import type { FormEvent } from "react";
 import { useEffect, useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
+import { normalizeLocale } from "@/app/i18n/settings";
+import { translateDynamicItems } from "@/app/i18n/dynamic";
 import styles from "./productLeadform.module.css";
 
 type SubmitStatus = "idle" | "loading" | "success" | "error";
@@ -57,9 +61,10 @@ type FormState = {
 
 type FormErrors = Partial<Record<keyof FormState | "global", string>>;
 
-const STEPS = [
+const STEP_DEFS = [
   {
     id: "need",
+    key: "need",
     label: "Besoin",
     title: "Votre besoin",
     description:
@@ -67,6 +72,7 @@ const STEPS = [
   },
   {
     id: "contact",
+    key: "contact",
     label: "Contact",
     title: "Vos coordonnées",
     description:
@@ -74,6 +80,7 @@ const STEPS = [
   },
   {
     id: "company",
+    key: "company",
     label: "Entreprise",
     title: "Votre entreprise",
     description:
@@ -81,12 +88,26 @@ const STEPS = [
   },
   {
     id: "message",
+    key: "message",
     label: "Message",
     title: "Votre message",
     description:
       "Décrivez brièvement votre besoin pour recevoir une réponse adaptée.",
   },
 ] as const;
+
+const REQUEST_TYPE_DEFS: { value: RequestType; label: string; optionLabel: string }[] = [
+  { value: "DEMO", label: "Démonstration", optionLabel: "Demander une démonstration" },
+  { value: "QUOTE", label: "Devis", optionLabel: "Demander un devis" },
+  { value: "CONTACT", label: "Contact commercial", optionLabel: "Contact commercial" },
+  { value: "CALLBACK", label: "Être rappelé", optionLabel: "Être rappelé" },
+  { value: "INFO", label: "Informations", optionLabel: "Recevoir plus d’informations" },
+  { value: "SUPPORT", label: "Support", optionLabel: "Assistance / support" },
+  { value: "TRAINING", label: "Formation", optionLabel: "Formation" },
+  { value: "MAINTENANCE", label: "Maintenance", optionLabel: "Maintenance" },
+  { value: "TENDER", label: "Appel d’offre", optionLabel: "Appel d’offre" },
+  { value: "OTHER", label: "Autre demande", optionLabel: "Autre demande" },
+];
 
 function getTrackingParams() {
   if (typeof window === "undefined") {
@@ -156,51 +177,92 @@ function createInitialForm(
 function validateStep(
   form: FormState,
   step: number,
-  shouldShowProductSelect: boolean
+  shouldShowProductSelect: boolean,
+  t: TFunction
 ): FormErrors {
   const errors: FormErrors = {};
 
   if (step === 0) {
     if (shouldShowProductSelect && !form.selectedProductSlug.trim()) {
-      errors.selectedProductSlug = "Veuillez choisir un produit ou service.";
+      errors.selectedProductSlug = String(
+        t("leadForm.validation.productRequired", {
+          defaultValue: "Veuillez choisir un produit ou service.",
+        })
+      );
     }
   }
 
   if (step === 1) {
     if (!form.email.trim()) {
-      errors.email = "L’email est obligatoire.";
+      errors.email = String(
+        t("leadForm.validation.emailRequired", {
+          defaultValue: "L'email est obligatoire.",
+        })
+      );
     } else if (!isValidEmail(form.email)) {
-      errors.email = "Veuillez saisir un email valide.";
+      errors.email = String(
+        t("leadForm.validation.emailInvalid", {
+          defaultValue: "Veuillez saisir un email valide.",
+        })
+      );
     }
 
     if (form.phone.trim() && form.phone.trim().length < 6) {
-      errors.phone = "Le numéro de téléphone semble trop court.";
+      errors.phone = String(
+        t("leadForm.validation.phoneShort", {
+          defaultValue: "Le numéro de téléphone semble trop court.",
+        })
+      );
     }
   }
 
   if (step === 2) {
     if (!form.companyName.trim()) {
-      errors.companyName = "Veuillez indiquer votre entreprise ou organisme.";
+      errors.companyName = String(
+        t("leadForm.validation.companyRequired", {
+          defaultValue: "Veuillez indiquer votre entreprise ou organisme.",
+        })
+      );
     }
   }
 
   if (step === 3) {
     if (!form.message.trim()) {
-      errors.message = "Veuillez décrire brièvement votre besoin.";
+      errors.message = String(
+        t("leadForm.validation.messageRequired", {
+          defaultValue: "Veuillez décrire brièvement votre besoin.",
+        })
+      );
     } else if (form.message.trim().length < 12) {
-      errors.message = "Ajoutez quelques détails supplémentaires.";
+      errors.message = String(
+        t("leadForm.validation.messageShort", {
+          defaultValue: "Ajoutez quelques détails supplémentaires.",
+        })
+      );
     }
 
     if (!form.consentEmail) {
-      errors.consentEmail = "Vous devez accepter d’être recontacté.";
+      errors.consentEmail = String(
+        t("leadForm.validation.consentRequired", {
+          defaultValue: "Vous devez accepter d'être recontacté.",
+        })
+      );
     }
 
     if (form.website.trim()) {
-      errors.global = "Votre demande n’a pas pu être validée.";
+      errors.global = String(
+        t("leadForm.validation.blocked", {
+          defaultValue: "Votre demande n'a pas pu être validée.",
+        })
+      );
     }
 
     if (Date.now() - form.submittedAt < 1800) {
-      errors.global = "Veuillez patienter quelques secondes avant l’envoi.";
+      errors.global = String(
+        t("leadForm.validation.wait", {
+          defaultValue: "Veuillez patienter quelques secondes avant l'envoi.",
+        })
+      );
     }
   }
 
@@ -209,31 +271,25 @@ function validateStep(
 
 function validateForm(
   form: FormState,
-  shouldShowProductSelect: boolean
+  shouldShowProductSelect: boolean,
+  t: TFunction
 ): FormErrors {
   return {
-    ...validateStep(form, 0, shouldShowProductSelect),
-    ...validateStep(form, 1, shouldShowProductSelect),
-    ...validateStep(form, 2, shouldShowProductSelect),
-    ...validateStep(form, 3, shouldShowProductSelect),
+    ...validateStep(form, 0, shouldShowProductSelect, t),
+    ...validateStep(form, 1, shouldShowProductSelect, t),
+    ...validateStep(form, 2, shouldShowProductSelect, t),
+    ...validateStep(form, 3, shouldShowProductSelect, t),
   };
 }
 
-function getRequestTypeLabel(value: RequestType) {
-  const labels: Record<RequestType, string> = {
-    DEMO: "Démonstration",
-    QUOTE: "Devis",
-    CONTACT: "Contact commercial",
-    CALLBACK: "Être rappelé",
-    INFO: "Informations",
-    SUPPORT: "Support",
-    TRAINING: "Formation",
-    MAINTENANCE: "Maintenance",
-    TENDER: "Appel d’offre",
-    OTHER: "Autre demande",
-  };
+function getRequestTypeLabel(value: RequestType, t: TFunction) {
+  const requestType = REQUEST_TYPE_DEFS.find((item) => item.value === value);
 
-  return labels[value];
+  return String(
+    t(`leadForm.requestTypes.${value}.label`, {
+      defaultValue: requestType?.label ?? value,
+    })
+  );
 }
 
 export default function ProductLeadForm({
@@ -241,17 +297,24 @@ export default function ProductLeadForm({
   productSlug,
   productName,
   productOptions = [],
-  title = "Demander une information",
-  description = "Remplissez ce formulaire pour être contacté par l’équipe MD2I.",
+  title,
+  description,
   defaultRequestType = "CONTACT",
   showProductSelect = true,
   variant = "default",
   hideHeader = false,
 }: ProductLeadFormProps) {
+  const { t, i18n } = useTranslation();
+  const locale = normalizeLocale(i18n.language);
   const tracking = useMemo(() => getTrackingParams(), []);
 
   const [availableProducts, setAvailableProducts] =
     useState<ProductOption[]>(productOptions);
+  const [localizedProducts, setLocalizedProducts] =
+    useState<ProductOption[]>(productOptions);
+  const [localizedProductName, setLocalizedProductName] = useState(
+    productName ?? ""
+  );
 
   const initialSelectedProductSlug =
     productSlug || productOptions[0]?.slug || "";
@@ -264,6 +327,39 @@ export default function ProductLeadForm({
   const [form, setForm] = useState<FormState>(() =>
     createInitialForm(defaultRequestType, initialSelectedProductSlug)
   );
+
+  const steps = useMemo(
+    () =>
+      STEP_DEFS.map((step) => ({
+        ...step,
+        label: String(
+          t(`leadForm.steps.${step.key}.label`, {
+            defaultValue: step.label,
+          })
+        ),
+        title: String(
+          t(`leadForm.steps.${step.key}.title`, {
+            defaultValue: step.title,
+          })
+        ),
+        description: String(
+          t(`leadForm.steps.${step.key}.description`, {
+            defaultValue: step.description,
+          })
+        ),
+      })),
+    [t]
+  );
+
+  const formTitle =
+    title ??
+    t("leadForm.title", { defaultValue: "Demander une information" });
+  const formDescription =
+    description ??
+    t("leadForm.description", {
+      defaultValue:
+        "Remplissez ce formulaire pour être contacté par l'équipe MD2I.",
+    });
 
   useEffect(() => {
     if (productSlug || productOptions.length > 0) return;
@@ -314,19 +410,72 @@ export default function ProductLeadForm({
     };
   }, [productSlug, productOptions.length, form.selectedProductSlug]);
 
-  const selectedProduct = availableProducts.find(
+  useEffect(() => {
+    let cancelled = false;
+
+    translateDynamicItems<ProductOption>(availableProducts, locale, ["name"])
+      .then((items) => {
+        if (!cancelled) {
+          setLocalizedProducts(items);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setLocalizedProducts(availableProducts);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [availableProducts, locale]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    if (!productName) {
+      setLocalizedProductName("");
+      return;
+    }
+
+    translateDynamicItems<{ name: string }>([{ name: productName }], locale, [
+      "name",
+    ])
+      .then(([item]) => {
+        if (!cancelled) {
+          setLocalizedProductName(item?.name ?? productName);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setLocalizedProductName(productName);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [productName, locale]);
+
+  const selectedRawProduct = availableProducts.find(
+    (item) => item.slug === form.selectedProductSlug
+  );
+  const selectedProduct = localizedProducts.find(
     (item) => item.slug === form.selectedProductSlug
   );
 
   const finalProductSlug = productSlug || form.selectedProductSlug;
-  const finalProductName = productName || selectedProduct?.name || "";
+  const finalProductNameForSubmit =
+    productName || selectedRawProduct?.name || "";
+  const finalProductName =
+    localizedProductName || selectedProduct?.name || finalProductNameForSubmit;
   const shouldShowProductSelect =
     showProductSelect && !productSlug && availableProducts.length > 0;
 
-  const currentStepData = STEPS[currentStep];
+  const currentStepData = steps[currentStep];
   const isFirstStep = currentStep === 0;
-  const isLastStep = currentStep === STEPS.length - 1;
-  const progress = ((currentStep + 1) / STEPS.length) * 100;
+  const isLastStep = currentStep === steps.length - 1;
+  const progress = ((currentStep + 1) / steps.length) * 100;
 
   const updateField = <K extends keyof FormState>(
     name: K,
@@ -353,20 +502,27 @@ export default function ProductLeadForm({
     const nextErrors = validateStep(
       form,
       currentStep,
-      shouldShowProductSelect
+      shouldShowProductSelect,
+      t
     );
 
     if (Object.keys(nextErrors).length > 0) {
       setErrors(nextErrors);
       setStatus("error");
-      setNotice("Veuillez corriger les champs indiqués.");
+      setNotice(
+        String(
+          t("leadForm.validation.fixFields", {
+            defaultValue: "Veuillez corriger les champs indiqués.",
+          })
+        )
+      );
       return;
     }
 
     setErrors({});
     setNotice("");
     setStatus("idle");
-    setCurrentStep((prev) => Math.min(prev + 1, STEPS.length - 1));
+    setCurrentStep((prev) => Math.min(prev + 1, steps.length - 1));
   };
 
   const goBack = () => {
@@ -384,12 +540,18 @@ export default function ProductLeadForm({
       return;
     }
 
-    const nextErrors = validateForm(form, shouldShowProductSelect);
+    const nextErrors = validateForm(form, shouldShowProductSelect, t);
 
     if (Object.keys(nextErrors).length > 0) {
       setErrors(nextErrors);
       setStatus("error");
-      setNotice("Veuillez corriger les champs indiqués.");
+      setNotice(
+        String(
+          t("leadForm.validation.fixFields", {
+            defaultValue: "Veuillez corriger les champs indiqués.",
+          })
+        )
+      );
       return;
     }
 
@@ -422,7 +584,7 @@ export default function ProductLeadForm({
 
           productId,
           productSlug: finalProductSlug,
-          productNameFallback: finalProductName,
+          productNameFallback: finalProductNameForSubmit,
 
           source: resolveSourceFromUtm(tracking.utmSource),
           ...tracking,
@@ -435,16 +597,34 @@ export default function ProductLeadForm({
       try {
         data = await response.json();
       } catch {
-        throw new Error("Réponse serveur invalide.");
+        throw new Error(
+          String(
+            t("leadForm.validation.invalidServerResponse", {
+              defaultValue: "Réponse serveur invalide.",
+            })
+          )
+        );
       }
 
       if (!response.ok || !data?.success) {
-        throw new Error(data?.error || "Erreur pendant l’envoi.");
+        throw new Error(
+          data?.error ||
+            String(
+              t("leadForm.validation.submitError", {
+                defaultValue: "Erreur pendant l'envoi.",
+              })
+            )
+        );
       }
 
       setStatus("success");
       setNotice(
-        "Votre demande a bien été envoyée. L’équipe MD2I vous contactera prochainement."
+        String(
+          t("leadForm.success", {
+            defaultValue:
+              "Votre demande a bien été envoyée. L'équipe MD2I vous contactera prochainement.",
+          })
+        )
       );
 
       const resetProductSlug =
@@ -456,7 +636,11 @@ export default function ProductLeadForm({
       const message =
         error instanceof Error
           ? error.message
-          : "Impossible d’envoyer votre demande.";
+          : String(
+              t("leadForm.validation.submitFailed", {
+                defaultValue: "Impossible d'envoyer votre demande.",
+              })
+            );
 
       setStatus("error");
       setNotice(message);
@@ -478,22 +662,36 @@ export default function ProductLeadForm({
         <div className={styles.header}>
           <span className={styles.badge}>MD2I</span>
 
-          {title && <h2 className={styles.title}>{title}</h2>}
+          {formTitle && <h2 className={styles.title}>{formTitle}</h2>}
 
-          {description && <p className={styles.text}>{description}</p>}
+          {formDescription && (
+            <p className={styles.text}>{formDescription}</p>
+          )}
 
           {finalProductName && (
             <p className={styles.productLabel}>
-              Produit concerné : {finalProductName}
+              {t("leadForm.productConcerned", {
+                defaultValue: "Produit concerné : {{product}}",
+                product: finalProductName,
+              })}
             </p>
           )}
         </div>
       )}
 
-      <div className={styles.progressWrap} aria-label="Progression du formulaire">
+      <div
+        className={styles.progressWrap}
+        aria-label={t("leadForm.progressAria", {
+          defaultValue: "Progression du formulaire",
+        })}
+      >
         <div className={styles.progressTop}>
           <span>
-            Étape {currentStep + 1} sur {STEPS.length}
+            {t("leadForm.progress", {
+              defaultValue: "Étape {{current}} sur {{total}}",
+              current: currentStep + 1,
+              total: steps.length,
+            })}
           </span>
 
           <strong>{currentStepData.label}</strong>
@@ -510,7 +708,7 @@ export default function ProductLeadForm({
       </div>
 
       <div className={styles.steps}>
-        {STEPS.map((step, index) => (
+        {steps.map((step, index) => (
           <button
             key={step.id}
             type="button"
@@ -572,7 +770,11 @@ export default function ProductLeadForm({
           <div className={styles.stepContent}>
             {shouldShowProductSelect && (
               <label className={styles.field}>
-                <span className={styles.label}>Produit ou service concerné</span>
+                <span className={styles.label}>
+                  {t("leadForm.fields.product", {
+                    defaultValue: "Produit ou service concerné",
+                  })}
+                </span>
 
                 <select
                   className={`${styles.input} ${
@@ -585,7 +787,7 @@ export default function ProductLeadForm({
                   required
                   aria-invalid={Boolean(errors.selectedProductSlug)}
                 >
-                  {availableProducts.map((product) => (
+                  {localizedProducts.map((product) => (
                     <option key={product.slug} value={product.slug}>
                       {product.name}
                     </option>
@@ -601,7 +803,11 @@ export default function ProductLeadForm({
             )}
 
             <label className={styles.field}>
-              <span className={styles.label}>Type de demande</span>
+              <span className={styles.label}>
+                {t("leadForm.fields.requestType", {
+                  defaultValue: "Type de demande",
+                })}
+              </span>
 
               <select
                 className={styles.input}
@@ -610,26 +816,31 @@ export default function ProductLeadForm({
                   updateField("requestType", event.target.value as RequestType)
                 }
               >
-                <option value="DEMO">Demander une démonstration</option>
-                <option value="QUOTE">Demander un devis</option>
-                <option value="CONTACT">Contact commercial</option>
-                <option value="CALLBACK">Être rappelé</option>
-                <option value="INFO">Recevoir plus d’informations</option>
-                <option value="TRAINING">Formation</option>
-                <option value="MAINTENANCE">Maintenance</option>
-                <option value="SUPPORT">Assistance / support</option>
-                <option value="TENDER">Appel d’offre</option>
-                <option value="OTHER">Autre demande</option>
+                {REQUEST_TYPE_DEFS.map((requestType) => (
+                  <option key={requestType.value} value={requestType.value}>
+                    {t(`leadForm.requestTypes.${requestType.value}.option`, {
+                      defaultValue: requestType.optionLabel,
+                    })}
+                  </option>
+                ))}
               </select>
             </label>
 
             <div className={styles.summaryBox}>
-              <span>Résumé</span>
-              <strong>{getRequestTypeLabel(form.requestType)}</strong>
+              <span>
+                {t("leadForm.summary.title", { defaultValue: "Résumé" })}
+              </span>
+              <strong>{getRequestTypeLabel(form.requestType, t)}</strong>
               <p>
                 {finalProductName
-                  ? `Produit sélectionné : ${finalProductName}`
-                  : "Votre demande sera enregistrée comme demande commerciale générale."}
+                  ? t("leadForm.summary.productSelected", {
+                      defaultValue: "Produit sélectionné : {{product}}",
+                      product: finalProductName,
+                    })
+                  : t("leadForm.summary.general", {
+                      defaultValue:
+                        "Votre demande sera enregistrée comme demande commerciale générale.",
+                    })}
               </p>
             </div>
           </div>
@@ -639,7 +850,9 @@ export default function ProductLeadForm({
           <div className={styles.stepContent}>
             <div className={styles.grid}>
               <label className={styles.field}>
-                <span className={styles.label}>Prénom</span>
+                <span className={styles.label}>
+                  {t("leadForm.fields.firstName", { defaultValue: "Prénom" })}
+                </span>
 
                 <input
                   className={styles.input}
@@ -647,13 +860,17 @@ export default function ProductLeadForm({
                   onChange={(event) =>
                     updateField("firstName", event.target.value)
                   }
-                  placeholder="Votre prénom"
+                  placeholder={t("leadForm.placeholders.firstName", {
+                    defaultValue: "Votre prénom",
+                  })}
                   autoComplete="given-name"
                 />
               </label>
 
               <label className={styles.field}>
-                <span className={styles.label}>Nom</span>
+                <span className={styles.label}>
+                  {t("leadForm.fields.lastName", { defaultValue: "Nom" })}
+                </span>
 
                 <input
                   className={styles.input}
@@ -661,14 +878,18 @@ export default function ProductLeadForm({
                   onChange={(event) =>
                     updateField("lastName", event.target.value)
                   }
-                  placeholder="Votre nom"
+                  placeholder={t("leadForm.placeholders.lastName", {
+                    defaultValue: "Votre nom",
+                  })}
                   autoComplete="family-name"
                 />
               </label>
             </div>
 
             <label className={styles.field}>
-              <span className={styles.label}>Email *</span>
+              <span className={styles.label}>
+                {t("leadForm.fields.email", { defaultValue: "Email *" })}
+              </span>
 
               <input
                 className={`${styles.input} ${
@@ -689,7 +910,9 @@ export default function ProductLeadForm({
             </label>
 
             <label className={styles.field}>
-              <span className={styles.label}>Téléphone</span>
+              <span className={styles.label}>
+                {t("leadForm.fields.phone", { defaultValue: "Téléphone" })}
+              </span>
 
               <input
                 className={`${styles.input} ${
@@ -713,7 +936,9 @@ export default function ProductLeadForm({
           <div className={styles.stepContent}>
             <div className={styles.grid}>
               <label className={styles.field}>
-                <span className={styles.label}>Fonction</span>
+                <span className={styles.label}>
+                  {t("leadForm.fields.jobTitle", { defaultValue: "Fonction" })}
+                </span>
 
                 <input
                   className={styles.input}
@@ -721,13 +946,19 @@ export default function ProductLeadForm({
                   onChange={(event) =>
                     updateField("jobTitle", event.target.value)
                   }
-                  placeholder="Responsable RH, DAF..."
+                  placeholder={t("leadForm.placeholders.jobTitle", {
+                    defaultValue: "Responsable RH, DAF...",
+                  })}
                   autoComplete="organization-title"
                 />
               </label>
 
               <label className={styles.field}>
-                <span className={styles.label}>Entreprise *</span>
+                <span className={styles.label}>
+                  {t("leadForm.fields.company", {
+                    defaultValue: "Entreprise *",
+                  })}
+                </span>
 
                 <input
                   className={`${styles.input} ${
@@ -737,7 +968,9 @@ export default function ProductLeadForm({
                   onChange={(event) =>
                     updateField("companyName", event.target.value)
                   }
-                  placeholder="Nom de l’entreprise"
+                  placeholder={t("leadForm.placeholders.company", {
+                    defaultValue: "Nom de l'entreprise",
+                  })}
                   autoComplete="organization"
                   aria-invalid={Boolean(errors.companyName)}
                 />
@@ -750,7 +983,9 @@ export default function ProductLeadForm({
 
             <div className={styles.grid}>
               <label className={styles.field}>
-                <span className={styles.label}>Pays</span>
+                <span className={styles.label}>
+                  {t("leadForm.fields.country", { defaultValue: "Pays" })}
+                </span>
 
                 <input
                   className={styles.input}
@@ -758,19 +993,25 @@ export default function ProductLeadForm({
                   onChange={(event) =>
                     updateField("country", event.target.value)
                   }
-                  placeholder="Madagascar, France..."
+                  placeholder={t("leadForm.placeholders.country", {
+                    defaultValue: "Madagascar, France...",
+                  })}
                   autoComplete="country-name"
                 />
               </label>
 
               <label className={styles.field}>
-                <span className={styles.label}>Ville</span>
+                <span className={styles.label}>
+                  {t("leadForm.fields.city", { defaultValue: "Ville" })}
+                </span>
 
                 <input
                   className={styles.input}
                   value={form.city}
                   onChange={(event) => updateField("city", event.target.value)}
-                  placeholder="Votre ville"
+                  placeholder={t("leadForm.placeholders.city", {
+                    defaultValue: "Votre ville",
+                  })}
                   autoComplete="address-level2"
                 />
               </label>
@@ -781,7 +1022,9 @@ export default function ProductLeadForm({
         {currentStep === 3 && (
           <div className={styles.stepContent}>
             <label className={styles.field}>
-              <span className={styles.label}>Message *</span>
+              <span className={styles.label}>
+                {t("leadForm.fields.message", { defaultValue: "Message *" })}
+              </span>
 
               <textarea
                 className={`${styles.input} ${styles.textarea} ${
@@ -789,7 +1032,10 @@ export default function ProductLeadForm({
                 }`}
                 value={form.message}
                 onChange={(event) => updateField("message", event.target.value)}
-                placeholder="Décrivez votre besoin, le nombre d’utilisateurs, le délai souhaité..."
+                placeholder={t("leadForm.placeholders.message", {
+                  defaultValue:
+                    "Décrivez votre besoin, le nombre d'utilisateurs, le délai souhaité...",
+                })}
                 aria-invalid={Boolean(errors.message)}
               />
 
@@ -812,7 +1058,10 @@ export default function ProductLeadForm({
               />
 
               <span>
-                J’accepte d’être contacté par MD2I au sujet de ma demande.
+                {t("leadForm.consent", {
+                  defaultValue:
+                    "J'accepte d'être contacté par MD2I au sujet de ma demande.",
+                })}
               </span>
             </label>
 
@@ -821,10 +1070,16 @@ export default function ProductLeadForm({
             )}
 
             <div className={styles.finalSummary}>
-              <span>Avant envoi</span>
+              <span>
+                {t("leadForm.finalSummary.title", {
+                  defaultValue: "Avant envoi",
+                })}
+              </span>
               <p>
-                Votre demande sera transmise à l’équipe MD2I et enregistrée dans
-                le CRM pour assurer un suivi commercial.
+                {t("leadForm.finalSummary.text", {
+                  defaultValue:
+                    "Votre demande sera transmise à l'équipe MD2I et enregistrée dans le CRM pour assurer un suivi commercial.",
+                })}
               </p>
             </div>
           </div>
@@ -838,7 +1093,7 @@ export default function ProductLeadForm({
           onClick={goBack}
           disabled={isFirstStep || status === "loading"}
         >
-          Retour
+          {t("leadForm.actions.back", { defaultValue: "Retour" })}
         </button>
 
         <button
@@ -849,16 +1104,20 @@ export default function ProductLeadForm({
           {status === "loading" ? (
             <>
               <span className={styles.spinner} />
-              Envoi en cours...
+              {t("leadForm.actions.sending", {
+                defaultValue: "Envoi en cours...",
+              })}
             </>
           ) : isLastStep ? (
             <>
-              Envoyer ma demande
+              {t("leadForm.actions.submit", {
+                defaultValue: "Envoyer ma demande",
+              })}
               <span aria-hidden="true">→</span>
             </>
           ) : (
             <>
-              Continuer
+              {t("leadForm.actions.continue", { defaultValue: "Continuer" })}
               <span aria-hidden="true">→</span>
             </>
           )}
@@ -866,8 +1125,10 @@ export default function ProductLeadForm({
       </div>
 
       <p className={styles.securityNote}>
-        Formulaire sécurisé : validation des champs, anti-spam et contrôle côté
-        serveur.
+        {t("leadForm.securityNote", {
+          defaultValue:
+            "Formulaire sécurisé : validation des champs, anti-spam et contrôle côté serveur.",
+        })}
       </p>
     </form>
   );

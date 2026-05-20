@@ -12,8 +12,9 @@ import {
   Sparkles,
 } from "lucide-react";
 
-import ProductLeadForm from "@/app/admin/components/crm/ProductLeadForm";
 import { prisma } from "@/app/lib/prisma";
+import { T } from "@/app/i18n/T";
+import { LocalizedProductLeadForm } from "./LocalizedProductLeadForm";
 
 export const dynamic = "force-dynamic";
 
@@ -572,29 +573,45 @@ export default async function ContactCommercialPage() {
             <div>
               <div className="cc-eyebrow">
                 <Sparkles size={15} aria-hidden="true" />
-                <span>Contact commercial MD2I</span>
+                <span>
+                  <T k="contactCommercial.eyebrow">
+                    Contact commercial MD2I
+                  </T>
+                </span>
               </div>
 
               <h1 className="cc-title">
-                Parlons de votre besoin et trouvons la{" "}
-                <span>bonne solution.</span>
+                <T k="contactCommercial.title">
+                  Parlons de votre besoin et trouvons la
+                </T>{" "}
+                <span>
+                  <T k="contactCommercial.titleEmphasis">
+                    bonne solution.
+                  </T>
+                </span>
               </h1>
 
               <p className="cc-subtitle">
-                Sélectionnez un produit ou service, décrivez votre demande, puis
-                l’équipe MD2I vous recontactera avec une réponse adaptée à votre
-                contexte.
+                <T k="contactCommercial.subtitle">
+                  Sélectionnez un produit ou service, décrivez votre demande,
+                  puis l’équipe MD2I vous recontactera avec une réponse adaptée
+                  à votre contexte.
+                </T>
               </p>
 
               <div className="cc-hero-actions">
                 <a href="#demande-commerciale" className="cc-primary-link">
-                  Envoyer une demande
+                  <T k="contactCommercial.cta">Envoyer une demande</T>
                   <ArrowRight size={17} aria-hidden="true" />
                 </a>
 
                 <div className="cc-hero-hint">
                   <Clock3 size={16} aria-hidden="true" />
-                  <span>Réponse rapide par l’équipe commerciale</span>
+                  <span>
+                    <T k="contactCommercial.hint">
+                      Réponse rapide par l’équipe commerciale
+                    </T>
+                  </span>
                 </div>
               </div>
             </div>
@@ -604,22 +621,36 @@ export default async function ContactCommercialPage() {
                 <Headphones size={24} aria-hidden="true" />
               </div>
 
-              <h2>Accompagnement personnalisé</h2>
+              <h2>
+                <T k="contactCommercial.cardTitle">
+                  Accompagnement personnalisé
+                </T>
+              </h2>
 
               <p>
-                Votre demande est automatiquement transmise au CRM MD2I pour
-                être suivie par notre équipe commerciale.
+                <T k="contactCommercial.cardText">
+                  Votre demande est automatiquement transmise au CRM MD2I pour
+                  être suivie par notre équipe commerciale.
+                </T>
               </p>
 
               <div className="cc-hero-stats">
                 <div className="cc-stat">
                   <strong>{products.length}</strong>
-                  <span>solutions disponibles</span>
+                  <span>
+                    <T k="contactCommercial.solutionsAvailable">
+                      solutions disponibles
+                    </T>
+                  </span>
                 </div>
 
                 <div className="cc-stat">
                   <strong>CRM</strong>
-                  <span>suivi structuré</span>
+                  <span>
+                    <T k="contactCommercial.crmTracking">
+                      suivi structuré
+                    </T>
+                  </span>
                 </div>
               </div>
             </aside>
@@ -632,20 +663,20 @@ export default async function ContactCommercialPage() {
           <div className="cc-benefits-grid">
             <BenefitCard
               icon={<BadgeCheck size={21} />}
-              title="Solution adaptée"
-              text="Nous analysons votre demande pour vous orienter vers le bon produit ou service."
+              title={<T k="contactCommercial.benefits.adaptedTitle">Solution adaptée</T>}
+              text={<T k="contactCommercial.benefits.adaptedText">Nous analysons votre demande pour vous orienter vers le bon produit ou service.</T>}
             />
 
             <BenefitCard
               icon={<MailCheck size={21} />}
-              title="Suivi commercial"
-              text="Votre demande est enregistrée proprement pour faciliter le suivi et les relances."
+              title={<T k="contactCommercial.benefits.followTitle">Suivi commercial</T>}
+              text={<T k="contactCommercial.benefits.followText">Votre demande est enregistrée proprement pour faciliter le suivi et les relances.</T>}
             />
 
             <BenefitCard
               icon={<ShieldCheck size={21} />}
-              title="Échange professionnel"
-              text="Vous êtes recontacté avec une réponse claire, structurée et adaptée à votre projet."
+              title={<T k="contactCommercial.benefits.exchangeTitle">Échange professionnel</T>}
+              text={<T k="contactCommercial.benefits.exchangeText">Vous êtes recontacté avec une réponse claire, structurée et adaptée à votre projet.</T>}
             />
           </div>
         </div>
@@ -655,30 +686,50 @@ export default async function ContactCommercialPage() {
         <div className="cc-container">
           <div className="cc-form-grid">
             <aside className="cc-form-intro">
-              <p className="cc-form-intro-badge">Votre demande</p>
+              <p className="cc-form-intro-badge">
+                <T k="contactCommercial.introBadge">Votre demande</T>
+              </p>
 
-              <h2>Demande commerciale</h2>
+              <h2>
+                <T k="contactCommercial.introTitle">
+                  Demande commerciale
+                </T>
+              </h2>
 
               <p>
-                Choisissez le produit ou service qui vous intéresse, puis
-                indiquez vos informations. Cela nous permet de mieux comprendre
-                votre besoin avant de vous recontacter.
+                <T k="contactCommercial.introText">
+                  Choisissez le produit ou service qui vous intéresse, puis
+                  indiquez vos informations. Cela nous permet de mieux
+                  comprendre votre besoin avant de vous recontacter.
+                </T>
               </p>
 
               <div className="cc-form-points">
                 <div className="cc-form-point">
                   <CheckCircle2 size={15} aria-hidden="true" />
-                  <span>Qualification claire de votre besoin.</span>
+                  <span>
+                    <T k="contactCommercial.points.qualification">
+                      Qualification claire de votre besoin.
+                    </T>
+                  </span>
                 </div>
 
                 <div className="cc-form-point">
                   <CheckCircle2 size={15} aria-hidden="true" />
-                  <span>Suivi commercial structuré dans le CRM.</span>
+                  <span>
+                    <T k="contactCommercial.points.crm">
+                      Suivi commercial structuré dans le CRM.
+                    </T>
+                  </span>
                 </div>
 
                 <div className="cc-form-point">
                   <CheckCircle2 size={15} aria-hidden="true" />
-                  <span>Retour adapté au produit ou service sélectionné.</span>
+                  <span>
+                    <T k="contactCommercial.points.product">
+                      Retour adapté au produit ou service sélectionné.
+                    </T>
+                  </span>
                 </div>
               </div>
             </aside>
@@ -686,19 +737,15 @@ export default async function ContactCommercialPage() {
             <div className="cc-form-card">
               {products.length === 0 && (
                 <div className="cc-warning">
-                  Aucun produit publié n’est disponible pour le moment. Vous
-                  pouvez tout de même envoyer une demande générale si le
-                  formulaire le permet.
+                  <T k="contactCommercial.warning">
+                    Aucun produit publié n’est disponible pour le moment. Vous
+                    pouvez tout de même envoyer une demande générale si le
+                    formulaire le permet.
+                  </T>
                 </div>
               )}
 
-              <ProductLeadForm
-                productOptions={products}
-                title="Demande commerciale"
-                description="Choisissez le produit ou service qui vous intéresse. L’équipe MD2I vous recontactera rapidement."
-                defaultRequestType="CONTACT"
-                variant="premium"
-              />
+              <LocalizedProductLeadForm productOptions={products} />
             </div>
           </div>
         </div>
@@ -708,17 +755,24 @@ export default async function ContactCommercialPage() {
         <div className="cc-container">
           <div className="cc-reassurance-card">
             <div>
-              <p className="cc-reassurance-badge">MD2I</p>
+              <p className="cc-reassurance-badge">
+                <T k="contactCommercial.reassuranceBadge">MD2I</T>
+              </p>
 
               <h2>
-                Un interlocuteur pour transformer votre besoin en solution.
+                <T k="contactCommercial.reassuranceTitle">
+                  Un interlocuteur pour transformer votre besoin en solution.
+                </T>
               </h2>
             </div>
 
             <p>
-              Que votre demande concerne un site web, une solution digitale, un
-              CRM, une automatisation, une maintenance ou un accompagnement,
-              nous vous aidons à clarifier la meilleure approche.
+              <T k="contactCommercial.reassuranceText">
+                Que votre demande concerne un site web, une solution digitale,
+                un CRM, une automatisation, une maintenance ou un
+                accompagnement, nous vous aidons à clarifier la meilleure
+                approche.
+              </T>
             </p>
           </div>
         </div>
@@ -733,8 +787,8 @@ function BenefitCard({
   text,
 }: {
   icon: ReactNode;
-  title: string;
-  text: string;
+  title: ReactNode;
+  text: ReactNode;
 }) {
   return (
     <article className="cc-benefit-card">

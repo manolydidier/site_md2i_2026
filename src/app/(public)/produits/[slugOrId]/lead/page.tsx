@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 
 import ProductLeadForm from "@/app/admin/components/crm/ProductLeadForm";
+import { T } from "@/app/i18n/T";
 import { prisma } from "@/app/lib/prisma";
 import type { Prisma } from "@/generated/prisma/client";
 import LeadThemeShell from "./LeadThemeShell";
@@ -35,7 +36,7 @@ function isUuid(value: string) {
 
 function formatPrice(value: unknown) {
   if (value === null || value === undefined || value === "") {
-    return "Sur devis";
+    return null;
   }
 
   const raw =
@@ -810,11 +811,11 @@ export default async function ProductLeadPage({ params }: ProductLeadPageProps) 
         <nav className="lp-nav" aria-label="Navigation produit">
           <Link href="/produits" className="lp-btn">
             <ArrowLeft size={15} aria-hidden="true" />
-            Retour aux produits
+            <T k="productLeadPage.backProducts">Retour aux produits</T>
           </Link>
 
           <Link href={productUrl} className="lp-btn lp-btn-accent">
-            Voir la fiche produit
+            <T k="productLeadPage.viewProduct">Voir la fiche produit</T>
             <ArrowRight size={15} aria-hidden="true" />
           </Link>
         </nav>
@@ -839,48 +840,71 @@ export default async function ProductLeadPage({ params }: ProductLeadPageProps) 
             <div className="lp-product-info">
               <div className="lp-eyebrow">
                 <Sparkles size={12} aria-hidden="true" />
-                Demande commerciale
+                <T k="productLeadPage.eyebrow">Demande commerciale</T>
               </div>
 
               <h1 className="lp-product-name">{product.name}</h1>
 
               <p className="lp-product-excerpt">
                 {product.excerpt?.trim() ||
-                  "Présentez votre besoin à l'équipe MD2I pour recevoir une réponse adaptée."}
+                  <T k="productLeadPage.fallbackExcerpt">
+                    {"Présentez votre besoin à l'équipe MD2I pour recevoir une réponse adaptée."}
+                  </T>}
               </p>
             </div>
 
             <div className="lp-meta">
               <div className="lp-meta-cell">
-                <p className="lp-meta-label">Produit</p>
+                <p className="lp-meta-label">
+                  <T k="productLeadPage.meta.product">Produit</T>
+                </p>
                 <p className="lp-meta-value">{product.name}</p>
               </div>
 
               <div className="lp-meta-cell">
-                <p className="lp-meta-label">Tarif</p>
-                <p className="lp-meta-value">{priceLabel}</p>
+                <p className="lp-meta-label">
+                  <T k="productLeadPage.meta.price">Tarif</T>
+                </p>
+                <p className="lp-meta-value">
+                  {priceLabel ?? (
+                    <T k="productsPage.card.onRequest">Sur devis</T>
+                  )}
+                </p>
               </div>
             </div>
 
             <div className="lp-trust">
               <h2 className="lp-trust-title">
                 <ShieldCheck size={16} aria-hidden="true" />
-                Après l'envoi
+                <T k="productLeadPage.afterSend.title">{"Après l'envoi"}</T>
               </h2>
 
               <div className="lp-trust-list">
                 {[
-                  "Votre demande est transmise à l'équipe commerciale MD2I.",
-                  "Le produit concerné est automatiquement associé au lead.",
-                  "Une relance est créée dans le CRM pour assurer le suivi.",
-                ].map((text) => (
-                  <div key={text} className="lp-trust-item">
+                  {
+                    key: "sent",
+                    text: "Votre demande est transmise à l'équipe commerciale MD2I.",
+                  },
+                  {
+                    key: "product",
+                    text: "Le produit concerné est automatiquement associé au lead.",
+                  },
+                  {
+                    key: "crm",
+                    text: "Une relance est créée dans le CRM pour assurer le suivi.",
+                  },
+                ].map((item) => (
+                  <div key={item.key} className="lp-trust-item">
                     <CheckCircle2
                       size={15}
                       className="lp-check"
                       aria-hidden="true"
                     />
-                    <span>{text}</span>
+                    <span>
+                      <T k={`productLeadPage.afterSend.${item.key}`}>
+                        {item.text}
+                      </T>
+                    </span>
                   </div>
                 ))}
               </div>
@@ -900,35 +924,46 @@ export default async function ProductLeadPage({ params }: ProductLeadPageProps) 
                   </div>
 
                   <div>
-                    <p className="lp-form-for-label">Demande pour</p>
+                    <p className="lp-form-for-label">
+                      <T k="productLeadPage.formFor">Demande pour</T>
+                    </p>
                     <p className="lp-form-for-name">{product.name}</p>
                   </div>
                 </div>
 
                 <h2 className="lp-form-heading">
-                  Demander une <span>démo</span> ou un <span>devis</span>
+                  <T k="productLeadPage.formHeadingPrefix">Demander une</T>{" "}
+                  <span>
+                    <T k="productLeadPage.demo">démo</T>
+                  </span>{" "}
+                  <T k="productLeadPage.formHeadingOr">ou un</T>{" "}
+                  <span>
+                    <T k="productLeadPage.quote">devis</T>
+                  </span>
                 </h2>
 
                 <p className="lp-form-sub">
-                  Quelques informations suffisent pour qualifier votre demande,
-                  sécuriser le suivi commercial et vous orienter vers la bonne
-                  réponse MD2I.
+                  <T k="productLeadPage.formSub">
+                    Quelques informations suffisent pour qualifier votre demande,
+                    sécuriser le suivi commercial et vous orienter vers la bonne
+                    réponse MD2I.
+                  </T>
                 </p>
 
                 <div className="lp-chips" aria-label="Garanties du formulaire">
                   <div className="lp-chip">
                     <Clock3 size={13} aria-hidden="true" />
-                    Réponse commerciale structurée
+                    <T k="productLeadPage.chips.structured">Réponse commerciale structurée</T>
                   </div>
 
                   <div className="lp-chip">
                     <LockKeyhole size={13} aria-hidden="true" />
-                    Formulaire sécurisé anti-spam
+                    <T k="productLeadPage.chips.secure">Formulaire sécurisé anti-spam</T>
                   </div>
 
                   <div className="lp-chip">
                     <WalletCards size={13} aria-hidden="true" />
-                    Produit associé au CRM
+                    <T k="productLeadPage.chips.crm">Produit associé au CRM</T>
                   </div>
                 </div>
               </header>
@@ -953,18 +988,21 @@ export default async function ProductLeadPage({ params }: ProductLeadPageProps) 
                 {
                   icon: <MessageSquareText size={16} />,
                   num: "01",
+                  key: "describe",
                   title: "Vous décrivez le besoin",
                   text: "Indiquez votre contexte, vos coordonnées et le type de demande souhaité.",
                 },
                 {
                   icon: <FileCheck2 size={16} />,
                   num: "02",
+                  key: "qualify",
                   title: "MD2I qualifie la demande",
                   text: "Le produit, la source et les informations commerciales sont associés.",
                 },
                 {
                   icon: <ShieldCheck size={16} />,
                   num: "03",
+                  key: "reply",
                   title: "Vous recevez un retour",
                   text: "L'équipe peut proposer une démonstration, un devis ou un rappel.",
                 },
@@ -977,21 +1015,35 @@ export default async function ProductLeadPage({ params }: ProductLeadPageProps) 
                     </span>
                   </div>
 
-                  <h3 className="lp-step-title">{step.title}</h3>
-                  <p className="lp-step-text">{step.text}</p>
+                  <h3 className="lp-step-title">
+                    <T k={`productLeadPage.steps.${step.key}.title`}>
+                      {step.title}
+                    </T>
+                  </h3>
+                  <p className="lp-step-text">
+                    <T k={`productLeadPage.steps.${step.key}.text`}>
+                      {step.text}
+                    </T>
+                  </p>
                 </article>
               ))}
             </div>
 
             <div className="lp-footer-strip">
               <p>
-                <strong>Besoin de comparer plusieurs solutions ?</strong>{" "}
-                Consultez le catalogue complet MD2I avant de finaliser votre
-                demande.
+                <strong>
+                  <T k="productLeadPage.footer.title">
+                    Besoin de comparer plusieurs solutions ?
+                  </T>
+                </strong>{" "}
+                <T k="productLeadPage.footer.text">
+                  Consultez le catalogue complet MD2I avant de finaliser votre
+                  demande.
+                </T>
               </p>
 
               <Link href="/produits" className="lp-btn lp-btn-accent">
-                Voir le catalogue
+                <T k="productLeadPage.footer.cta">Voir le catalogue</T>
                 <ArrowRight size={14} aria-hidden="true" />
               </Link>
             </div>

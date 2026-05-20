@@ -3,109 +3,227 @@
 import type { CSSProperties, FormEvent, ReactNode } from 'react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import Link from 'next/link'
+import { useTranslation } from 'react-i18next'
 import styles from './contact.module.css'
 
-const contactCards = [
+type FieldName =
+  | 'firstName'
+  | 'lastName'
+  | 'email'
+  | 'phone'
+  | 'organization'
+  | 'subject'
+  | 'message'
+  | 'website'
+  | 'formStartedAt'
+
+type FieldErrors = Partial<Record<FieldName, string>>
+
+type ContactApiResponse = {
+  ok?: boolean
+  id?: string
+  error?: string
+  emailError?: string
+  fieldErrors?: FieldErrors
+}
+
+const contactCardDefs = [
   {
     icon: <IconBuilding />,
-    title: 'Direction générale',
-    description:
-      'Partenariats stratégiques, échanges institutionnels et décisions à haut niveau.',
+    key: 'direction',
     email: 'direction@md2i.com',
     phone: '+261 34 00 000 00',
-    tag: 'Stratégie',
   },
   {
     icon: <IconSales />,
-    title: 'Pôle commercial',
-    description:
-      'Présentation du cabinet, démonstrations, devis et demandes commerciales.',
+    key: 'sales',
     email: 'contact@md2i.com',
     phone: '+261 34 00 000 10',
-    tag: 'Commercial',
   },
   {
     icon: <IconSupport />,
-    title: 'Support & formation',
-    description:
-      'Assistance utilisateurs, formation, prise en main et suivi opérationnel.',
+    key: 'support',
     email: 'support@md2i.com',
     phone: '+261 34 00 000 03',
-    tag: 'Support',
   },
   {
     icon: <IconCode />,
-    title: 'Développement & technique',
-    description:
-      'Intégrations, évolutions logicielles, API et architecture technique.',
+    key: 'technical',
     email: 'dev@md2i.com',
     phone: '+261 34 00 000 02',
-    tag: 'Technique',
   },
-]
+] as const
 
-const offices = [
+const officeDefs = [
   {
     city: 'Antananarivo',
     flag: '🇲🇬',
-    role: 'Bureau opérationnel',
-    address: 'Adresse à compléter, Antananarivo, Madagascar',
+    roleKey: 'contactPage.offices.operational',
+    addressKey: 'contactPage.offices.tanaAddress',
   },
   {
     city: 'Paris',
     flag: '🇫🇷',
-    role: 'Représentation institutionnelle',
-    address: 'Adresse à compléter, Paris, France',
+    roleKey: 'contactPage.offices.institutional',
+    addressKey: 'contactPage.offices.parisAddress',
   },
-]
+] as const
 
-const quickLinks = [
-  'Demander une présentation du cabinet',
-  'Planifier une démonstration en ligne',
-  'Obtenir un devis ou une proposition',
-  'Recevoir un appui technique ou une formation',
-  'Être orienté vers le bon interlocuteur',
-]
+const quickLinkKeys = [
+  'presentation',
+  'demo',
+  'quote',
+  'support',
+  'routing',
+] as const
 
-const SUBJECTS = [
-  'Demande commerciale',
-  'Démonstration',
-  'Devis',
-  'Support technique',
-  'Formation',
-  'Partenariat',
-  'Recrutement',
-  'Autre',
-]
+const subjectKeys = [
+  'sales',
+  'demo',
+  'quote',
+  'support',
+  'training',
+  'partnership',
+  'recruitment',
+  'other',
+] as const
 
 const heroStats = [
   {
     value: '24h',
-    label: 'délai moyen',
-    text: 'réponse rapide',
+    labelKey: 'contactPage.stats.delayLabel',
+    textKey: 'contactPage.stats.delayText',
   },
   {
     value: '4',
-    label: 'pôles experts',
-    text: 'commerce, support, technique, direction',
+    labelKey: 'contactPage.stats.polesLabel',
+    textKey: 'contactPage.stats.polesText',
   },
   {
     value: '2',
-    label: 'implantations',
-    text: 'Madagascar · France',
+    labelKey: 'contactPage.stats.officesLabel',
+    textKey: 'contactPage.stats.officesText',
   },
 ]
 
+function valueOf(formData: FormData, key: string) {
+  return String(formData.get(key) ?? '').trim()
+}
+
+function isValidEmail(email: string) {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)
+}
+
+function isValidPhone(phone: string) {
+  if (!phone) return true
+  return /^[+()\d\s.-]{6,30}$/.test(phone)
+}
+
+function validateFront(
+  formData: FormData,
+  subjects: string[],
+  translate: (key: string) => string,
+) {
+  const errors: FieldErrors = {}
+
+  const firstName = valueOf(formData, 'firstName')
+  const lastName = valueOf(formData, 'lastName')
+  const email = valueOf(formData, 'email').toLowerCase()
+  const phone = valueOf(formData, 'phone')
+  const organization = valueOf(formData, 'organization')
+  const subject = valueOf(formData, 'subject')
+  const message = valueOf(formData, 'message')
+  const website = valueOf(formData, 'website')
+
+  if (website) {
+    errors.website = translate('contactPage.validation.blocked')
+  }
+
+  if (!firstName) {
+    errors.firstName = translate('contactPage.validation.firstNameRequired')
+  } else if (firstName.length < 2) {
+    errors.firstName = translate('contactPage.validation.min2')
+  }
+
+  if (!lastName) {
+    errors.lastName = translate('contactPage.validation.lastNameRequired')
+  } else if (lastName.length < 2) {
+    errors.lastName = translate('contactPage.validation.min2')
+  }
+
+  if (!email) {
+    errors.email = translate('contactPage.validation.emailRequired')
+  } else if (!isValidEmail(email)) {
+    errors.email = translate('contactPage.validation.emailInvalid')
+  }
+
+  if (phone && !isValidPhone(phone)) {
+    errors.phone = translate('contactPage.validation.phoneInvalid')
+  }
+
+  if (organization.length > 120) {
+    errors.organization = translate('contactPage.validation.max120')
+  }
+
+  if (!subject) {
+    errors.subject = translate('contactPage.validation.subjectRequired')
+  } else if (!subjects.includes(subject)) {
+    errors.subject = translate('contactPage.validation.subjectInvalid')
+  }
+
+  if (!message) {
+    errors.message = translate('contactPage.validation.messageRequired')
+  } else if (message.length < 10) {
+    errors.message = translate('contactPage.validation.min10')
+  } else if (message.length > 5000) {
+    errors.message = translate('contactPage.validation.max5000')
+  }
+
+  return errors
+}
+
 export default function ContactPage() {
+  const { t } = useTranslation()
   const [hovered, setHovered] = useState<number | null>(null)
   const [sending, setSending] = useState(false)
   const [sent, setSent] = useState(false)
+  const [sentId, setSentId] = useState('')
+  const [error, setError] = useState('')
+  const [fieldErrors, setFieldErrors] = useState<FieldErrors>({})
   const [subject, setSubject] = useState('')
+  const [formStartedAt, setFormStartedAt] = useState(() => Date.now())
   const blobRef = useRef<HTMLDivElement>(null)
+  const subjects = useMemo(
+    () => subjectKeys.map((key) => t(`contactPage.subjects.${key}`)),
+    [t],
+  )
+  const contactCards = useMemo(
+    () =>
+      contactCardDefs.map((card) => ({
+        ...card,
+        title: t(`contactPage.cards.${card.key}.title`),
+        description: t(`contactPage.cards.${card.key}.description`),
+        tag: t(`contactPage.cards.${card.key}.tag`),
+      })),
+    [t],
+  )
+  const offices = useMemo(
+    () =>
+      officeDefs.map((office) => ({
+        ...office,
+        role: t(office.roleKey),
+        address: t(office.addressKey),
+      })),
+    [t],
+  )
+  const quickLinks = useMemo(
+    () => quickLinkKeys.map((key) => t(`contactPage.frequent.${key}`)),
+    [t],
+  )
 
   const selectedSubjectLabel = useMemo(() => {
-    return subject || 'Sélectionnez un objet'
-  }, [subject])
+    return subject || t('contactPage.form.summaryFallback')
+  }, [subject, t])
 
   useEffect(() => {
     const blob = blobRef.current
@@ -113,8 +231,8 @@ export default function ContactPage() {
     if (!blob) return
 
     const moveBlob = (event: MouseEvent) => {
-      const x = ((event.clientX / window.innerWidth) - 0.5) * 34
-      const y = ((event.clientY / window.innerHeight) - 0.5) * 24
+      const x = (event.clientX / window.innerWidth - 0.5) * 34
+      const y = (event.clientY / window.innerHeight - 0.5) * 24
 
       blob.style.transform = `translate3d(${x}px, ${y}px, 0)`
     }
@@ -124,15 +242,97 @@ export default function ContactPage() {
     return () => window.removeEventListener('mousemove', moveBlob)
   }, [])
 
-  const submit = (event: FormEvent<HTMLFormElement>) => {
+  const clearFieldError = (field: FieldName) => {
+    setFieldErrors((prev) => {
+      if (!prev[field]) return prev
+
+      const next = { ...prev }
+      delete next[field]
+      return next
+    })
+
+    if (error) {
+      setError('')
+    }
+  }
+
+  const resetAfterSuccess = () => {
+    setSent(false)
+    setSentId('')
+    setError('')
+    setFieldErrors({})
+    setFormStartedAt(Date.now())
+  }
+
+  const submit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
 
-    setSending(true)
+    const form = event.currentTarget
+    const formData = new FormData(form)
+    const clientErrors = validateFront(formData, subjects, t)
 
-    window.setTimeout(() => {
-      setSending(false)
+    if (Object.keys(clientErrors).length > 0) {
+      setFieldErrors(clientErrors)
+      setError(t('contactPage.validation.fixFields'))
+      return
+    }
+
+    setSending(true)
+    setSent(false)
+    setSentId('')
+    setError('')
+    setFieldErrors({})
+
+    try {
+      const response = await fetch('/api/contact', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Accept: 'application/json',
+        },
+        body: JSON.stringify({
+          firstName: formData.get('firstName'),
+          lastName: formData.get('lastName'),
+          email: formData.get('email'),
+          phone: formData.get('phone'),
+          organization: formData.get('organization'),
+          subject: formData.get('subject'),
+          message: formData.get('message'),
+          website: formData.get('website'),
+          formStartedAt,
+        }),
+      })
+
+      const data = (await response
+        .json()
+        .catch(() => null)) as ContactApiResponse | null
+
+      if (!response.ok || !data?.ok) {
+        if (data?.fieldErrors) {
+          setFieldErrors(data.fieldErrors)
+        }
+
+        throw new Error(
+          data?.error ||
+            data?.emailError ||
+            t('contactPage.validation.sendFailed')
+        )
+      }
+
+      form.reset()
+      setSubject('')
+      setFormStartedAt(Date.now())
+      setSentId(data.id || '')
       setSent(true)
-    }, 1200)
+    } catch (err) {
+      setError(
+        err instanceof Error
+          ? err.message
+          : t('contactPage.validation.sendError')
+      )
+    } finally {
+      setSending(false)
+    }
   }
 
   return (
@@ -149,18 +349,16 @@ export default function ContactPage() {
             <div className={styles.heroText}>
               <div className={styles.eyebrow}>
                 <span className={styles.pulse} />
-                Contact MD2I
+                {t('contactPage.heroEyebrow')}
               </div>
 
               <h1 className={styles.heroTitle}>
-                Une question, un projet, une demande&nbsp;?
-                <em> Parlons-en.</em>
+                {t('contactPage.title')}
+                <em> {t('contactPage.titleEmphasis')}</em>
               </h1>
 
               <p className={styles.heroSub}>
-                Notre équipe vous oriente vers le bon interlocuteur pour une
-                démonstration, un devis, une demande technique, une formation ou
-                un partenariat stratégique.
+                {t('contactPage.subtitle')}
               </p>
 
               <div className={styles.heroCtas}>
@@ -168,7 +366,7 @@ export default function ContactPage() {
                   href="#contact-form"
                   className={`${styles.btn} ${styles.btnPrimary}`}
                 >
-                  Envoyer un message
+                  {t('contactPage.ctaMessage')}
                   <span aria-hidden>→</span>
                 </a>
 
@@ -176,28 +374,29 @@ export default function ContactPage() {
                   href="/contact-commercial"
                   className={`${styles.btn} ${styles.btnDark}`}
                 >
-                  Demande commerciale
+                  {t('contactPage.ctaSales')}
                 </Link>
 
                 <Link href="/apropos" className={`${styles.btn} ${styles.btnOutline}`}>
-                  Découvrir MD2I
+                  {t('contactPage.ctaDiscover')}
                 </Link>
               </div>
 
               <div className={styles.trustRow}>
-                <span>Réponse structurée</span>
-                <span>Suivi CRM</span>
-                <span>Accompagnement professionnel</span>
+                <span>{t('contactPage.trust.response')}</span>
+                <span>{t('contactPage.trust.crm')}</span>
+                <span>{t('contactPage.trust.support')}</span>
               </div>
             </div>
 
             <aside className={styles.heroPanel}>
               <div className={styles.heroPanelTop}>
-                <span className={styles.panelKicker}>Disponibilité</span>
-                <strong>Une équipe dédiée à votre demande</strong>
+                <span className={styles.panelKicker}>
+                  {t('contactPage.availability.kicker')}
+                </span>
+                <strong>{t('contactPage.availability.title')}</strong>
                 <p>
-                  Votre message est qualifié puis transmis au pôle le plus
-                  adapté pour accélérer le traitement.
+                  {t('contactPage.availability.text')}
                 </p>
               </div>
 
@@ -209,8 +408,8 @@ export default function ContactPage() {
                     style={{ '--i': index } as CSSProperties}
                   >
                     <span className={styles.statN}>{item.value}</span>
-                    <span className={styles.statU}>{item.label}</span>
-                    <span className={styles.statS}>{item.text}</span>
+                    <span className={styles.statU}>{t(item.labelKey)}</span>
+                    <span className={styles.statS}>{t(item.textKey)}</span>
                   </div>
                 ))}
               </div>
@@ -222,14 +421,13 @@ export default function ContactPage() {
       <section className={styles.cardsSection}>
         <div className={styles.container}>
           <div className={styles.sectionHead}>
-            <Pill>Contacts directs</Pill>
+            <Pill>{t('contactPage.cards.pill')}</Pill>
 
             <div className={styles.sectionTitleGrid}>
-              <h2 className={styles.h2}>Le bon interlocuteur, sans détour</h2>
+              <h2 className={styles.h2}>{t('contactPage.cards.title')}</h2>
 
               <p className={styles.sectionSub}>
-                Sélectionnez le service adapté à votre besoin pour obtenir une
-                réponse plus rapide, plus précise et mieux orientée.
+                {t('contactPage.cards.subtitle')}
               </p>
             </div>
           </div>
@@ -278,98 +476,173 @@ export default function ContactPage() {
           <div className={styles.split}>
             <section className={styles.formBox}>
               <div className={styles.formBoxHead}>
-                <Pill>Formulaire sécurisé</Pill>
+                <Pill>{t('contactPage.form.pill')}</Pill>
 
                 <h2 className={styles.h2}>
-                  Envoyez-nous
+                  {t('contactPage.form.titleLine1')}
                   <br />
-                  votre message
+                  {t('contactPage.form.titleLine2')}
                 </h2>
 
                 <p className={styles.formNote}>
-                  Tous les champs marqués <em>*</em> sont requis. Votre demande
-                  sera transmise au service compétent.
+                  {t('contactPage.form.note')}
                 </p>
               </div>
 
               {sent ? (
                 <div className={styles.successBox}>
                   <div className={styles.successCheck}>✓</div>
-                  <strong>Message envoyé</strong>
+                  <strong>{t('contactPage.form.successTitle')}</strong>
                   <p>
-                    Merci pour votre demande. L’équipe MD2I vous répondra dans
-                    les meilleurs délais.
+                    {t('contactPage.form.successText')}
                   </p>
+
+                  {sentId ? (
+                    <p
+                      style={{
+                        marginTop: 8,
+                        fontSize: 12,
+                        opacity: 0.65,
+                        fontWeight: 700,
+                      }}
+                    >
+                      {t('contactPage.form.reference', { id: sentId })}
+                    </p>
+                  ) : null}
 
                   <button
                     type="button"
                     className={`${styles.btn} ${styles.btnOutline}`}
-                    onClick={() => setSent(false)}
+                    onClick={resetAfterSuccess}
                   >
-                    Envoyer un autre message
+                    {t('contactPage.form.anotherMessage')}
                   </button>
                 </div>
               ) : (
                 <form onSubmit={submit} noValidate>
+                  <input
+                    type="text"
+                    name="website"
+                    tabIndex={-1}
+                    autoComplete="off"
+                    aria-hidden="true"
+                    onChange={() => clearFieldError('website')}
+                    style={{
+                      position: 'absolute',
+                      left: '-9999px',
+                      width: 1,
+                      height: 1,
+                      opacity: 0,
+                    }}
+                  />
+
+                  <input
+                    type="hidden"
+                    name="formStartedAt"
+                    value={formStartedAt}
+                    readOnly
+                  />
+
                   <div className={styles.formStep}>
                     <span>1</span>
                     <div>
-                      <strong>Vos coordonnées</strong>
-                      <p>Nous utiliserons ces informations pour vous répondre.</p>
+                      <strong>{t('contactPage.form.stepContact')}</strong>
+                      <p>{t('contactPage.form.stepContactText')}</p>
                     </div>
                   </div>
 
                   <div className={styles.row2}>
-                    <F label="Prénom *">
-                      <input type="text" placeholder="Votre prénom" required />
+                    <F label={t('contactPage.form.firstName')} error={fieldErrors.firstName}>
+                      <input
+                        name="firstName"
+                        type="text"
+                        placeholder={t('contactPage.form.firstNamePlaceholder')}
+                        required
+                        maxLength={50}
+                        autoComplete="given-name"
+                        aria-invalid={Boolean(fieldErrors.firstName)}
+                        onChange={() => clearFieldError('firstName')}
+                      />
                     </F>
 
-                    <F label="Nom *">
-                      <input type="text" placeholder="Votre nom" required />
+                    <F label={t('contactPage.form.lastName')} error={fieldErrors.lastName}>
+                      <input
+                        name="lastName"
+                        type="text"
+                        placeholder={t('contactPage.form.lastNamePlaceholder')}
+                        required
+                        maxLength={50}
+                        autoComplete="family-name"
+                        aria-invalid={Boolean(fieldErrors.lastName)}
+                        onChange={() => clearFieldError('lastName')}
+                      />
                     </F>
                   </div>
 
                   <div className={styles.row2}>
-                    <F label="Email *">
+                    <F label={t('contactPage.form.email')} error={fieldErrors.email}>
                       <input
+                        name="email"
                         type="email"
                         placeholder="vous@organisation.com"
                         required
+                        maxLength={255}
+                        autoComplete="email"
+                        aria-invalid={Boolean(fieldErrors.email)}
+                        onChange={() => clearFieldError('email')}
                       />
                     </F>
 
-                    <F label="Téléphone">
-                      <input type="tel" placeholder="+261 34 ..." />
+                    <F label={t('contactPage.form.phone')} error={fieldErrors.phone}>
+                      <input
+                        name="phone"
+                        type="tel"
+                        placeholder={t('contactPage.form.phonePlaceholder')}
+                        maxLength={30}
+                        autoComplete="tel"
+                        aria-invalid={Boolean(fieldErrors.phone)}
+                        onChange={() => clearFieldError('phone')}
+                      />
                     </F>
                   </div>
 
-                  <F label="Organisation">
+                  <F label={t('contactPage.form.organization')} error={fieldErrors.organization}>
                     <input
+                      name="organization"
                       type="text"
-                      placeholder="Nom de votre entreprise ou institution"
+                      placeholder={t('contactPage.form.organizationPlaceholder')}
+                      maxLength={120}
+                      autoComplete="organization"
+                      aria-invalid={Boolean(fieldErrors.organization)}
+                      onChange={() => clearFieldError('organization')}
                     />
                   </F>
 
                   <div className={styles.formStep}>
                     <span>2</span>
                     <div>
-                      <strong>Votre demande</strong>
-                      <p>Sélectionnez l’objet puis décrivez votre besoin.</p>
+                      <strong>{t('contactPage.form.stepRequest')}</strong>
+                      <p>{t('contactPage.form.stepRequestText')}</p>
                     </div>
                   </div>
 
-                  <F label="Objet *">
+                  <F label={t('contactPage.form.subject')} error={fieldErrors.subject}>
                     <div className={styles.selWrap}>
                       <select
+                        name="subject"
                         required
                         value={subject}
-                        onChange={(event) => setSubject(event.target.value)}
+                        aria-invalid={Boolean(fieldErrors.subject)}
+                        onChange={(event) => {
+                          setSubject(event.target.value)
+                          clearFieldError('subject')
+                        }}
                       >
                         <option value="" disabled>
-                          Sélectionner...
+                          {t('contactPage.form.subjectPlaceholder')}
                         </option>
 
-                        {SUBJECTS.map((item) => (
+                        {subjects.map((item) => (
                           <option key={item} value={item}>
                             {item}
                           </option>
@@ -382,27 +655,47 @@ export default function ContactPage() {
                     </div>
                   </F>
 
-                  <F label="Message *">
+                  <F label={t('contactPage.form.message')} error={fieldErrors.message}>
                     <textarea
+                      name="message"
                       rows={6}
-                      placeholder="Décrivez votre besoin, votre contexte, votre délai ou votre question..."
+                      placeholder={t('contactPage.form.messagePlaceholder')}
                       required
+                      maxLength={5000}
+                      aria-invalid={Boolean(fieldErrors.message)}
+                      onChange={() => clearFieldError('message')}
                     />
                   </F>
 
                   <div className={styles.requestSummary}>
-                    <span>Résumé de la demande</span>
+                    <span>{t('contactPage.form.summaryTitle')}</span>
                     <strong>{selectedSubjectLabel}</strong>
                     <p>
-                      Votre message sera traité par l’équipe MD2I et orienté
-                      vers le pôle compétent.
+                      {t('contactPage.form.summaryText')}
                     </p>
                   </div>
 
+                  {error ? (
+                    <div
+                      role="alert"
+                      style={{
+                        marginTop: 16,
+                        padding: '14px 16px',
+                        borderRadius: 14,
+                        background: 'rgba(239, 68, 68, 0.10)',
+                        border: '1px solid rgba(239, 68, 68, 0.28)',
+                        color: '#EF4444',
+                        fontSize: 13,
+                        fontWeight: 700,
+                      }}
+                    >
+                      {error}
+                    </div>
+                  ) : null}
+
                   <div className={styles.formBottom}>
                     <p className={styles.legal}>
-                      En soumettant ce formulaire, vous acceptez que MD2I traite
-                      vos données afin de répondre à votre demande.
+                      {t('contactPage.form.legal')}
                     </p>
 
                     <button
@@ -415,11 +708,11 @@ export default function ContactPage() {
                       {sending ? (
                         <>
                           <span className={styles.loader} aria-hidden />
-                          Envoi en cours...
+                          {t('contactPage.form.sending')}
                         </>
                       ) : (
                         <>
-                          Envoyer le message <span aria-hidden>→</span>
+                          {t('contactPage.form.submit')} <span aria-hidden>→</span>
                         </>
                       )}
                     </button>
@@ -430,9 +723,11 @@ export default function ContactPage() {
 
             <aside className={styles.aside}>
               <div className={styles.sCard}>
-                <Pill>Implantations</Pill>
+                <Pill>{t('contactPage.offices.pill')}</Pill>
 
-                <h3 className={styles.sTitle}>Nos bureaux</h3>
+                <h3 className={styles.sTitle}>
+                  {t('contactPage.offices.title')}
+                </h3>
 
                 <div className={styles.officeList}>
                   {offices.map((office) => (
@@ -459,9 +754,11 @@ export default function ContactPage() {
               </div>
 
               <div className={styles.sCard}>
-                <Pill>Demandes fréquentes</Pill>
+                <Pill>{t('contactPage.frequent.pill')}</Pill>
 
-                <h3 className={styles.sTitle}>Nous pouvons vous aider à</h3>
+                <h3 className={styles.sTitle}>
+                  {t('contactPage.frequent.title')}
+                </h3>
 
                 <ul className={styles.quickList}>
                   {quickLinks.map((item) => (
@@ -478,14 +775,16 @@ export default function ContactPage() {
               </div>
 
               <div className={styles.nudge}>
-                <span className={styles.nudgeLabel}>Prioritaire</span>
-                <p>Besoin d’une réponse rapide&nbsp;?</p>
+                <span className={styles.nudgeLabel}>
+                  {t('contactPage.nudge.label')}
+                </span>
+                <p>{t('contactPage.nudge.text')}</p>
 
                 <a
                   href="mailto:contact@md2i.com"
                   className={`${styles.btn} ${styles.btnFull}`}
                 >
-                  Écrire directement →
+                  {t('contactPage.nudge.cta')}
                 </a>
               </div>
             </aside>
@@ -500,10 +799,41 @@ function Pill({ children }: { children: ReactNode }) {
   return <span className={styles.pill}>{children}</span>
 }
 
-function F({ label, children }: { label: string; children: ReactNode }) {
+function F({
+  label,
+  error,
+  children,
+}: {
+  label: string
+  error?: string
+  children: ReactNode
+}) {
   return (
     <label className={styles.field}>
-      <span className={styles.fLabel}>{label}</span>
+      <span
+        style={{
+          display: 'flex',
+          alignItems: 'baseline',
+          justifyContent: 'space-between',
+          gap: 12,
+        }}
+      >
+        <span className={styles.fLabel}>{label}</span>
+
+        {error ? (
+          <span
+            style={{
+              color: '#EF4444',
+              fontSize: 11,
+              fontWeight: 800,
+              textAlign: 'right',
+            }}
+          >
+            {error}
+          </span>
+        ) : null}
+      </span>
+
       {children}
     </label>
   )

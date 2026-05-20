@@ -1,4 +1,5 @@
-import type { Slide, Stat } from '../types'
+import type { TFunction } from 'i18next'
+import type { Slide } from '../types'
 
 export const SLIDES: Slide[] = [
   {
@@ -50,6 +51,27 @@ export const SLIDES: Slide[] = [
     color: 0xb06ae0,
   },
 ]
+
+function translateText(t: TFunction, key: string, defaultValue: string) {
+  return String(t(key, { defaultValue }))
+}
+
+export function getLocalizedSlides(t: TFunction): Slide[] {
+  return SLIDES.map((slide, slideIndex) => ({
+    ...slide,
+    eyebrow: translateText(t, `homeHero.slides.${slideIndex}.eyebrow`, slide.eyebrow),
+    title: translateText(t, `homeHero.slides.${slideIndex}.title`, slide.title),
+    desc: translateText(t, `homeHero.slides.${slideIndex}.desc`, slide.desc),
+    btns: slide.btns.map((button, buttonIndex) => ({
+      ...button,
+      label: translateText(
+        t,
+        `homeHero.slides.${slideIndex}.buttons.${buttonIndex}`,
+        button.label
+      ),
+    })),
+  }))
+}
 
 // export const STATS: Stat[] = [
 //   { value: 54, suffix: '', label: 'pays' },

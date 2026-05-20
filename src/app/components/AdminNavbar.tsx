@@ -4,11 +4,17 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { signOut, useSession } from 'next-auth/react'
 import { useState, useEffect, useRef } from 'react'
+import type { ReactNode } from 'react'
 import { useTheme } from '../context/ThemeContext'
 import { useSidebar, SIDEBAR_W, SIDEBAR_COLLAPSED } from '../context/SidebarContext'
 
 const ORANGE = '#EF9F27'
 const ORANGE_DARK = '#c97d15'
+
+type NewMessagesCountResponse = {
+  ok?: boolean
+  count?: number
+}
 
 // ── Menu tree ────────────────────────────────────────────────────────────────
 const MENU_SECTIONS = [
@@ -149,8 +155,6 @@ const MENU_SECTIONS = [
           { href: '/admin/crm/tasks', label: 'Tâches & relances' },
         ],
       },
-   
-     
     ],
   },
   {
@@ -168,8 +172,6 @@ const MENU_SECTIONS = [
         children: [
           { href: '/admin/email-marketing', label: 'Tableau marketing', exact: true },
           { href: '/admin/email-marketing/automations', label: 'Automations', exact: true },
-         
-          
         ],
       },
       {
@@ -189,7 +191,6 @@ const MENU_SECTIONS = [
       {
         href: '/admin/messages',
         label: 'Messages',
-        badge: { label: '2', color: '#1D9E75' },
         icon: (
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
             <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
@@ -259,14 +260,25 @@ const MENU_SECTIONS = [
 ] as const
 
 type Child = { href: string; label: string; exact?: boolean }
+
+type MenuBadge = {
+  label: string
+  color: string
+}
+
 type MenuItem = {
   href: string
   label: string
   exact?: boolean
-  icon: React.ReactNode
+  icon: ReactNode
   addHref?: string
-  badge?: { label: string; color: string }
+  badge?: MenuBadge
   children?: readonly Child[]
+}
+
+function formatBadgeCount(count: number) {
+  if (count <= 0) return null
+  return count > 99 ? '99+' : String(count)
 }
 
 // ── Sub-item component ────────────────────────────────────────────────────────
@@ -287,27 +299,42 @@ function SubItem({
 
   return (
     <div style={{ display: 'flex', alignItems: 'stretch' }}>
-      {/* Tree line */}
-      <div style={{
-        width: 28,
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        flexShrink: 0,
-      }}>
-        <div style={{
-          width: 1,
-          flex: 1,
-          background: isLast ? 'transparent' : `rgba(239,159,39,0.15)`,
-        }} />
-        <div style={{
-          width: 12,
-          height: 1,
-          background: `rgba(239,159,39,0.20)`,
-          marginBottom: isLast ? 0 : 'auto',
-          alignSelf: 'center',
-        }} />
-        {!isLast && <div style={{ width: 1, flex: 1, background: `rgba(239,159,39,0.15)` }} />}
+      <div
+        style={{
+          width: 28,
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          flexShrink: 0,
+        }}
+      >
+        <div
+          style={{
+            width: 1,
+            flex: 1,
+            background: isLast ? 'transparent' : 'rgba(239,159,39,0.15)',
+          }}
+        />
+
+        <div
+          style={{
+            width: 12,
+            height: 1,
+            background: 'rgba(239,159,39,0.20)',
+            marginBottom: isLast ? 0 : 'auto',
+            alignSelf: 'center',
+          }}
+        />
+
+        {!isLast && (
+          <div
+            style={{
+              width: 1,
+              flex: 1,
+              background: 'rgba(239,159,39,0.15)',
+            }}
+          />
+        )}
       </div>
 
       <Link
@@ -329,14 +356,17 @@ function SubItem({
         }}
         className="adm-sub-link"
       >
-        <span style={{
-          width: 5,
-          height: 5,
-          borderRadius: '50%',
-          flexShrink: 0,
-          background: isActive ? ORANGE : `rgba(239,159,39,0.30)`,
-          transition: 'background 0.14s',
-        }} />
+        <span
+          style={{
+            width: 5,
+            height: 5,
+            borderRadius: '50%',
+            flexShrink: 0,
+            background: isActive ? ORANGE : 'rgba(239,159,39,0.30)',
+            transition: 'background 0.14s',
+          }}
+        />
+
         {child.label}
       </Link>
     </div>
@@ -350,36 +380,50 @@ function NavItem({
   collapsed,
   c,
   setMobileOpen,
+  newMessagesCount,
 }: {
   tab: MenuItem
   pathname: string
   collapsed: boolean
   c: Record<string, string>
   setMobileOpen: (v: boolean) => void
+  newMessagesCount: number | null
 }) {
   const isActive = tab.exact
     ? pathname === tab.href
     : pathname.startsWith(tab.href)
 
   const hasChildren = tab.children && tab.children.length > 0
-  const childActive = hasChildren && tab.children!.some((ch) =>
-    ch.exact ? pathname === ch.href : pathname.startsWith(ch.href)
-  )
 
-  // Auto-open if a child is active
+  const childActive =
+    hasChildren &&
+    tab.children!.some((ch) =>
+      ch.exact ? pathname === ch.href : pathname.startsWith(ch.href)
+    )
+
   const [open, setOpen] = useState(childActive || isActive)
   const [hovered, setHovered] = useState(false)
 
-  // Sync open state when pathname changes
   useEffect(() => {
     if (childActive || isActive) setOpen(true)
-  }, [pathname])
+  }, [pathname, childActive, isActive])
 
   const highlighted = isActive || childActive
 
+  const dynamicMessagesBadge =
+    tab.href === '/admin/messages'
+      ? formatBadgeCount(newMessagesCount || 0)
+      : null
+
+  const effectiveBadge: MenuBadge | undefined = dynamicMessagesBadge
+    ? {
+        label: dynamicMessagesBadge,
+        color: '#1D9E75',
+      }
+    : tab.badge
+
   return (
     <div>
-      {/* Main row */}
       <div
         style={{ position: 'relative' }}
         onMouseEnter={() => setHovered(true)}
@@ -407,55 +451,106 @@ function NavItem({
             transition: 'background 0.15s, border-color 0.15s, color 0.15s',
           }}
         >
-          {/* Active left bar */}
           {highlighted && !collapsed && (
-            <div style={{
-              position: 'absolute',
-              left: 0, top: '22%', bottom: '22%',
-              width: 3, borderRadius: '0 3px 3px 0',
-              background: `linear-gradient(to bottom, ${ORANGE}, ${ORANGE_DARK})`,
-            }} />
+            <div
+              style={{
+                position: 'absolute',
+                left: 0,
+                top: '22%',
+                bottom: '22%',
+                width: 3,
+                borderRadius: '0 3px 3px 0',
+                background: `linear-gradient(to bottom, ${ORANGE}, ${ORANGE_DARK})`,
+              }}
+            />
+          )}
+
+          {collapsed && effectiveBadge && (
+            <span
+              style={{
+                position: 'absolute',
+                top: 3,
+                right: 6,
+                minWidth: 16,
+                height: 16,
+                padding: '0 4px',
+                borderRadius: 999,
+                background: effectiveBadge.color,
+                color: '#fff',
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: 9,
+                lineHeight: 1,
+                fontWeight: 800,
+                boxShadow: darkShadow(c),
+              }}
+            >
+              {effectiveBadge.label}
+            </span>
           )}
 
           <span style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
-            <span style={{
-              display: 'flex', flexShrink: 0,
-              color: highlighted ? ORANGE : c.textMute,
-              transition: 'color 0.15s',
-            }}>
+            <span
+              style={{
+                display: 'flex',
+                flexShrink: 0,
+                color: highlighted ? ORANGE : c.textMute,
+                transition: 'color 0.15s',
+              }}
+            >
               {tab.icon}
             </span>
 
-            <span style={{
-              maxWidth: collapsed ? 0 : 130,
-              overflow: 'hidden', whiteSpace: 'nowrap',
-              opacity: collapsed ? 0 : 1,
-              transition: 'max-width 0.28s cubic-bezier(.22,1,.36,1), opacity 0.18s',
-              fontSize: 13.5,
-              fontWeight: highlighted ? 600 : 400,
-            }}>
+            <span
+              style={{
+                maxWidth: collapsed ? 0 : 130,
+                overflow: 'hidden',
+                whiteSpace: 'nowrap',
+                opacity: collapsed ? 0 : 1,
+                transition:
+                  'max-width 0.28s cubic-bezier(.22,1,.36,1), opacity 0.18s',
+                fontSize: 13.5,
+                fontWeight: highlighted ? 600 : 400,
+              }}
+            >
               {tab.label}
             </span>
           </span>
 
-          {/* Right side: badge OR chevron */}
           {!collapsed && (
-            <span style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
-              {tab.badge && (
-                <span style={{
-                  fontSize: 10, padding: '2px 7px', borderRadius: 999,
-                  fontWeight: 700,
-                  background: `${tab.badge.color}18`,
-                  color: tab.badge.color,
-                  border: `1px solid ${tab.badge.color}30`,
-                }}>
-                  {tab.badge.label}
+            <span
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 6,
+                flexShrink: 0,
+              }}
+            >
+              {effectiveBadge && (
+                <span
+                  style={{
+                    fontSize: 10,
+                    padding: '2px 7px',
+                    borderRadius: 999,
+                    fontWeight: 700,
+                    background: `${effectiveBadge.color}18`,
+                    color: effectiveBadge.color,
+                    border: `1px solid ${effectiveBadge.color}30`,
+                  }}
+                >
+                  {effectiveBadge.label}
                 </span>
               )}
+
               {hasChildren && (
                 <svg
-                  width="10" height="10" viewBox="0 0 24 24"
-                  fill="none" stroke={c.textMute} strokeWidth="2.5"
+                  width="10"
+                  height="10"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke={c.textMute}
+                  strokeWidth="2.5"
                   style={{
                     transition: 'transform 0.22s cubic-bezier(.22,1,.36,1)',
                     transform: open ? 'rotate(90deg)' : 'rotate(0deg)',
@@ -468,7 +563,6 @@ function NavItem({
           )}
         </Link>
 
-        {/* Hover + button */}
         {!collapsed && tab.addHref && hovered && (
           <Link
             href={tab.addHref}
@@ -479,12 +573,15 @@ function NavItem({
               right: hasChildren ? 28 : 10,
               top: '50%',
               transform: 'translateY(-50%)',
-              width: 22, height: 22,
+              width: 22,
+              height: 22,
               borderRadius: 7,
               background: 'rgba(239,159,39,0.12)',
               border: '1px solid rgba(239,159,39,0.28)',
               color: ORANGE,
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
               textDecoration: 'none',
               animation: 'adm-pop-in 0.15s cubic-bezier(.22,1,.36,1)',
               zIndex: 2,
@@ -498,19 +595,19 @@ function NavItem({
           </Link>
         )}
 
-        {/* Tooltip (collapsed) */}
         {collapsed && <div className="adm-tt">{tab.label}</div>}
       </div>
 
-      {/* Children */}
       {hasChildren && !collapsed && (
-        <div style={{
-          overflow: 'hidden',
-          maxHeight: open ? `${tab.children!.length * 40}px` : '0px',
-          transition: 'max-height 0.28s cubic-bezier(.22,1,.36,1)',
-          paddingLeft: 10,
-          marginTop: open ? 2 : 0,
-        }}>
+        <div
+          style={{
+            overflow: 'hidden',
+            maxHeight: open ? `${tab.children!.length * 40}px` : '0px',
+            transition: 'max-height 0.28s cubic-bezier(.22,1,.36,1)',
+            paddingLeft: 10,
+            marginTop: open ? 2 : 0,
+          }}
+        >
           <div style={{ paddingBottom: 4 }}>
             {tab.children!.map((child, idx) => (
               <SubItem
@@ -528,6 +625,12 @@ function NavItem({
   )
 }
 
+function darkShadow(c: Record<string, string>) {
+  return c.shell === '#0B0B0E'
+    ? '0 4px 12px rgba(0,0,0,.36)'
+    : '0 4px 10px rgba(0,0,0,.14)'
+}
+
 // ── Sidebar ───────────────────────────────────────────────────────────────────
 export default function AdminSidebar() {
   const pathname = usePathname()
@@ -535,33 +638,92 @@ export default function AdminSidebar() {
   const { dark, toggleTheme } = useTheme()
 
   const [ddOpen, setDdOpen] = useState(false)
+  const [newMessagesCount, setNewMessagesCount] = useState<number | null>(null)
   const { collapsed, setCollapsed, mobileOpen, setMobileOpen } = useSidebar()
   const ddRef = useRef<HTMLDivElement>(null)
 
   const initials = session?.user?.name
-    ? session.user.name.split(' ').map((n: string) => n[0]).join('').toUpperCase().slice(0, 2)
+    ? session.user.name
+        .split(' ')
+        .map((n: string) => n[0])
+        .join('')
+        .toUpperCase()
+        .slice(0, 2)
     : 'AD'
 
   useEffect(() => {
+    let cancelled = false
+
+    async function loadNewMessagesCount() {
+      try {
+        const response = await fetch('/api/messages/new-count', {
+          method: 'GET',
+          headers: {
+            Accept: 'application/json',
+          },
+          cache: 'no-store',
+        })
+
+        if (response.status === 401) {
+          if (!cancelled) setNewMessagesCount(null)
+          return
+        }
+
+        const data =
+          (await response.json().catch(() => null)) as NewMessagesCountResponse | null
+
+        if (!cancelled && data?.ok) {
+          setNewMessagesCount(Number(data.count || 0))
+        }
+      } catch {
+        if (!cancelled) setNewMessagesCount(null)
+      }
+    }
+
+    loadNewMessagesCount()
+
+    const interval = window.setInterval(loadNewMessagesCount, 30_000)
+
+    return () => {
+      cancelled = true
+      window.clearInterval(interval)
+    }
+  }, [])
+
+  useEffect(() => {
     const onMouse = (e: MouseEvent) => {
-      if (ddRef.current && !ddRef.current.contains(e.target as Node)) setDdOpen(false)
+      if (ddRef.current && !ddRef.current.contains(e.target as Node)) {
+        setDdOpen(false)
+      }
     }
+
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') { setMobileOpen(false); setDdOpen(false) }
+      if (e.key === 'Escape') {
+        setMobileOpen(false)
+        setDdOpen(false)
+      }
     }
+
     document.addEventListener('mousedown', onMouse)
     document.addEventListener('keydown', onKey)
+
     return () => {
       document.removeEventListener('mousedown', onMouse)
       document.removeEventListener('keydown', onKey)
     }
-  }, [])
+  }, [setMobileOpen])
 
-  useEffect(() => { setMobileOpen(false); setDdOpen(false) }, [pathname])
+  useEffect(() => {
+    setMobileOpen(false)
+    setDdOpen(false)
+  }, [pathname, setMobileOpen])
 
   useEffect(() => {
     document.body.style.overflow = mobileOpen ? 'hidden' : ''
-    return () => { document.body.style.overflow = '' }
+
+    return () => {
+      document.body.style.overflow = ''
+    }
   }, [mobileOpen])
 
   const c: Record<string, string> = {
@@ -660,137 +822,296 @@ export default function AdminSidebar() {
         }
       `}</style>
 
-      {/* ── Mobile top bar ── */}
-      <div className="adm-topbar" style={{
-        position: 'sticky', top: 0, zIndex: 120, display: 'none',
-        alignItems: 'center', justifyContent: 'space-between',
-        height: 56, padding: '0 14px',
-        background: c.shell, borderBottom: `1px solid ${c.border}`,
-        fontFamily: "'DM Sans', sans-serif",
-      }}>
-        <button onClick={() => setMobileOpen(v => !v)} className="adm-btn" style={{
-          width: 36, height: 36, borderRadius: 10,
-          border: `1px solid ${mobileOpen ? 'rgba(239,159,39,.35)' : c.border}`,
-          background: mobileOpen ? 'rgba(239,159,39,.08)' : c.iconBtn,
-          color: mobileOpen ? ORANGE : c.textSoft,
-          display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer',
-        }}>
+      <div
+        className="adm-topbar"
+        style={{
+          position: 'sticky',
+          top: 0,
+          zIndex: 120,
+          display: 'none',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          height: 56,
+          padding: '0 14px',
+          background: c.shell,
+          borderBottom: `1px solid ${c.border}`,
+          fontFamily: "'DM Sans', sans-serif",
+        }}
+      >
+        <button
+          onClick={() => setMobileOpen((v) => !v)}
+          className="adm-btn"
+          style={{
+            width: 36,
+            height: 36,
+            borderRadius: 10,
+            border: `1px solid ${mobileOpen ? 'rgba(239,159,39,.35)' : c.border}`,
+            background: mobileOpen ? 'rgba(239,159,39,.08)' : c.iconBtn,
+            color: mobileOpen ? ORANGE : c.textSoft,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            cursor: 'pointer',
+          }}
+        >
           <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-            {[0, 1, 2].map(i => (
-              <span key={i} style={{
-                width: 15, height: 1.6, borderRadius: 999,
-                background: mobileOpen ? ORANGE : c.textSoft, display: 'block',
-                transition: 'transform .2s, opacity .15s',
-                transform: mobileOpen ? (i === 0 ? 'translateY(4.6px) rotate(45deg)' : i === 2 ? 'translateY(-4.6px) rotate(-45deg)' : 'none') : 'none',
-                opacity: mobileOpen && i === 1 ? 0 : 1,
-              }} />
+            {[0, 1, 2].map((i) => (
+              <span
+                key={i}
+                style={{
+                  width: 15,
+                  height: 1.6,
+                  borderRadius: 999,
+                  background: mobileOpen ? ORANGE : c.textSoft,
+                  display: 'block',
+                  transition: 'transform .2s, opacity .15s',
+                  transform: mobileOpen
+                    ? i === 0
+                      ? 'translateY(4.6px) rotate(45deg)'
+                      : i === 2
+                        ? 'translateY(-4.6px) rotate(-45deg)'
+                        : 'none'
+                    : 'none',
+                  opacity: mobileOpen && i === 1 ? 0 : 1,
+                }}
+              />
             ))}
           </div>
         </button>
 
-        <Link href="/admin" onClick={() => setMobileOpen(false)} style={{
-          textDecoration: 'none', fontFamily: "'Syne', sans-serif",
-          fontWeight: 800, fontSize: 20, display: 'flex', gap: 1,
-        }}>
+        <Link
+          href="/admin"
+          onClick={() => setMobileOpen(false)}
+          style={{
+            textDecoration: 'none',
+            fontFamily: "'Syne', sans-serif",
+            fontWeight: 800,
+            fontSize: 20,
+            display: 'flex',
+            gap: 1,
+          }}
+        >
           <span style={{ color: c.textSoft }}>MD</span>
           <span style={{ color: ORANGE }}>2</span>
           <span style={{ color: c.textSoft }}>i</span>
         </Link>
 
-        <button onClick={toggleTheme} className="adm-btn" style={{
-          width: 36, height: 36, borderRadius: 10,
-          border: `1px solid ${c.border}`, background: c.iconBtn,
-          color: c.textSoft, display: 'flex', alignItems: 'center',
-          justifyContent: 'center', cursor: 'pointer',
-        }}>
-          {dark
-            ? <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/></svg>
-            : <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
-          }
+        <button
+          onClick={toggleTheme}
+          className="adm-btn"
+          style={{
+            width: 36,
+            height: 36,
+            borderRadius: 10,
+            border: `1px solid ${c.border}`,
+            background: c.iconBtn,
+            color: c.textSoft,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            cursor: 'pointer',
+          }}
+        >
+          {dark ? (
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <circle cx="12" cy="12" r="5" />
+              <line x1="12" y1="1" x2="12" y2="3" />
+              <line x1="12" y1="21" x2="12" y2="23" />
+              <line x1="4.22" y1="4.22" x2="5.64" y2="5.64" />
+              <line x1="18.36" y1="18.36" x2="19.78" y2="19.78" />
+              <line x1="1" y1="12" x2="3" y2="12" />
+              <line x1="21" y1="12" x2="23" y2="12" />
+            </svg>
+          ) : (
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
+            </svg>
+          )}
         </button>
       </div>
 
-      {/* ── Overlay ── */}
-      <div className="adm-overlay" onClick={() => setMobileOpen(false)} style={{
-        display: mobileOpen ? 'block' : 'none',
-        position: 'fixed', inset: 0, background: 'rgba(0,0,0,.40)',
-        zIndex: 118, backdropFilter: 'blur(3px)',
-        animation: 'adm-overlay-in .2s ease',
-      }} />
+      <div
+        className="adm-overlay"
+        onClick={() => setMobileOpen(false)}
+        style={{
+          display: mobileOpen ? 'block' : 'none',
+          position: 'fixed',
+          inset: 0,
+          background: 'rgba(0,0,0,.40)',
+          zIndex: 118,
+          backdropFilter: 'blur(3px)',
+          animation: 'adm-overlay-in .2s ease',
+        }}
+      />
 
-      {/* ── Sidebar ── */}
-      <aside className={`adm-sidebar${mobileOpen ? ' open' : ''}`} style={{
-        position: 'fixed', top: 0, left: 0, bottom: 0,
-        width: sidebarW, zIndex: 119,
-        background: c.shell, borderRight: `1px solid ${c.border}`,
-        display: 'flex', flexDirection: 'column',
-        transition: 'width .28s cubic-bezier(.22,1,.36,1), transform .28s cubic-bezier(.22,1,.36,1)',
-        fontFamily: "'DM Sans', sans-serif",
-        overflow: 'visible',
-        boxShadow: mobileOpen ? '0 20px 60px rgba(0,0,0,.3)' : 'none',
-      }}>
-        {/* Collapse button */}
+      <aside
+        className={`adm-sidebar${mobileOpen ? ' open' : ''}`}
+        style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          bottom: 0,
+          width: sidebarW,
+          zIndex: 119,
+          background: c.shell,
+          borderRight: `1px solid ${c.border}`,
+          display: 'flex',
+          flexDirection: 'column',
+          transition:
+            'width .28s cubic-bezier(.22,1,.36,1), transform .28s cubic-bezier(.22,1,.36,1)',
+          fontFamily: "'DM Sans', sans-serif",
+          overflow: 'visible',
+          boxShadow: mobileOpen ? '0 20px 60px rgba(0,0,0,.3)' : 'none',
+        }}
+      >
         <button
           className="adm-collapse-btn"
-          onClick={() => { setCollapsed(v => !v); setDdOpen(false) }}
+          onClick={() => {
+            setCollapsed((v) => !v)
+            setDdOpen(false)
+          }}
           title={collapsed ? 'Ouvrir le menu' : 'Réduire le menu'}
         >
-          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.8"
-            style={{ transition: 'transform .28s cubic-bezier(.22,1,.36,1)', transform: collapsed ? 'rotate(180deg)' : 'none' }}>
+          <svg
+            width="11"
+            height="11"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2.8"
+            style={{
+              transition: 'transform .28s cubic-bezier(.22,1,.36,1)',
+              transform: collapsed ? 'rotate(180deg)' : 'none',
+            }}
+          >
             <polyline points="15 18 9 12 15 6" />
           </svg>
         </button>
 
-        {/* Logo */}
-        <div style={{
-          height: 68, padding: '0 12px',
-          display: 'flex', alignItems: 'center',
-          justifyContent: collapsed ? 'center' : 'flex-start',
-          borderBottom: `1px solid ${c.border}`, flexShrink: 0, overflow: 'hidden',
-        }}>
-          <Link href="/admin" onClick={() => setMobileOpen(false)} style={{
-            textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 11,
-          }}>
-            <div style={{
-              width: 36, height: 36, borderRadius: 11, flexShrink: 0,
-              background: 'linear-gradient(135deg, rgba(239,159,39,.18), rgba(239,159,39,.07))',
-              border: '1.5px solid rgba(239,159,39,.28)',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              boxShadow: dark ? '0 0 14px rgba(239,159,39,.12)' : 'none',
-            }}>
-              <span style={{ fontFamily: "'Syne', sans-serif", fontWeight: 800, fontSize: 12, color: ORANGE }}>M2</span>
+        <div
+          style={{
+            height: 68,
+            padding: '0 12px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: collapsed ? 'center' : 'flex-start',
+            borderBottom: `1px solid ${c.border}`,
+            flexShrink: 0,
+            overflow: 'hidden',
+          }}
+        >
+          <Link
+            href="/admin"
+            onClick={() => setMobileOpen(false)}
+            style={{
+              textDecoration: 'none',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 11,
+            }}
+          >
+            <div
+              style={{
+                width: 36,
+                height: 36,
+                borderRadius: 11,
+                flexShrink: 0,
+                background:
+                  'linear-gradient(135deg, rgba(239,159,39,.18), rgba(239,159,39,.07))',
+                border: '1.5px solid rgba(239,159,39,.28)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                boxShadow: dark ? '0 0 14px rgba(239,159,39,.12)' : 'none',
+              }}
+            >
+              <span
+                style={{
+                  fontFamily: "'Syne', sans-serif",
+                  fontWeight: 800,
+                  fontSize: 12,
+                  color: ORANGE,
+                }}
+              >
+                M2
+              </span>
             </div>
-            <div style={{
-              overflow: 'hidden',
-              maxWidth: collapsed ? 0 : 160,
-              opacity: collapsed ? 0 : 1,
-              transition: 'max-width .28s cubic-bezier(.22,1,.36,1), opacity .18s',
-              whiteSpace: 'nowrap',
-            }}>
-              <div style={{ fontFamily: "'Syne', sans-serif", fontWeight: 800, fontSize: 18, color: c.text, lineHeight: 1, letterSpacing: '-.03em' }}>
+
+            <div
+              style={{
+                overflow: 'hidden',
+                maxWidth: collapsed ? 0 : 160,
+                opacity: collapsed ? 0 : 1,
+                transition:
+                  'max-width .28s cubic-bezier(.22,1,.36,1), opacity .18s',
+                whiteSpace: 'nowrap',
+              }}
+            >
+              <div
+                style={{
+                  fontFamily: "'Syne', sans-serif",
+                  fontWeight: 800,
+                  fontSize: 18,
+                  color: c.text,
+                  lineHeight: 1,
+                  letterSpacing: '-.03em',
+                }}
+              >
                 MD<span style={{ color: ORANGE }}>2</span>i
               </div>
-              <div style={{ fontSize: 10.5, color: c.textMute, marginTop: 3, letterSpacing: '.04em', textTransform: 'uppercase' }}>
+
+              <div
+                style={{
+                  fontSize: 10.5,
+                  color: c.textMute,
+                  marginTop: 3,
+                  letterSpacing: '.04em',
+                  textTransform: 'uppercase',
+                }}
+              >
                 Admin
               </div>
             </div>
           </Link>
         </div>
 
-        {/* Nav */}
-        <div className="adm-scroll" style={{ flex: 1, overflowY: 'auto', overflowX: 'visible', padding: '12px 10px' }}>
+        <div
+          className="adm-scroll"
+          style={{
+            flex: 1,
+            overflowY: 'auto',
+            overflowX: 'visible',
+            padding: '12px 10px',
+          }}
+        >
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
             {MENU_SECTIONS.map((section) => (
               <div key={section.title}>
-                {/* Section title */}
                 {!collapsed && (
-                  <div style={{
-                    fontSize: 10, fontWeight: 700, letterSpacing: '.10em',
-                    textTransform: 'uppercase', color: c.textMute,
-                    padding: '0 8px', marginBottom: 5, marginTop: 6,
-                    display: 'flex', alignItems: 'center', gap: 8,
-                  }}>
-                    <span style={{ width: 4, height: 4, borderRadius: '50%', background: ORANGE, opacity: .7 }} />
+                  <div
+                    style={{
+                      fontSize: 10,
+                      fontWeight: 700,
+                      letterSpacing: '.10em',
+                      textTransform: 'uppercase',
+                      color: c.textMute,
+                      padding: '0 8px',
+                      marginBottom: 5,
+                      marginTop: 6,
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 8,
+                    }}
+                  >
+                    <span
+                      style={{
+                        width: 4,
+                        height: 4,
+                        borderRadius: '50%',
+                        background: ORANGE,
+                        opacity: 0.7,
+                      }}
+                    />
                     {section.title}
                   </div>
                 )}
@@ -806,7 +1127,9 @@ export default function AdminSidebar() {
                         collapsed={collapsed}
                         c={c}
                         setMobileOpen={setMobileOpen}
+                        newMessagesCount={newMessagesCount}
                       />
+
                       {collapsed && <div className="adm-tt">{tab.label}</div>}
                     </div>
                   ))}
@@ -817,124 +1140,284 @@ export default function AdminSidebar() {
 
           <div style={{ margin: '14px 4px', height: 1, background: c.border }} />
 
-          {/* View site */}
           <div className="adm-tt-wrap" style={{ marginBottom: 4 }}>
-            <Link href="/" target="_blank" className="adm-btn" style={{
-              display: 'flex', alignItems: 'center',
-              justifyContent: collapsed ? 'center' : 'flex-start',
-              gap: 10, padding: collapsed ? '11px 0' : '10px 10px',
-              borderRadius: 12, textDecoration: 'none',
-              color: ORANGE, background: 'rgba(239,159,39,.07)',
-              border: '1px solid rgba(239,159,39,.18)',
-              fontSize: 13.5, fontWeight: 600,
-            }}>
+            <Link
+              href="/"
+              target="_blank"
+              className="adm-btn"
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: collapsed ? 'center' : 'flex-start',
+                gap: 10,
+                padding: collapsed ? '11px 0' : '10px 10px',
+                borderRadius: 12,
+                textDecoration: 'none',
+                color: ORANGE,
+                background: 'rgba(239,159,39,.07)',
+                border: '1px solid rgba(239,159,39,.18)',
+                fontSize: 13.5,
+                fontWeight: 600,
+              }}
+            >
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ flexShrink: 0 }}>
                 <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
                 <polyline points="15 3 21 3 21 9" />
                 <line x1="10" y1="14" x2="21" y2="3" />
               </svg>
-              <span style={{ maxWidth: collapsed ? 0 : 120, overflow: 'hidden', whiteSpace: 'nowrap', opacity: collapsed ? 0 : 1, transition: 'max-width .28s cubic-bezier(.22,1,.36,1), opacity .18s' }}>
+
+              <span
+                style={{
+                  maxWidth: collapsed ? 0 : 120,
+                  overflow: 'hidden',
+                  whiteSpace: 'nowrap',
+                  opacity: collapsed ? 0 : 1,
+                  transition:
+                    'max-width .28s cubic-bezier(.22,1,.36,1), opacity .18s',
+                }}
+              >
                 Voir le site
               </span>
             </Link>
+
             {collapsed && <div className="adm-tt">Voir le site</div>}
           </div>
 
-          {/* Theme toggle */}
           <div className="adm-tt-wrap">
-            <button onClick={toggleTheme} className="adm-btn" style={{
-              display: 'flex', alignItems: 'center',
-              justifyContent: collapsed ? 'center' : 'flex-start',
-              gap: 10, padding: collapsed ? '11px 0' : '10px 10px',
-              borderRadius: 12, border: `1px solid ${c.border}`,
-              background: 'none', color: c.textSoft,
-              cursor: 'pointer', fontSize: 13.5, fontWeight: 500,
-              fontFamily: 'inherit', width: '100%', textAlign: 'left',
-            }}>
-              {dark
-                ? <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ flexShrink: 0 }}><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/></svg>
-                : <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ flexShrink: 0 }}><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
-              }
-              <span style={{ maxWidth: collapsed ? 0 : 120, overflow: 'hidden', whiteSpace: 'nowrap', opacity: collapsed ? 0 : 1, transition: 'max-width .28s cubic-bezier(.22,1,.36,1), opacity .18s' }}>
+            <button
+              onClick={toggleTheme}
+              className="adm-btn"
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: collapsed ? 'center' : 'flex-start',
+                gap: 10,
+                padding: collapsed ? '11px 0' : '10px 10px',
+                borderRadius: 12,
+                border: `1px solid ${c.border}`,
+                background: 'none',
+                color: c.textSoft,
+                cursor: 'pointer',
+                fontSize: 13.5,
+                fontWeight: 500,
+                fontFamily: 'inherit',
+                width: '100%',
+                textAlign: 'left',
+              }}
+            >
+              {dark ? (
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ flexShrink: 0 }}>
+                  <circle cx="12" cy="12" r="5" />
+                  <line x1="12" y1="1" x2="12" y2="3" />
+                  <line x1="12" y1="21" x2="12" y2="23" />
+                  <line x1="4.22" y1="4.22" x2="5.64" y2="5.64" />
+                  <line x1="18.36" y1="18.36" x2="19.78" y2="19.78" />
+                  <line x1="1" y1="12" x2="3" y2="12" />
+                  <line x1="21" y1="12" x2="23" y2="12" />
+                </svg>
+              ) : (
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ flexShrink: 0 }}>
+                  <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
+                </svg>
+              )}
+
+              <span
+                style={{
+                  maxWidth: collapsed ? 0 : 120,
+                  overflow: 'hidden',
+                  whiteSpace: 'nowrap',
+                  opacity: collapsed ? 0 : 1,
+                  transition:
+                    'max-width .28s cubic-bezier(.22,1,.36,1), opacity .18s',
+                }}
+              >
                 {dark ? 'Mode clair' : 'Mode sombre'}
               </span>
             </button>
+
             {collapsed && <div className="adm-tt">{dark ? 'Mode clair' : 'Mode sombre'}</div>}
           </div>
         </div>
 
-        {/* ── User card ── */}
-        <div ref={ddRef} style={{ padding: '10px', borderTop: `1px solid ${c.border}`, flexShrink: 0 }}>
-          <div onClick={() => !collapsed && setDdOpen(v => !v)} className="adm-user-card" style={{
-            display: 'flex', alignItems: 'center',
-            justifyContent: collapsed ? 'center' : 'flex-start',
-            gap: 11, padding: collapsed ? '9px 0' : '10px 11px',
-            borderRadius: 14, border: `1px solid ${c.border}`, background: c.shellSoft,
-          }}>
-            <div style={{
-              width: 34, height: 34, borderRadius: '50%', flexShrink: 0,
-              background: `linear-gradient(135deg, ${ORANGE}, ${ORANGE_DARK})`,
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              fontSize: 11, fontWeight: 800, color: '#fff',
-              boxShadow: `0 3px 10px rgba(239,159,39,.28)`,
-            }}>
+        <div
+          ref={ddRef}
+          style={{
+            padding: '10px',
+            borderTop: `1px solid ${c.border}`,
+            flexShrink: 0,
+          }}
+        >
+          <div
+            onClick={() => !collapsed && setDdOpen((v) => !v)}
+            className="adm-user-card"
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: collapsed ? 'center' : 'flex-start',
+              gap: 11,
+              padding: collapsed ? '9px 0' : '10px 11px',
+              borderRadius: 14,
+              border: `1px solid ${c.border}`,
+              background: c.shellSoft,
+            }}
+          >
+            <div
+              style={{
+                width: 34,
+                height: 34,
+                borderRadius: '50%',
+                flexShrink: 0,
+                background: `linear-gradient(135deg, ${ORANGE}, ${ORANGE_DARK})`,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: 11,
+                fontWeight: 800,
+                color: '#fff',
+                boxShadow: '0 3px 10px rgba(239,159,39,.28)',
+              }}
+            >
               {initials}
             </div>
-            <div style={{
-              minWidth: 0, flex: 1,
-              maxWidth: collapsed ? 0 : 160, overflow: 'hidden',
-              opacity: collapsed ? 0 : 1,
-              transition: 'max-width .28s cubic-bezier(.22,1,.36,1), opacity .18s',
-            }}>
-              <div style={{ color: c.text, fontSize: 13.5, fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+
+            <div
+              style={{
+                minWidth: 0,
+                flex: 1,
+                maxWidth: collapsed ? 0 : 160,
+                overflow: 'hidden',
+                opacity: collapsed ? 0 : 1,
+                transition:
+                  'max-width .28s cubic-bezier(.22,1,.36,1), opacity .18s',
+              }}
+            >
+              <div
+                style={{
+                  color: c.text,
+                  fontSize: 13.5,
+                  fontWeight: 600,
+                  whiteSpace: 'nowrap',
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                }}
+              >
                 {session?.user?.name || 'Admin'}
               </div>
-              <div style={{ color: c.textMute, fontSize: 11.5, marginTop: 2, whiteSpace: 'nowrap' }}>
+
+              <div
+                style={{
+                  color: c.textMute,
+                  fontSize: 11.5,
+                  marginTop: 2,
+                  whiteSpace: 'nowrap',
+                }}
+              >
                 {session?.user?.email || 'Administrateur'}
               </div>
             </div>
+
             {!collapsed && (
-              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke={c.textMute} strokeWidth="2.4"
-                style={{ transition: 'transform .2s', transform: ddOpen ? 'rotate(180deg)' : 'none', flexShrink: 0 }}>
+              <svg
+                width="11"
+                height="11"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke={c.textMute}
+                strokeWidth="2.4"
+                style={{
+                  transition: 'transform .2s',
+                  transform: ddOpen ? 'rotate(180deg)' : 'none',
+                  flexShrink: 0,
+                }}
+              >
                 <polyline points="6 9 12 15 18 9" />
               </svg>
             )}
           </div>
 
           {!collapsed && ddOpen && (
-            <div style={{
-              marginTop: 8, borderRadius: 14, padding: 6,
-              background: c.ddBg, border: `1px solid ${c.ddBorder}`,
-              boxShadow: dark ? '0 12px 36px rgba(0,0,0,.40)' : '0 8px 28px rgba(0,0,0,.10)',
-              animation: 'adm-drop-in .18s cubic-bezier(.22,1,.36,1)',
-            }}>
+            <div
+              style={{
+                marginTop: 8,
+                borderRadius: 14,
+                padding: 6,
+                background: c.ddBg,
+                border: `1px solid ${c.ddBorder}`,
+                boxShadow: dark
+                  ? '0 12px 36px rgba(0,0,0,.40)'
+                  : '0 8px 28px rgba(0,0,0,.10)',
+                animation: 'adm-drop-in .18s cubic-bezier(.22,1,.36,1)',
+              }}
+            >
               {[
-                { href: '/admin/profile', label: 'Mon profil', icon: <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg> },
-                { href: '/admin/settings', label: 'Paramètres', icon: <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33h.01a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51h.01a1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82v.01a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg> },
-              ].map(item => (
-                <Link key={item.href} href={item.href} className="adm-dd-item" style={{
-                  display: 'flex', alignItems: 'center', gap: 10,
-                  padding: '9px 10px', borderRadius: 10,
-                  textDecoration: 'none', color: c.text, fontSize: 13,
-                }}>
-                  <span style={{ color: c.textMute, display: 'flex' }}>{item.icon}</span>
+                {
+                  href: '/admin/profile',
+                  label: 'Mon profil',
+                  icon: (
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+                      <circle cx="12" cy="7" r="4" />
+                    </svg>
+                  ),
+                },
+                {
+                  href: '/admin/settings',
+                  label: 'Paramètres',
+                  icon: (
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <circle cx="12" cy="12" r="3" />
+                      <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33h.01a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51h.01a1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82v.01a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
+                    </svg>
+                  ),
+                },
+              ].map((item) => (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  className="adm-dd-item"
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 10,
+                    padding: '9px 10px',
+                    borderRadius: 10,
+                    textDecoration: 'none',
+                    color: c.text,
+                    fontSize: 13,
+                  }}
+                >
+                  <span style={{ color: c.textMute, display: 'flex' }}>
+                    {item.icon}
+                  </span>
                   {item.label}
                 </Link>
               ))}
 
               <div style={{ height: 1, margin: '5px 4px', background: c.ddBorder }} />
 
-              <button onClick={() => signOut({ callbackUrl: '/login' })} className="adm-dd-item" style={{
-                display: 'flex', alignItems: 'center', gap: 10,
-                padding: '9px 10px', borderRadius: 10,
-                color: '#e05a5a', background: 'none', border: 'none',
-                width: '100%', textAlign: 'left', cursor: 'pointer',
-                fontFamily: 'inherit', fontSize: 13,
-              }}>
+              <button
+                onClick={() => signOut({ callbackUrl: '/login' })}
+                className="adm-dd-item"
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 10,
+                  padding: '9px 10px',
+                  borderRadius: 10,
+                  color: '#e05a5a',
+                  background: 'none',
+                  border: 'none',
+                  width: '100%',
+                  textAlign: 'left',
+                  cursor: 'pointer',
+                  fontFamily: 'inherit',
+                  fontSize: 13,
+                }}
+              >
                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
-                  <polyline points="16 17 21 12 16 7"/>
-                  <line x1="21" y1="12" x2="9" y2="12"/>
+                  <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+                  <polyline points="16 17 21 12 16 7" />
+                  <line x1="21" y1="12" x2="9" y2="12" />
                 </svg>
                 Déconnexion
               </button>

@@ -1,8 +1,12 @@
 'use client'
 
+import type { TFunction } from 'i18next'
+import { useMemo } from 'react'
+import { useTranslation } from 'react-i18next'
+
 import s from './ProductsSection.module.css'
 
-const products = [
+const productDefinitions = [
   {
     name: 'SARA PAIE',
     category: 'Gestion de la paie',
@@ -59,7 +63,22 @@ const products = [
   },
 ]
 
+function localizeProducts(t: TFunction) {
+  return productDefinitions.map((product, index) => ({
+    ...product,
+    name: String(t(`homeProducts.items.${index}.name`, { defaultValue: product.name })),
+    category: String(
+      t(`homeProducts.items.${index}.category`, { defaultValue: product.category })
+    ),
+    desc: String(t(`homeProducts.items.${index}.desc`, { defaultValue: product.desc })),
+    tag: String(t(`homeProducts.items.${index}.tag`, { defaultValue: product.tag })),
+  }))
+}
+
 export default function ProductsSection() {
+  const { t } = useTranslation()
+  const products = useMemo(() => localizeProducts(t), [t])
+
   return (
     <section className={s.section} id="produits" aria-labelledby="products-title">
       <div className={s.gridBg} aria-hidden="true" />
@@ -69,28 +88,26 @@ export default function ProductsSection() {
           <div className={s.headLeft}>
             <span className={s.eyebrow}>
               <span className={s.eyebrowDot} />
-              Produits
+              {t('homeProducts.eyebrow')}
             </span>
 
             <h2 className={s.title} id="products-title">
-              Notre gamme de <em>logiciels</em>
+              {t('homeProducts.titlePrefix')} <em>{t('homeProducts.titleEmphasis')}</em>
             </h2>
 
             <p className={s.lead}>
-              Des solutions conçues pour la gestion de projets, le suivi financier,
-              l’administration, le suivi-évaluation et l’accompagnement des institutions
-              et programmes de développement.
+              {t('homeProducts.lead')}
             </p>
           </div>
 
           <div className={s.headRight}>
             <div className={s.statCard}>
               <span className={s.statNum}>9</span>
-              <span className={s.statLabel}>solutions clés</span>
+              <span className={s.statLabel}>{t('homeProducts.stats.solutions')}</span>
             </div>
             <div className={s.statCard}>
               <span className={s.statNum}>SARA</span>
-              <span className={s.statLabel}>gamme principale</span>
+              <span className={s.statLabel}>{t('homeProducts.stats.range')}</span>
             </div>
           </div>
         </header>
@@ -110,7 +127,7 @@ export default function ProductsSection() {
               </div>
 
               <div className={s.cardFooter}>
-                <button className={s.ghostBtn}>Voir le produit</button>
+                <button className={s.ghostBtn}>{t('homeProducts.viewProduct')}</button>
               </div>
             </article>
           ))}
