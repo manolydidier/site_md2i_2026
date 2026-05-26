@@ -193,10 +193,7 @@ export default function ContactPage() {
   const [subject, setSubject] = useState('')
   const [formStartedAt, setFormStartedAt] = useState(() => Date.now())
   const blobRef = useRef<HTMLDivElement>(null)
-  const subjects = useMemo(
-    () => subjectKeys.map((key) => t(`contactPage.subjects.${key}`)),
-    [t],
-  )
+  const subjects = useMemo(() => [...subjectKeys], [])
   const contactCards = useMemo(
     () =>
       contactCardDefs.map((card) => ({
@@ -222,7 +219,9 @@ export default function ContactPage() {
   )
 
   const selectedSubjectLabel = useMemo(() => {
-    return subject || t('contactPage.form.summaryFallback')
+    return subject
+      ? t(`contactPage.subjects.${subject}`)
+      : t('contactPage.form.summaryFallback')
   }, [subject, t])
 
   useEffect(() => {
@@ -301,6 +300,7 @@ export default function ContactPage() {
           website: formData.get('website'),
           formStartedAt,
         }),
+        credentials: 'same-origin',
       })
 
       const data = (await response
@@ -403,7 +403,7 @@ export default function ContactPage() {
               <div className={styles.heroStats}>
                 {heroStats.map((item, index) => (
                   <div
-                    key={item.label}
+                    key={item.labelKey}
                     className={styles.statCard}
                     style={{ '--i': index } as CSSProperties}
                   >
@@ -644,7 +644,7 @@ export default function ContactPage() {
 
                         {subjects.map((item) => (
                           <option key={item} value={item}>
-                            {item}
+                            {t(`contactPage.subjects.${item}`)}
                           </option>
                         ))}
                       </select>

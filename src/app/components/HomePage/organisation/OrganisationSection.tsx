@@ -379,7 +379,7 @@ export default function OrganisationSection() {
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null)
   const [imageErrors, setImageErrors] = useState<Record<number, boolean>>({})
 
-  const cardRefs = useRef<(HTMLDivElement | null)[]>([])
+  const cardRefs = useRef<(HTMLElement | null)[]>([])
   const modalRef = useRef<HTMLDivElement>(null)
 
   const modalTitleId = useId()

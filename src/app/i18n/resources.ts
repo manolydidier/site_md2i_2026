@@ -246,6 +246,162 @@ export const resources = {
           terms: 'CGU',
         },
       },
+      techList: {
+        kicker: 'Stack technique',
+        summary: '{{categories}} pôles · {{technologies}} techs',
+        tooltip: '{{name}} — {{level}} · {{years}}+ ans',
+        yearsExperience_one: "{{count}}+ année d’expérience",
+        yearsExperience_other: "{{count}}+ années d’expérience",
+        yearsCompact: '{{count}}+ ans',
+        techCount_one: '{{count}} techno',
+        techCount_other: '{{count}} technos',
+        levels: {
+          beginner: 'Débutant',
+          intermediate: 'Intermédiaire',
+          advanced: 'Avancé',
+          expert: 'Expert',
+        },
+        viewModes: {
+          grid: 'Grille',
+          list: 'Liste',
+          compact: 'Compact',
+          marquee: 'Marquee',
+        },
+        sort: {
+          name: 'Trier : Nom',
+          level: 'Trier : Niveau',
+          years: 'Trier : Expérience',
+          trending: 'Trier : Tendance',
+        },
+        sortValues: {
+          name: 'nom',
+          level: 'niveau',
+          years: 'expérience',
+          trending: 'tendance',
+        },
+        labels: {
+          category: 'Catégorie',
+        },
+        badges: {
+          new: 'Nouveau',
+          trending: 'Tendance',
+          certified: 'Certifié',
+          trendShort: 'Trend',
+          certifiedShort: 'Certif',
+        },
+        boolean: {
+          yes: 'Oui',
+          no: 'Non',
+        },
+        fallback: {
+          description: 'Technologie utilisée dans des projets modernes.',
+          noDescription: 'Aucune description disponible.',
+        },
+        compare: {
+          kicker: 'Comparaison',
+          titlePrefix: 'Deux technologies,',
+          titleAccent: 'côte à côte',
+          description:
+            "Vue comparative rapide du niveau, de l’expérience, des certifications et des projets associés.",
+          rows: {
+            level: 'Niveau',
+            experience: 'Expérience',
+            certified: 'Certifié',
+            trending: 'Tendance',
+          },
+          projects: 'Projets associés',
+        },
+        meta: {
+          activePath: 'Parcours actif',
+          current: 'Mode {{view}} • tri {{sort}}',
+        },
+        hero: {
+          titlePrefix: 'Une stack pensée pour des',
+          titleAccent: 'solutions fiables',
+          titleSuffix: ', premium et durables',
+          description:
+            "Cette section présente les technologies maîtrisées, leur niveau, leur maturité et leur place dans les projets. L’objectif est d’avoir une lecture plus éditoriale, plus claire et plus haut de gamme que la version précédente.",
+          pills: {
+            liquidGlass: 'liquid glass',
+            quickCompare: 'comparaison rapide',
+            premiumRead: 'lecture premium',
+          },
+        },
+        stats: {
+          technologies: 'Technologies',
+          categories: 'Catégories',
+          certified: 'Certifiées',
+          trending: 'En tendance',
+        },
+        daily: {
+          kicker: 'Technologie du jour',
+          fallback: 'Explore cette technologie dans le catalogue.',
+        },
+        categories: [
+          {
+            title: 'Frontend',
+            description: 'Interfaces modernes, fluides et cohérentes.',
+            items: [
+              { description: 'Bibliothèque JavaScript pour construire des interfaces utilisateur' },
+              { description: 'Framework React pour le rendu côté serveur' },
+              { description: 'Superset typé de JavaScript' },
+              { description: 'Langage de programmation web' },
+              { description: 'Outil de design collaboratif' },
+              { description: 'Framework CSS utilitaire' },
+            ],
+          },
+          {
+            title: 'Backend',
+            description: 'Architecture, APIs, logique métier et intégrations.',
+            items: [
+              { description: 'Runtime JavaScript côté serveur' },
+              { description: 'Langage orienté objet robuste' },
+              { description: 'Framework Java pour microservices' },
+              { description: 'Langage moderne de Microsoft' },
+              { description: 'Framework Microsoft' },
+              { description: 'Framework Node.js minimaliste' },
+              { description: 'Framework Java pour UI riches' },
+              { description: 'Framework PHP élégant' },
+              { description: 'Langage polyvalent' },
+            ],
+          },
+          {
+            title: 'Bases de données',
+            description: 'Stockage, cache, temps réel et performance.',
+            items: [
+              { description: 'Base de données relationnelle avancée' },
+              { description: 'Base de données populaire' },
+              { description: 'Base de données NoSQL' },
+              { description: 'Cache et base de données en mémoire' },
+              { description: 'Plateforme BaaS de Google' },
+            ],
+          },
+          {
+            title: 'DevOps & Cloud',
+            description: 'Déploiement, orchestration, serveurs et delivery.',
+            items: [
+              { description: "Conteneurisation d'applications" },
+              { description: 'Orchestration de conteneurs' },
+              { description: 'Cloud computing Amazon' },
+              { description: 'Cloud Microsoft' },
+              { description: 'Contrôle de version et intégration continue' },
+              { description: 'Système de contrôle de version' },
+              { description: 'Serveur web et reverse proxy' },
+              { description: "Serveur d'applications Java" },
+            ],
+          },
+          {
+            title: 'Monitoring & Observabilité',
+            description: 'Métriques, logs, alertes et visualisation.',
+            items: [
+              { description: 'Visualisation de données Elasticsearch' },
+              { description: "Moteur de recherche et d'analyse" },
+              { description: 'Monitoring et alerting' },
+              { description: 'Visualisation de métriques' },
+            ],
+          },
+        ],
+      },
       homeHero: {
         slides: [
           {
@@ -952,6 +1108,12 @@ export const resources = {
         loading: 'Chargement...',
         notFound: 'Post introuvable.',
         back: 'Retour',
+        cta: {
+          title: 'Vous souhaitez aller plus loin ?',
+          text:
+            "Découvrez nos solutions, nos références et les scénarios d'exploitation adaptés à votre contexte métier.",
+          link: 'Contacter MD2I',
+        },
       },
       contactPage: {
         heroEyebrow: 'Contact MD2I',
@@ -1451,6 +1613,162 @@ export const resources = {
           privacy: 'Privacy',
           terms: 'Terms',
         },
+      },
+      techList: {
+        kicker: 'Tech stack',
+        summary: '{{categories}} areas · {{technologies}} techs',
+        tooltip: '{{name}} — {{level}} · {{years}}+ yrs',
+        yearsExperience_one: '{{count}}+ year of experience',
+        yearsExperience_other: '{{count}}+ years of experience',
+        yearsCompact: '{{count}}+ yrs',
+        techCount_one: '{{count}} tech',
+        techCount_other: '{{count}} techs',
+        levels: {
+          beginner: 'Beginner',
+          intermediate: 'Intermediate',
+          advanced: 'Advanced',
+          expert: 'Expert',
+        },
+        viewModes: {
+          grid: 'Grid',
+          list: 'List',
+          compact: 'Compact',
+          marquee: 'Marquee',
+        },
+        sort: {
+          name: 'Sort: Name',
+          level: 'Sort: Level',
+          years: 'Sort: Experience',
+          trending: 'Sort: Trending',
+        },
+        sortValues: {
+          name: 'name',
+          level: 'level',
+          years: 'experience',
+          trending: 'trending',
+        },
+        labels: {
+          category: 'Category',
+        },
+        badges: {
+          new: 'New',
+          trending: 'Trending',
+          certified: 'Certified',
+          trendShort: 'Trend',
+          certifiedShort: 'Certif',
+        },
+        boolean: {
+          yes: 'Yes',
+          no: 'No',
+        },
+        fallback: {
+          description: 'Technology used in modern projects.',
+          noDescription: 'No description available.',
+        },
+        compare: {
+          kicker: 'Comparison',
+          titlePrefix: 'Two technologies,',
+          titleAccent: 'side by side',
+          description:
+            'A quick comparison of level, experience, certifications, and associated projects.',
+          rows: {
+            level: 'Level',
+            experience: 'Experience',
+            certified: 'Certified',
+            trending: 'Trending',
+          },
+          projects: 'Associated projects',
+        },
+        meta: {
+          activePath: 'Active path',
+          current: '{{view}} mode • sorted by {{sort}}',
+        },
+        hero: {
+          titlePrefix: 'A stack designed for',
+          titleAccent: 'reliable solutions',
+          titleSuffix: ', premium, and sustainable',
+          description:
+            'This section presents the technologies mastered, their level, maturity, and role in projects. The goal is a more editorial, clearer, and more premium reading experience than the previous version.',
+          pills: {
+            liquidGlass: 'liquid glass',
+            quickCompare: 'quick comparison',
+            premiumRead: 'premium reading',
+          },
+        },
+        stats: {
+          technologies: 'Technologies',
+          categories: 'Categories',
+          certified: 'Certified',
+          trending: 'Trending',
+        },
+        daily: {
+          kicker: 'Technology of the day',
+          fallback: 'Explore this technology in the catalog.',
+        },
+        categories: [
+          {
+            title: 'Frontend',
+            description: 'Modern, fluid, and consistent interfaces.',
+            items: [
+              { description: 'JavaScript library for building user interfaces' },
+              { description: 'React framework for server-side rendering' },
+              { description: 'Typed superset of JavaScript' },
+              { description: 'Web programming language' },
+              { description: 'Collaborative design tool' },
+              { description: 'Utility-first CSS framework' },
+            ],
+          },
+          {
+            title: 'Backend',
+            description: 'Architecture, APIs, business logic, and integrations.',
+            items: [
+              { description: 'Server-side JavaScript runtime' },
+              { description: 'Robust object-oriented language' },
+              { description: 'Java framework for microservices' },
+              { description: 'Modern Microsoft language' },
+              { description: 'Microsoft framework' },
+              { description: 'Minimalist Node.js framework' },
+              { description: 'Java framework for rich UIs' },
+              { description: 'Elegant PHP framework' },
+              { description: 'Versatile language' },
+            ],
+          },
+          {
+            title: 'Databases',
+            description: 'Storage, cache, real-time data, and performance.',
+            items: [
+              { description: 'Advanced relational database' },
+              { description: 'Popular database' },
+              { description: 'NoSQL database' },
+              { description: 'In-memory cache and database' },
+              { description: 'Google BaaS platform' },
+            ],
+          },
+          {
+            title: 'DevOps & Cloud',
+            description: 'Deployment, orchestration, servers, and delivery.',
+            items: [
+              { description: 'Application containerization' },
+              { description: 'Container orchestration' },
+              { description: 'Amazon cloud computing' },
+              { description: 'Microsoft cloud' },
+              { description: 'Version control and continuous integration' },
+              { description: 'Version control system' },
+              { description: 'Web server and reverse proxy' },
+              { description: 'Java application server' },
+            ],
+          },
+          {
+            title: 'Monitoring & Observability',
+            description: 'Metrics, logs, alerts, and visualization.',
+            items: [
+              { description: 'Elasticsearch data visualization' },
+              { description: 'Search and analytics engine' },
+              { description: 'Monitoring and alerting' },
+              { description: 'Metrics visualization' },
+            ],
+          },
+        ],
       },
       homeHero: {
         slides: [
@@ -2457,6 +2775,12 @@ export const resources = {
         loading: 'Loading...',
         notFound: 'Post not found.',
         back: 'Back',
+        cta: {
+          title: 'Want to go further?',
+          text:
+            'Explore our solutions, references, and operating scenarios adapted to your business context.',
+          link: 'Contact MD2I',
+        },
       },
       contactPage: {
         heroEyebrow: 'Contact MD2I',

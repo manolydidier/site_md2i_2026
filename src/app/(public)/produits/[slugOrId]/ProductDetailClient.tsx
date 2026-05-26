@@ -1,11 +1,16 @@
 'use client'
 
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import Link from 'next/link'
+import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { useTranslation } from 'react-i18next'
 import api from '@/app/lib/axios'
 import { useTheme } from '@/app/context/ThemeContext'
-import { translateDynamicItems } from '@/app/i18n/dynamic'
+import {
+  translateDynamicItems,
+  translateGrapesComponents,
+  translateHtmlContent,
+} from '@/app/i18n/dynamic'
 import { type Locale, normalizeLocale } from '@/app/i18n/settings'
 import grapesjs, { Editor } from 'grapesjs'
 import 'grapesjs/dist/css/grapes.min.css'
@@ -65,20 +70,29 @@ function getUiColors(dark: boolean) {
     buttonBg: dark ? 'rgba(15, 23, 42, 0.82)' : 'rgba(255,255,255,.92)',
     buttonBgHover: dark ? 'rgba(15, 23, 42, 0.96)' : 'rgba(255,255,255,1)',
     buttonText: dark ? '#f8fafc' : '#18181b',
-    buttonBorder: dark ? 'rgba(255,255,255,.02)' : 'rgba(0,0,0,.02)',
+    buttonBorder: dark ? 'rgba(255,255,255,.08)' : 'rgba(15,23,42,.08)',
     buttonShadow: dark
       ? '0 14px 34px rgba(0,0,0,.38)'
       : '0 14px 34px rgba(15,23,42,.14)',
     panelBg: dark ? 'rgba(15, 23, 42, 0.78)' : 'rgba(255,255,255,.94)',
-    panelBorder: dark ? 'rgba(255,255,255,.08)' : 'rgba(0,0,0,.06)',
+    panelBorder: dark ? 'rgba(255,255,255,.10)' : 'rgba(15,23,42,.08)',
     panelText: dark ? '#f8fafc' : '#18181b',
     panelMuted: dark ? '#94a3b8' : '#6b7280',
     appBg: dark ? '#020617' : '#f8fafc',
-    cardBg: dark ? '#0f172a' : '#ffffff',
-    cardBorder: dark ? 'rgba(255,255,255,.08)' : 'rgba(15,23,42,.08)',
+    pageBg: dark
+      ? 'radial-gradient(circle at top left, rgba(239,159,39,.10), transparent 30%), linear-gradient(180deg, #020617 0%, #080b13 42%, #020617 100%)'
+      : 'radial-gradient(circle at top left, rgba(239,159,39,.10), transparent 30%), linear-gradient(180deg, #fffaf3 0%, #ffffff 44%, #f8fafc 100%)',
+    cardBg: dark ? 'rgba(15,23,42,.94)' : 'rgba(255,255,255,.96)',
+    cardBorder: dark ? 'rgba(255,255,255,.10)' : 'rgba(15,23,42,.08)',
     mutedText: dark ? '#94a3b8' : '#6b7280',
     accent1: '#ef9f27',
     accent2: '#f7c060',
+    text: dark ? '#f8fafc' : '#18181b',
+    textSoft: dark ? 'rgba(248,250,252,.72)' : 'rgba(24,24,27,.72)',
+    textMuted: dark ? 'rgba(248,250,252,.46)' : 'rgba(24,24,27,.46)',
+    line: dark ? 'rgba(255,255,255,.10)' : 'rgba(15,23,42,.08)',
+    orangeSoft: dark ? 'rgba(239,159,39,.16)' : 'rgba(239,159,39,.10)',
+    orangeBorder: 'rgba(239,159,39,.34)',
   }
 }
 
@@ -149,13 +163,17 @@ function normalizeProductImages(images: unknown, coverImage?: string | null) {
   return urls
 }
 
+function safeImage(src?: string | null) {
+  return src?.trim() || '/placeholder-reference.svg'
+}
+
 function syncEmbeddedTheme(editor: Editor, dark: boolean) {
   const canvasDoc = editor.Canvas?.getDocument()
 
   if (!canvasDoc) return
 
   const theme = dark ? 'dark' : 'light'
-  const pageBg = dark ? '#000000' : '#ffffff'
+  const pageBg = dark ? '#020617' : '#ffffff'
   const pageText = dark ? '#f5f7fb' : '#181818'
 
   let baseStyle = canvasDoc.getElementById(
@@ -174,6 +192,7 @@ function syncEmbeddedTheme(editor: Editor, dark: boolean) {
       padding: 0 !important;
       background: ${pageBg} !important;
       color: ${pageText} !important;
+      overflow-x: hidden !important;
     }
   `
 
@@ -226,7 +245,7 @@ function measureCanvasHeight(
           body.offsetHeight,
           html.scrollHeight,
           html.offsetHeight,
-          window.innerHeight,
+          720,
         )
 
         setCanvasHeight(h)
@@ -247,15 +266,11 @@ export default function ProductDetailClient() {
 
   const mountRef = useRef<HTMLDivElement>(null)
   const gjsRef = useRef<Editor | null>(null)
-  const detailTimerRef = useRef<ReturnType<typeof window.setTimeout> | null>(
-    null,
-  )
 
   const [product, setProduct] = useState<Product | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [canvasHeight, setCanvasHeight] = useState(900)
-  const [detailVisible, setDetailVisible] = useState(true)
 
   const ui = useMemo(() => getUiColors(dark), [dark])
 
@@ -265,24 +280,12 @@ export default function ProductDetailClient() {
   )
 
   const hasGjsContent = Boolean(product?.gjsComponents || product?.gjsHtml)
-
-  const clearDetailTimer = useCallback(() => {
-    if (detailTimerRef.current) {
-      window.clearTimeout(detailTimerRef.current)
-      detailTimerRef.current = null
-    }
-  }, [])
-
-  const startDetailAutoClose = useCallback(() => {
-    clearDetailTimer()
-
-    detailTimerRef.current = window.setTimeout(() => {
-      setDetailVisible(false)
-    }, 6000)
-  }, [clearDetailTimer])
+  const leadHref = product ? getProductLeadHref(product) : '#'
+  const heroImage = safeImage(gallery[0] || product?.coverImage)
 
   useEffect(() => {
     if (!slugOrId) return
+
     let cancelled = false
 
     ;(async () => {
@@ -292,21 +295,38 @@ export default function ProductDetailClient() {
 
         const res = await api.get<Product>(`/api/products/public/${slugOrId}`)
         const nextProduct = res.data
+
         const [translatedProduct] = await translateDynamicItems<Product>(
           [nextProduct],
           locale,
           ['name', 'excerpt', 'category.name'],
         )
 
+        const localizedProduct = translatedProduct ?? nextProduct
+
+        const [translatedComponents, translatedHtml] = await Promise.all([
+          localizedProduct.gjsComponents
+            ? translateGrapesComponents(localizedProduct.gjsComponents, locale)
+            : Promise.resolve(localizedProduct.gjsComponents),
+          !localizedProduct.gjsComponents && localizedProduct.gjsHtml
+            ? translateHtmlContent(localizedProduct.gjsHtml, locale)
+            : Promise.resolve(localizedProduct.gjsHtml),
+        ])
+
         if (cancelled) return
 
-        setProduct(translatedProduct ?? nextProduct)
+        setProduct({
+          ...localizedProduct,
+          gjsComponents: translatedComponents,
+          gjsHtml: translatedHtml,
+        })
 
         if (nextProduct?.slug && slugOrId !== nextProduct.slug) {
           router.replace(`/produits/${nextProduct.slug}`)
         }
       } catch (err) {
         console.error(err)
+
         if (!cancelled) {
           setError(t('productsPage.errors.load'))
         }
@@ -319,17 +339,6 @@ export default function ProductDetailClient() {
       cancelled = true
     }
   }, [slugOrId, router, locale, t])
-
-  useEffect(() => {
-    return () => clearDetailTimer()
-  }, [clearDetailTimer])
-
-  useEffect(() => {
-    if (!product) return
-
-    setDetailVisible(true)
-    startDetailAutoClose()
-  }, [product, startDetailAutoClose])
 
   useEffect(() => {
     if (!mountRef.current || !product || !hasGjsContent) return
@@ -487,14 +496,7 @@ export default function ProductDetailClient() {
 
           readonlyStyle.innerHTML = `
             * {
-              user-select: none !important;
-              -webkit-user-select: none !important;
-              -moz-user-select: none !important;
-              -ms-user-select: none !important;
-              -webkit-user-drag: none !important;
-              user-drag: none !important;
               -webkit-tap-highlight-color: transparent !important;
-              cursor: default !important;
             }
 
             *:active,
@@ -502,27 +504,17 @@ export default function ProductDetailClient() {
               outline: none !important;
             }
 
-            a,
-            button,
-            [role="button"],
-            input,
-            select,
-            textarea {
-              user-select: text !important;
-              -webkit-user-select: text !important;
-              cursor: pointer !important;
-            }
-
             img,
             svg,
             canvas {
-              pointer-events: none !important;
-              user-select: none !important;
+              -webkit-user-drag: none !important;
+              user-drag: none !important;
             }
 
-            ::selection,
-            ::-moz-selection {
-              background: transparent !important;
+            a,
+            button,
+            [role="button"] {
+              cursor: pointer !important;
             }
           `
 
@@ -577,7 +569,6 @@ export default function ProductDetailClient() {
             e.stopPropagation()
 
             const href = link.getAttribute('href')
-
             if (!href) return
 
             const absoluteHref = new URL(href, window.location.origin).toString()
@@ -598,7 +589,6 @@ export default function ProductDetailClient() {
               window.document.body.appendChild(tempLink)
               tempLink.click()
               tempLink.remove()
-
               return
             }
 
@@ -733,19 +723,13 @@ export default function ProductDetailClient() {
   if (loading) {
     return (
       <div
-        className="flex min-h-screen items-center justify-center"
+        className="product-state-page"
         style={{
-          background: ui.appBg,
+          background: ui.pageBg,
+          color: ui.text,
         }}
       >
-        <div
-          className="text-sm"
-          style={{
-            color: ui.mutedText,
-          }}
-        >
-          {t('productDetail.loading')}
-        </div>
+        <div className="product-state-card">{t('productDetail.loading')}</div>
       </div>
     )
   }
@@ -753,353 +737,16 @@ export default function ProductDetailClient() {
   if (error || !product) {
     return (
       <div
-        className="flex min-h-screen flex-col items-center justify-center gap-4 px-6"
+        className="product-state-page"
         style={{
-          background: ui.appBg,
+          background: ui.pageBg,
+          color: ui.text,
         }}
       >
-        <p
-          className="text-sm"
-          style={{
-            color: ui.mutedText,
-          }}
-        >
-          {error || t('productDetail.notFound')}
-        </p>
+        <div className="product-state-card">
+          <p>{error || t('productDetail.notFound')}</p>
 
-        <button
-          onClick={goBack}
-          style={{
-            height: '44px',
-            padding: '0 18px',
-            borderRadius: '14px',
-            border: 'none',
-            background: `linear-gradient(135deg, ${ui.accent1} 0%, ${ui.accent2} 100%)`,
-            color: '#fff',
-            fontSize: '14px',
-            fontWeight: 700,
-            cursor: 'pointer',
-            boxShadow: '0 14px 30px rgba(239,159,39,.30)',
-          }}
-        >
-          {t('productDetail.back')}
-        </button>
-      </div>
-    )
-  }
-
-  const leadHref = getProductLeadHref(product)
-
-  if (!hasGjsContent) {
-    return (
-      <div
-        style={{
-          minHeight: '100vh',
-          background: ui.appBg,
-          padding: '96px 20px 40px',
-        }}
-      >
-        <div
-          style={{
-            maxWidth: '1120px',
-            margin: '0 auto',
-          }}
-        >
-          <button
-            onClick={goBack}
-            aria-label={t('productDetail.back')}
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '10px',
-              height: '46px',
-              padding: '0 18px',
-              borderRadius: '16px',
-              border: `1px solid ${ui.buttonBorder}`,
-              background: ui.buttonBg,
-              color: ui.buttonText,
-              fontSize: '14px',
-              fontWeight: 700,
-              cursor: 'pointer',
-              backdropFilter: 'blur(14px)',
-              WebkitBackdropFilter: 'blur(14px)',
-              boxShadow: ui.buttonShadow,
-              transition: 'all .22s ease',
-              marginBottom: '24px',
-            }}
-          >
-            <svg
-              width="16"
-              height="16"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2.2"
-            >
-              <path d="M19 12H5M12 5l-7 7 7 7" />
-            </svg>
-            {t('productDetail.back')}
-          </button>
-
-          <div
-            style={{
-              display: 'grid',
-              gridTemplateColumns: gallery.length
-                ? 'minmax(0, 1.1fr) minmax(320px, .9fr)'
-                : '1fr',
-              gap: '24px',
-            }}
-          >
-            {gallery.length > 0 && (
-              <div
-                style={{
-                  background: ui.cardBg,
-                  border: `1px solid ${ui.cardBorder}`,
-                  borderRadius: '26px',
-                  overflow: 'hidden',
-                  boxShadow: ui.buttonShadow,
-                }}
-              >
-                <img
-                  src={gallery[0]}
-                  alt={product.name}
-                  style={{
-                    display: 'block',
-                    width: '100%',
-                    height: '100%',
-                    minHeight: '420px',
-                    objectFit: 'cover',
-                  }}
-                />
-              </div>
-            )}
-
-            <div
-              style={{
-                background: ui.cardBg,
-                border: `1px solid ${ui.cardBorder}`,
-                borderRadius: '26px',
-                padding: '28px',
-                boxShadow: ui.buttonShadow,
-              }}
-            >
-              {product.category?.name && (
-                <div
-                  style={{
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    minHeight: '28px',
-                    padding: '0 12px',
-                    borderRadius: '999px',
-                    background: 'rgba(239,159,39,.10)',
-                    color: ui.accent1,
-                    fontSize: '11px',
-                    fontWeight: 800,
-                    letterSpacing: '.08em',
-                    textTransform: 'uppercase',
-                    marginBottom: '14px',
-                  }}
-                >
-                  {product.category.name}
-                </div>
-              )}
-
-              <h1
-                style={{
-                  margin: 0,
-                  color: ui.panelText,
-                  fontSize: 'clamp(30px, 4vw, 48px)',
-                  lineHeight: 1.05,
-                  letterSpacing: '-.04em',
-                  fontWeight: 800,
-                }}
-              >
-                {product.name}
-              </h1>
-
-              <div
-                style={{
-                  marginTop: '14px',
-                  fontSize: '14px',
-                  color: ui.panelMuted,
-                  lineHeight: 1.8,
-                }}
-              >
-                {product.excerpt?.trim() || t('productsPage.card.noDescription')}
-              </div>
-
-              <div
-                style={{
-                  marginTop: '24px',
-                  display: 'grid',
-                  gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
-                  gap: '14px',
-                }}
-              >
-                <div
-                  style={{
-                    border: `1px solid ${ui.cardBorder}`,
-                    borderRadius: '18px',
-                    padding: '16px',
-                    background: dark
-                      ? 'rgba(255,255,255,.03)'
-                      : 'rgba(15,23,42,.03)',
-                  }}
-                >
-                  <div
-                    style={{
-                      fontSize: '11px',
-                      fontWeight: 800,
-                      letterSpacing: '.12em',
-                      textTransform: 'uppercase',
-                      color: ui.panelMuted,
-                      marginBottom: '8px',
-                    }}
-                  >
-                    {t('productsPage.card.price')}
-                  </div>
-
-                  <div
-                    style={{
-                      fontSize: '20px',
-                      fontWeight: 800,
-                      color: ui.accent1,
-                      letterSpacing: '-.02em',
-                    }}
-                  >
-                    {formatPrice(product.price, locale)}
-                  </div>
-                </div>
-
-                <div
-                  style={{
-                    border: `1px solid ${ui.cardBorder}`,
-                    borderRadius: '18px',
-                    padding: '16px',
-                    background: dark
-                      ? 'rgba(255,255,255,.03)'
-                      : 'rgba(15,23,42,.03)',
-                  }}
-                >
-                  <div
-                    style={{
-                      fontSize: '11px',
-                      fontWeight: 800,
-                      letterSpacing: '.12em',
-                      textTransform: 'uppercase',
-                      color: ui.panelMuted,
-                      marginBottom: '8px',
-                    }}
-                  >
-                    {t('productDetail.publication')}
-                  </div>
-
-                  <div
-                    style={{
-                      fontSize: '14px',
-                      fontWeight: 700,
-                      color: ui.panelText,
-                    }}
-                  >
-                    {formatDate(product.publishedAt || product.createdAt, locale)}
-                  </div>
-                </div>
-              </div>
-
-              <div
-                style={{
-                  marginTop: '24px',
-                  display: 'flex',
-                  flexWrap: 'wrap',
-                  gap: '12px',
-                }}
-              >
-                <button
-                  onClick={() => router.push(leadHref)}
-                  style={{
-                    minHeight: '46px',
-                    padding: '0 20px',
-                    borderRadius: '14px',
-                    border: 'none',
-                    background: `linear-gradient(135deg, ${ui.accent1} 0%, ${ui.accent2} 100%)`,
-                    color: '#fff',
-                    fontSize: '14px',
-                    fontWeight: 800,
-                    cursor: 'pointer',
-                    boxShadow: '0 14px 30px rgba(239,159,39,.30)',
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: '10px',
-                  }}
-                >
-                  {t('productDetail.requestQuote')}
-                  <svg
-                    width="16"
-                    height="16"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2.2"
-                  >
-                    <path d="M5 12h14M12 5l7 7-7 7" />
-                  </svg>
-                </button>
-
-                <button
-                  onClick={() => router.push('/produits')}
-                  style={{
-                    minHeight: '46px',
-                    padding: '0 18px',
-                    borderRadius: '14px',
-                    border: `1px solid ${ui.cardBorder}`,
-                    background: dark
-                      ? 'rgba(255,255,255,.03)'
-                      : 'rgba(15,23,42,.03)',
-                    color: ui.panelText,
-                    fontSize: '14px',
-                    fontWeight: 700,
-                    cursor: 'pointer',
-                  }}
-                >
-                  {t('productDetail.viewAllProducts')}
-                </button>
-              </div>
-
-              {gallery.length > 1 && (
-                <div
-                  style={{
-                    marginTop: '24px',
-                    display: 'grid',
-                    gridTemplateColumns: 'repeat(auto-fill, minmax(120px, 1fr))',
-                    gap: '12px',
-                  }}
-                >
-                  {gallery.slice(1).map((image, index) => (
-                    <div
-                      key={`${image}-${index}`}
-                      style={{
-                        borderRadius: '16px',
-                        overflow: 'hidden',
-                        border: `1px solid ${ui.cardBorder}`,
-                        background: dark ? '#0b1220' : '#f8fafc',
-                      }}
-                    >
-                      <img
-                        src={image}
-                        alt={`${product.name} ${index + 2}`}
-                        style={{
-                          display: 'block',
-                          width: '100%',
-                          height: '120px',
-                          objectFit: 'cover',
-                        }}
-                      />
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          </div>
+          <button onClick={goBack}>{t('productDetail.back')}</button>
         </div>
       </div>
     )
@@ -1109,8 +756,6 @@ export default function ProductDetailClient() {
     <>
       <style jsx global>{`
         * {
-          margin: 0;
-          padding: 0;
           box-sizing: border-box;
         }
 
@@ -1165,418 +810,610 @@ export default function ProductDetailClient() {
           height: 100% !important;
         }
 
-        .gjs-cv-canvas * {
-          pointer-events: none !important;
+        .product-detail-page {
+          min-height: 100vh;
+          background: ${ui.pageBg};
+          color: ${ui.text};
+          font-family: Inter, Arial, Helvetica, sans-serif;
         }
 
-        .gjs-cv-canvas__frames iframe * {
-          pointer-events: auto !important;
+        .product-hero {
+          position: relative;
+          min-height: 680px;
+          display: flex;
+          align-items: flex-end;
+          overflow: hidden;
+          isolation: isolate;
+        }
+
+        .product-hero-bg {
+          position: absolute;
+          inset: 0;
+          z-index: -2;
+          background: #020617;
+        }
+
+        .product-hero-bg img {
+          width: 100%;
+          height: 100%;
+          object-fit: cover;
+          display: block;
+          filter: saturate(1.04) contrast(1.04);
+        }
+
+        .product-hero-overlay {
+          position: absolute;
+          inset: 0;
+          background:
+            linear-gradient(90deg, rgba(2,6,23,.86), rgba(2,6,23,.54), rgba(2,6,23,.20)),
+            linear-gradient(180deg, rgba(2,6,23,.10), rgba(2,6,23,.88));
+        }
+
+        .product-hero-inner {
+          width: min(1180px, calc(100% - 40px));
+          margin: 0 auto;
+          padding: 138px 0 72px;
+          color: #fff;
+        }
+
+        .breadcrumb {
+          display: flex;
+          align-items: center;
+          gap: 10px;
+          flex-wrap: wrap;
+          margin-bottom: 34px;
+          color: rgba(255,255,255,.68);
+          font-size: 13px;
+          font-weight: 650;
+        }
+
+        .breadcrumb a {
+          color: rgba(255,255,255,.78);
+          text-decoration: none;
+          transition: color .18s ease;
+        }
+
+        .breadcrumb a:hover {
+          color: ${ui.accent1};
+        }
+
+        .breadcrumb strong {
+          max-width: 560px;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          white-space: nowrap;
+          color: rgba(255,255,255,.94);
+          font-weight: 800;
+        }
+
+        .product-hero-grid {
+          display: grid;
+          grid-template-columns: minmax(0, 1fr) 360px;
+          gap: 34px;
+          align-items: end;
+        }
+
+        .product-hero-copy {
+          max-width: 840px;
+        }
+
+        .product-kicker-row {
+          display: flex;
+          gap: 10px;
+          flex-wrap: wrap;
+          margin-bottom: 20px;
+        }
+
+        .product-kicker,
+        .product-chip {
+          min-height: 34px;
+          padding: 0 13px;
+          border-radius: 999px;
+          display: inline-flex;
+          align-items: center;
+          backdrop-filter: blur(14px);
+          -webkit-backdrop-filter: blur(14px);
+          font-size: 12px;
+          font-weight: 900;
+          letter-spacing: .05em;
+        }
+
+        .product-kicker {
+          background: rgba(239,159,39,.24);
+          border: 1px solid rgba(239,159,39,.42);
+          color: #fff;
+          text-transform: uppercase;
+        }
+
+        .product-chip {
+          background: rgba(255,255,255,.12);
+          border: 1px solid rgba(255,255,255,.18);
+          color: rgba(255,255,255,.88);
+        }
+
+        .product-hero h1 {
+          margin: 0;
+          font-size: clamp(38px, 6vw, 78px);
+          line-height: .96;
+          letter-spacing: -.065em;
+          font-weight: 950;
+        }
+
+        .product-lead {
+          margin: 24px 0 0;
+          max-width: 760px;
+          color: rgba(255,255,255,.78);
+          font-size: clamp(16px, 2vw, 20px);
+          line-height: 1.75;
+          font-weight: 550;
+        }
+
+        .product-actions {
+          display: flex;
+          gap: 12px;
+          flex-wrap: wrap;
+          margin-top: 34px;
+        }
+
+        .primary-action,
+        .secondary-action {
+          min-height: 48px;
+          padding: 0 20px;
+          border-radius: 16px;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          text-decoration: none;
+          font-size: 14px;
+          font-weight: 850;
+          transition: transform .18s ease, box-shadow .18s ease, background .18s ease;
+        }
+
+        .primary-action {
+          border: none;
+          background: linear-gradient(135deg, ${ui.accent1}, ${ui.accent2});
+          color: #fff;
+          box-shadow: 0 14px 30px rgba(239,159,39,.30);
+        }
+
+        .secondary-action {
+          border: 1px solid rgba(255,255,255,.18);
+          background: rgba(255,255,255,.12);
+          color: #fff;
+          backdrop-filter: blur(14px);
+          -webkit-backdrop-filter: blur(14px);
+        }
+
+        .primary-action:hover,
+        .secondary-action:hover {
+          transform: translateY(-2px);
+        }
+
+        .product-summary-card {
+          border-radius: 24px;
+          padding: 22px;
+          background: rgba(255,255,255,.13);
+          border: 1px solid rgba(255,255,255,.16);
+          backdrop-filter: blur(22px);
+          -webkit-backdrop-filter: blur(22px);
+          box-shadow: 0 26px 90px rgba(0,0,0,.28);
+        }
+
+        .summary-eyebrow {
+          display: block;
+          margin-bottom: 12px;
+          color: ${ui.accent1};
+          font-size: 11px;
+          font-weight: 950;
+          letter-spacing: .12em;
+          text-transform: uppercase;
+        }
+
+        .summary-title {
+          display: grid;
+          gap: 4px;
+          padding-bottom: 18px;
+          margin-bottom: 18px;
+          border-bottom: 1px solid rgba(255,255,255,.12);
+        }
+
+        .summary-title strong {
+          font-size: 18px;
+          line-height: 1.25;
+        }
+
+        .summary-title span {
+          color: rgba(255,255,255,.62);
+          font-size: 14px;
+        }
+
+        .summary-list {
+          display: grid;
+          gap: 12px;
+        }
+
+        .summary-item {
+          display: grid;
+          gap: 4px;
+        }
+
+        .summary-item span {
+          color: rgba(255,255,255,.52);
+          font-size: 11px;
+          font-weight: 900;
+          letter-spacing: .09em;
+          text-transform: uppercase;
+        }
+
+        .summary-item strong {
+          color: #fff;
+          font-size: 14px;
+          line-height: 1.4;
+        }
+
+        .product-body {
+          width: 100%;
+          margin: 0;
+          padding: 0px 0 0;
+        }
+
+        .product-full-content {
+          width: 100%;
+        }
+
+        .product-content-card {
+          width: 100%;
+          overflow: hidden;
+          background: ${ui.cardBg};
+          border-top: 1px solid ${ui.cardBorder};
+          border-bottom: 1px solid ${ui.cardBorder};
+          box-shadow: ${ui.buttonShadow};
+        }
+
+        .product-content-head {
+          width: min(1180px, calc(100% - 40px));
+          margin: 0 auto;
+          padding: clamp(24px, 4vw, 42px) 0;
+        }
+
+        .section-title {
+          margin-bottom: 18px;
+        }
+
+        .section-title span {
+          display: block;
+          margin-bottom: 8px;
+          color: ${ui.accent1};
+          font-size: 11px;
+          font-weight: 950;
+          letter-spacing: .12em;
+          text-transform: uppercase;
+        }
+
+        .section-title h2 {
+          margin: 0;
+          font-size: clamp(26px, 3vw, 40px);
+          line-height: 1.05;
+          letter-spacing: -.045em;
+          font-weight: 950;
+          color: ${ui.text};
+        }
+
+        .product-content-head p {
+          max-width: 760px;
+          margin: 0;
+          color: ${ui.textSoft};
+          font-size: 15px;
+          line-height: 1.8;
+        }
+
+        .product-builder-shell {
+          width: 100%;
+          min-height: 720px;
+          background: ${dark ? '#020617' : '#ffffff'};
+          border-top: 1px solid ${ui.line};
+        }
+
+        .product-builder-canvas {
+          width: 100%;
+        }
+
+        .product-no-builder {
+          width: min(1180px, calc(100% - 40px));
+          margin: 0 auto;
+          padding: clamp(24px, 4vw, 42px) 0;
+          display: grid;
+          gap: 18px;
+        }
+
+        .product-gallery-section {
+          width: min(1180px, calc(100% - 40px));
+          margin: 0 auto;
+          padding: 38px 0 0;
+        }
+
+        .product-gallery-grid {
+          display: grid;
+          grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+          gap: 14px;
+        }
+
+        .product-gallery-item {
+          overflow: hidden;
+          border-radius: 18px;
+          border: 1px solid ${ui.cardBorder};
+          background: ${dark ? '#0b1220' : '#f8fafc'};
+          box-shadow: ${ui.buttonShadow};
+        }
+
+        .product-gallery-item img {
+          width: 100%;
+          height: 160px;
+          object-fit: cover;
+          display: block;
+        }
+
+        .product-bottom-cta-wrap {
+          width: min(1180px, calc(100% - 40px));
+          margin: 0 auto;
+          padding: 34px 0 84px;
+        }
+
+        .product-bottom-cta {
+          border-radius: 26px;
+          padding: clamp(24px, 4vw, 34px);
+          background:
+            radial-gradient(circle at top right, rgba(239,159,39,.24), transparent 42%),
+            ${dark ? '#0f172a' : '#111827'};
+          border: 1px solid rgba(255,255,255,.10);
+          color: #fff;
+          box-shadow: ${ui.buttonShadow};
+          display: grid;
+          grid-template-columns: minmax(0, 1fr) auto;
+          gap: 20px;
+          align-items: center;
+        }
+
+        .product-bottom-cta h3 {
+          margin: 0 0 8px;
+          font-size: clamp(22px, 3vw, 34px);
+          line-height: 1.05;
+          letter-spacing: -.04em;
+          font-weight: 950;
+        }
+
+        .product-bottom-cta p {
+          margin: 0;
+          max-width: 760px;
+          color: rgba(255,255,255,.70);
+          line-height: 1.7;
+          font-size: 15px;
+        }
+
+        .product-bottom-cta a {
+          min-height: 48px;
+          padding: 0 20px;
+          border-radius: 16px;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          background: linear-gradient(135deg, ${ui.accent1}, ${ui.accent2});
+          color: #fff;
+          text-decoration: none;
+          font-size: 14px;
+          font-weight: 900;
+          white-space: nowrap;
+          box-shadow: 0 14px 30px rgba(239,159,39,.28);
+          transition: transform .18s ease, box-shadow .18s ease;
+        }
+
+        .product-bottom-cta a:hover {
+          transform: translateY(-2px);
+          box-shadow: 0 18px 38px rgba(239,159,39,.34);
+        }
+
+        .product-state-page {
+          min-height: 100vh;
+          display: grid;
+          place-items: center;
+          padding: 24px;
+          font-family: Inter, Arial, Helvetica, sans-serif;
+        }
+
+        .product-state-card {
+          width: min(460px, 100%);
+          padding: 28px;
+          border-radius: 24px;
+          background: ${ui.cardBg};
+          border: 1px solid ${ui.cardBorder};
+          box-shadow: ${ui.buttonShadow};
+          color: ${ui.textSoft};
+          text-align: center;
+          font-size: 14px;
+        }
+
+        .product-state-card p {
+          margin: 0 0 18px;
+        }
+
+        .product-state-card button {
+          height: 44px;
+          padding: 0 18px;
+          border-radius: 14px;
+          border: none;
+          background: linear-gradient(135deg, ${ui.accent1}, ${ui.accent2});
+          color: #fff;
+          font-size: 14px;
+          font-weight: 800;
+          cursor: pointer;
+          box-shadow: 0 14px 30px rgba(239,159,39,.30);
+        }
+
+        @media (max-width: 980px) {
+          .product-hero {
+            min-height: auto;
+          }
+
+          .product-hero-inner {
+            padding: 128px 0 46px;
+          }
+
+          .product-hero-grid {
+            grid-template-columns: 1fr;
+          }
+
+          .product-bottom-cta {
+            grid-template-columns: 1fr;
+          }
+
+          .product-bottom-cta a {
+            width: fit-content;
+          }
+        }
+
+        @media (max-width: 640px) {
+          .product-hero-inner,
+          .product-content-head,
+          .product-no-builder,
+          .product-gallery-section,
+          .product-bottom-cta-wrap {
+            width: min(100% - 28px, 1180px);
+          }
+
+          .product-hero h1 {
+            font-size: 40px;
+          }
+
+          .product-actions {
+            flex-direction: column;
+          }
+
+          .primary-action,
+          .secondary-action,
+          .product-bottom-cta a {
+            width: 100%;
+          }
+
+          .product-bottom-cta {
+            border-radius: 22px;
+          }
+
+          .breadcrumb strong {
+            max-width: 260px;
+          }
         }
       `}</style>
 
-      <div
-        style={{
-          position: 'relative',
-          width: '100%',
-          height: '100vh',
-          background: ui.appBg,
-        }}
-      >
-        <div
-          style={{
-            position: 'absolute',
-            inset: 0,
-            overflowY: 'auto',
-            overflowX: 'hidden',
-          }}
-        >
-          <div
-            style={{
-              height: `${canvasHeight}px`,
-              width: '100%',
-              minHeight: '100vh',
-            }}
-          >
-            <div
-              ref={mountRef}
-              style={{
-                width: '100%',
-                height: '100%',
-              }}
-            />
+      <main className="product-detail-page">
+        <section className="product-hero">
+          <div className="product-hero-bg">
+            <img src={heroImage} alt="" />
+            <div className="product-hero-overlay" />
           </div>
-        </div>
 
-        <div
-          style={{
-            position: 'fixed',
-            top: '90px',
-            left: '16px',
-            zIndex: 9999,
-            display: 'flex',
-            alignItems: 'center',
-            gap: '10px',
-            flexWrap: 'wrap',
-          }}
-        >
-          <button
-            onClick={goBack}
-            aria-label={t('productDetail.back')}
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '10px',
-              height: '46px',
-              padding: '0 18px',
-              borderRadius: '16px',
-              border: `1px solid ${ui.buttonBorder}`,
-              background: ui.buttonBg,
-              color: ui.buttonText,
-              fontSize: '14px',
-              fontWeight: 700,
-              cursor: 'pointer',
-              backdropFilter: 'blur(14px)',
-              WebkitBackdropFilter: 'blur(14px)',
-              boxShadow: ui.buttonShadow,
-              transition: 'all .22s ease',
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.background = ui.buttonBgHover
-              e.currentTarget.style.transform = 'translateY(-2px)'
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.background = ui.buttonBg
-              e.currentTarget.style.transform = 'translateY(0)'
-            }}
-          >
-            <svg
-              width="16"
-              height="16"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2.2"
-            >
-              <path d="M19 12H5M12 5l-7 7 7 7" />
-            </svg>
-            {t('productDetail.back')}
-          </button>
+          <div className="product-hero-inner">
+            <nav className="breadcrumb" aria-label="Fil d’Ariane">
+              <Link href="/">Accueil</Link>
+              <span>/</span>
+              <Link href="/produits">Produits</Link>
+              <span>/</span>
+              <strong>{product.name}</strong>
+            </nav>
 
-          <button
-            onClick={() => router.push(leadHref)}
-            aria-label={t('productDetail.requestDemoAria')}
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '10px',
-              height: '46px',
-              padding: '0 18px',
-              borderRadius: '16px',
-              border: 'none',
-              background: `linear-gradient(135deg, ${ui.accent1} 0%, ${ui.accent2} 100%)`,
-              color: '#fff',
-              fontSize: '14px',
-              fontWeight: 800,
-              cursor: 'pointer',
-              backdropFilter: 'blur(14px)',
-              WebkitBackdropFilter: 'blur(14px)',
-              boxShadow: '0 14px 30px rgba(239,159,39,.30)',
-              transition: 'all .22s ease',
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.transform = 'translateY(-2px)'
-              e.currentTarget.style.filter = 'brightness(1.05)'
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.transform = 'translateY(0)'
-              e.currentTarget.style.filter = 'none'
-            }}
-          >
-            {t('productDetail.requestDemo')}
-            <svg
-              width="16"
-              height="16"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2.2"
-            >
-              <path d="M5 12h14M12 5l7 7-7 7" />
-            </svg>
-          </button>
-        </div>
+            <div className="product-hero-grid">
+              <div className="product-hero-copy">
+                <div className="product-kicker-row">
+                  <span className="product-kicker">Produit MD2I</span>
 
-        <div
-          style={{
-            position: 'fixed',
-            top: '90px',
-            right: '16px',
-            zIndex: 9999,
-          }}
-        >
-          {!detailVisible && (
-            <button
-              onClick={() => {
-                setDetailVisible(true)
-                startDetailAutoClose()
-              }}
-              aria-label={t('productDetail.showDetails')}
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '10px',
-                height: '46px',
-                padding: '0 18px',
-                borderRadius: '16px',
-                border: `1px solid ${ui.buttonBorder}`,
-                background: ui.buttonBg,
-                color: ui.buttonText,
-                fontSize: '14px',
-                fontWeight: 700,
-                cursor: 'pointer',
-                backdropFilter: 'blur(14px)',
-                WebkitBackdropFilter: 'blur(14px)',
-                boxShadow: ui.buttonShadow,
-                transition: 'all .22s ease',
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.background = ui.buttonBgHover
-                e.currentTarget.style.transform = 'translateY(-2px)'
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.background = ui.buttonBg
-                e.currentTarget.style.transform = 'translateY(0)'
-              }}
-            >
-              <svg
-                width="16"
-                height="16"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2.2"
-              >
-                <path d="M12 5v14M5 12h14" />
-              </svg>
-              {t('productDetail.showDetails')}
-            </button>
-          )}
-        </div>
+                  {product.category?.name && (
+                    <span className="product-chip">{product.category.name}</span>
+                  )}
 
-        {detailVisible && (
-          <div
-            style={{
-              position: 'fixed',
-              top: '90px',
-              right: '16px',
-              zIndex: 9999,
-              maxWidth: '360px',
-              width: 'calc(100vw - 32px)',
-            }}
-            onMouseEnter={clearDetailTimer}
-            onMouseLeave={startDetailAutoClose}
-          >
-            <div
-              style={{
-                borderRadius: '20px',
-                border: `1px solid ${ui.panelBorder}`,
-                background: ui.panelBg,
-                color: ui.panelText,
-                backdropFilter: 'blur(14px)',
-                WebkitBackdropFilter: 'blur(14px)',
-                boxShadow: ui.buttonShadow,
-                padding: '16px 18px',
-              }}
-            >
-              <div
-                style={{
-                  display: 'flex',
-                  alignItems: 'flex-start',
-                  justifyContent: 'space-between',
-                  gap: '12px',
-                  marginBottom: '12px',
-                }}
-              >
-                <div>
-                  <div
-                    style={{
-                      fontSize: '12px',
-                      fontWeight: 800,
-                      letterSpacing: '.08em',
-                      textTransform: 'uppercase',
-                      color: ui.panelMuted,
-                    }}
-                  >
-                    {t('productDetail.detailsTitle')}
+                  <span className="product-chip">
+                    {formatPrice(product.price, locale)}
+                  </span>
+                </div>
+
+                <h1>{product.name}</h1>
+
+                <p className="product-lead">
+                  {product.excerpt?.trim() || t('productsPage.card.noDescription')}
+                </p>
+
+                <div className="product-actions">
+                  <Link href={leadHref} className="primary-action">
+                    {t('productDetail.requestQuote')}
+                  </Link>
+
+                  <Link href="/produits" className="secondary-action">
+                    {t('productDetail.viewAllProducts')}
+                  </Link>
+                </div>
+              </div>
+
+              <aside className="product-summary-card">
+                <span className="summary-eyebrow">Fiche produit</span>
+
+                <div className="summary-title">
+                  <strong>{product.name}</strong>
+                  <span>{product.category?.name || 'Catalogue MD2I'}</span>
+                </div>
+
+                <div className="summary-list">
+                  <div className="summary-item">
+                    <span>Prix</span>
+                    <strong>{formatPrice(product.price, locale)}</strong>
                   </div>
 
-                  <div
-                    style={{
-                      marginTop: '4px',
-                      fontSize: '10px',
-                      color: ui.panelMuted,
-                      lineHeight: 1.4,
-                    }}
-                  >
-                    {t('productDetail.autoClose')}
+                  <div className="summary-item">
+                    <span>Publication</span>
+                    <strong>
+                      {formatDate(product.publishedAt || product.createdAt, locale)}
+                    </strong>
+                  </div>
+
+                  <div className="summary-item">
+                    <span>Référence</span>
+                    <strong>{product.slug || product.id}</strong>
                   </div>
                 </div>
-
-                <button
-                  onClick={() => {
-                    setDetailVisible(false)
-                    clearDetailTimer()
-                  }}
-                  aria-label={t('productDetail.closeDetails')}
-                  style={{
-                    width: '34px',
-                    height: '34px',
-                    borderRadius: '12px',
-                    border: `1px solid ${ui.panelBorder}`,
-                    background: ui.buttonBg,
-                    color: ui.buttonText,
-                    cursor: 'pointer',
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    flexShrink: 0,
-                    transition: 'all .18s ease',
-                  }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.background = ui.buttonBgHover
-                    e.currentTarget.style.transform = 'scale(1.04)'
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.background = ui.buttonBg
-                    e.currentTarget.style.transform = 'scale(1)'
-                  }}
-                >
-                  <svg
-                    width="14"
-                    height="14"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                  >
-                    <path d="M18 6 6 18M6 6l12 12" />
-                  </svg>
-                </button>
-              </div>
-
-              {product.category?.name && (
-                <div
-                  style={{
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    minHeight: '24px',
-                    padding: '0 10px',
-                    borderRadius: '999px',
-                    background: 'rgba(239,159,39,.10)',
-                    color: ui.accent1,
-                    fontSize: '10px',
-                    fontWeight: 800,
-                    letterSpacing: '.1em',
-                    textTransform: 'uppercase',
-                    marginBottom: '10px',
-                  }}
-                >
-                  {product.category.name}
-                </div>
-              )}
-
-              <div
-                style={{
-                  fontSize: '18px',
-                  lineHeight: 1.2,
-                  fontWeight: 800,
-                  letterSpacing: '-.03em',
-                }}
-              >
-                {product.name}
-              </div>
-
-              {product.excerpt?.trim() && (
-                <div
-                  style={{
-                    marginTop: '8px',
-                    fontSize: '12px',
-                    lineHeight: 1.65,
-                    color: ui.panelMuted,
-                  }}
-                >
-                  {product.excerpt}
-                </div>
-              )}
-
-              <div
-                style={{
-                  marginTop: '14px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  gap: '10px',
-                  flexWrap: 'wrap',
-                }}
-              >
-                <div
-                  style={{
-                    fontSize: '13px',
-                    fontWeight: 800,
-                    color: ui.accent1,
-                    letterSpacing: '-.01em',
-                  }}
-                >
-                  {formatPrice(product.price, locale)}
-                </div>
-
-                <div
-                  style={{
-                    fontSize: '11px',
-                    color: ui.panelMuted,
-                    fontWeight: 600,
-                  }}
-                >
-                  {formatDate(product.publishedAt || product.createdAt, locale)}
-                </div>
-              </div>
-
-              <button
-                onClick={() => router.push(leadHref)}
-                style={{
-                  width: '100%',
-                  marginTop: '14px',
-                  minHeight: '42px',
-                  borderRadius: '14px',
-                  border: 'none',
-                  background: `linear-gradient(135deg, ${ui.accent1} 0%, ${ui.accent2} 100%)`,
-                  color: '#fff',
-                  fontSize: '13px',
-                  fontWeight: 800,
-                  cursor: 'pointer',
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: '9px',
-                  boxShadow: '0 12px 26px rgba(239,159,39,.28)',
-                }}
-              >
-                {t('productDetail.requestQuote')}
-                <svg
-                  width="15"
-                  height="15"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2.2"
-                >
-                  <path d="M5 12h14M12 5l7 7-7 7" />
-                </svg>
-              </button>
+              </aside>
             </div>
           </div>
-        )}
-      </div>
+        </section>
+
+        <section className="product-body">
+          <div className="product-full-content">
+            <article className="product-content-card">
+              {hasGjsContent ? (
+                <div className="product-builder-shell">
+                  <div
+                    className="product-builder-canvas"
+                    style={{
+                      height: `${canvasHeight}px`,
+                      minHeight: '720px',
+                    }}
+                  >
+                    <div
+                      ref={mountRef}
+                      style={{
+                        width: '100%',
+                        height: '100%',
+                      }}
+                    />
+                  </div>
+                </div>
+              ) : (
+                <div className="product-no-builder">
+                  <p style={{ color: ui.textSoft, lineHeight: 1.8 }}>
+                    {product.excerpt?.trim() || t('productsPage.card.noDescription')}
+                  </p>
+                </div>
+              )}
+            </article>
+          </div>
+        </section>
+      </main>
     </>
   )
 }

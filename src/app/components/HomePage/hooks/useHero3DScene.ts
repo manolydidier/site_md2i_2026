@@ -62,6 +62,7 @@ export function useHero3DScene(
     // const statsEl    = refs.statsRef.current
 
     if (!root || !canvas || !eyebrowEl || !titleEl || !descEl || !btnsEl || !stepsEl || !progressEl) return
+    const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches
 
     // ── CSS variables ─────────────────────────────────────────────────────
     root.style.setProperty('--hero-bg',                  theme.bg)
@@ -173,12 +174,13 @@ export function useHero3DScene(
 
     // ── Rendu UI ──────────────────────────────────────────────────────────
     function renderButtons(slideIndex: number) {
-      btnsEl.innerHTML = ''
+      btnsEl!.innerHTML = ''
       slides[slideIndex].btns.forEach((btn) => {
-        const button = document.createElement('button')
-        button.className = `${refs.styles.heroBtn} ${btn.cls === 'primary' ? refs.styles.primary : refs.styles.secondary}`
-        button.textContent = btn.label
-        btnsEl.appendChild(button)
+        const link = document.createElement('a')
+        link.className = `${refs.styles.heroBtn} ${btn.cls === 'primary' ? refs.styles.primary : refs.styles.secondary}`
+        link.href = btn.href
+        link.textContent = btn.label
+        btnsEl!.appendChild(link)
       })
     }
 
@@ -226,9 +228,9 @@ export function useHero3DScene(
       if (!instant) animateTextOut()
 
       timers.push(setTimeout(() => {
-        eyebrowEl.textContent = s.eyebrow
-        titleEl.innerHTML     = s.title
-        descEl.textContent    = s.desc
+        eyebrowEl!.textContent = s.eyebrow
+        titleEl!.innerHTML     = s.title
+        descEl!.textContent    = s.desc
         renderButtons(idx)
         setFeatureContent(idx)
 
@@ -238,8 +240,8 @@ export function useHero3DScene(
           textEls().forEach((el) => { el.style.opacity = '1'; el.style.transform = 'translateY(0)' })
         }
 
-        progressEl.style.width = `${(idx / (slides.length - 1)) * 100}%`
-        Array.from(stepsEl.children).forEach((child, i) => {
+        progressEl!.style.width = `${(idx / (slides.length - 1)) * 100}%`
+        Array.from(stepsEl!.children).forEach((child, i) => {
           child.classList.toggle(refs.styles.active, i === idx)
         })
       }, instant ? 0 : 300))
@@ -337,20 +339,28 @@ export function useHero3DScene(
 
     // ── Resize ────────────────────────────────────────────────────────────
     function resize() {
-      const w = canvas.clientWidth
-      const h = canvas.clientHeight
+      const w = canvas!.clientWidth
+      const h = canvas!.clientHeight
       renderer.setSize(w, h, false)
       camera.aspect = w / h
       camera.updateProjectionMatrix()
     }
 
     // ── Navigation dots ───────────────────────────────────────────────────
-    stepsEl.innerHTML = ''
+    stepsEl!.innerHTML = ''
     slides.forEach((_, i) => {
-      const dot    = document.createElement('div')
+      const dot    = document.createElement('button')
+      dot.type = 'button'
       dot.className = `${refs.styles.heroDot}${i === 0 ? ` ${refs.styles.active}` : ''}`
+      dot.setAttribute(
+        'aria-label',
+        String(t('homeHero.controls.slide', {
+          index: i + 1,
+          defaultValue: `Aller au visuel ${i + 1}`,
+        }))
+      )
       dot.onclick   = () => transitionTo(i)
-      stepsEl.appendChild(dot)
+      stepsEl!.appendChild(dot)
     })
 
     // ── Stats counters ────────────────────────────────────────────────────
@@ -455,14 +465,16 @@ export function useHero3DScene(
     currentObjRef.current.scale.setScalar(0.56)
     scene.add(currentObjRef.current)
     setContent(0, true)
-autoSlideInterval = setInterval(() => {
-  if (transitioningRef.current) return
+    if (!prefersReducedMotion) {
+      autoSlideInterval = setInterval(() => {
+        if (transitioningRef.current) return
 
-  const current = currentSlideRef.current
-  const next = current >= slides.length - 1 ? 0 : current + 1
+        const current = currentSlideRef.current
+        const next = current >= slides.length - 1 ? 0 : current + 1
 
-  transitionTo(next)
-}, 5000)
+        transitionTo(next)
+      }, 5000)
+    }
     // ── Boucle d'animation — sans doublons ────────────────────────────────
     const animate = () => {
       animationId = requestAnimationFrame(animate)
@@ -471,7 +483,7 @@ autoSlideInterval = setInterval(() => {
       const obj = currentObjRef.current
 
       // Rotation et flottement de l'objet principal
-      if (obj && !transitioningRef.current) {
+      if (obj && !transitioningRef.current && !prefersReducedMotion) {
         obj.rotation.y += autoRotateYRef.current + mouseRef.current.x * 0.003
         obj.rotation.x += (mouseRef.current.y * 0.025 - obj.rotation.x) * 0.04
         obj.scale.setScalar(0.56 + Math.sin(clock * 1.1) * 0.012)
@@ -479,14 +491,14 @@ autoSlideInterval = setInterval(() => {
         obj.position.x   = Math.sin(clock * 0.45) * 0.02
         obj.position.z   = Math.max(obj.position.z, 0)
         autoRotateYRef.current *= 0.94
-      } else if (obj) {
+      } else if (obj && !prefersReducedMotion) {
         obj.position.y = Math.sin(clock * 0.7) * 0.07
       }
 
       // Particules — un seul bloc, avec garde showParticles
       if (particlesRef.current) {
         particlesRef.current.visible = showParticles
-        if (showParticles) {
+        if (showParticles && !prefersReducedMotion) {
           particlesRef.current.rotation.y += 0.0015
           particlesRef.current.rotation.x  = Math.sin(clock * 0.3) * 0.08
           const positions = particlesRef.current.geometry.attributes.position.array as Float32Array
@@ -500,7 +512,7 @@ autoSlideInterval = setInterval(() => {
       // Halo — un seul bloc
       if (haloRef.current) {
         haloRef.current.visible = showParticles
-        if (showParticles) {
+        if (showParticles && !prefersReducedMotion) {
           haloRef.current.scale.setScalar(1 + Math.sin(clock * 0.8) * 0.03)
           let spriteIndex = 0
           haloRef.current.traverse((child) => {
@@ -519,10 +531,12 @@ autoSlideInterval = setInterval(() => {
       }
 
       // Lumière orbitale
-      pointLight.position.x = Math.sin(clock * 0.5) * 3
-      pointLight.position.y = Math.cos(clock * 0.4) * 2
-      fillLight.position.x  = Math.sin(clock * 0.3 + Math.PI) * 4
-      fillLight.position.y  = Math.cos(clock * 0.25) * 2
+      if (!prefersReducedMotion) {
+        pointLight.position.x = Math.sin(clock * 0.5) * 3
+        pointLight.position.y = Math.cos(clock * 0.4) * 2
+        fillLight.position.x  = Math.sin(clock * 0.3 + Math.PI) * 4
+        fillLight.position.y  = Math.cos(clock * 0.25) * 2
+      }
 
       renderer.render(scene, camera)
     }

@@ -2,19 +2,19 @@
 
 .page {
   --gold: #ef9f27;
-  --gold-d: #b96d04;
-  --gold-soft: rgba(239, 159, 39, 0.1);
-  --gold-rim: rgba(239, 159, 39, 0.24);
-  --ink: #0c0d10;
-  --ink-80: rgba(12, 13, 16, 0.8);
-  --ink-68: rgba(12, 13, 16, 0.68);
-  --ink-45: rgba(12, 13, 16, 0.45);
-  --ink-15: rgba(12, 13, 16, 0.15);
-  --bg: #f8f7f3;
-  --surface: #ffffff;
-  --surface-soft: #fbfaf7;
-  --border: rgba(12, 13, 16, 0.08);
-  --shadow: 0 20px 70px rgba(12, 13, 16, 0.1);
+  --gold-d: var(--public-accent-strong, #b96d04);
+  --gold-soft: var(--public-accent-soft, rgba(239, 159, 39, 0.1));
+  --gold-rim: color-mix(in srgb, var(--public-accent, #ef9f27) 28%, transparent);
+  --ink: var(--public-text, #0c0d10);
+  --ink-80: var(--public-text, rgba(12, 13, 16, 0.8));
+  --ink-68: var(--public-text-soft, rgba(12, 13, 16, 0.68));
+  --ink-45: var(--public-text-muted, rgba(12, 13, 16, 0.45));
+  --ink-15: var(--public-border-strong, rgba(12, 13, 16, 0.15));
+  --bg: var(--public-bg, #f8f7f3);
+  --surface: var(--public-surface-strong, #ffffff);
+  --surface-soft: var(--public-surface-muted, #fbfaf7);
+  --border: var(--public-border, rgba(12, 13, 16, 0.08));
+  --shadow: var(--public-shadow, 0 20px 70px rgba(12, 13, 16, 0.1));
   --shadow-soft: 0 12px 34px rgba(12, 13, 16, 0.06);
   --radius-xl: 32px;
   --radius-lg: 24px;
@@ -23,9 +23,11 @@
 
   min-height: 100vh;
   color: var(--ink);
-  background:
+  background: var(
+    --public-page-gradient,
     radial-gradient(circle at top left, rgba(239, 159, 39, 0.14), transparent 34%),
-    linear-gradient(180deg, #fffdf8 0%, var(--bg) 44%, #f3f1ec 100%);
+    linear-gradient(180deg, #fffdf8 0%, var(--bg) 44%, #f3f1ec 100%)
+  );
   font-family: 'DM Sans', system-ui, sans-serif;
   overflow-x: hidden;
 }

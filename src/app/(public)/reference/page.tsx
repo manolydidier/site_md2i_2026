@@ -92,7 +92,9 @@ function stripHtml(html?: string) {
 function getReferenceParam(reference: Reference) {
   return encodeURIComponent(reference.slug || reference.id || reference.title);
 }
-
+function getReferenceHref(reference: Reference) {
+  return `/reference/${getReferenceParam(reference)}`;
+}
 function getNextId(projects: Reference[], activeId: string, direction: 1 | -1) {
   if (projects.length === 0) return activeId;
 
@@ -1064,6 +1066,26 @@ function ReferenceListItem({
             </button>
 
             <Link
+              href={getReferenceHref(reference)}
+              style={{
+                height: 40,
+                padding: "0 16px",
+                borderRadius: 999,
+                border: `1px solid ${t.orangeBorder}`,
+                background: t.orangeSoft,
+                color: ORANGE,
+                display: "inline-flex",
+                alignItems: "center",
+                justifyContent: "center",
+                textDecoration: "none",
+                fontSize: 12,
+                fontWeight: 950,
+              }}
+            >
+              Voir la fiche
+            </Link>
+
+            <Link
               href={`/contact-commercial?reference=${getReferenceParam(reference)}`}
               style={{
                 height: 40,
@@ -1219,7 +1241,7 @@ function ReferenceCardItem({
         <div
           style={{
             display: "grid",
-            gridTemplateColumns: "1fr 1fr",
+            gridTemplateColumns: "1fr 1fr 1fr",
             gap: 8,
           }}
         >
@@ -1239,6 +1261,25 @@ function ReferenceCardItem({
           >
             {translate("referencePage.actions.details")}
           </button>
+
+          <Link
+            href={getReferenceHref(reference)}
+            style={{
+              height: 38,
+              borderRadius: 999,
+              border: `1px solid ${t.orangeBorder}`,
+              background: t.orangeSoft,
+              color: ORANGE,
+              display: "inline-flex",
+              alignItems: "center",
+              justifyContent: "center",
+              textDecoration: "none",
+              fontSize: 12,
+              fontWeight: 950,
+            }}
+          >
+            Fiche
+          </Link>
 
           <Link
             href={`/contact-commercial?reference=${getReferenceParam(reference)}`}
@@ -3411,31 +3452,57 @@ export default function MapReferences() {
                     ))}
                   </div>
 
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setTooltipData((prev) => ({ ...prev, visible: false }));
-
-                      setModalData({
-                        visible: true,
-                        projects: tooltipData.projects,
-                        activeTabId: tooltipData.activeTabId,
-                      });
-                    }}
+                  <div
                     style={{
-                      width: "100%",
-                      height: 42,
-                      borderRadius: 999,
-                      background: ORANGE,
-                      border: "none",
-                      color: "#1A0D00",
-                      fontSize: 12,
-                      fontWeight: 950,
-                      cursor: "pointer",
+                      display: "grid",
+                      gridTemplateColumns: "1fr 1fr",
+                      gap: 8,
                     }}
                   >
-                    {translate("referencePage.actions.viewDetails")}
-                  </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setTooltipData((prev) => ({ ...prev, visible: false }));
+
+                        setModalData({
+                          visible: true,
+                          projects: tooltipData.projects,
+                          activeTabId: tooltipData.activeTabId,
+                        });
+                      }}
+                      style={{
+                        height: 42,
+                        borderRadius: 999,
+                        background: ORANGE,
+                        border: "none",
+                        color: "#1A0D00",
+                        fontSize: 12,
+                        fontWeight: 950,
+                        cursor: "pointer",
+                      }}
+                    >
+                      {translate("referencePage.actions.viewDetails")}
+                    </button>
+
+                    <Link
+                      href={getReferenceHref(tooltipActiveProject)}
+                      style={{
+                        height: 42,
+                        borderRadius: 999,
+                        background: t.orangeSoft,
+                        border: `1px solid ${t.orangeBorder}`,
+                        color: ORANGE,
+                        fontSize: 12,
+                        fontWeight: 950,
+                        display: "inline-flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        textDecoration: "none",
+                      }}
+                    >
+                      Voir la fiche
+                    </Link>
+                  </div>
                 </div>
               </div>
             </div>
@@ -3785,6 +3852,33 @@ export default function MapReferences() {
                             )}
                           </div>
                         </section>
+
+                        <Link
+                          href={getReferenceHref(modalActiveProject)}
+                          onClick={() =>
+                            setModalData((prev) => ({
+                              ...prev,
+                              visible: false,
+                            }))
+                          }
+                          style={{
+                            width: "100%",
+                            height: 48,
+                            borderRadius: 999,
+                            background: t.orangeSoft,
+                            border: `1px solid ${t.orangeBorder}`,
+                            color: ORANGE,
+                            fontSize: 14,
+                            fontWeight: 950,
+                            cursor: "pointer",
+                            display: "inline-flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            textDecoration: "none",
+                          }}
+                        >
+                          Voir la fiche complète
+                        </Link>
 
                         <Link
                           href={`/contact-commercial?reference=${getReferenceParam(

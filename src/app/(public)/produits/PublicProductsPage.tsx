@@ -345,9 +345,17 @@ function ProductCard({
     <motion.article
       ref={cardRef}
       className={s.card}
+      role="link"
+      tabIndex={0}
       onMouseMove={onMouseMove}
       onMouseLeave={onMouseLeave}
       onClick={() => onNavigate(detailHref)}
+      onKeyDown={(e) => {
+        if (e.key !== 'Enter' && e.key !== ' ') return
+        e.preventDefault()
+        onNavigate(detailHref)
+      }}
+      aria-label={`${t('productsPage.card.viewSheet')} : ${product.name}`}
       initial={prefersReducedMotion ? false : { opacity: 0, y: 34, scale: 0.988 }}
       whileInView={prefersReducedMotion ? {} : { opacity: 1, y: 0, scale: 1 }}
       viewport={{ once: true, amount: 0.2 }}
@@ -504,7 +512,7 @@ export default function PublicProductsPage({ router }: PublicProductsPageProps) 
   const reqId = useRef(0)
   const filterRef = useRef<HTMLDivElement>(null)
   const sortRef = useRef<HTMLDivElement>(null)
-  const autoCloseRef = useRef<ReturnType<typeof window.setTimeout> | null>(null)
+  const autoCloseRef = useRef<number | null>(null)
 
   const isDark = mounted ? dark : false
   const { prog, top } = useScroll()
@@ -860,6 +868,8 @@ export default function PublicProductsPage({ router }: PublicProductsPageProps) 
                   className={`${s.dropBtn} ${
                     filterOpen || activeFilterCount ? s.dropBtnActive : ''
                   }`}
+                  aria-expanded={filterOpen}
+                  aria-haspopup="menu"
                   onClick={() => {
                     const next = !filterOpen
 
@@ -1037,6 +1047,8 @@ export default function PublicProductsPage({ router }: PublicProductsPageProps) 
                   className={`${s.dropBtn} ${
                     sortOpen || sort !== 'date-desc' ? s.dropBtnActive : ''
                   }`}
+                  aria-expanded={sortOpen}
+                  aria-haspopup="menu"
                   onClick={() => {
                     const next = !sortOpen
 
@@ -1127,7 +1139,7 @@ export default function PublicProductsPage({ router }: PublicProductsPageProps) 
                 <span className={s.chip}>
                   {activeCat.name}
 
-                  <button type="button" onClick={() => onCat('')}>
+                  <button type="button" onClick={() => onCat('')} aria-label={t('common.clear')}>
                     <IconX />
                   </button>
                 </span>
@@ -1137,7 +1149,7 @@ export default function PublicProductsPage({ router }: PublicProductsPageProps) 
                 <span className={s.chip}>
                   &quot;{search.trim()}&quot;
 
-                  <button type="button" onClick={() => onSearch('')}>
+                  <button type="button" onClick={() => onSearch('')} aria-label={t('common.clear')}>
                     <IconX />
                   </button>
                 </span>
@@ -1147,7 +1159,7 @@ export default function PublicProductsPage({ router }: PublicProductsPageProps) 
                 <span className={s.chip}>
                   Min {formatPrice(minPrice, locale)}
 
-                  <button type="button" onClick={() => onMinPrice('')}>
+                  <button type="button" onClick={() => onMinPrice('')} aria-label={t('common.clear')}>
                     <IconX />
                   </button>
                 </span>
@@ -1157,7 +1169,7 @@ export default function PublicProductsPage({ router }: PublicProductsPageProps) 
                 <span className={s.chip}>
                   Max {formatPrice(maxPrice, locale)}
 
-                  <button type="button" onClick={() => onMaxPrice('')}>
+                  <button type="button" onClick={() => onMaxPrice('')} aria-label={t('common.clear')}>
                     <IconX />
                   </button>
                 </span>
@@ -1167,7 +1179,7 @@ export default function PublicProductsPage({ router }: PublicProductsPageProps) 
                 <span className={s.chip}>
                   {t('productsPage.withImage')}
 
-                  <button type="button" onClick={() => onImageMode('all')}>
+                  <button type="button" onClick={() => onImageMode('all')} aria-label={t('common.clear')}>
                     <IconX />
                   </button>
                 </span>
@@ -1177,7 +1189,7 @@ export default function PublicProductsPage({ router }: PublicProductsPageProps) 
                 <span className={s.chip}>
                   {t('productsPage.withoutImage')}
 
-                  <button type="button" onClick={() => onImageMode('all')}>
+                  <button type="button" onClick={() => onImageMode('all')} aria-label={t('common.clear')}>
                     <IconX />
                   </button>
                 </span>

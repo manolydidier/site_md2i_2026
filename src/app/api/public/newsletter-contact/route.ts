@@ -1,6 +1,9 @@
 // src/app/api/public/newsletter-contact/route.ts
 
 import { NextRequest, NextResponse } from "next/server";
+
+        import { Prisma } from '../../../../generated/prisma/client'
+
 import { z } from "zod";
 
 import { prisma } from "@/app/lib/prisma";
@@ -10,21 +13,154 @@ export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
 const newsletterContactSchema = z.object({
-  email: z.string().trim().email("Email invalide"),
+  email: z.string().trim().max(254, "Email trop long").email("Email invalide"),
 
-  pageUrl: z.string().trim().optional().nullable(),
+  pageUrl: z.string().trim().max(1000).optional().nullable(),
 
-  source: z.string().trim().optional().nullable(),
+  source: z.string().trim().max(120).optional().nullable(),
+
+  website: z.string().trim().max(200).optional().nullable(),
+
+  submittedAt: z.coerce.number().int().positive().optional().nullable(),
 
   location: z
     .object({
-      latitude: z.number().optional().nullable(),
-      longitude: z.number().optional().nullable(),
-      accuracy: z.number().optional().nullable(),
+      latitude: z.number().min(-90).max(90).optional().nullable(),
+      longitude: z.number().min(-180).max(180).optional().nullable(),
+      accuracy: z.number().min(0).max(100000).optional().nullable(),
     })
     .optional()
     .nullable(),
 });
+
+type RateLimitBucket = {
+  count: number;
+  resetAt: number;
+};
+
+const MAX_CONTENT_LENGTH = 10_000;
+const MIN_SUBMIT_DELAY_MS = 1_200;
+const MAX_SUBMIT_AGE_MS = 24 * 60 * 60 * 1000;
+const RATE_LIMIT_WINDOW_MS = 10 * 60 * 1000;
+const RATE_LIMIT_MAX_REQUESTS = 6;
+
+const globalForNewsletterSecurity = globalThis as unknown as {
+  publicNewsletterRateLimit?: Map<string, RateLimitBucket>;
+};
+
+const rateLimitStore =
+  globalForNewsletterSecurity.publicNewsletterRateLimit ??
+  new Map<string, RateLimitBucket>();
+
+globalForNewsletterSecurity.publicNewsletterRateLimit = rateLimitStore;
+
+function getClientIp(request: NextRequest) {
+  return (
+    request.headers.get("cf-connecting-ip") ||
+    request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
+    request.headers.get("x-real-ip") ||
+    "unknown"
+  );
+}
+
+function getAllowedOrigins() {
+  const envOrigins = process.env.PUBLIC_ALLOWED_ORIGINS
+    ? process.env.PUBLIC_ALLOWED_ORIGINS.split(",")
+        .map((origin) => origin.trim())
+        .filter(Boolean)
+    : [];
+
+  return [
+    ...envOrigins,
+    process.env.NEXT_PUBLIC_APP_URL,
+    process.env.NEXT_PUBLIC_SITE_URL,
+    process.env.APP_URL,
+    process.env.SITE_URL,
+    process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "",
+    "http://localhost:3000",
+    "http://127.0.0.1:3000",
+    "http://192.168.1.2:3000",
+  ]
+    .filter(Boolean)
+    .map((origin) => String(origin).replace(/\/$/, ""));
+}
+
+function getRequestOrigin(request: NextRequest) {
+  const origin = request.headers.get("origin");
+  const referer = request.headers.get("referer");
+
+  if (origin) {
+    return origin.replace(/\/$/, "");
+  }
+
+  if (referer) {
+    try {
+      return new URL(referer).origin.replace(/\/$/, "");
+    } catch {
+      return "";
+    }
+  }
+
+  return "";
+}
+
+function isAllowedOrigin(request: NextRequest) {
+  const requestOrigin = getRequestOrigin(request);
+
+  if (!requestOrigin) {
+    return true;
+  }
+
+  return getAllowedOrigins().includes(requestOrigin);
+}
+
+function checkRateLimit(key: string) {
+  const now = Date.now();
+
+  for (const [storedKey, record] of rateLimitStore.entries()) {
+    if (record.resetAt <= now) {
+      rateLimitStore.delete(storedKey);
+    }
+  }
+
+  const record = rateLimitStore.get(key);
+
+  if (!record || record.resetAt <= now) {
+    rateLimitStore.set(key, {
+      count: 1,
+      resetAt: now + RATE_LIMIT_WINDOW_MS,
+    });
+
+    return true;
+  }
+
+  if (record.count >= RATE_LIMIT_MAX_REQUESTS) {
+    return false;
+  }
+
+  record.count += 1;
+  rateLimitStore.set(key, record);
+
+  return true;
+}
+
+function validateSubmissionTiming(submittedAt?: number | null) {
+  if (!submittedAt) {
+    return "Session du formulaire invalide.";
+  }
+
+  const elapsed = Date.now() - submittedAt;
+
+  if (elapsed < MIN_SUBMIT_DELAY_MS) {
+    return "Envoi trop rapide. Veuillez réessayer.";
+  }
+
+  if (elapsed > MAX_SUBMIT_AGE_MS) {
+    return "Session expirée. Veuillez recharger la page.";
+  }
+
+  return null;
+}
 
 function titleCase(value: string) {
   return value
@@ -178,6 +314,52 @@ function buildMetadata({
 
 export async function POST(req: NextRequest) {
   try {
+    if (!isAllowedOrigin(req)) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: "Origine de la requête non autorisée.",
+        },
+        { status: 403 }
+      );
+    }
+
+    const contentType = req.headers.get("content-type") || "";
+
+    if (!contentType.toLowerCase().includes("application/json")) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: "Format de requête invalide.",
+        },
+        { status: 415 }
+      );
+    }
+
+    const contentLength = Number(req.headers.get("content-length") || 0);
+
+    if (contentLength > MAX_CONTENT_LENGTH) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: "La requête est trop volumineuse.",
+        },
+        { status: 413 }
+      );
+    }
+
+    const ipAddress = getClientIp(req);
+
+    if (!checkRateLimit(`newsletter:ip:${ipAddress}`)) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: "Trop de tentatives. Veuillez patienter avant de réessayer.",
+        },
+        { status: 429 }
+      );
+    }
+
     const body = await req.json();
 
     const parsed = newsletterContactSchema.safeParse(body);
@@ -192,13 +374,47 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    if (parsed.data.website?.trim()) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: "Demande refusée.",
+        },
+        { status: 400 }
+      );
+    }
+
+    const timingError = validateSubmissionTiming(parsed.data.submittedAt);
+
+    if (timingError) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: timingError,
+        },
+        { status: timingError.includes("rapide") ? 429 : 400 }
+      );
+    }
+
+    const normalizedEmail = parsed.data.email.trim().toLowerCase();
+
+    if (!checkRateLimit(`newsletter:email:${ipAddress}:${normalizedEmail}`)) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: "Trop de tentatives pour cet email.",
+        },
+        { status: 429 }
+      );
+    }
+
     const userId = await getCrmOwnerUserId();
 
     const source = parsed.data.source || "PUBLIC_FOOTER_NEWSLETTER";
     const pageUrl = parsed.data.pageUrl || null;
     const now = new Date();
 
-    const inferred = inferContactFromEmail(parsed.data.email);
+    const inferred = inferContactFromEmail(normalizedEmail);
 
     const crmStatusOptionId = await getDefaultCrmStatusOptionId(userId);
 
@@ -270,7 +486,7 @@ export async function POST(req: NextRequest) {
             consentDate: now,
             consentSource: source,
 
-            metadata: metadata as any,
+            metadata: metadata as Prisma.InputJsonValue,
           },
           include: {
             group: true,
@@ -309,7 +525,7 @@ export async function POST(req: NextRequest) {
             consentDate: now,
             consentSource: source,
 
-            metadata: metadata as any,
+            metadata: metadata as Prisma.InputJsonValue,
           },
           include: {
             group: true,

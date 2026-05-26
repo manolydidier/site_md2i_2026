@@ -3,6 +3,41 @@ import Link from 'next/link'
 import { T } from '@/app/i18n/T'
 import styles from './apropos.module.css'
 
+const aboutImages = {
+  heroPanel:
+    'https://images.unsplash.com/photo-1497366754035-f200968a6e72?auto=format&fit=crop&w=900&q=80',
+  editorial:
+    'https://images.unsplash.com/photo-1552664730-d307ca884978?auto=format&fit=crop&w=1200&q=80',
+  approach:
+    'https://images.unsplash.com/photo-1517245386807-bb43f82c33c4?auto=format&fit=crop&w=1200&q=80',
+}
+
+const timelineImages = [
+  'https://images.unsplash.com/photo-1497366216548-37526070297c?auto=format&fit=crop&w=900&q=80',
+  'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?auto=format&fit=crop&w=900&q=80',
+  'https://images.unsplash.com/photo-1522202176988-66273c2fd55f?auto=format&fit=crop&w=900&q=80',
+  'https://images.unsplash.com/photo-1551434678-e076c223a692?auto=format&fit=crop&w=900&q=80',
+]
+
+const teamImages = [
+  'https://images.unsplash.com/photo-1556761175-b413da4baf72?auto=format&fit=crop&w=900&q=80',
+  'https://images.unsplash.com/photo-1454165804606-c3d57bc86b40?auto=format&fit=crop&w=900&q=80',
+  'https://images.unsplash.com/photo-1515879218367-8466d910aaa4?auto=format&fit=crop&w=900&q=80',
+  'https://images.unsplash.com/photo-1553877522-43269d4ea984?auto=format&fit=crop&w=900&q=80',
+]
+
+const unitImages = [
+  'https://images.unsplash.com/photo-1556761175-4b46a572b786?auto=format&fit=crop&w=900&q=80',
+  'https://images.unsplash.com/photo-1504384308090-c894fdcc538d?auto=format&fit=crop&w=900&q=80',
+  'https://images.unsplash.com/photo-1518773553398-650c184e0bb3?auto=format&fit=crop&w=900&q=80',
+  'https://images.unsplash.com/photo-1551288049-bebda4e38f71?auto=format&fit=crop&w=900&q=80',
+]
+
+const officeImages = [
+  'https://images.unsplash.com/photo-1502602898657-3e91760cbb34?auto=format&fit=crop&w=900&q=80',
+  'https://images.unsplash.com/photo-1516026672322-bc52d61a55d5?auto=format&fit=crop&w=900&q=80',
+]
+
 export const metadata: Metadata = {
   title: 'À propos | MD2I',
   description:
@@ -201,6 +236,12 @@ export default function AboutPage() {
         <div className={styles.container}>
           <div className={styles.heroShell}>
             <div className={styles.heroMain}>
+              <nav className={styles.breadcrumb} aria-label="Fil d’Ariane">
+                <Link href="/">Accueil</Link>
+                <span>/</span>
+                <strong>À propos</strong>
+              </nav>
+
               <span className={styles.badge}>
                 <T k="aboutPage.heroBadge">Le cabinet MD2I</T>
               </span>
@@ -227,7 +268,7 @@ export default function AboutPage() {
               </p>
 
               <div className={styles.heroActions}>
-                <Link href="/portfolio" className={`${styles.btn} ${styles.btnPrimary}`}>
+                <Link href="/reference" className={`${styles.btn} ${styles.btnPrimary}`}>
                   <T k="aboutPage.referencesCta">Voir nos références</T>
                 </Link>
                 <Link href="/contact" className={`${styles.btn} ${styles.btnSecondary}`}>
@@ -237,6 +278,19 @@ export default function AboutPage() {
             </div>
 
             <aside className={styles.heroPanel}>
+              <div className={styles.heroImageCard}>
+                <img
+                  src={aboutImages.heroPanel}
+                  alt=""
+                  loading="eager"
+                />
+                <span>
+                  <T k="aboutPage.heroImageCaption">
+                    Méthode, terrain et accompagnement logiciel
+                  </T>
+                </span>
+              </div>
+
               <div className={styles.heroPanelIntro}>
                 <span className={styles.heroPanelLabel}>
                   <T k="aboutPage.panelLabel">Coordination</T>
@@ -332,14 +386,17 @@ export default function AboutPage() {
                 </T>
               </h2>
             </div>
-            <p>
-              <T k="aboutPage.sections.positioningText">
-                MD2I privilégie une approche sobre : limiter la complexité
-                visuelle, clarifier les usages et concentrer l’effort sur la
-                qualité des processus, la fiabilité des données et la
-                continuité du support.
-              </T>
-            </p>
+            <div className={styles.editorialVisual}>
+              <img src={aboutImages.editorial} alt="" loading="lazy" />
+              <p>
+                <T k="aboutPage.sections.positioningText">
+                  MD2I privilégie une approche sobre : limiter la complexité
+                  visuelle, clarifier les usages et concentrer l’effort sur la
+                  qualité des processus, la fiabilité des données et la
+                  continuité du support.
+                </T>
+              </p>
+            </div>
           </div>
         </div>
       </section>
@@ -369,6 +426,10 @@ export default function AboutPage() {
               <article key={item.title} className={styles.timelineItem}>
                 <div className={styles.timelineMarker}>{index + 1}</div>
                 <div className={styles.timelineContent}>
+                  <div className={styles.timelineVisual}>
+                    <img src={timelineImages[index]} alt="" loading="lazy" />
+                  </div>
+
                   <div className={styles.timelineYear}>
                     <T k={`aboutPage.history.${index}.year`}>
                       {item.year}
@@ -414,6 +475,10 @@ export default function AboutPage() {
           <div className={styles.membersGrid}>
             {teamMembers.map((member, index) => (
               <article key={member.name + member.role} className={styles.memberCard}>
+                <div className={styles.memberPhoto}>
+                  <img src={teamImages[index]} alt="" loading="lazy" />
+                </div>
+
                 <div className={styles.memberTop}>
                   <div className={styles.memberAvatar}>{member.initials}</div>
                   <div className={styles.memberHeading}>
@@ -490,6 +555,10 @@ export default function AboutPage() {
           <div className={styles.teamGrid}>
             {teamUnits.map((unit, unitIndex) => (
               <article key={unit.title} className={styles.teamCard}>
+                <div className={styles.teamVisual}>
+                  <img src={unitImages[unitIndex]} alt="" loading="lazy" />
+                </div>
+
                 <div className={styles.teamCardTop}>
                   <h3>
                     <T k={`aboutPage.teamUnits.${unitIndex}.title`}>
@@ -537,6 +606,26 @@ export default function AboutPage() {
             </p>
           </div>
 
+          <div className={styles.approachVisual}>
+            <img src={aboutImages.approach} alt="" loading="lazy" />
+            <div>
+              <span className={styles.sectionKicker}>
+                <T k="aboutPage.sections.methodVisualKicker">Illustration</T>
+              </span>
+              <h3>
+                <T k="aboutPage.sections.methodVisualTitle">
+                  Des solutions construites avec les équipes, pas seulement pour elles
+                </T>
+              </h3>
+              <p>
+                <T k="aboutPage.sections.methodVisualText">
+                  Les outils MD2I sont pensés pour être compris, transmis et
+                  utilisés durablement dans des contextes opérationnels réels.
+                </T>
+              </p>
+            </div>
+          </div>
+
           <div className={styles.commitmentGrid}>
             {commitments.map((item, index) => (
               <article key={item.title} className={styles.commitmentCard}>
@@ -572,6 +661,10 @@ export default function AboutPage() {
               <div className={styles.officeGrid}>
                 {offices.map((office, index) => (
                   <div key={office.title} className={styles.officeCard}>
+                    <div className={styles.officeImage}>
+                      <img src={officeImages[index]} alt="" loading="lazy" />
+                    </div>
+
                     <h3>{office.title}</h3>
                     <p>
                       <T k={`aboutPage.offices.${index}.text`}>

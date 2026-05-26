@@ -372,6 +372,7 @@ export default function ProductLeadForm({
           headers: {
             Accept: "application/json",
           },
+          credentials: "same-origin",
         });
 
         const data = await response.json();
@@ -589,6 +590,7 @@ export default function ProductLeadForm({
           source: resolveSourceFromUtm(tracking.utmSource),
           ...tracking,
         }),
+        credentials: "same-origin",
       });
 
       let data: { success?: boolean; error?: string; message?: string } | null =

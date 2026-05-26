@@ -37,6 +37,8 @@ const RATE_LIMIT_WINDOW_MS = 60_000;
 const RATE_LIMIT_MAX_REQUESTS = 5;
 const MIN_SUBMIT_DELAY_MS = 1_800;
 const MAX_SUBMIT_AGE_MS = 1000 * 60 * 60 * 24;
+const MAX_CONTENT_LENGTH = 32_000;
+const MAX_MESSAGE_LINKS = 3;
 
 const globalForRateLimit = globalThis as unknown as {
   crmLeadRateLimit?: Map<string, RateLimitBucket>;
@@ -171,8 +173,66 @@ function getClientIp(request: Request) {
   );
 }
 
+function getAllowedOrigins() {
+  const envOrigins = process.env.PUBLIC_ALLOWED_ORIGINS
+    ? process.env.PUBLIC_ALLOWED_ORIGINS.split(",")
+        .map((origin) => origin.trim())
+        .filter(Boolean)
+    : [];
+
+  return [
+    ...envOrigins,
+    process.env.NEXT_PUBLIC_APP_URL,
+    process.env.NEXT_PUBLIC_SITE_URL,
+    process.env.APP_URL,
+    process.env.SITE_URL,
+    process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "",
+    "http://localhost:3000",
+    "http://127.0.0.1:3000",
+    "http://192.168.1.2:3000",
+  ]
+    .filter(Boolean)
+    .map((origin) => String(origin).replace(/\/$/, ""));
+}
+
+function getRequestOrigin(request: Request) {
+  const origin = request.headers.get("origin");
+  const referer = request.headers.get("referer");
+
+  if (origin) {
+    return origin.replace(/\/$/, "");
+  }
+
+  if (referer) {
+    try {
+      return new URL(referer).origin.replace(/\/$/, "");
+    } catch {
+      return "";
+    }
+  }
+
+  return "";
+}
+
+function isAllowedOrigin(request: Request) {
+  const requestOrigin = getRequestOrigin(request);
+
+  if (!requestOrigin) {
+    return true;
+  }
+
+  return getAllowedOrigins().includes(requestOrigin);
+}
+
 function checkRateLimit(key: string) {
   const now = Date.now();
+
+  for (const [storedKey, bucket] of rateLimitStore.entries()) {
+    if (bucket.resetAt <= now) {
+      rateLimitStore.delete(storedKey);
+    }
+  }
+
   const bucket = rateLimitStore.get(key);
 
   if (!bucket || now > bucket.resetAt) {
@@ -192,6 +252,13 @@ function checkRateLimit(key: string) {
   rateLimitStore.set(key, bucket);
 
   return true;
+}
+
+function countSuspiciousLinks(value: string) {
+  return (
+    value.match(/https?:\/\/|www\.|\.com|\.net|\.org|\.io|\.ru|\.cn/gi)
+      ?.length || 0
+  );
 }
 
 function resolveLeadSource(source?: string): CrmLeadSourceValue {
@@ -306,20 +373,61 @@ function validateSecurity(data: z.infer<typeof leadSchema>) {
     };
   }
 
+  if (countSuspiciousLinks(message) > MAX_MESSAGE_LINKS) {
+    return {
+      status: 400,
+      error: "Le message contient trop de liens.",
+    };
+  }
+
   return null;
 }
 
 export async function POST(request: Request) {
   try {
+    if (!isAllowedOrigin(request)) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: "Origine de la requête non autorisée.",
+        },
+        { status: 403 }
+      );
+    }
+
     const contentType = request.headers.get("content-type") || "";
 
-    if (!contentType.includes("application/json")) {
+    if (!contentType.toLowerCase().includes("application/json")) {
       return NextResponse.json(
         {
           success: false,
           error: "Format de requête invalide.",
         },
         { status: 415 }
+      );
+    }
+
+    const contentLength = Number(request.headers.get("content-length") || 0);
+
+    if (contentLength > MAX_CONTENT_LENGTH) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: "La requête est trop volumineuse.",
+        },
+        { status: 413 }
+      );
+    }
+
+    const clientIp = getClientIp(request);
+
+    if (!checkRateLimit(`crm-lead:ip:${clientIp}`)) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: "Trop de tentatives. Veuillez patienter avant de réessayer.",
+        },
+        { status: 429 }
       );
     }
 
@@ -365,8 +473,7 @@ export async function POST(request: Request) {
     }
 
     const email = normalizeEmail(data.email);
-    const clientIp = getClientIp(request);
-    const rateLimitKey = `${clientIp}:${email}`;
+    const rateLimitKey = `crm-lead:email:${clientIp}:${email}`;
 
     if (!checkRateLimit(rateLimitKey)) {
       return NextResponse.json(

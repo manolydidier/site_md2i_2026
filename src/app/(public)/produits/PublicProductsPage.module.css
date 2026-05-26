@@ -13,21 +13,21 @@
 }
 
 .page[data-theme='light'] {
-  --bg: #F7F5F1;
-  --bg2: #EFECEA;
+  --bg: #F8FAFC;
+  --bg2: #EEF2F7;
   --card: #FFFFFF;
-  --card-border: rgba(0, 0, 0, .07);
-  --card-hover-border: rgba(0, 0, 0, .14);
-  --t1: #0F0E0C;
-  --t2: #504E48;
-  --t3: #A09C93;
-  --line: rgba(0, 0, 0, .06);
-  --line2: rgba(0, 0, 0, .12);
-  --sk-a: #ECEAE3;
-  --sk-b: #F6F4EF;
-  --sticky-bg: rgba(247, 245, 241, .96);
-  --ph-bg: #E6E2D9;
-  --ph-text: #C0BDB5;
+  --card-border: rgba(15, 23, 42, .09);
+  --card-hover-border: rgba(15, 23, 42, .16);
+  --t1: #0F172A;
+  --t2: #334155;
+  --t3: #64748B;
+  --line: rgba(15, 23, 42, .07);
+  --line2: rgba(15, 23, 42, .13);
+  --sk-a: #E2E8F0;
+  --sk-b: #F1F5F9;
+  --sticky-bg: rgba(248, 250, 252, .96);
+  --ph-bg: #E2E8F0;
+  --ph-text: #94A3B8;
   --drop-bg: #FFFFFF;
   --drop-sh: 0 4px 6px rgba(0, 0, 0, .04), 0 16px 48px rgba(0, 0, 0, .10);
   --gloss-top: rgba(255, 255, 255, 0.82);
@@ -38,22 +38,22 @@
 }
 
 .page[data-theme='dark'] {
-  --bg: #0A0908;
-  --bg2: #131210;
-  --card: #161411;
+  --bg: #09090B;
+  --bg2: #111827;
+  --card: #111827;
   --card-border: rgba(255, 255, 255, .07);
   --card-hover-border: rgba(255, 255, 255, .14);
-  --t1: #EDE9E2;
-  --t2: #9E9A91;
-  --t3: #504E48;
+  --t1: #F8FAFC;
+  --t2: #CBD5E1;
+  --t3: #94A3B8;
   --line: rgba(255, 255, 255, .06);
   --line2: rgba(255, 255, 255, .12);
-  --sk-a: #1A1814;
-  --sk-b: #242018;
-  --sticky-bg: rgba(10, 9, 8, .97);
-  --ph-bg: #1E1B16;
-  --ph-text: #33302A;
-  --drop-bg: #1C1A15;
+  --sk-a: #1E293B;
+  --sk-b: #334155;
+  --sticky-bg: rgba(9, 9, 11, .97);
+  --ph-bg: #1E293B;
+  --ph-text: #475569;
+  --drop-bg: #111827;
   --drop-sh: 0 4px 8px rgba(0, 0, 0, .40), 0 16px 48px rgba(0, 0, 0, .50);
   --gloss-top: rgba(255, 255, 255, 0.07);
   --gloss-mid: rgba(255, 255, 255, 0.02);
@@ -135,7 +135,7 @@
   font-size: clamp(35px, 3.8vw, 62px);
   font-weight: 800;
   line-height: 1.05;
-  letter-spacing: -0.04em;
+  letter-spacing: 0;
   color: var(--t1);
   text-wrap: balance;
   text-shadow: 0 2px 14px rgba(0, 0, 0, .18);
@@ -156,7 +156,7 @@
   font-size: 15px;
   line-height: 1.8;
   font-weight: 400;
-  letter-spacing: -0.01em;
+  letter-spacing: 0;
   color: var(--t2);
   opacity: 0;
   transform: translateY(14px);
@@ -184,7 +184,7 @@
   font-size: 46px;
   font-weight: 800;
   line-height: 1;
-  letter-spacing: -0.05em;
+  letter-spacing: 0;
   color: var(--t1);
 }
 
@@ -322,7 +322,7 @@
   font-size: 13px;
   font-weight: 500;
   color: var(--t1);
-  letter-spacing: -.01em;
+  letter-spacing: 0;
   position: relative;
   z-index: 1;
 }
@@ -333,8 +333,8 @@
 }
 
 .iconBtn {
-  width: 28px;
-  height: 28px;
+  width: 36px;
+  height: 36px;
   border: 1px solid transparent;
   border-radius: 999px;
   background: transparent;
@@ -380,7 +380,7 @@
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  min-height: 42px;
+  min-height: 44px;
   padding: 0 14px;
   border-radius: 14px;
   border: 1px solid var(--line2);
@@ -537,7 +537,7 @@
 }
 
 .catPill {
-  min-height: 30px;
+  min-height: 36px;
   padding: 0 12px;
   border-radius: 999px;
   border: 1px solid var(--line2);
@@ -655,6 +655,7 @@
   align-items: center;
   justify-content: space-between;
   width: 100%;
+  min-height: 40px;
   padding: 9px 10px;
   border-radius: 10px;
   border: none;
@@ -686,7 +687,7 @@
 }
 
 .clearBtn {
-  min-height: 40px;
+  min-height: 44px;
   padding: 0 12px;
   border-radius: 12px;
   border: 1px dashed var(--line2);
@@ -820,6 +821,11 @@
   border-color: var(--card-hover-border);
 }
 
+.card:focus-visible {
+  outline: 3px solid rgba(239, 159, 39, 0.48);
+  outline-offset: 4px;
+}
+
 .gloss {
   pointer-events: none;
   position: absolute;
@@ -895,7 +901,7 @@
   font-style: italic;
   color: var(--ph-text);
   line-height: 1;
-  letter-spacing: -.04em;
+  letter-spacing: 0;
   user-select: none;
   position: relative;
   z-index: 1;
@@ -981,7 +987,7 @@
   font-size: 15px;
   font-weight: 600;
   line-height: 1.35;
-  letter-spacing: -.02em;
+  letter-spacing: 0;
   color: var(--t1);
   display: -webkit-box;
   -webkit-line-clamp: 2;
@@ -1106,7 +1112,7 @@
   font-family: 'Roboto', sans-serif;
   font-size: 20px;
   font-weight: 800;
-  letter-spacing: -.03em;
+  letter-spacing: 0;
   line-height: 1;
   color: var(--t1);
   background: linear-gradient(135deg, var(--acc) 0%, #F7C060 100%);
@@ -1145,7 +1151,7 @@
 
 .secondaryBtn,
 .leadBtn {
-  min-height: 36px;
+  min-height: 44px;
   border-radius: 999px;
   padding: 0 14px;
   font-family: 'DM Sans', sans-serif;
@@ -1198,6 +1204,25 @@
 
 .leadBtn:hover svg {
   transform: translateX(3px);
+}
+
+.secondaryBtn:focus-visible,
+.leadBtn:focus-visible,
+.excerptToggle:focus-visible,
+.iconBtn:focus-visible,
+.dropBtn:focus-visible,
+.dropCloseBtn:focus-visible,
+.catPill:focus-visible,
+.fieldInput:focus-visible,
+.switchBtn:focus-visible,
+.sortOpt:focus-visible,
+.clearBtn:focus-visible,
+.chip button:focus-visible,
+.resetBtn:focus-visible,
+.pBtn:focus-visible,
+.scrollTop:focus-visible {
+  outline: 3px solid rgba(239, 159, 39, 0.45);
+  outline-offset: 3px;
 }
 
 .readBtn {
@@ -1331,7 +1356,7 @@
   font-size: 20px;
   font-weight: 400;
   color: var(--t1);
-  letter-spacing: -.02em;
+  letter-spacing: 0;
 }
 
 .empty p {
@@ -1388,7 +1413,7 @@
 
 .pBtn {
   min-width: 36px;
-  height: 36px;
+  min-height: 40px;
   border-radius: 9px;
   border: 1px solid var(--line);
   background: var(--card);
@@ -1433,8 +1458,8 @@
   bottom: 28px;
   right: 28px;
   z-index: 400;
-  width: 40px;
-  height: 40px;
+  width: 44px;
+  height: 44px;
   border-radius: 11px;
   border: 1px solid var(--acc-bd);
   background: var(--card);

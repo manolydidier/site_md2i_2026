@@ -187,7 +187,11 @@ export async function GET(request: NextRequest) {
     const skip = (page - 1) * limit
     const orderBy = getOrderBy(sort)
 
-    const [products, total, categoryRows] = await prisma.$transaction([
+    const [products, total, categoryRows] = await prisma.$transaction<[
+      any[],
+      number,
+      Array<{ category?: { id: string; name: string; slug?: string | null } | null }>
+    ]>([
       prisma.product.findMany({
         where,
         orderBy,

@@ -1,14 +1,18 @@
 'use client'
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import type { TFunction } from 'i18next'
 import { createPortal } from 'react-dom'
+import { useTranslation } from 'react-i18next'
 import { useTheme } from '@/app/context/ThemeContext'
+
+type TechLevel = 'Débutant' | 'Intermédiaire' | 'Avancé' | 'Expert'
 
 type TechItem = {
   name: string
   short: string
   logo?: string
-  level?: 'Débutant' | 'Intermédiaire' | 'Avancé' | 'Expert'
+  level?: TechLevel
   years?: number
   description?: string
   certified?: boolean
@@ -39,7 +43,16 @@ const LEVEL_ORDER = {
   Avancé: 3,
   Intermédiaire: 2,
   Débutant: 1,
-}
+} satisfies Record<TechLevel, number>
+
+const LEVEL_TRANSLATION_KEYS = {
+  Débutant: 'beginner',
+  Intermédiaire: 'intermediate',
+  Avancé: 'advanced',
+  Expert: 'expert',
+} satisfies Record<TechLevel, string>
+
+const DEFAULT_LEVEL: TechLevel = 'Intermédiaire'
 
 function si(slug: string, color: string) {
   return `https://cdn.simpleicons.org/${slug}/${color.replace('#', '')}`
@@ -145,6 +158,48 @@ function sortItems(items: TechItem[], sortBy: SortBy) {
   }
 
   return next
+}
+
+function levelLabel(t: TFunction, level?: TechLevel) {
+  return t(`techList.levels.${LEVEL_TRANSLATION_KEYS[level ?? DEFAULT_LEVEL]}`)
+}
+
+function experienceLabel(t: TFunction, years?: number) {
+  return t('techList.yearsExperience', { count: years ?? 2 })
+}
+
+function compactExperienceLabel(t: TFunction, years?: number) {
+  return t('techList.yearsCompact', { count: years ?? 2 })
+}
+
+function techCountLabel(t: TFunction, count: number) {
+  return t('techList.techCount', { count })
+}
+
+function translateTechText(t: TFunction, key: string, defaultValue: string) {
+  return t(key, { defaultValue })
+}
+
+function localizeTechCategories(t: TFunction): TechCategory[] {
+  return TECH_CATEGORIES.map((category, categoryIndex) => ({
+    ...category,
+    title: translateTechText(t, `techList.categories.${categoryIndex}.title`, category.title),
+    description: translateTechText(
+      t,
+      `techList.categories.${categoryIndex}.description`,
+      category.description
+    ),
+    items: category.items.map((item, itemIndex) => ({
+      ...item,
+      description: item.description
+        ? translateTechText(
+            t,
+            `techList.categories.${categoryIndex}.items.${itemIndex}.description`,
+            item.description
+          )
+        : item.description,
+    })),
+  }))
 }
 
 const TECH_CATEGORIES: TechCategory[] = [
@@ -553,11 +608,12 @@ function ViewSelector({
   setView: (view: ViewMode) => void
   theme: ReturnType<typeof getTokens>
 }) {
+  const { t } = useTranslation()
   const modes: { key: ViewMode; label: string }[] = [
-    { key: 'grid', label: 'Grille' },
-    { key: 'list', label: 'Liste' },
-    { key: 'compact', label: 'Compact' },
-    { key: 'marquee', label: 'Marquee' },
+    { key: 'grid', label: t('techList.viewModes.grid') },
+    { key: 'list', label: t('techList.viewModes.list') },
+    { key: 'compact', label: t('techList.viewModes.compact') },
+    { key: 'marquee', label: t('techList.viewModes.marquee') },
   ]
 
   return (
@@ -614,6 +670,8 @@ function SortSelector({
   setSortBy: (sort: SortBy) => void
   theme: ReturnType<typeof getTokens>
 }) {
+  const { t } = useTranslation()
+
   return (
     <select
       value={sortBy}
@@ -634,10 +692,10 @@ function SortSelector({
         WebkitBackdropFilter: 'blur(12px)',
       }}
     >
-      <option value="name">Trier : Nom</option>
-      <option value="level">Trier : Niveau</option>
-      <option value="years">Trier : Expérience</option>
-      <option value="trending">Trier : Tendance</option>
+      <option value="name">{t('techList.sort.name')}</option>
+      <option value="level">{t('techList.sort.level')}</option>
+      <option value="years">{t('techList.sort.years')}</option>
+      <option value="trending">{t('techList.sort.trending')}</option>
     </select>
   )
 }
@@ -740,12 +798,9 @@ function CompareModalPortal({
   children: React.ReactNode
   isOpen: boolean
 }) {
-  const [mounted, setMounted] = useState(false)
   const [portalRoot, setPortalRoot] = useState<HTMLElement | null>(null)
 
   useEffect(() => {
-    setMounted(true)
-
     let root = document.getElementById('tech-compare-portal') as HTMLElement | null
     let createdHere = false
 
@@ -756,16 +811,19 @@ function CompareModalPortal({
       createdHere = true
     }
 
-    setPortalRoot(root)
+    const timer = window.setTimeout(() => {
+      setPortalRoot(root)
+    }, 0)
 
     return () => {
+      window.clearTimeout(timer)
       if (createdHere && root?.parentNode) {
         root.parentNode.removeChild(root)
       }
     }
   }, [])
 
-  if (!mounted || !portalRoot || !isOpen) {
+  if (!portalRoot || !isOpen) {
     return null
   }
 
@@ -785,11 +843,18 @@ function TechItemComponent({
   onCompare: (item: TechItem) => void
   isSelected: boolean
 }) {
+  const { t } = useTranslation()
   const [hovered, setHovered] = useState(false)
 
   if (viewMode === 'compact') {
     return (
-      <Tooltip text={`${item.name} — ${item.level || 'Intermédiaire'} · ${item.years || 2}+ ans`}>
+      <Tooltip
+        text={t('techList.tooltip', {
+          name: item.name,
+          level: levelLabel(t, item.level),
+          years: item.years || 2,
+        })}
+      >
         <button
           type="button"
           onClick={() => onCompare(item)}
@@ -919,9 +984,9 @@ function TechItemComponent({
           </strong>
 
           {item.level && <Stars level={item.level} />}
-          {item.isNew && <Badge text="Nouveau" color="#22C55E" />}
-          {item.trending && <Badge text="Tendance" color="#F59E0B" />}
-          {item.certified && <Badge text="Certifié" color="#8B5CF6" />}
+          {item.isNew && <Badge text={t('techList.badges.new')} color="#22C55E" />}
+          {item.trending && <Badge text={t('techList.badges.trending')} color="#F59E0B" />}
+          {item.certified && <Badge text={t('techList.badges.certified')} color="#8B5CF6" />}
         </div>
 
         {viewMode === 'list' && item.description && (
@@ -946,7 +1011,7 @@ function TechItemComponent({
             fontWeight: 600,
           }}
         >
-          {item.years || 2}+ {item.years && item.years > 1 ? 'années' : 'année'} d’expérience
+          {experienceLabel(t, item.years)}
         </div>
 
         {viewMode === 'list' && item.projects?.length ? (
@@ -1016,6 +1081,7 @@ function TechMarqueeItem({
   onCompare: (item: TechItem) => void
   isSelected: boolean
 }) {
+  const { t } = useTranslation()
   const [hovered, setHovered] = useState(false)
 
   return (
@@ -1122,7 +1188,7 @@ function TechMarqueeItem({
                 fontWeight: 600,
               }}
             >
-              {item.years || 2}+ ans d’expérience
+              {experienceLabel(t, item.years)}
             </span>
           </div>
         </div>
@@ -1162,7 +1228,7 @@ function TechMarqueeItem({
           overflow: 'hidden',
         }}
       >
-        {item.description || 'Technologie utilisée dans des projets modernes.'}
+        {item.description || t('techList.fallback.description')}
       </p>
 
       <div
@@ -1184,13 +1250,13 @@ function TechMarqueeItem({
               fontWeight: 700,
             }}
           >
-            {item.level || 'Intermédiaire'}
+            {levelLabel(t, item.level)}
           </span>
         </div>
 
         <div style={{ display: 'flex', gap: 6 }}>
-          {item.trending && <Badge text="Trend" color="#F59E0B" />}
-          {item.certified && <Badge text="Certif" color="#8B5CF6" />}
+          {item.trending && <Badge text={t('techList.badges.trendShort')} color="#F59E0B" />}
+          {item.certified && <Badge text={t('techList.badges.certifiedShort')} color="#8B5CF6" />}
         </div>
       </div>
     </button>
@@ -1212,6 +1278,7 @@ function TechCategoryMarquee({
   selectedForCompare: TechItem | null
   onCompare: (item: TechItem) => void
 }) {
+  const { t } = useTranslation()
   const items = sortItems(category.items, sortBy)
 
   if (!items.length) {
@@ -1318,7 +1385,7 @@ function TechCategoryMarquee({
                 textTransform: 'uppercase',
               }}
             >
-              Catégorie
+              {t('techList.labels.category')}
             </span>
           </div>
 
@@ -1367,7 +1434,7 @@ function TechCategoryMarquee({
             textTransform: 'uppercase',
           }}
         >
-          {items.length} techno{items.length > 1 ? 's' : ''}
+          {techCountLabel(t, items.length)}
         </span>
       </div>
 
@@ -1425,6 +1492,7 @@ function TechCategoryCard({
   selectedForCompare: TechItem | null
   onCompare: (item: TechItem) => void
 }) {
+  const { t } = useTranslation()
   const items = sortItems(category.items, sortBy)
   const frame = getCategoryFrame(theme.dark)
 
@@ -1552,7 +1620,7 @@ function TechCategoryCard({
               fontWeight: 700,
             }}
           >
-            {items.length} techno{items.length > 1 ? 's' : ''}
+            {techCountLabel(t, items.length)}
           </span>
         </div>
 
@@ -1608,6 +1676,8 @@ function CompareModal({
   theme: ReturnType<typeof getTokens>
   isOpen: boolean
 }) {
+  const { t } = useTranslation()
+
   useEffect(() => {
     if (!isOpen) {
       return
@@ -1717,7 +1787,7 @@ function CompareModal({
                     textTransform: 'uppercase',
                   }}
                 >
-                  Comparaison
+                  {t('techList.compare.kicker')}
                 </span>
               </div>
 
@@ -1732,7 +1802,8 @@ function CompareModal({
                   letterSpacing: '-0.04em',
                 }}
               >
-                Deux technologies, <span style={{ color: theme.accent }}>côte à côte</span>
+                {t('techList.compare.titlePrefix')}{' '}
+                <span style={{ color: theme.accent }}>{t('techList.compare.titleAccent')}</span>
               </h2>
 
               <p
@@ -1745,13 +1816,14 @@ function CompareModal({
                   maxWidth: 620,
                 }}
               >
-                Vue comparative rapide du niveau, de l’expérience, des certifications et des projets associés.
+                {t('techList.compare.description')}
               </p>
             </div>
 
             <button
               type="button"
               onClick={onClose}
+              aria-label={t('common.close')}
               style={{
                 width: 42,
                 height: 42,
@@ -1842,7 +1914,7 @@ function CompareModal({
                     lineHeight: 1.7,
                   }}
                 >
-                  {item.description || 'Aucune description disponible.'}
+                  {item.description || t('techList.fallback.noDescription')}
                 </div>
 
                 <div
@@ -1853,10 +1925,16 @@ function CompareModal({
                   }}
                 >
                   {[
-                    { label: 'Niveau', value: item.level || 'Intermédiaire' },
-                    { label: 'Expérience', value: `${item.years || 2}+ ans` },
-                    { label: 'Certifié', value: item.certified ? 'Oui' : 'Non' },
-                    { label: 'Tendance', value: item.trending ? 'Oui' : 'Non' },
+                    { label: t('techList.compare.rows.level'), value: levelLabel(t, item.level) },
+                    { label: t('techList.compare.rows.experience'), value: compactExperienceLabel(t, item.years) },
+                    {
+                      label: t('techList.compare.rows.certified'),
+                      value: item.certified ? t('techList.boolean.yes') : t('techList.boolean.no'),
+                    },
+                    {
+                      label: t('techList.compare.rows.trending'),
+                      value: item.trending ? t('techList.boolean.yes') : t('techList.boolean.no'),
+                    },
                   ].map((row) => (
                     <div
                       key={row.label}
@@ -1907,7 +1985,7 @@ function CompareModal({
                         textTransform: 'uppercase',
                       }}
                     >
-                      Projets associés
+                      {t('techList.compare.projects')}
                     </div>
 
                     <div
@@ -1968,6 +2046,8 @@ function StickyFilterBar({
   visible: boolean
   theme: ReturnType<typeof getTokens>
 }) {
+  const { t } = useTranslation()
+
   return (
     <div
       style={{
@@ -2020,7 +2100,7 @@ function StickyFilterBar({
               textTransform: 'uppercase',
             }}
           >
-            Stack technique
+            {t('techList.kicker')}
           </span>
 
           <span
@@ -2038,7 +2118,10 @@ function StickyFilterBar({
               fontWeight: 700,
             }}
           >
-            {totalCategories} pôles · {totalTechnologies} techs
+            {t('techList.summary', {
+              categories: totalCategories,
+              technologies: totalTechnologies,
+            })}
           </span>
         </div>
 
@@ -2052,6 +2135,7 @@ function StickyFilterBar({
 }
 
 export default function TechListe() {
+  const { t } = useTranslation()
   const { dark } = useTheme()
   const theme = useMemo(() => getTokens(dark), [dark])
 
@@ -2060,16 +2144,18 @@ export default function TechListe() {
   const [selectedForCompare, setSelectedForCompare] = useState<TechItem | null>(null)
   const [compareItems, setCompareItems] = useState<TechItem[]>([])
   const [showCompareModal, setShowCompareModal] = useState(false)
-  const [techOfTheDay, setTechOfTheDay] = useState<TechItem | null>(null)
+  const [techOfTheDayIndex, setTechOfTheDayIndex] = useState(0)
   const [stickyVisible, setStickyVisible] = useState(false)
   const [headVisible, setHeadVisible] = useState(false)
 
   const heroRef = useRef<HTMLDivElement | null>(null)
   const selectionTimeoutRef = useRef<number | null>(null)
 
+  const localizedCategories = useMemo(() => localizeTechCategories(t), [t])
+
   const visibleCategories = useMemo(() => {
-    return TECH_CATEGORIES.filter((category) => !category.hidden)
-  }, [])
+    return localizedCategories.filter((category) => !category.hidden)
+  }, [localizedCategories])
 
   const totalTechnologies = useMemo(
     () => visibleCategories.reduce((total, category) => total + category.items.length, 0),
@@ -2092,15 +2178,29 @@ export default function TechListe() {
     [visibleCategories]
   )
 
+  const allTechItems = useMemo(
+    () => visibleCategories.flatMap((category) => category.items),
+    [visibleCategories]
+  )
+
+  const techOfTheDay = allTechItems[techOfTheDayIndex % allTechItems.length] || null
+
   useEffect(() => {
     const timer = window.setTimeout(() => setHeadVisible(true), 80)
     return () => window.clearTimeout(timer)
   }, [])
 
   useEffect(() => {
-    const allTechs = visibleCategories.flatMap((category) => category.items)
-    setTechOfTheDay(allTechs[Math.floor(Math.random() * allTechs.length)] || null)
-  }, [visibleCategories])
+    if (!allTechItems.length) {
+      return
+    }
+
+    const timer = window.setTimeout(() => {
+      setTechOfTheDayIndex(Math.floor(Math.random() * allTechItems.length))
+    }, 0)
+
+    return () => window.clearTimeout(timer)
+  }, [allTechItems])
 
   useEffect(() => {
     const observer = new IntersectionObserver(
@@ -2166,8 +2266,11 @@ export default function TechListe() {
   )
 
   const currentMeta = useMemo(() => {
-    return `Mode ${viewMode} • tri ${sortBy}`
-  }, [sortBy, viewMode])
+    return t('techList.meta.current', {
+      view: t(`techList.viewModes.${viewMode}`),
+      sort: t(`techList.sortValues.${sortBy}`),
+    })
+  }, [sortBy, t, viewMode])
 
   return (
     <>
@@ -2362,7 +2465,7 @@ export default function TechListe() {
                         animation: 'techBlink 2.4s ease-in-out infinite',
                       }}
                     />
-                    Stack technique
+                    {t('techList.kicker')}
                   </span>
 
                   <h2
@@ -2378,11 +2481,11 @@ export default function TechListe() {
                       textShadow: '0 2px 18px rgba(0,0,0,0.08)',
                     }}
                   >
-                    Une stack pensée pour des{' '}
+                    {t('techList.hero.titlePrefix')}{' '}
                     <em style={{ color: theme.accent, fontStyle: 'normal' }}>
-                      solutions fiables
+                      {t('techList.hero.titleAccent')}
                     </em>
-                    , premium et durables
+                    {t('techList.hero.titleSuffix')}
                   </h2>
                 </div>
 
@@ -2404,11 +2507,15 @@ export default function TechListe() {
                       fontWeight: 400,
                     }}
                   >
-                    Cette section présente les technologies maîtrisées, leur niveau, leur maturité et leur place dans les projets. L’objectif est d’avoir une lecture plus éditoriale, plus claire et plus haut de gamme que la version précédente.
+                    {t('techList.hero.description')}
                   </p>
 
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-                    {['liquid glass', 'comparaison rapide', 'lecture premium'].map((pill) => (
+                    {[
+                      t('techList.hero.pills.liquidGlass'),
+                      t('techList.hero.pills.quickCompare'),
+                      t('techList.hero.pills.premiumRead'),
+                    ].map((pill) => (
                       <span
                         key={pill}
                         style={{
@@ -2450,7 +2557,7 @@ export default function TechListe() {
                           textTransform: 'uppercase',
                         }}
                       >
-                        Parcours actif
+                        {t('techList.meta.activePath')}
                       </span>
 
                       <span
@@ -2507,10 +2614,10 @@ export default function TechListe() {
               }}
             >
               {[
-                { value: totalTechnologies, label: 'Technologies' },
-                { value: visibleCategories.length, label: 'Catégories' },
-                { value: totalCertified, label: 'Certifiées' },
-                { value: totalTrending, label: 'En tendance' },
+                { value: totalTechnologies, label: t('techList.stats.technologies') },
+                { value: visibleCategories.length, label: t('techList.stats.categories') },
+                { value: totalCertified, label: t('techList.stats.certified') },
+                { value: totalTrending, label: t('techList.stats.trending') },
               ].map((stat) => (
                 <div
                   key={stat.label}
@@ -2601,7 +2708,7 @@ export default function TechListe() {
                         textTransform: 'uppercase',
                       }}
                     >
-                      Technologie du jour
+                      {t('techList.daily.kicker')}
                     </div>
 
                     <div
@@ -2627,7 +2734,7 @@ export default function TechListe() {
                     lineHeight: 1.7,
                   }}
                 >
-                  {techOfTheDay.description || 'Explore cette technologie dans le catalogue.'}
+                  {techOfTheDay.description || t('techList.daily.fallback')}
                 </div>
               </div>
             ) : null}

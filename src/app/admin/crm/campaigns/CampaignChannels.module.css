@@ -1,0 +1,172 @@
+/* ─── Channel pill fieldset ──────────────────────────── */
+
+.channelField {
+  border: 0;
+  padding: 0;
+  margin: 0;
+  min-width: 0;
+}
+
+.channelLegend {
+  display: block;
+  margin-bottom: 0.5rem;
+  color: var(--crm-label);
+  font-size: 0.7rem;
+  font-weight: 700;
+  line-height: 1.2;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+}
+
+.channelCheckboxes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+  width: 100%;
+}
+
+/* ── Pill label ── */
+.channelCheckbox {
+  position: relative;
+  display: inline-flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 0.4rem;
+  min-height: 30px;
+  padding: 0.35rem 0.7rem 0.35rem 0.5rem;
+  border: 1px solid var(--crm-border);
+  border-radius: 999px;
+  background: var(--crm-surface-raised);
+  color: var(--crm-text-secondary);
+  cursor: pointer;
+  user-select: none;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  transition:
+    border-color 140ms ease,
+    background-color 140ms ease,
+    color 140ms ease;
+}
+
+.channelCheckbox:hover {
+  border-color: var(--crm-border-strong);
+  background: var(--crm-bg);
+}
+
+/* ── Completely hide the native checkbox ── */
+.channelCheckbox input[type="checkbox"] {
+  position: absolute;
+  opacity: 0;
+  width: 0;
+  height: 0;
+  pointer-events: none;
+}
+
+/* ── Visual checkbox box drawn on the channelName span via ::before ── */
+.channelName {
+  display: inline-flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 0.4rem;
+  color: inherit;
+  font-size: inherit;
+  font-weight: inherit;
+  line-height: 1;
+  white-space: nowrap;
+  letter-spacing: inherit;
+  text-transform: inherit;
+}
+
+/* The little square indicator before the label text */
+.channelName::before {
+  content: "";
+  display: inline-block;
+  flex-shrink: 0;
+  width: 13px;
+  height: 13px;
+  border: 1.5px solid var(--crm-border-strong);
+  border-radius: 3px;
+  background: var(--crm-surface);
+  transition:
+    border-color 140ms ease,
+    background-color 140ms ease;
+}
+
+/* Checked state — pill */
+.channelCheckbox:has(input[type="checkbox"]:checked) {
+  border-color: var(--crm-pill-color, #2563eb);
+  background: var(--crm-pill-bg, #eff6ff);
+  color: var(--crm-pill-color, #2563eb);
+}
+
+/* Checked state — little square filled + checkmark */
+.channelCheckbox:has(input[type="checkbox"]:checked) .channelName::before {
+  border-color: var(--crm-pill-color, #2563eb);
+  background: var(--crm-pill-color, #2563eb);
+  /* SVG checkmark as background-image */
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 10 10'%3E%3Cpath d='M1.5 5l2.5 2.5 4.5-4.5' stroke='white' stroke-width='1.6' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: 9px 9px;
+}
+
+/* Focus ring via keyboard */
+.channelCheckbox:has(input[type="checkbox"]:focus-visible) {
+  outline: none;
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--crm-pill-color, #2563eb) 22%, transparent);
+}
+
+/* ── Per-channel color tokens ── */
+.linkedin { --crm-pill-color: #0a66c2; --crm-pill-bg: #eef6ff; }
+.facebook { --crm-pill-color: #1877f2; --crm-pill-bg: #eff6ff; }
+.indeed   { --crm-pill-color: #2557a7; --crm-pill-bg: #f0f6ff; }
+.email    { --crm-pill-color: #059669; --crm-pill-bg: #ecfdf5; }
+.website  { --crm-pill-color: #7c3aed; --crm-pill-bg: #f5f3ff; }
+
+.channelHelp {
+  margin: 0.5rem 0 0;
+  color: var(--crm-text-muted);
+  font-size: 0.68rem;
+  font-weight: 500;
+  line-height: 1.4;
+}
+
+/* ─── Responsive ─────────────────────────────────────── */
+
+@media (max-width: 520px) {
+  .channelCheckboxes { gap: 0.4rem; }
+
+  .channelCheckbox {
+    min-height: 28px;
+    padding: 0.32rem 0.6rem 0.32rem 0.45rem;
+    font-size: 0.65rem;
+  }
+}
+
+/* ─── Dark mode ──────────────────────────────────────── */
+
+@media (prefers-color-scheme: dark) {
+  .channelCheckbox {
+    border-color: var(--crm-border);
+    background: var(--crm-surface-raised);
+    color: var(--crm-text-secondary);
+  }
+
+  .channelCheckbox:hover {
+    border-color: var(--crm-border-strong);
+    background: var(--crm-bg);
+  }
+
+  .channelName::before {
+    border-color: var(--crm-border-strong);
+    background: var(--crm-surface);
+  }
+
+  .channelCheckbox:has(input[type="checkbox"]:checked) {
+    border-color: var(--crm-pill-color, #60a5fa);
+    background: color-mix(in srgb, var(--crm-pill-color, #2563eb) 18%, transparent);
+    color: color-mix(in srgb, var(--crm-pill-color, #2563eb) 80%, white);
+  }
+}

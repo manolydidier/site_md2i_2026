@@ -22,6 +22,10 @@ const crmTabs = [
     label: "Tâches",
     href: "/admin/crm/tasks",
   },
+  {
+    label: "Campagnes",
+    href: "/admin/crm/campaigns",
+  },
 ];
 
 function isActiveTab(pathname: string, href: string, exact?: boolean) {

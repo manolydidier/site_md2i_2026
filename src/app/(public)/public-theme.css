@@ -1,0 +1,133 @@
+.public-theme-shell {
+  --public-bg: #f8fafc;
+  --public-bg-soft: #fffaf3;
+  --public-surface: rgba(255, 255, 255, 0.92);
+  --public-surface-strong: #ffffff;
+  --public-surface-muted: rgba(248, 250, 252, 0.92);
+  --public-text: #0f172a;
+  --public-text-soft: rgba(15, 23, 42, 0.72);
+  --public-text-muted: rgba(15, 23, 42, 0.48);
+  --public-border: rgba(15, 23, 42, 0.09);
+  --public-border-strong: rgba(15, 23, 42, 0.14);
+  --public-accent: #ef9f27;
+  --public-accent-strong: #b6620e;
+  --public-accent-soft: rgba(239, 159, 39, 0.11);
+  --public-shadow: 0 22px 70px rgba(15, 23, 42, 0.10);
+  --public-page-gradient:
+    radial-gradient(circle at top left, rgba(239, 159, 39, 0.11), transparent 30%),
+    linear-gradient(180deg, #fffaf3 0%, #ffffff 44%, #f8fafc 100%);
+
+  min-height: 100vh;
+  color: var(--public-text);
+  background: var(--public-page-gradient);
+  color-scheme: light;
+  overflow-x: clip;
+  text-rendering: optimizeLegibility;
+}
+
+.public-theme-shell[data-theme='dark'] {
+  --public-bg: #09090b;
+  --public-bg-soft: #111318;
+  --public-surface: rgba(17, 24, 39, 0.82);
+  --public-surface-strong: rgba(15, 23, 42, 0.96);
+  --public-surface-muted: rgba(15, 23, 42, 0.72);
+  --public-text: #f8fafc;
+  --public-text-soft: rgba(248, 250, 252, 0.72);
+  --public-text-muted: rgba(248, 250, 252, 0.48);
+  --public-border: rgba(255, 255, 255, 0.09);
+  --public-border-strong: rgba(255, 255, 255, 0.15);
+  --public-accent: #f7b955;
+  --public-accent-strong: #f4a62a;
+  --public-accent-soft: rgba(247, 185, 85, 0.15);
+  --public-shadow: 0 26px 80px rgba(0, 0, 0, 0.34);
+  --public-page-gradient:
+    radial-gradient(circle at top left, rgba(239, 159, 39, 0.14), transparent 28%),
+    radial-gradient(circle at top right, rgba(59, 130, 246, 0.09), transparent 30%),
+    linear-gradient(180deg, #07080b 0%, #0f1218 48%, #09090b 100%);
+
+  color-scheme: dark;
+}
+
+.public-theme-shell :where(input, textarea, select) {
+  color-scheme: inherit;
+}
+
+.public-theme-shell :where(a, button) {
+  -webkit-tap-highlight-color: transparent;
+}
+
+.public-theme-shell :where(a, button, input, textarea, select):focus-visible {
+  outline: 3px solid color-mix(in srgb, var(--public-accent) 65%, transparent);
+  outline-offset: 3px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .public-theme-shell *,
+  .public-theme-shell *::before,
+  .public-theme-shell *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+    transition-duration: 0.001ms !important;
+  }
+}
+
+.public-theme-shell[data-theme='dark'] .cc-page {
+  --cc-bg: #09090b;
+  --cc-bg-2: #111318;
+  --cc-surface: rgba(17, 24, 39, 0.92);
+  --cc-surface-soft: rgba(15, 23, 42, 0.84);
+  --cc-surface-warm: rgba(31, 24, 15, 0.88);
+  --cc-surface-orange: rgba(239, 159, 39, 0.13);
+  --cc-border: rgba(255, 255, 255, 0.10);
+  --cc-border-strong: rgba(255, 255, 255, 0.16);
+  --cc-text: #f8fafc;
+  --cc-text-soft: rgba(248, 250, 252, 0.74);
+  --cc-muted: rgba(248, 250, 252, 0.50);
+  --cc-orange-dark: #f7b955;
+  --cc-orange-soft: rgba(239, 159, 39, 0.14);
+  --cc-orange-border: rgba(239, 159, 39, 0.30);
+  --cc-green-soft: rgba(22, 163, 74, 0.14);
+  --cc-green-border: rgba(34, 197, 94, 0.30);
+  --cc-blue-soft: rgba(37, 99, 235, 0.15);
+  --cc-blue-border: rgba(96, 165, 250, 0.30);
+  --cc-blue-text: #93c5fd;
+  --cc-shadow-sm: 0 8px 22px rgba(0, 0, 0, 0.22);
+  --cc-shadow-md: 0 18px 45px rgba(0, 0, 0, 0.30);
+  --cc-shadow-lg: 0 24px 70px rgba(0, 0, 0, 0.38);
+  --lead-form-ink: #f8fafc;
+  --lead-form-strong: #ffffff;
+  --lead-form-bg: rgba(15, 23, 42, 0.94);
+  --lead-muted: rgba(248, 250, 252, 0.72);
+  --lead-soft: rgba(248, 250, 252, 0.58);
+  --lead-border: rgba(255, 255, 255, 0.12);
+  --lead-panel-border: rgba(255, 255, 255, 0.12);
+  --lead-panel-hover-bg: rgba(255, 255, 255, 0.06);
+  --lead-field-bg: rgba(255, 255, 255, 0.06);
+  --lead-field-focus-bg: rgba(255, 255, 255, 0.09);
+  --lead-placeholder: rgba(248, 250, 252, 0.42);
+  --lead-option-text: #f8fafc;
+  --lead-option-bg: #111827;
+  --lead-gold: #f7b955;
+  --lead-accent-soft: rgba(239, 159, 39, 0.15);
+  --lead-accent-border: rgba(239, 159, 39, 0.32);
+}
+
+.public-theme-shell[data-theme='dark'] .cc-page,
+.public-theme-shell[data-theme='dark'] .cc-page .cc-hero,
+.public-theme-shell[data-theme='dark'] .cc-page .cc-form-section,
+.public-theme-shell[data-theme='dark'] .cc-page .cc-reassurance {
+  background:
+    radial-gradient(circle at 8% 0%, rgba(239, 159, 39, 0.12), transparent 30%),
+    radial-gradient(circle at 95% 10%, rgba(37, 99, 235, 0.11), transparent 28%),
+    linear-gradient(180deg, #07080b 0%, #0f1218 48%, #09090b 100%);
+}
+
+.public-theme-shell[data-theme='dark'] .cc-page .cc-hero-card,
+.public-theme-shell[data-theme='dark'] .cc-page .cc-form-intro,
+.public-theme-shell[data-theme='dark'] .cc-page .cc-form-card,
+.public-theme-shell[data-theme='dark'] .cc-page .cc-reassurance-card {
+  background:
+    radial-gradient(circle at top right, rgba(239, 159, 39, 0.13), transparent 36%),
+    linear-gradient(180deg, rgba(15, 23, 42, 0.94), rgba(17, 24, 39, 0.86));
+}

@@ -32,15 +32,20 @@ type FieldErrors = Partial<
   >
 >;
 
+const SUBJECT_LABELS: Record<string, string> = {
+  sales: "Demande commerciale",
+  demo: "Démonstration",
+  quote: "Devis",
+  support: "Support technique",
+  training: "Formation",
+  partnership: "Partenariat",
+  recruitment: "Recrutement",
+  other: "Autre",
+};
+
 const SUBJECTS = new Set([
-  "Demande commerciale",
-  "Démonstration",
-  "Devis",
-  "Support technique",
-  "Formation",
-  "Partenariat",
-  "Recrutement",
-  "Autre",
+  ...Object.keys(SUBJECT_LABELS),
+  ...Object.values(SUBJECT_LABELS),
 ]);
 
 const MAX_CONTENT_LENGTH = 24_000;
@@ -93,6 +98,10 @@ function isValidPhone(phone: string) {
   return /^[+()\d\s.-]{6,30}$/.test(phone);
 }
 
+function normalizeSubject(subject: string) {
+  return SUBJECT_LABELS[subject] || subject;
+}
+
 function getClientIp(request: NextRequest) {
   return (
     request.headers.get("cf-connecting-ip") ||
@@ -103,7 +112,14 @@ function getClientIp(request: NextRequest) {
 }
 
 function getAllowedOrigins() {
+  const envOrigins = process.env.PUBLIC_ALLOWED_ORIGINS
+    ? process.env.PUBLIC_ALLOWED_ORIGINS.split(",")
+        .map((origin) => origin.trim())
+        .filter(Boolean)
+    : [];
+
   return [
+    ...envOrigins,
     process.env.NEXT_PUBLIC_APP_URL,
     process.env.NEXT_PUBLIC_SITE_URL,
     process.env.APP_URL,
@@ -111,19 +127,39 @@ function getAllowedOrigins() {
     process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "",
     "http://localhost:3000",
     "http://127.0.0.1:3000",
+    "http://192.168.1.2:3000",
   ]
     .filter(Boolean)
     .map((origin) => String(origin).replace(/\/$/, ""));
 }
 
-function isAllowedOrigin(request: NextRequest) {
+function getRequestOrigin(request: NextRequest) {
   const origin = request.headers.get("origin");
+  const referer = request.headers.get("referer");
 
-  if (!origin) {
+  if (origin) {
+    return origin.replace(/\/$/, "");
+  }
+
+  if (referer) {
+    try {
+      return new URL(referer).origin.replace(/\/$/, "");
+    } catch {
+      return "";
+    }
+  }
+
+  return "";
+}
+
+function isAllowedOrigin(request: NextRequest) {
+  const requestOrigin = getRequestOrigin(request);
+
+  if (!requestOrigin) {
     return true;
   }
 
-  return getAllowedOrigins().includes(origin.replace(/\/$/, ""));
+  return getAllowedOrigins().includes(requestOrigin);
 }
 
 function checkRateLimit(key: string) {
@@ -182,7 +218,8 @@ function validatePayload(body: ContactPayload) {
   const email = clean(body.email, 255).toLowerCase();
   const phone = clean(body.phone, 30);
   const organization = clean(body.organization, 120);
-  const subject = clean(body.subject, 255);
+  const rawSubject = clean(body.subject, 255);
+  const subject = normalizeSubject(rawSubject);
   const message = cleanMultiline(body.message, 5000);
 
   const website = clean(body.website, 255);
@@ -236,9 +273,9 @@ function validatePayload(body: ContactPayload) {
       "L’organisation ne doit pas dépasser 120 caractères.";
   }
 
-  if (!subject) {
+  if (!rawSubject) {
     fieldErrors.subject = "L’objet est obligatoire.";
-  } else if (!SUBJECTS.has(subject)) {
+  } else if (!SUBJECTS.has(rawSubject)) {
     fieldErrors.subject = "L’objet sélectionné n’est pas valide.";
   }
 

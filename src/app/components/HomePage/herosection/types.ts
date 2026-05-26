@@ -3,6 +3,7 @@ export type Mode = 'dark' | 'light'
 export type HeroButton = {
   label: string
   cls: 'primary' | 'secondary'
+  href: string
 }
 
 export type HeroObjectType = 'network' | 'cube' | 'shield' | 'dna'

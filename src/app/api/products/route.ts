@@ -1,168 +1,219 @@
-// src/app/api/products/route.ts
-import { NextRequest, NextResponse } from "next/server";
-import { prisma } from "@/app/lib/prisma";
-import { ProductStatus } from "@/generated/prisma/client";
+import { NextRequest, NextResponse } from 'next/server'
+import { prisma } from '@/app/lib/prisma'
 
-export async function GET(request: NextRequest) {
-  try {
-    const { searchParams } = new URL(request.url);
+export const dynamic = 'force-dynamic'
+export const runtime = 'nodejs'
 
-    const status = searchParams.get("status") as ProductStatus | null;
-    const categoryId = searchParams.get("categoryId");
-    const search = searchParams.get("search") || "";
-    const page = parseInt(searchParams.get("page") || "1");
-    const limit = parseInt(searchParams.get("limit") || "20");
-    const skip = (page - 1) * limit;
+type ProductSort =
+  | 'newest'
+  | 'oldest'
+  | 'date-desc'
+  | 'date-asc'
+  | 'name-asc'
+  | 'name-desc'
+  | 'price-asc'
+  | 'price-desc'
 
-    const sortBy = searchParams.get("sortBy") || "createdAt";
-    const order = searchParams.get("order") === "asc" ? "asc" : "desc";
+function cleanString(value: string | null) {
+  return String(value || '').trim()
+}
 
-    const allowedSorts = ["createdAt", "updatedAt", "publishedAt", "name", "price"];
-    const safeSort = allowedSorts.includes(sortBy) ? sortBy : "createdAt";
+function normalizePage(value: string | null) {
+  const page = Number(value)
 
-    const where: any = {};
+  if (!Number.isFinite(page) || page < 1) {
+    return 1
+  }
 
-    if (status) where.status = status;
-    if (categoryId) where.categoryId = categoryId;
+  return Math.floor(page)
+}
 
-    if (search) {
-      where.OR = [
-        { name: { contains: search, mode: "insensitive" } },
-        { excerpt: { contains: search, mode: "insensitive" } },
-        { slug: { contains: search, mode: "insensitive" } },
-      ];
-    }
+function normalizeLimit(value: string | null) {
+  const limit = Number(value)
 
-    const [products, total] = await Promise.all([
-      prisma.product.findMany({
-        where,
-        skip,
-        take: limit,
-        orderBy: { [safeSort]: order },
-        include: {
-          author: {
-            select: {
-              id: true,
-              email: true,
-              firstName: true,
-              lastName: true,
-              avatarUrl: true,
-            },
-          },
-          category: {
-            select: {
-              id: true,
-              name: true,
-              slug: true,
-            },
-          },
-        },
-      }),
-      prisma.product.count({ where }),
-    ]);
+  if (!Number.isFinite(limit) || limit < 1) {
+    return 12
+  }
 
-    return NextResponse.json({
-      data: products,
-      pagination: {
-        page,
-        limit,
-        total,
-        totalPages: Math.ceil(total / limit),
-      },
-    });
-  } catch (error) {
-    console.error("[GET /api/products]", error);
-    return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
+  return Math.min(Math.floor(limit), 48)
+}
+
+function normalizeSort(value: string | null): ProductSort {
+  const sort = cleanString(value) as ProductSort
+
+  if (
+    sort === 'newest' ||
+    sort === 'oldest' ||
+    sort === 'date-desc' ||
+    sort === 'date-asc' ||
+    sort === 'name-asc' ||
+    sort === 'name-desc' ||
+    sort === 'price-asc' ||
+    sort === 'price-desc'
+  ) {
+    return sort
+  }
+
+  return 'date-desc'
+}
+
+function getOrderBy(sort: ProductSort) {
+  if (sort === 'oldest' || sort === 'date-asc') {
+    return [{ publishedAt: 'asc' as const }, { createdAt: 'asc' as const }]
+  }
+
+  if (sort === 'name-asc') {
+    return [{ name: 'asc' as const }]
+  }
+
+  if (sort === 'name-desc') {
+    return [{ name: 'desc' as const }]
+  }
+
+  if (sort === 'price-asc') {
+    return [{ price: 'asc' as const }, { publishedAt: 'desc' as const }]
+  }
+
+  if (sort === 'price-desc') {
+    return [{ price: 'desc' as const }, { publishedAt: 'desc' as const }]
+  }
+
+  return [{ publishedAt: 'desc' as const }, { createdAt: 'desc' as const }]
+}
+
+function toSerializablePrice(value: unknown) {
+  if (value === null || value === undefined) {
+    return null
+  }
+
+  if (
+    typeof value === 'object' &&
+    value !== null &&
+    'toString' in value &&
+    typeof value.toString === 'function'
+  ) {
+    return value.toString()
+  }
+
+  return value
+}
+
+function serializeProduct(product: any) {
+  return {
+    id: product.id,
+    name: product.name,
+    slug: product.slug,
+    excerpt: product.excerpt,
+    price: toSerializablePrice(product.price),
+    coverImage: product.coverImage,
+    images: product.images,
+    status: product.status,
+    publishedAt: product.publishedAt,
+    createdAt: product.createdAt,
+    updatedAt: product.updatedAt,
+    category: product.category
+      ? {
+          id: product.category.id,
+          name: product.category.name,
+          slug: product.category.slug,
+        }
+      : null,
   }
 }
 
-export async function POST(request: NextRequest) {
+function serializeCategory(category: any) {
+  return {
+    id: category.id,
+    name: category.name,
+    slug: category.slug,
+  }
+}
+
+export async function GET(request: NextRequest) {
   try {
-    const body = await request.json();
-    console.log("BODY /api/products:", body);
+    const { searchParams } = new URL(request.url)
 
-    const {
-      name,
-      slug,
-      excerpt,
-      price,
-      coverImage,
-      images = [],
-      status = "DRAFT",
-      publishedAt,
-      authorId,
-      categoryId,
-      gjsComponents,
-      gjsStyles,
-      gjsHtml,
-      gjsJs,
-    } = body;
+    const query = cleanString(searchParams.get('q'))
+    const category = cleanString(searchParams.get('category'))
+    const page = normalizePage(searchParams.get('page'))
+    const limit = normalizeLimit(searchParams.get('limit'))
+    const sort = normalizeSort(searchParams.get('sort'))
 
-    if (!name || !slug || !authorId) {
-      return NextResponse.json(
-        { error: "name, slug and authorId are required", received: body },
-        { status: 400 }
-      );
+    const skip = (page - 1) * limit
+    const take = limit
+    const orderBy = getOrderBy(sort)
+
+    const where: any = {
+      status: 'PUBLISHED',
     }
 
-    const statusValue = status as ProductStatus;
-
-    const existing = await prisma.product.findUnique({
-      where: { slug },
-    });
-
-    if (existing) {
-      return NextResponse.json(
-        { error: "A product with this slug already exists" },
-        { status: 409 }
-      );
+    if (query) {
+      where.OR = [
+        {
+          name: {
+            contains: query,
+            mode: 'insensitive',
+          },
+        },
+        {
+          slug: {
+            contains: query,
+            mode: 'insensitive',
+          },
+        },
+        {
+          excerpt: {
+            contains: query,
+            mode: 'insensitive',
+          },
+        },
+        {
+          category: {
+            name: {
+              contains: query,
+              mode: 'insensitive',
+            },
+          },
+        },
+      ]
     }
 
-    if (categoryId) {
-      const category = await prisma.productCategory.findUnique({
-        where: { id: categoryId },
-      });
-
-      if (!category) {
-        return NextResponse.json(
-          { error: "Category not found" },
-          { status: 404 }
-        );
+    if (category && category !== 'all') {
+      where.category = {
+        OR: [
+          {
+            slug: {
+              equals: category,
+              mode: 'insensitive',
+            },
+          },
+          {
+            name: {
+              equals: category,
+              mode: 'insensitive',
+            },
+          },
+        ],
       }
     }
 
-    const product = await prisma.product.create({
-      data: {
-        name,
-        slug,
-        excerpt: excerpt || null,
-        price:
-          price !== undefined && price !== null && price !== ""
-            ? Number(price)
-            : null,
-        coverImage: coverImage || null,
-        images: Array.isArray(images) ? images : [],
-        status: statusValue,
-        publishedAt:
-          statusValue === "PUBLISHED"
-            ? publishedAt
-              ? new Date(publishedAt)
-              : new Date()
-            : null,
-        authorId,
-        categoryId: categoryId || null,
-        gjsComponents: gjsComponents ?? null,
-        gjsStyles: gjsStyles ?? null,
-        gjsHtml: gjsHtml || null,
-        gjsJs: gjsJs || null,
-      },
-      include: {
-        author: {
-          select: {
-            id: true,
-            email: true,
-          },
-        },
+    const productsPromise = prisma.product.findMany({
+      where,
+      orderBy,
+      skip,
+      take,
+      select: {
+        id: true,
+        name: true,
+        slug: true,
+        excerpt: true,
+        price: true,
+        coverImage: true,
+        images: true,
+        status: true,
+        publishedAt: true,
+        createdAt: true,
+        updatedAt: true,
         category: {
           select: {
             id: true,
@@ -171,14 +222,66 @@ export async function POST(request: NextRequest) {
           },
         },
       },
-    });
+    })
 
-    return NextResponse.json({ data: product }, { status: 201 });
+    const totalPromise = prisma.product.count({
+      where,
+    })
+
+    const categoriesPromise = prisma.productCategory.findMany({
+      where: {
+        products: {
+          some: {
+            status: 'PUBLISHED',
+          },
+        },
+      },
+      orderBy: {
+        name: 'asc',
+      },
+      select: {
+        id: true,
+        name: true,
+        slug: true,
+      },
+    })
+
+    const [products, total, categoryRows] = await Promise.all([
+      productsPromise,
+      totalPromise,
+      categoriesPromise,
+    ])
+
+    const totalPages = Math.max(1, Math.ceil(total / limit))
+
+    return NextResponse.json({
+      ok: true,
+      products: products.map(serializeProduct),
+      categories: categoryRows.map(serializeCategory),
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages,
+        hasNextPage: page < totalPages,
+        hasPreviousPage: page > 1,
+      },
+      filters: {
+        q: query,
+        category,
+        sort,
+      },
+    })
   } catch (error) {
-    console.error("[POST /api/products]", error);
+    console.error('[GET /api/products/public] Error:', error)
+
     return NextResponse.json(
-      { error: "Internal Server Error", details: String(error) },
+      {
+        ok: false,
+        error: 'Impossible de charger les produits publics.',
+        details: error instanceof Error ? error.message : String(error),
+      },
       { status: 500 }
-    );
+    )
   }
 }

@@ -2,9 +2,17 @@
 
 import Link from 'next/link'
 import Image from 'next/image'
-import { usePathname } from 'next/navigation'
-import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
+import { usePathname, useRouter } from 'next/navigation'
+import {
+  useState,
+  useEffect,
+  useRef,
+  useCallback,
+  useMemo,
+  type KeyboardEvent as ReactKeyboardEvent,
+} from 'react'
 import { createPortal } from 'react-dom'
+import { AnimatePresence, motion } from 'framer-motion'
 import { useTranslation } from 'react-i18next'
 import { useTheme } from '../context/ThemeContext'
 import { LANGUAGE_OPTIONS, normalizeLocale } from '../i18n/settings'
@@ -37,6 +45,28 @@ type NavItemDefinition = {
   labelKey: string
   descriptionKey?: string
   children?: NavChildDefinition[]
+}
+
+type SearchCategory = 'products' | 'articles' | 'references' | 'links'
+
+type ApiSearchResult = {
+  id: string
+  category: SearchCategory
+  title: string
+  description?: string | null
+  href: string
+  image?: string | null
+  meta?: string | null
+}
+
+type ApiSearchResponse = {
+  query: string
+  scope: 'all' | SearchCategory
+  results: Partial<Record<SearchCategory, ApiSearchResult[]>> & {
+    news?: ApiSearchResult[]
+  }
+  suggestions: string[]
+  total: number
 }
 
 const LINK_DEFS: NavItemDefinition[] = [
@@ -145,21 +175,6 @@ const ArrowRight = () => (
   </svg>
 )
 
-const ChevronUpIcon = () => (
-  <svg
-    width="18"
-    height="18"
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="white"
-    strokeWidth="2.4"
-    strokeLinecap="round"
-    strokeLinejoin="round"
-  >
-    <polyline points="18 15 12 9 6 15" />
-  </svg>
-)
-
 function tokens(dark: boolean, scrolled: boolean) {
   return {
     shellBg: dark
@@ -187,6 +202,40 @@ function tokens(dark: boolean, scrolled: boolean) {
   }
 }
 
+function EmptySearchMessage({
+  message,
+  color,
+}: {
+  message: string
+  color: string
+}) {
+  return (
+    <div
+      style={{
+        padding: '28px 14px',
+        color,
+        fontSize: 14,
+        textAlign: 'center',
+      }}
+    >
+      {message}
+    </div>
+  )
+}
+
+function getResultsForCategory(
+  data: ApiSearchResponse | null,
+  category: SearchCategory
+) {
+  if (!data?.results) return []
+
+  if (category === 'articles') {
+    return data.results.articles ?? data.results.news ?? []
+  }
+
+  return data.results[category] ?? []
+}
+
 function SearchModal({
   open,
   onClose,
@@ -198,19 +247,59 @@ function SearchModal({
   dark: boolean
   links: NavItem[]
 }) {
-  const { t: translate } = useTranslation()
+  const router = useRouter()
+
   const [query, setQuery] = useState('')
+  const [scope, setScope] = useState<'all' | SearchCategory>('all')
+  const [loading, setLoading] = useState(false)
+  const [data, setData] = useState<ApiSearchResponse | null>(null)
+  const [error, setError] = useState(false)
+  const [selectedIndex, setSelectedIndex] = useState(-1)
+
   const inputRef = useRef<HTMLInputElement>(null)
-  const overlayRef = useRef<HTMLDivElement>(null)
   const t = tokens(dark, true)
+
+  const categories: Array<{
+    value: 'all' | SearchCategory
+    label: string
+  }> = [
+    { value: 'all', label: 'Tout' },
+    { value: 'products', label: 'Produits' },
+    { value: 'articles', label: 'Articles' },
+    { value: 'references', label: 'Références' },
+    { value: 'links', label: 'Liens' },
+  ]
+
+  const resultGroups: Array<{
+    value: SearchCategory
+    label: string
+  }> = [
+    { value: 'products', label: 'Produits' },
+    { value: 'articles', label: 'Articles' },
+    { value: 'references', label: 'Références' },
+    { value: 'links', label: 'Liens' },
+  ]
+
+  const flatResults = useMemo(() => {
+    return [
+      ...getResultsForCategory(data, 'products'),
+      ...getResultsForCategory(data, 'articles'),
+      ...getResultsForCategory(data, 'references'),
+      ...getResultsForCategory(data, 'links'),
+    ]
+  }, [data])
 
   useEffect(() => {
     if (!open) return
 
     const id = window.setTimeout(() => {
       setQuery('')
+      setScope('all')
+      setData(null)
+      setError(false)
+      setSelectedIndex(-1)
       inputRef.current?.focus()
-    }, 60)
+    }, 120)
 
     return () => window.clearTimeout(id)
   }, [open])
@@ -218,311 +307,587 @@ function SearchModal({
   useEffect(() => {
     if (!open) return
 
-    const fn = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') onClose()
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        onClose()
+      }
     }
 
-    window.addEventListener('keydown', fn)
+    window.addEventListener('keydown', handleKeyDown)
+    document.body.style.overflow = 'hidden'
 
-    return () => window.removeEventListener('keydown', fn)
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown)
+      document.body.style.overflow = ''
+    }
   }, [open, onClose])
 
   useEffect(() => {
-    const root =
-      (document.getElementById('__next') as HTMLElement | null) ??
-      (document.body.firstElementChild as HTMLElement | null)
+    if (!open) return
 
-    if (!root) return
+    const q = query.trim()
 
-    if (open) {
-      root.style.filter = 'blur(6px) brightness(.92)'
-      root.style.transition = 'filter .22s ease'
-      root.style.pointerEvents = 'none'
-      document.body.style.overflow = 'hidden'
-    } else {
-      root.style.filter = ''
-      root.style.pointerEvents = ''
-      document.body.style.overflow = ''
+    if (q.length < 2) {
+      setData(null)
+      setLoading(false)
+      setError(false)
+      setSelectedIndex(-1)
+      return
     }
+
+    const controller = new AbortController()
+
+    const id = window.setTimeout(async () => {
+      try {
+        setLoading(true)
+        setError(false)
+
+        const response = await fetch(
+          `/api/search?q=${encodeURIComponent(q)}&scope=${scope}&limit=6`,
+          {
+            signal: controller.signal,
+          }
+        )
+
+        if (!response.ok) {
+          throw new Error('Search failed')
+        }
+
+        const json = (await response.json()) as ApiSearchResponse
+        setData(json)
+      } catch (error) {
+        if (!controller.signal.aborted) {
+          setData(null)
+          setError(true)
+          setSelectedIndex(-1)
+        }
+      } finally {
+        if (!controller.signal.aborted) {
+          setLoading(false)
+        }
+      }
+    }, 260)
 
     return () => {
-      root.style.filter = ''
-      root.style.pointerEvents = ''
-      document.body.style.overflow = ''
+      window.clearTimeout(id)
+      controller.abort()
     }
-  }, [open])
+  }, [query, scope, open])
 
-  if (!open) return null
+  useEffect(() => {
+    if (flatResults.length > 0) {
+      setSelectedIndex(0)
+    } else {
+      setSelectedIndex(-1)
+    }
+  }, [flatResults.length])
 
-  const filtered = links.filter((item) =>
-    item.label.toLowerCase().includes(query.toLowerCase())
-  )
+  useEffect(() => {
+    if (selectedIndex < 0) return
+
+    const element = document.getElementById(`search-result-${selectedIndex}`)
+    element?.scrollIntoView({
+      block: 'nearest',
+      behavior: 'smooth',
+    })
+  }, [selectedIndex])
+
+  if (!open || typeof document === 'undefined') return null
+
+  const quickLinks = links.slice(0, 6)
+
+  const handleOpenResult = (result: ApiSearchResult) => {
+    onClose()
+    router.push(result.href)
+  }
+
+  const handleInputKeyDown = (
+    event: ReactKeyboardEvent<HTMLInputElement>
+  ) => {
+    if (!flatResults.length) return
+
+    if (event.key === 'ArrowDown') {
+      event.preventDefault()
+
+      setSelectedIndex((value) => {
+        if (value < 0) return 0
+        return (value + 1) % flatResults.length
+      })
+    }
+
+    if (event.key === 'ArrowUp') {
+      event.preventDefault()
+
+      setSelectedIndex((value) => {
+        if (value <= 0) return flatResults.length - 1
+        return value - 1
+      })
+    }
+
+    if (event.key === 'Enter') {
+      event.preventDefault()
+
+      const result = flatResults[selectedIndex >= 0 ? selectedIndex : 0]
+
+      if (result) {
+        handleOpenResult(result)
+      }
+    }
+  }
+
+  let globalIndex = -1
 
   return createPortal(
-    <div
-      ref={overlayRef}
-      onClick={(event) => {
-        if (event.target === overlayRef.current) onClose()
-      }}
-      style={{
-        position: 'fixed',
-        inset: 0,
-        zIndex: 9999,
-        background: dark ? 'rgba(0,0,0,.24)' : 'rgba(80,80,100,.12)',
-        display: 'flex',
-        justifyContent: 'center',
-        alignItems: 'flex-start',
-        paddingTop: 'clamp(56px, 12vh, 110px)',
-        fontFamily: "'Inter', 'DM Sans', sans-serif",
-      }}
-    >
-      <div
+    <AnimatePresence>
+      <motion.div
+        key="search-overlay"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        transition={{ duration: 0.18, ease: 'easeOut' }}
+        onMouseDown={(event) => {
+          if (event.target === event.currentTarget) {
+            onClose()
+          }
+        }}
         style={{
-          width: 'min(620px, calc(100vw - 24px))',
-          background: t.dropdownBg,
-          border: `1px solid ${t.shellBorder}`,
-          borderRadius: 22,
-          boxShadow: dark
-            ? '0 24px 70px rgba(0,0,0,.32)'
-            : '0 24px 70px rgba(0,0,0,.10)',
-          overflow: 'hidden',
-          backdropFilter: 'blur(16px)',
-          WebkitBackdropFilter: 'blur(16px)',
+          position: 'fixed',
+          inset: 0,
+          zIndex: 9999,
+          background: dark
+            ? 'radial-gradient(circle at top, rgba(239,159,39,.10), transparent 34%), rgba(0,0,0,.72)'
+            : 'radial-gradient(circle at top, rgba(239,159,39,.16), transparent 34%), rgba(15,23,42,.44)',
+          backdropFilter: 'blur(26px) saturate(1.12)',
+          WebkitBackdropFilter: 'blur(26px) saturate(1.12)',
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'flex-start',
+          padding: 'clamp(72px, 12vh, 118px) 12px 24px',
+          fontFamily: "'Inter', 'DM Sans', sans-serif",
         }}
       >
-        <div
+        <motion.div
+          key="search-panel"
+          initial={{ opacity: 0, y: -24, scale: 0.96 }}
+          animate={{ opacity: 1, y: 0, scale: 1 }}
+          exit={{ opacity: 0, y: -16, scale: 0.98 }}
+          transition={{
+            duration: 0.24,
+            ease: [0.22, 1, 0.36, 1],
+          }}
+          onMouseDown={(event) => event.stopPropagation()}
           style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: 12,
-            padding: '18px 20px',
-            borderBottom: `1px solid ${t.line}`,
+            width: 'min(820px, calc(100vw - 24px))',
+            borderRadius: 30,
+            overflow: 'hidden',
+            background: dark
+              ? 'linear-gradient(180deg, rgba(22,22,32,.98), rgba(9,9,14,.99))'
+              : 'linear-gradient(180deg, rgba(255,255,255,.99), rgba(248,250,252,.99))',
+            border: `1px solid ${
+              dark ? 'rgba(255,255,255,.12)' : 'rgba(255,255,255,.78)'
+            }`,
+            boxShadow: dark
+              ? '0 38px 120px rgba(0,0,0,.72), inset 0 1px 0 rgba(255,255,255,.05)'
+              : '0 38px 120px rgba(15,23,42,.30), inset 0 1px 0 rgba(255,255,255,.82)',
           }}
         >
-          <span style={{ color: ORANGE, display: 'flex' }}>
-            <SearchIcon />
-          </span>
-
-          <input
-            ref={inputRef}
-            value={query}
-            onChange={(event) => setQuery(event.target.value)}
-            placeholder={translate('navbar.search.placeholder')}
+          <div
             style={{
-              flex: 1,
-              border: 'none',
-              background: 'transparent',
-              outline: 'none',
-              fontSize: 16,
-              color: t.text,
-              fontFamily: 'inherit',
-            }}
-          />
-
-          <kbd
-            style={{
-              fontSize: 11,
-              color: t.subtleText,
-              background: t.iconBg,
-              border: `1px solid ${t.line}`,
-              borderRadius: 8,
-              padding: '4px 8px',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 14,
+              padding: '18px 20px',
+              borderBottom: `1px solid ${t.line}`,
             }}
           >
-            {translate('navbar.search.escape')}
-          </kbd>
-        </div>
-
-        <div style={{ padding: 8 }}>
-          {query.length === 0 ? (
-            <div
+            <span
               style={{
-                padding: '20px 14px',
-                color: t.subtleText,
-                fontSize: 14,
+                width: 42,
+                height: 42,
+                borderRadius: 16,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                color: ORANGE,
+                background: t.orangeSoft,
+                border: `1px solid ${t.orangeBorder}`,
+                flexShrink: 0,
+                boxShadow: '0 10px 24px rgba(239,159,39,.16)',
               }}
             >
-              {translate('navbar.search.hint')}
-            </div>
-          ) : filtered.length > 0 ? (
-            filtered.map((item) => (
-              <Link
-                key={item.href}
-                href={item.href}
-                onClick={onClose}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  gap: 12,
-                  padding: '13px 14px',
-                  borderRadius: 14,
-                  textDecoration: 'none',
-                  color: t.text,
-                  fontSize: 15,
-                }}
-              >
-                <span>{item.label}</span>
-                <span style={{ color: t.subtleText }}>
-                  <ArrowRight />
-                </span>
-              </Link>
-            ))
-          ) : (
-            <div
+              <SearchIcon />
+            </span>
+
+            <input
+              ref={inputRef}
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+              onKeyDown={handleInputKeyDown}
+              placeholder="Rechercher un produit, article, référence ou lien..."
+              autoComplete="off"
               style={{
-                padding: '20px 14px',
-                color: t.subtleText,
-                fontSize: 14,
+                flex: 1,
+                minWidth: 0,
+                border: 'none',
+                background: 'transparent',
+                outline: 'none',
+                fontSize: 17,
+                color: t.text,
+                fontFamily: 'inherit',
+                fontWeight: 650,
+              }}
+            />
+
+            <button
+              onClick={onClose}
+              aria-label="Fermer la recherche"
+              style={{
+                border: `1px solid ${t.iconBorder}`,
+                background: t.iconBg,
+                color: t.softText,
+                borderRadius: 14,
+                width: 38,
+                height: 38,
+                cursor: 'pointer',
+                fontSize: 22,
+                lineHeight: 1,
               }}
             >
-              {translate('navbar.search.noResults', { query })}
-            </div>
-          )}
-        </div>
-      </div>
-    </div>,
-    document.body
-  )
-}
+              ×
+            </button>
+          </div>
 
-function NavToggleButton({
-  navbarVisible,
-  onClick,
-  dark,
-}: {
-  navbarVisible: boolean
-  onClick: () => void
-  dark: boolean
-}) {
-  const { t: translate } = useTranslation()
-  const [tooltipVisible, setTooltipVisible] = useState(false)
-  const [ripples, setRipples] = useState<number[]>([])
-  const tooltipTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
-
-  const addRipple = () => {
-    const id = Date.now()
-
-    setRipples((prev) => [...prev, id])
-
-    setTimeout(() => {
-      setRipples((prev) => prev.filter((r) => r !== id))
-    }, 600)
-  }
-
-  const handleClick = () => {
-    addRipple()
-    onClick()
-  }
-
-  const showTooltip = () => {
-    if (tooltipTimer.current) clearTimeout(tooltipTimer.current)
-
-    setTooltipVisible(true)
-
-    tooltipTimer.current = setTimeout(() => {
-      setTooltipVisible(false)
-    }, 1800)
-  }
-
-  const hideTooltip = () => {
-    if (tooltipTimer.current) clearTimeout(tooltipTimer.current)
-
-    tooltipTimer.current = setTimeout(() => {
-      setTooltipVisible(false)
-    }, 400)
-  }
-
-  return createPortal(
-    <>
-      <div
-        style={{
-          position: 'fixed',
-          bottom: 28,
-          right: 28,
-          zIndex: 299,
-          background: dark ? 'rgba(16,16,22,.97)' : 'rgba(255,255,255,.98)',
-          border: `1px solid ${
-            dark ? 'rgba(255,255,255,.10)' : 'rgba(0,0,0,.08)'
-          }`,
-          borderRadius: 12,
-          padding: '7px 13px',
-          fontSize: 12,
-          fontWeight: 500,
-          color: dark ? 'rgba(255,255,255,.7)' : 'rgba(0,0,0,.6)',
-          whiteSpace: 'nowrap',
-          boxShadow: dark
-            ? '0 8px 24px rgba(0,0,0,.3)'
-            : '0 8px 24px rgba(0,0,0,.08)',
-          fontFamily: "'Inter', sans-serif",
-          pointerEvents: 'none',
-          opacity: tooltipVisible ? 1 : 0,
-          transform: tooltipVisible ? 'translateY(0)' : 'translateY(5px)',
-          transition: 'opacity .2s ease, transform .2s ease',
-        }}
-      >
-        {navbarVisible
-          ? translate('navbar.navigation.hide')
-          : translate('navbar.navigation.show')}
-      </div>
-
-      <button
-        onClick={handleClick}
-        onMouseEnter={showTooltip}
-        onMouseLeave={hideTooltip}
-        aria-label={
-          navbarVisible
-            ? translate('navbar.navigation.hide')
-            : translate('navbar.navigation.show')
-        }
-        style={{
-          position: 'fixed',
-          top: 90,
-          right: 28,
-          zIndex: 300,
-          width: 46,
-          height: 46,
-          borderRadius: '50%',
-          background: ORANGE,
-          border: 'none',
-          cursor: 'pointer',
-          boxShadow: '0 4px 20px rgba(239,159,39,.5)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          overflow: 'hidden',
-          padding: 0,
-          transition: 'transform .18s ease, box-shadow .18s ease',
-        }}
-      >
-        {ripples.map((id) => (
-          <span
-            key={id}
+          <div
             style={{
-              position: 'absolute',
-              width: 46,
-              height: 46,
-              borderRadius: '50%',
-              background: 'rgba(255,255,255,.32)',
-              animation: 'navToggleRipple .55s ease-out forwards',
-              pointerEvents: 'none',
+              display: 'flex',
+              gap: 8,
+              padding: '12px 14px',
+              borderBottom: `1px solid ${t.line}`,
+              overflowX: 'auto',
             }}
-          />
-        ))}
+          >
+            {categories.map((category) => {
+              const active = scope === category.value
 
-        <span
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            transform: navbarVisible ? 'rotate(0deg)' : 'rotate(180deg)',
-            transition: 'transform .32s cubic-bezier(0.34, 1.26, 0.64, 1)',
-          }}
-        >
-          <ChevronUpIcon />
-        </span>
-      </button>
-    </>,
+              return (
+                <button
+                  key={category.value}
+                  onClick={() => {
+                    setScope(category.value)
+                    setSelectedIndex(-1)
+                  }}
+                  style={{
+                    border: `1px solid ${
+                      active ? t.orangeBorder : t.iconBorder
+                    }`,
+                    background: active ? t.orangeSoft : t.iconBg,
+                    color: active ? ORANGE : t.softText,
+                    borderRadius: 999,
+                    padding: '8px 13px',
+                    cursor: 'pointer',
+                    fontSize: 13,
+                    fontWeight: active ? 800 : 650,
+                    whiteSpace: 'nowrap',
+                    fontFamily: 'inherit',
+                  }}
+                >
+                  {category.label}
+                </button>
+              )
+            })}
+          </div>
+
+          <div
+            style={{
+              padding: 10,
+              maxHeight: 'min(530px, calc(100vh - 252px))',
+              overflowY: 'auto',
+            }}
+          >
+            {query.trim().length === 0 ? (
+              <>
+                <div
+                  style={{
+                    padding: '16px 12px 12px',
+                    color: t.subtleText,
+                    fontSize: 14,
+                  }}
+                >
+                  Commence à taper pour rechercher dans le site.
+                </div>
+
+                <div style={{ display: 'grid', gap: 6 }}>
+                  {quickLinks.map((item) => (
+                    <Link
+                      key={item.href}
+                      href={item.href}
+                      onClick={onClose}
+                      className="pro-search-link"
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        gap: 12,
+                        padding: '13px 14px',
+                        borderRadius: 17,
+                        textDecoration: 'none',
+                        color: t.text,
+                        fontSize: 15,
+                        background: dark
+                          ? 'rgba(255,255,255,.025)'
+                          : 'rgba(15,23,42,.025)',
+                        border: `1px solid ${
+                          dark
+                            ? 'rgba(255,255,255,.035)'
+                            : 'rgba(15,23,42,.035)'
+                        }`,
+                      }}
+                    >
+                      <span>{item.label}</span>
+                      <span style={{ color: t.subtleText }}>
+                        <ArrowRight />
+                      </span>
+                    </Link>
+                  ))}
+                </div>
+              </>
+            ) : query.trim().length < 2 ? (
+              <EmptySearchMessage
+                color={t.subtleText}
+                message="Tape au moins 2 caractères pour lancer la recherche."
+              />
+            ) : loading ? (
+              <div style={{ padding: '22px 14px' }}>
+                {[0, 1, 2].map((item) => (
+                  <motion.div
+                    key={item}
+                    initial={{ opacity: 0.34 }}
+                    animate={{ opacity: [0.34, 0.86, 0.34] }}
+                    transition={{
+                      duration: 1.1,
+                      repeat: Infinity,
+                      delay: item * 0.12,
+                    }}
+                    style={{
+                      height: 60,
+                      borderRadius: 19,
+                      marginBottom: 9,
+                      background: dark
+                        ? 'rgba(255,255,255,.065)'
+                        : 'rgba(15,23,42,.06)',
+                    }}
+                  />
+                ))}
+              </div>
+            ) : error ? (
+              <EmptySearchMessage
+                color={t.subtleText}
+                message="Une erreur est survenue pendant la recherche."
+              />
+            ) : data && flatResults.length > 0 ? (
+              <>
+                {(data.suggestions ?? []).length > 0 && (
+                  <div
+                    style={{
+                      display: 'flex',
+                      gap: 8,
+                      flexWrap: 'wrap',
+                      padding: '6px 6px 12px',
+                    }}
+                  >
+                    {data.suggestions.map((suggestion) => (
+                      <button
+                        key={suggestion}
+                        onClick={() => setQuery(suggestion)}
+                        style={{
+                          border: `1px solid ${t.iconBorder}`,
+                          background: t.iconBg,
+                          color: t.softText,
+                          borderRadius: 999,
+                          padding: '6px 10px',
+                          cursor: 'pointer',
+                          fontSize: 12,
+                          fontWeight: 650,
+                          fontFamily: 'inherit',
+                        }}
+                      >
+                        {suggestion}
+                      </button>
+                    ))}
+                  </div>
+                )}
+
+                {resultGroups.map((group) => {
+                  const items = getResultsForCategory(data, group.value)
+
+                  if (!items.length) return null
+
+                  return (
+                    <div key={group.value} style={{ marginBottom: 13 }}>
+                      <div
+                        style={{
+                          padding: '8px 8px 7px',
+                          color: ORANGE,
+                          fontSize: 12,
+                          fontWeight: 900,
+                          textTransform: 'uppercase',
+                          letterSpacing: '.06em',
+                        }}
+                      >
+                        {group.label}
+                      </div>
+
+                      <div style={{ display: 'grid', gap: 7 }}>
+                        {items.map((item) => {
+                          globalIndex += 1
+                          const selected = globalIndex === selectedIndex
+
+                          return (
+                            <Link
+                              id={`search-result-${globalIndex}`}
+                              key={`${item.category}-${item.id}`}
+                              href={item.href}
+                              onClick={onClose}
+                              onMouseEnter={() =>
+                                setSelectedIndex(globalIndex)
+                              }
+                              style={{
+                                display: 'grid',
+                                gridTemplateColumns: item.image
+                                  ? '52px 1fr auto'
+                                  : '1fr auto',
+                                alignItems: 'center',
+                                gap: 13,
+                                padding: '12px 14px',
+                                borderRadius: 20,
+                                textDecoration: 'none',
+                                color: t.text,
+                                background: selected
+                                  ? t.orangeSoft
+                                  : dark
+                                    ? 'rgba(255,255,255,.038)'
+                                    : 'rgba(15,23,42,.026)',
+                                border: `1px solid ${
+                                  selected
+                                    ? t.orangeBorder
+                                    : dark
+                                      ? 'rgba(255,255,255,.055)'
+                                      : 'rgba(15,23,42,.05)'
+                                }`,
+                                boxShadow: selected
+                                  ? dark
+                                    ? '0 12px 32px rgba(0,0,0,.26)'
+                                    : '0 12px 32px rgba(15,23,42,.10)'
+                                  : 'none',
+                                transition:
+                                  'background .16s ease, border-color .16s ease, box-shadow .16s ease, transform .16s ease',
+                              }}
+                            >
+                              {item.image && (
+                                <span
+                                  style={{
+                                    width: 52,
+                                    height: 52,
+                                    borderRadius: 16,
+                                    overflow: 'hidden',
+                                    background: t.iconBg,
+                                    border: `1px solid ${t.iconBorder}`,
+                                  }}
+                                >
+                                  <img
+                                    src={item.image}
+                                    alt=""
+                                    style={{
+                                      width: '100%',
+                                      height: '100%',
+                                      objectFit: 'cover',
+                                      display: 'block',
+                                    }}
+                                  />
+                                </span>
+                              )}
+
+                              <span
+                                style={{
+                                  display: 'flex',
+                                  flexDirection: 'column',
+                                  gap: 5,
+                                  minWidth: 0,
+                                }}
+                              >
+                                <strong
+                                  style={{
+                                    fontSize: 14,
+                                    fontWeight: 850,
+                                    overflow: 'hidden',
+                                    textOverflow: 'ellipsis',
+                                    whiteSpace: 'nowrap',
+                                  }}
+                                >
+                                  {item.title}
+                                </strong>
+
+                                {(item.description || item.meta) && (
+                                  <span
+                                    style={{
+                                      color: t.subtleText,
+                                      fontSize: 12,
+                                      lineHeight: 1.42,
+                                      overflow: 'hidden',
+                                      textOverflow: 'ellipsis',
+                                      display: '-webkit-box',
+                                      WebkitLineClamp: 2,
+                                      WebkitBoxOrient: 'vertical',
+                                    }}
+                                  >
+                                    {item.description || item.meta}
+                                  </span>
+                                )}
+                              </span>
+
+                              <span
+                                style={{
+                                  color: selected ? ORANGE : t.subtleText,
+                                  flexShrink: 0,
+                                  display: 'flex',
+                                }}
+                              >
+                                <ArrowRight />
+                              </span>
+                            </Link>
+                          )
+                        })}
+                      </div>
+                    </div>
+                  )
+                })}
+              </>
+            ) : (
+              <EmptySearchMessage
+                color={t.subtleText}
+                message={`Aucun résultat pour “${query}”.`}
+              />
+            )}
+          </div>
+
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              gap: 12,
+              padding: '12px 16px',
+              borderTop: `1px solid ${t.line}`,
+              color: t.subtleText,
+              fontSize: 12,
+            }}
+          >
+            <span>↑ ↓ pour naviguer · Entrée pour ouvrir</span>
+            <span>Échap pour fermer</span>
+          </div>
+        </motion.div>
+      </motion.div>
+    </AnimatePresence>,
     document.body
   )
 }
@@ -538,7 +903,6 @@ export default function PublicNavbar() {
   const [langOpen, setLangOpen] = useState(false)
   const [scrolled, setScrolled] = useState(false)
   const [visible, setVisible] = useState(true)
-  const [manualHidden, setManualHidden] = useState(false)
   const [logoError, setLogoError] = useState(false)
   const [openDesktopMenu, setOpenDesktopMenu] = useState<string | null>(null)
 
@@ -568,7 +932,7 @@ export default function PublicNavbar() {
             : undefined,
         })),
       })),
-    [translate],
+    [translate]
   )
 
   const searchLinks = useMemo(
@@ -585,10 +949,10 @@ export default function PublicNavbar() {
           ...item.children,
         ]
       }),
-    [links],
+    [links]
   )
 
-  const navbarShown = visible && !manualHidden
+  const navbarShown = visible
 
   useEffect(() => {
     const id = window.setTimeout(() => setMounted(true), 0)
@@ -685,7 +1049,7 @@ export default function PublicNavbar() {
       i18n.changeLanguage(lang.code)
       setLangOpen(false)
     },
-    [i18n],
+    [i18n]
   )
 
   const isActive = (href: string) => {
@@ -759,10 +1123,6 @@ export default function PublicNavbar() {
           to   { opacity: 1; transform: translateY(0) scale(1); }
         }
 
-        @keyframes navToggleRipple {
-          to { transform: scale(2.8); opacity: 0; }
-        }
-
         .pro-nav-link {
           position: relative;
           text-decoration: none;
@@ -802,6 +1162,10 @@ export default function PublicNavbar() {
         .pro-submenu-link:hover .pro-submenu-arrow {
           transform: translateX(3px);
           color: ${ORANGE} !important;
+        }
+
+        .pro-search-link:hover {
+          background: ${t.itemHover} !important;
         }
 
         .pro-icon:hover {
@@ -1422,15 +1786,6 @@ export default function PublicNavbar() {
       </header>
 
       <div aria-hidden="true" style={{ height: headerOffset }} />
-
-      {/* Décommente si tu veux réactiver le bouton flottant */}
-      {/*
-      <NavToggleButton
-        navbarVisible={navbarShown}
-        onClick={() => setManualHidden((value) => !value)}
-        dark={dark}
-      />
-      */}
     </>
   )
 }

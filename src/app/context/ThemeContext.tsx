@@ -17,11 +17,16 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     const body = document.body
+    const root = document.documentElement
+    const mode = dark ? 'dark' : 'light'
+
+    root.dataset.theme = mode
+    root.style.colorScheme = mode
     body.style.minHeight = '100vh'
     body.style.background = dark ? '#060608' : '#f0ede8'
     body.style.color = dark ? '#e8e6f0' : '#1a1918'
     body.style.transition = 'background .3s, color .3s'
-    localStorage.setItem('theme', dark ? 'dark' : 'light')
+    localStorage.setItem('theme', mode)
   }, [dark])
 
   const toggleTheme = () => setDark(d => !d)

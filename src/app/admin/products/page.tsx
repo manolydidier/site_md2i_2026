@@ -128,8 +128,8 @@ function excerptText(product: Product) {
   return product.excerpt?.trim() || product.slug
 }
 
-function getProductLeadUrl(product: Product) {
-  return `/admin/produits/${product.slug}/lead`
+function getProductEditUrl(product: Product) {
+  return `/admin/products/${product.id}`
 }
 
 // ─── Theme tokens ─────────────────────────────────────────────────────────────
@@ -582,76 +582,8 @@ function ProductDrawer({
             gap: 8,
           }}
         >
-          {product.status === 'PUBLISHED' ? (
-            <Link
-              href={getProductLeadUrl(product)}
-              target="_blank"
-              rel="noopener noreferrer"
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 10,
-                padding: '11px 14px',
-                borderRadius: 12,
-                border: `1px solid ${t.BORDER_INP}`,
-                background: t.BG_BTN,
-                color: t.TEXT_MAIN,
-                textDecoration: 'none',
-                fontSize: 13.5,
-                fontWeight: 500,
-              }}
-            >
-              <svg
-                width="15"
-                height="15"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-              >
-                <path d="M10 13a5 5 0 0 0 7.07 0l3.54-3.54a5 5 0 0 0-7.07-7.07L11.5 4.43" />
-                <path d="M14 11a5 5 0 0 0-7.07 0L3.39 14.54a5 5 0 0 0 7.07 7.07l2.04-2.04" />
-              </svg>
-              Ouvrir le formulaire lead
-            </Link>
-          ) : (
-            <button
-              type="button"
-              disabled
-              title="Le produit doit être publié pour avoir un formulaire lead public"
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 10,
-                padding: '11px 14px',
-                borderRadius: 12,
-                border: `1px solid ${t.BORDER_INP}`,
-                background: t.BG_BTN,
-                color: t.TEXT_DIM,
-                cursor: 'not-allowed',
-                fontSize: 13.5,
-                fontFamily: 'inherit',
-                fontWeight: 500,
-                opacity: 0.65,
-              }}
-            >
-              <svg
-                width="15"
-                height="15"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-              >
-                <path d="M10 13a5 5 0 0 0 7.07 0l3.54-3.54a5 5 0 0 0-7.07-7.07L11.5 4.43" />
-                <path d="M14 11a5 5 0 0 0-7.07 0L3.39 14.54a5 5 0 0 0 7.07 7.07l2.04-2.04" />
-              </svg>
-              Formulaire lead indisponible
-            </button>
-          )}
-
           <Link
-            href={`/admin/products/${product.id}`}
+            href={getProductEditUrl(product)}
             style={{
               display: 'flex',
               alignItems: 'center',
@@ -890,8 +822,23 @@ export default function ProductsPage() {
 
   useEffect(() => {
     api
-      .get('/api/product-categories?limit=100')
-      .then((r) => setCategories(r.data?.data ?? []))
+      .get('/api/product-categories?limit=100', {
+        withCredentials: true,
+      })
+      .then((r) => {
+        const payload = r.data
+        const rows = Array.isArray(payload)
+          ? payload
+          : Array.isArray(payload?.data)
+            ? payload.data
+            : Array.isArray(payload?.categories)
+              ? payload.categories
+              : Array.isArray(payload?.items)
+                ? payload.items
+                : []
+
+        setCategories(rows)
+      })
       .catch(console.error)
   }, [])
 
@@ -899,32 +846,75 @@ export default function ProductsPage() {
     setLoading(true)
 
     try {
-      const params = new URLSearchParams({
+      const params: Record<string, string> = {
         page: String(page),
         limit: String(limit),
         sortBy,
         sortDir,
-        ...(search && { search }),
-        ...(status && { status }),
-        ...(categoryId && { categoryId }),
+      }
+
+      if (search.trim()) {
+        params.search = search.trim()
+        params.q = search.trim()
+      }
+
+      if (status) {
+        params.status = status
+      }
+
+      if (categoryId) {
+        params.categoryId = categoryId
+      }
+
+      const res = await api.get('/api/products', {
+        params,
+        withCredentials: true,
       })
 
-      const res = await api.get(`/api/products?${params.toString()}`)
-      const data = res.data?.data ?? []
-      const meta = res.data?.pagination ??
-        res.data?.meta ?? {
+      const payload = res.data
+
+      const data: Product[] = Array.isArray(payload)
+        ? payload
+        : Array.isArray(payload?.data)
+          ? payload.data
+          : Array.isArray(payload?.products)
+            ? payload.products
+            : Array.isArray(payload?.items)
+              ? payload.items
+              : []
+
+      const meta = payload?.pagination ??
+        payload?.meta ??
+        payload?.pageInfo ?? {
           page,
           limit,
           total: data.length,
-          totalPages: 1,
+          totalPages: Math.max(1, Math.ceil(data.length / limit)),
         }
 
       setProducts(data)
-      setPagination(meta)
+      setPagination({
+        page: Number(meta.page ?? page),
+        limit: Number(meta.limit ?? limit),
+        total: Number(meta.total ?? data.length),
+        totalPages: Number(meta.totalPages ?? Math.max(1, Math.ceil(data.length / limit))),
+      })
       setSelected(new Set())
-    } catch (e) {
-      console.error(e)
-      showToast('Erreur lors du chargement', 'err')
+    } catch (e: any) {
+      console.error('[admin-products] fetch failed', e?.response?.data ?? e)
+      showToast(
+        e?.response?.data?.error ||
+          e?.response?.data?.message ||
+          'Erreur lors du chargement',
+        'err'
+      )
+      setProducts([])
+      setPagination({
+        page,
+        limit,
+        total: 0,
+        totalPages: 1,
+      })
     } finally {
       setLoading(false)
     }
@@ -1014,7 +1004,13 @@ export default function ProductsPage() {
 
   async function performDelete(ids: string[]) {
     try {
-      await Promise.all(ids.map((id) => api.delete(`/api/products/${id}`)))
+      await Promise.all(
+        ids.map((id) =>
+          api.delete(`/api/products/${id}`, {
+            withCredentials: true,
+          })
+        )
+      )
 
       showToast(
         ids.length > 1 ? `${ids.length} produit(s) supprimé(s)` : 'Produit supprimé'
@@ -1817,7 +1813,7 @@ export default function ProductsPage() {
                               </button>
 
                               <Link
-                                href={`/admin/products/${product.id}`}
+                                href={getProductEditUrl(product)}
                                 className="abtn"
                                 title="Modifier"
                                 style={{
@@ -1839,59 +1835,6 @@ export default function ProductsPage() {
                                   <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
                                 </svg>
                               </Link>
-
-                              {product.status === 'PUBLISHED' ? (
-                                <Link
-                                  href={getProductLeadUrl(product)}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className="abtn"
-                                  title="Ouvrir le formulaire lead"
-                                  style={{
-                                    ...btn(t.BG_BTN, t.BTN_TEXT),
-                                    border: `1px solid ${t.BTN_BORDER}`,
-                                    padding: '6px 9px',
-                                    textDecoration: 'none',
-                                  }}
-                                >
-                                  <svg
-                                    width="13"
-                                    height="13"
-                                    viewBox="0 0 24 24"
-                                    fill="none"
-                                    stroke="currentColor"
-                                    strokeWidth="2"
-                                  >
-                                    <path d="M10 13a5 5 0 0 0 7.07 0l3.54-3.54a5 5 0 0 0-7.07-7.07L11.5 4.43" />
-                                    <path d="M14 11a5 5 0 0 0-7.07 0L3.39 14.54a5 5 0 0 0 7.07 7.07l2.04-2.04" />
-                                  </svg>
-                                </Link>
-                              ) : (
-                                <button
-                                  className="abtn"
-                                  disabled
-                                  title="Publiez le produit pour activer le formulaire lead"
-                                  style={{
-                                    ...btn(t.BG_BTN, t.TEXT_DIM),
-                                    border: `1px solid ${t.BTN_BORDER}`,
-                                    padding: '6px 9px',
-                                    cursor: 'not-allowed',
-                                    opacity: 0.45,
-                                  }}
-                                >
-                                  <svg
-                                    width="13"
-                                    height="13"
-                                    viewBox="0 0 24 24"
-                                    fill="none"
-                                    stroke="currentColor"
-                                    strokeWidth="2"
-                                  >
-                                    <path d="M10 13a5 5 0 0 0 7.07 0l3.54-3.54a5 5 0 0 0-7.07-7.07L11.5 4.43" />
-                                    <path d="M14 11a5 5 0 0 0-7.07 0L3.39 14.54a5 5 0 0 0 7.07 7.07l2.04-2.04" />
-                                  </svg>
-                                </button>
-                              )}
 
                               <button
                                 className="abtn"

@@ -143,6 +143,7 @@ function ExcerptBlock({ text }: { text: string | null }) {
 
       {isLong && (
         <button
+          type="button"
           className={s.excerptToggle}
           onClick={(e) => {
             e.stopPropagation()
@@ -226,9 +227,17 @@ function ArticleCard({
     <motion.article
       ref={cardRef}
       className={s.card}
+      role="link"
+      tabIndex={0}
       onMouseMove={onMouseMove}
       onMouseLeave={onMouseLeave}
       onClick={() => onNavigate(a.id)}
+      onKeyDown={(e) => {
+        if (e.key !== 'Enter' && e.key !== ' ') return
+        e.preventDefault()
+        onNavigate(a.id)
+      }}
+      aria-label={`${t('articlesPage.card.readArticle')} : ${a.title}`}
       initial={prefersReducedMotion ? false : { opacity: 0, y: 34, scale: 0.988 }}
       whileInView={prefersReducedMotion ? {} : { opacity: 1, y: 0, scale: 1 }}
       viewport={{ once: true, amount: 0.2 }}
@@ -265,6 +274,7 @@ function ArticleCard({
 
         <div className={s.cardFooter}>
           <button
+            type="button"
             className={s.readBtn}
             onClick={(e) => {
               e.stopPropagation()
@@ -511,7 +521,7 @@ export default function PublicArticlesPage({ router }: PublicArticlesPageProps) 
               />
 
               {search && (
-                <button className={s.iconBtn} onClick={() => onSearch('')} aria-label={t('common.clear')}>
+                <button type="button" className={s.iconBtn} onClick={() => onSearch('')} aria-label={t('common.clear')}>
                   <IconX />
                 </button>
               )}
@@ -520,7 +530,10 @@ export default function PublicArticlesPage({ router }: PublicArticlesPageProps) 
             <div className={s.stickyRight}>
               <div className={s.dropdown} ref={filterRef}>
                 <button
+                  type="button"
                   className={`${s.dropBtn} ${filterOpen || selCat ? s.dropBtnActive : ''}`}
+                  aria-expanded={filterOpen}
+                  aria-haspopup="menu"
                   onClick={() => {
                     setFilterOpen((v) => !v)
                     setSortOpen(false)
@@ -544,6 +557,7 @@ export default function PublicArticlesPage({ router }: PublicArticlesPageProps) 
 
                     <div className={s.catList}>
                       <button
+                        type="button"
                         className={`${s.catPill} ${!selCat ? s.catPillActive : ''}`}
                         onClick={() => {
                           onCat('')
@@ -556,6 +570,7 @@ export default function PublicArticlesPage({ router }: PublicArticlesPageProps) 
                       {!catsLoading &&
                         categories.map((c) => (
                           <button
+                            type="button"
                             key={c.id}
                             className={`${s.catPill} ${selCat === (c.slug ?? '') ? s.catPillActive : ''}`}
                             onClick={() => {
@@ -576,7 +591,10 @@ export default function PublicArticlesPage({ router }: PublicArticlesPageProps) 
 
               <div className={s.dropdown} ref={sortRef}>
                 <button
+                  type="button"
                   className={`${s.dropBtn} ${sortOpen || sort !== 'date-desc' ? s.dropBtnActive : ''}`}
+                  aria-expanded={sortOpen}
+                  aria-haspopup="menu"
                   onClick={() => {
                     setSortOpen((v) => !v)
                     setFilterOpen(false)
@@ -595,6 +613,7 @@ export default function PublicArticlesPage({ router }: PublicArticlesPageProps) 
 
                     {SORT_OPTIONS.map((o) => (
                       <button
+                        type="button"
                         key={o.key}
                         className={`${s.sortOpt} ${sort === o.key ? s.sortOptActive : ''}`}
                         onClick={() => onSort(o.key)}
@@ -608,7 +627,7 @@ export default function PublicArticlesPage({ router }: PublicArticlesPageProps) 
               </div>
 
               {hasFilters && (
-                <button className={s.clearBtn} onClick={clear}>
+                <button type="button" className={s.clearBtn} onClick={clear}>
                   {t('common.clearAll')}
                 </button>
               )}
@@ -620,7 +639,7 @@ export default function PublicArticlesPage({ router }: PublicArticlesPageProps) 
               {activeCat && (
                 <span className={s.chip}>
                   {activeCat.name}
-                  <button onClick={() => onCat('')}>
+                  <button type="button" onClick={() => onCat('')} aria-label={t('common.clear')}>
                     <IconX />
                   </button>
                 </span>
@@ -629,7 +648,7 @@ export default function PublicArticlesPage({ router }: PublicArticlesPageProps) 
               {search.trim() && (
                 <span className={s.chip}>
                   &quot;{search.trim()}&quot;
-                  <button onClick={() => onSearch('')}>
+                  <button type="button" onClick={() => onSearch('')} aria-label={t('common.clear')}>
                     <IconX />
                   </button>
                 </span>
@@ -676,7 +695,7 @@ export default function PublicArticlesPage({ router }: PublicArticlesPageProps) 
             <h2>{t('articlesPage.emptyTitle')}</h2>
             <p>{t('articlesPage.emptyText')}</p>
             {hasFilters && (
-              <button className={s.resetBtn} onClick={clear}>
+              <button type="button" className={s.resetBtn} onClick={clear}>
                 {t('common.resetFilters')}
               </button>
             )}
@@ -697,7 +716,7 @@ export default function PublicArticlesPage({ router }: PublicArticlesPageProps) 
 
             {totalPages > 1 && (
               <nav className={s.pagination}>
-                <button className={s.pBtn} onClick={() => goPage(page - 1)} disabled={page <= 1 || loading}>
+                <button type="button" className={s.pBtn} onClick={() => goPage(page - 1)} disabled={page <= 1 || loading}>
                   ‹
                 </button>
 
@@ -708,6 +727,7 @@ export default function PublicArticlesPage({ router }: PublicArticlesPageProps) 
                     </span>
                   ) : (
                     <button
+                      type="button"
                       key={p}
                       className={`${s.pBtn} ${p === page ? s.pActive : ''}`}
                       onClick={() => goPage(p as number)}
@@ -718,7 +738,7 @@ export default function PublicArticlesPage({ router }: PublicArticlesPageProps) 
                   )
                 )}
 
-                <button className={s.pBtn} onClick={() => goPage(page + 1)} disabled={page >= totalPages || loading}>
+                <button type="button" className={s.pBtn} onClick={() => goPage(page + 1)} disabled={page >= totalPages || loading}>
                   ›
                 </button>
               </nav>
@@ -728,6 +748,7 @@ export default function PublicArticlesPage({ router }: PublicArticlesPageProps) 
       </div>
 
       <button
+        type="button"
         className={`${s.scrollTop} ${top ? s.scrollTopShow : ''}`}
         onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
         aria-label={t('common.scrollTop')}

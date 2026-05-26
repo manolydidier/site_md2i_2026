@@ -89,7 +89,7 @@
   font-size: clamp(35px, 3.8vw, 62px) !important;
   font-weight: 800;
   line-height: 1.05;
-  letter-spacing: -0.04em;
+  letter-spacing: 0;
   color: var(--hero-title);
   margin: 0;
   opacity: 0;
@@ -149,8 +149,14 @@
   font-weight: 700;
   font-family: 'DM Sans', sans-serif;
   cursor: pointer;
+  text-decoration: none;
   border: none;
   transition: transform 0.2s, box-shadow 0.2s, background 0.3s, color 0.3s, border-color 0.3s;
+}
+
+.heroBtn:focus-visible {
+  outline: 3px solid rgba(239, 159, 39, 0.52);
+  outline-offset: 4px;
 }
 
 .primary {
@@ -234,7 +240,7 @@
   font-size: 28px;
   font-weight: 800;
   color: #ef9f27;
-  letter-spacing: -0.04em;
+  letter-spacing: 0;
   line-height: 1;
   transition: color 0.4s ease;
 }
@@ -309,7 +315,7 @@
   font-weight: 800;
   color: #ef9f27;
   margin: 0 0 8px;
-  letter-spacing: -0.01em;
+  letter-spacing: 0;
   display: flex;
   align-items: center;
   gap: 8px;
@@ -422,36 +428,58 @@
 }
 
 .heroDot {
-  width: 6px;
-  height: 6px;
+  width: 32px;
+  height: 32px;
   border-radius: 50%;
-  background: var(--hero-dot);
+  border: 0;
+  background: transparent;
   cursor: pointer;
   transition: all 0.35s cubic-bezier(.34, 1.56, .64, 1);
   pointer-events: all;
   position: relative;
+  display: grid;
+  place-items: center;
+  padding: 0;
+}
+
+.heroDot::before {
+  content: '';
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--hero-dot);
+  transition: all 0.35s cubic-bezier(.34, 1.56, .64, 1);
 }
 
 .heroDot::after {
   content: '';
   position: absolute;
-  inset: -4px;
-  border-radius: 50%;
+  inset: 4px;
+  border-radius: 999px;
   border: 1px solid transparent;
   transition: border-color 0.3s;
 }
 
 .heroDot.active {
-  background: #ef9f27;
-  box-shadow: 0 0 10px rgba(239, 159, 39, .7), 0 0 20px rgba(239, 159, 39, .3);
+  background: transparent;
+}
+
+.heroDot.active::before {
   width: 6px;
   height: 20px;
   border-radius: 3px;
+  background: #ef9f27;
+  box-shadow: 0 0 10px rgba(239, 159, 39, .7), 0 0 20px rgba(239, 159, 39, .3);
 }
 
 .heroDot.active::after {
   border-color: rgba(239, 159, 39, .3);
   border-radius: 6px;
+}
+
+.heroDot:focus-visible {
+  outline: 3px solid rgba(239, 159, 39, 0.52);
+  outline-offset: 2px;
 }
 
 .hero3dSteps::before {
@@ -514,6 +542,16 @@
 @keyframes scrollTrack {
   0% { left: -100%; }
   50%, 100% { left: 100%; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hero3d *,
+  .hero3d *::before,
+  .hero3d *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
 }
 
 /* ── Responsive tablette ── */

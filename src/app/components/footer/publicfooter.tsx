@@ -202,47 +202,47 @@ function useFadeIn() {
   return { ref, visible }
 }
 
-function FooterSeparator({ dark }: { dark: boolean }) {
-  return (
-    <div className="mt-36" style={{ position: 'relative', height: 80, overflow: 'hidden', marginBottom: -2 }}>
-      <svg
-        viewBox="0 0 1440 80"
-        preserveAspectRatio="none"
-        style={{ position: 'absolute', inset: 0, width: '100%', height: '100%' }}
-        xmlns="http://www.w3.org/2000/svg"
-      >
-        <defs>
-          <linearGradient id="waveGradFooter" x1="0%" y1="0%" x2="100%" y2="0%">
-            <stop offset="0%" stopColor={ORANGE} stopOpacity="0.04" />
-            <stop offset="50%" stopColor={ORANGE} stopOpacity="0.12" />
-            <stop offset="100%" stopColor={ORANGE} stopOpacity="0.04" />
-          </linearGradient>
-        </defs>
+// function FooterSeparator({ dark }: { dark: boolean }) {
+//   return (
+//     <div className="mt-36" style={{ position: 'relative', height: 0, overflow: 'hidden', marginBottom: -2 }}>
+//       <svg
+//         viewBox="0 0 1440 80"
+//         preserveAspectRatio="none"
+//         style={{ position: 'absolute', inset: 0, width: '100%', height: '100%' }}
+//         xmlns="http://www.w3.org/2000/svg"
+//       >
+//         <defs>
+//           <linearGradient id="waveGradFooter" x1="0%" y1="0%" x2="100%" y2="0%">
+//             <stop offset="0%" stopColor={ORANGE} stopOpacity="0.04" />
+//             <stop offset="50%" stopColor={ORANGE} stopOpacity="0.12" />
+//             <stop offset="100%" stopColor={ORANGE} stopOpacity="0.04" />
+//           </linearGradient>
+//         </defs>
 
-        <path
-          d="M0,40 C200,80 400,0 600,40 C800,80 1000,10 1200,40 C1320,58 1380,50 1440,40 L1440,80 L0,80 Z"
-          fill="url(#waveGradFooter)"
-        />
+//         <path
+//           d="M0,40 C200,80 400,0 600,40 C800,80 1000,10 1200,40 C1320,58 1380,50 1440,40 L1440,80 L0,80 Z"
+//           fill="url(#waveGradFooter)"
+//         />
 
-        <path
-          d="M0,52 C240,20 480,72 720,48 C960,24 1200,68 1440,52 L1440,80 L0,80 Z"
-          fill={dark ? 'rgba(239,159,39,.04)' : 'rgba(239,159,39,.05)'}
-        />
-      </svg>
+//         <path
+//           d="M0,52 C240,20 480,72 720,48 C960,24 1200,68 1440,52 L1440,80 L0,80 Z"
+//           fill={dark ? 'rgba(239,159,39,.04)' : 'rgba(239,159,39,.05)'}
+//         />
+//       </svg>
 
-      <div
-        style={{
-          position: 'absolute',
-          bottom: 0,
-          left: 0,
-          right: 0,
-          height: 1,
-          background: `linear-gradient(90deg, transparent, ${ORANGE}55, transparent)`,
-        }}
-      />
-    </div>
-  )
-}
+//       <div
+//         style={{
+//           position: 'absolute',
+//           bottom: 0,
+//           left: 0,
+//           right: 0,
+//           height: 1,
+//           background: `linear-gradient(90deg, transparent, ${ORANGE}55, transparent)`,
+//         }}
+//       />
+//     </div>
+//   )
+// }
 
 function buildDirectionsUrl(location?: VisitorLocation | null) {
   if (!location) return GOOGLE_MAP_DIRECTIONS_URL
@@ -285,6 +285,8 @@ export default function PublicFooter() {
   )
 
   const [email, setEmail] = useState('')
+  const [newsletterWebsite, setNewsletterWebsite] = useState('')
+  const [newsletterStartedAt, setNewsletterStartedAt] = useState(() => Date.now())
   const [subscribeResult, setSubscribeResult] = useState<SubscribeResult | null>(null)
   const [subscribeLoading, setSubscribeLoading] = useState(false)
   const [subscribeError, setSubscribeError] = useState('')
@@ -325,7 +327,10 @@ export default function PublicFooter() {
           source: 'PUBLIC_FOOTER_NEWSLETTER',
           pageUrl: typeof window !== 'undefined' ? window.location.href : null,
           location: visitorLocation,
+          website: newsletterWebsite,
+          submittedAt: newsletterStartedAt,
         }),
+        credentials: 'same-origin',
       })
 
       const data = await res.json().catch(() => null)
@@ -349,6 +354,8 @@ export default function PublicFooter() {
       })
 
       setEmail('')
+      setNewsletterWebsite('')
+      setNewsletterStartedAt(Date.now())
 
       setTimeout(() => setSubscribeResult(null), 7000)
     } catch (error) {
@@ -668,7 +675,7 @@ export default function PublicFooter() {
         }
       `}</style>
 
-      <FooterSeparator dark={dark} />
+      {/* <FooterSeparator dark={dark} /> */}
 
       <footer
         id="public-footer"
@@ -1000,6 +1007,22 @@ export default function PublicFooter() {
                   </div>
                 ) : (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                    <input
+                      type="text"
+                      tabIndex={-1}
+                      autoComplete="off"
+                      aria-hidden="true"
+                      value={newsletterWebsite}
+                      onChange={(e) => setNewsletterWebsite(e.target.value)}
+                      style={{
+                        position: 'absolute',
+                        left: '-9999px',
+                        width: 1,
+                        height: 1,
+                        opacity: 0,
+                      }}
+                    />
+
                     <input
                       className="fnl-input"
                       type="email"
