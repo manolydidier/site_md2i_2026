@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 
 import { getCrmOwnerUserId } from "@/app/lib/crm-owner";
 import { prisma } from "@/app/lib/prisma";
+import { publishCrmPublication } from "@/app/lib/crm-publication-publisher";
 
 type CrmPublicationChannelInput =
   | "LINKEDIN"
@@ -51,6 +52,18 @@ function readOptionalText(formData: FormData, key: string) {
   const value = readText(formData, key);
 
   return value.length > 0 ? value : null;
+}
+
+function readIds(formData: FormData, key: string) {
+  return Array.from(
+    new Set(
+      formData
+        .getAll(key)
+        .filter((value): value is string => typeof value === "string")
+        .map((value) => value.trim())
+        .filter(Boolean)
+    )
+  );
 }
 
 function slugify(value: string) {
@@ -112,6 +125,10 @@ function toPublicationStatus(value: string) {
   return PUBLICATION_STATUSES.has(normalized as CrmPublicationStatusInput)
     ? (normalized as CrmPublicationStatusInput)
     : null;
+}
+
+function getSiteUrl() {
+  return process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
 }
 
 async function createUniqueSlug(name: string, channel: string) {
@@ -256,6 +273,134 @@ export async function createCrmMarketingCampaign(formData: FormData) {
   revalidatePath("/admin/crm");
 }
 
+export async function publishCrmPublicationNow(formData: FormData) {
+  const userId = await getCrmOwnerUserId();
+  const publicationId = readText(formData, "publicationId");
+
+  if (!publicationId) {
+    throw new Error("Publication invalide.");
+  }
+
+  const publication = await prisma.crmPublication.findFirst({
+    where: {
+      id: publicationId,
+      userId,
+    },
+    include: {
+      trackedLink: {
+        select: {
+          slug: true,
+          destinationUrl: true,
+        },
+      },
+    },
+  });
+
+  if (!publication) {
+    throw new Error("Publication introuvable.");
+  }
+
+  if (!publication.trackedLink) {
+    throw new Error("Lien suivi introuvable pour cette publication.");
+  }
+
+  if (
+    publication.channel !== "LINKEDIN" &&
+    publication.channel !== "FACEBOOK"
+  ) {
+    throw new Error(
+      `Publication automatique non disponible pour ${publication.channel}.`
+    );
+  }
+
+  const trackedUrl = `${getSiteUrl()}/r/${publication.trackedLink.slug}`;
+
+  try {
+    const result = await publishCrmPublication({
+      publicationId: publication.id,
+      channel: publication.channel,
+      title: publication.title,
+      content: publication.content,
+      ctaLabel: publication.ctaLabel,
+      trackedUrl,
+      userId,
+    });
+
+    await prisma.$transaction(async (tx) => {
+      await tx.crmPublication.update({
+        where: {
+          id: publication.id,
+        },
+        data: {
+          status: "PUBLISHED",
+          publishedAt: new Date(),
+          providerPostId: result.externalId || null,
+          providerUrl: result.externalUrl || null,
+          failureReason: null,
+        },
+      });
+
+      await tx.crmMarketingCampaign.update({
+        where: {
+          id: publication.campaignId,
+        },
+        data: {
+          status: "ACTIVE",
+        },
+      });
+
+      await tx.crmActivity.create({
+        data: {
+          type: "CAMPAIGN",
+          title: `Publication ${publication.channel.toLowerCase()} publiee`,
+          description: publication.title,
+          metadata: {
+            publicationId: publication.id,
+            campaignId: publication.campaignId,
+            channel: publication.channel,
+            trackedUrl,
+            externalId: result.externalId || null,
+            externalUrl: result.externalUrl || null,
+          },
+          userId,
+        },
+      });
+    });
+  } catch (error) {
+    const failureReason =
+      error instanceof Error ? error.message : "Erreur inconnue.";
+
+    await prisma.$transaction(async (tx) => {
+      await tx.crmPublication.update({
+        where: {
+          id: publication.id,
+        },
+        data: {
+          status: "FAILED",
+          failureReason,
+        },
+      });
+
+      await tx.crmActivity.create({
+        data: {
+          type: "CAMPAIGN",
+          title: `Echec publication ${publication.channel.toLowerCase()}`,
+          description: failureReason,
+          metadata: {
+            publicationId: publication.id,
+            campaignId: publication.campaignId,
+            channel: publication.channel,
+          },
+          userId,
+        },
+      });
+    });
+  }
+
+  revalidatePath("/admin/crm/campaigns");
+  revalidatePath("/admin/crm");
+}
+
 export async function updateCrmPublicationStatus(formData: FormData) {
   const userId = await getCrmOwnerUserId();
   const publicationId = readText(formData, "publicationId");
@@ -313,6 +458,190 @@ export async function updateCrmPublicationStatus(formData: FormData) {
           publicationId: publication.id,
           campaignId: publication.campaignId,
           status: nextStatus,
+        },
+        userId,
+      },
+    });
+  });
+
+  revalidatePath("/admin/crm/campaigns");
+  revalidatePath("/admin/crm");
+}
+
+export async function deleteCrmMarketingCampaign(formData: FormData) {
+  const userId = await getCrmOwnerUserId();
+  const campaignId = readText(formData, "campaignId");
+
+  if (!campaignId) {
+    throw new Error("Campagne invalide.");
+  }
+
+  const campaign = await prisma.crmMarketingCampaign.findFirst({
+    where: {
+      id: campaignId,
+      userId,
+    },
+    select: {
+      id: true,
+      name: true,
+    },
+  });
+
+  if (!campaign) {
+    throw new Error("Campagne introuvable.");
+  }
+
+  const trackedLinks = await prisma.crmTrackedLink.findMany({
+    where: {
+      campaignId: campaign.id,
+      userId,
+    },
+    select: {
+      id: true,
+    },
+  });
+
+  const trackedLinkIds = trackedLinks.map((link) => link.id);
+
+  await prisma.$transaction(async (tx) => {
+    if (trackedLinkIds.length > 0) {
+      await tx.crmTrackedLinkClick.deleteMany({
+        where: {
+          linkId: {
+            in: trackedLinkIds,
+          },
+        },
+      });
+    }
+
+    await tx.crmPublication.deleteMany({
+      where: {
+        campaignId: campaign.id,
+        userId,
+      },
+    });
+
+    await tx.crmTrackedLink.deleteMany({
+      where: {
+        campaignId: campaign.id,
+        userId,
+      },
+    });
+
+    await tx.crmMarketingCampaign.delete({
+      where: {
+        id: campaign.id,
+      },
+    });
+
+    await tx.crmActivity.create({
+      data: {
+        type: "CAMPAIGN",
+        title: `Campagne marketing supprimee: ${campaign.name}`,
+        description:
+          "Campagne, publications, liens suivis et clics associes supprimes.",
+        metadata: {
+          deletedCampaignId: campaign.id,
+          deletedCampaignName: campaign.name,
+          trackedLinkCount: trackedLinkIds.length,
+        },
+        userId,
+      },
+    });
+  });
+
+  revalidatePath("/admin/crm/campaigns");
+  revalidatePath("/admin/crm");
+}
+
+export async function deleteSelectedCrmMarketingCampaigns(formData: FormData) {
+  const userId = await getCrmOwnerUserId();
+  const campaignIds = readIds(formData, "campaignIds");
+
+  if (campaignIds.length === 0) {
+    throw new Error("Aucune campagne selectionnee.");
+  }
+
+  const campaigns = await prisma.crmMarketingCampaign.findMany({
+    where: {
+      id: {
+        in: campaignIds,
+      },
+      userId,
+    },
+    select: {
+      id: true,
+      name: true,
+    },
+  });
+
+  if (campaigns.length === 0) {
+    throw new Error("Aucune campagne valide a supprimer.");
+  }
+
+  const authorizedCampaignIds = campaigns.map((campaign) => campaign.id);
+
+  const trackedLinks = await prisma.crmTrackedLink.findMany({
+    where: {
+      campaignId: {
+        in: authorizedCampaignIds,
+      },
+      userId,
+    },
+    select: {
+      id: true,
+    },
+  });
+
+  const trackedLinkIds = trackedLinks.map((link) => link.id);
+
+  await prisma.$transaction(async (tx) => {
+    if (trackedLinkIds.length > 0) {
+      await tx.crmTrackedLinkClick.deleteMany({
+        where: {
+          linkId: {
+            in: trackedLinkIds,
+          },
+        },
+      });
+    }
+
+    await tx.crmPublication.deleteMany({
+      where: {
+        campaignId: {
+          in: authorizedCampaignIds,
+        },
+        userId,
+      },
+    });
+
+    await tx.crmTrackedLink.deleteMany({
+      where: {
+        campaignId: {
+          in: authorizedCampaignIds,
+        },
+        userId,
+      },
+    });
+
+    await tx.crmMarketingCampaign.deleteMany({
+      where: {
+        id: {
+          in: authorizedCampaignIds,
+        },
+        userId,
+      },
+    });
+
+    await tx.crmActivity.create({
+      data: {
+        type: "CAMPAIGN",
+        title: `${campaigns.length} campagne(s) marketing supprimee(s)`,
+        description: campaigns.map((campaign) => campaign.name).join(", "),
+        metadata: {
+          deletedCampaignIds: authorizedCampaignIds,
+          deletedCampaignNames: campaigns.map((campaign) => campaign.name),
+          trackedLinkCount: trackedLinkIds.length,
         },
         userId,
       },

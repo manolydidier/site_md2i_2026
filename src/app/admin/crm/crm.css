@@ -976,6 +976,189 @@
   color: #991b1b;
 }
 
+.crm-publisher-readiness,
+.crm-publication-calendar {
+  overflow: hidden;
+}
+
+.crm-readiness-grid {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 12px;
+  padding: 16px;
+}
+
+.crm-readiness-card {
+  min-height: 138px;
+  display: grid;
+  align-content: start;
+  gap: 9px;
+  padding: 13px;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  background: #f8fafc;
+}
+
+.crm-readiness-card-ready {
+  border-color: #bbf7d0;
+  background: #f0fdf4;
+}
+
+.crm-readiness-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.crm-readiness-top strong {
+  color: #0f172a;
+  font-size: 14px;
+  font-weight: 900;
+}
+
+.crm-readiness-top span {
+  min-height: 24px;
+  display: inline-flex;
+  align-items: center;
+  padding: 0 8px;
+  border-radius: 999px;
+  background: #ffffff;
+  color: #1e3a8a;
+  font-size: 10px;
+  font-weight: 900;
+}
+
+.crm-readiness-card p {
+  margin: 0;
+  color: #475569;
+  font-size: 12px;
+  line-height: 1.45;
+  font-weight: 700;
+}
+
+.crm-readiness-card code {
+  display: block;
+  overflow-x: auto;
+  padding: 8px;
+  border-radius: 8px;
+  background: #ffffff;
+  color: #991b1b;
+  font-size: 11px;
+  line-height: 1.4;
+  white-space: nowrap;
+}
+
+.crm-readiness-summary,
+.crm-calendar-unscheduled {
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  margin: 0 16px 16px;
+  padding: 0 12px;
+  border: 1px solid #bfdbfe;
+  border-radius: 12px;
+  background: #eff6ff;
+  color: #1e3a8a;
+  font-size: 13px;
+  font-weight: 850;
+}
+
+.crm-calendar-weekdays,
+.crm-calendar-grid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+}
+
+.crm-calendar-weekdays {
+  gap: 8px;
+  padding: 14px 16px 8px;
+}
+
+.crm-calendar-weekdays span {
+  color: #64748b;
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 0.7px;
+  text-transform: uppercase;
+}
+
+.crm-calendar-grid {
+  gap: 8px;
+  padding: 0 16px 16px;
+}
+
+.crm-calendar-day {
+  min-height: 118px;
+  display: grid;
+  align-content: start;
+  gap: 8px;
+  padding: 10px;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  background: #ffffff;
+}
+
+.crm-calendar-day-empty {
+  background: #f8fafc;
+  border-style: dashed;
+}
+
+.crm-calendar-day time {
+  color: #0f172a;
+  font-size: 13px;
+  font-weight: 900;
+}
+
+.crm-calendar-events {
+  display: grid;
+  gap: 6px;
+}
+
+.crm-calendar-event,
+.crm-calendar-more,
+.crm-calendar-none {
+  min-height: 28px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  max-width: 100%;
+  padding: 0 8px;
+  border-radius: 8px;
+  background: #eff6ff;
+  color: #1e3a8a;
+  font-size: 11px;
+  font-weight: 800;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.crm-calendar-event strong {
+  flex: 0 0 auto;
+  color: #0f172a;
+  font-weight: 900;
+}
+
+.crm-calendar-more {
+  width: max-content;
+  background: #fff7ed;
+  color: #9a3412;
+}
+
+.crm-calendar-none {
+  width: max-content;
+  background: transparent;
+  color: #cbd5e1;
+}
+
+.crm-calendar-unscheduled {
+  border-color: #fed7aa;
+  background: #fff7ed;
+  color: #9a3412;
+}
+
 .crm-publication-assistant {
   display: grid;
   gap: 10px;
@@ -1116,6 +1299,10 @@
   .crm-marketing-grid {
     grid-template-columns: 1fr;
   }
+
+  .crm-readiness-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
 }
 
 @media (max-width: 860px) {
@@ -1135,6 +1322,19 @@
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
+  .crm-readiness-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .crm-calendar-weekdays,
+  .crm-calendar-grid {
+    min-width: 760px;
+  }
+
+  .crm-publication-calendar {
+    overflow-x: auto;
+  }
+
   .crm-marketing-actions {
     justify-content: flex-start;
     min-width: 0;
@@ -1143,7 +1343,8 @@
 
 @media (max-width: 620px) {
   .crm-marketing-stats,
-  .crm-marketing-field-row {
+  .crm-marketing-field-row,
+  .crm-readiness-grid {
     grid-template-columns: 1fr;
   }
 
@@ -1170,4 +1371,28 @@
   .crm-assistant-button {
     width: 100%;
   }
+}
+.crm-campaign-select {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  width: fit-content;
+  margin-bottom: 0.5rem;
+  color: #64748b;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  cursor: pointer;
+  user-select: none;
+}
+
+.crm-campaign-select input {
+  width: 14px;
+  height: 14px;
+  cursor: pointer;
+}
+
+.crm-campaign-select:hover {
+  color: #1d4ed8;
 }

@@ -43,7 +43,7 @@ async function runCron(req: NextRequest) {
       ...result,
     });
   } catch (error) {
-    console.error("[cron-publish-scheduled][PROCESS_ERROR]", {
+    console.error("[cron-crm-publications][PROCESS_ERROR]", {
       error: error instanceof Error ? error.message : String(error),
     });
 
