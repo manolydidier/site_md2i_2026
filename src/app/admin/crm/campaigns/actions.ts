@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
 
 import { getCrmOwnerUserId } from "@/app/lib/crm-owner";
 import { prisma } from "@/app/lib/prisma";
@@ -315,6 +316,8 @@ export async function publishCrmPublicationNow(formData: FormData) {
 
   const trackedUrl = `${getSiteUrl()}/r/${publication.trackedLink.slug}`;
 
+  let redirectStatus: "success" | "failed" = "success";
+
   try {
     const result = await publishCrmPublication({
       publicationId: publication.id,
@@ -367,6 +370,8 @@ export async function publishCrmPublicationNow(formData: FormData) {
       });
     });
   } catch (error) {
+    redirectStatus = "failed";
+
     const failureReason =
       error instanceof Error ? error.message : "Erreur inconnue.";
 
@@ -399,6 +404,14 @@ export async function publishCrmPublicationNow(formData: FormData) {
 
   revalidatePath("/admin/crm/campaigns");
   revalidatePath("/admin/crm");
+
+  const params = new URLSearchParams();
+
+  params.set("publish", redirectStatus);
+  params.set("channel", publication.channel);
+  params.set("title", publication.title);
+
+  redirect(`/admin/crm/campaigns?${params.toString()}`);
 }
 
 export async function updateCrmPublicationStatus(formData: FormData) {

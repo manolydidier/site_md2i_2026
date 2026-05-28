@@ -2,29 +2,39 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 import { headers } from "next/headers";
 import {
-  AlertTriangle,
+  BadgeCheck,
   BarChart3,
+  Briefcase,
   CalendarClock,
   CheckCircle2,
+  CircleAlert,
+  Clock3,
+  CopyCheck,
   ExternalLink,
+  Globe2,
   Link2,
+  Mail,
   Megaphone,
   MousePointerClick,
   Send,
   Settings2,
+  Share2,
   Sparkles,
+  Trash2,
 } from "lucide-react";
 
 import { getCrmOwnerUserId } from "@/app/lib/crm-owner";
 import { prisma } from "@/app/lib/prisma";
 import { getCrmPublicationPublisherReadiness } from "@/app/lib/crm-publication-publisher";
 import {
-  createCrmMarketingCampaign,
   deleteCrmMarketingCampaign,
   deleteSelectedCrmMarketingCampaigns,
   publishCrmPublicationNow,
   updateCrmPublicationStatus,
 } from "./actions";
+import CampaignCalendarModal from "./CampaignCalendarModal";
+import CampaignCreateModal from "./CampaignCreateModal";
+import CampaignPublishToast from "./CampaignPublishToast";
 import PublicationAssistant from "./PublicationAssistant";
 import styles from "./CampaignChannels.module.css";
 
@@ -53,6 +63,9 @@ type CampaignRow = {
     status: string;
     scheduledAt: Date | null;
     publishedAt: Date | null;
+    providerPostId: string | null;
+    providerUrl: string | null;
+    failureReason: string | null;
     trackedLink: {
       slug: string;
       clickCount: number;
@@ -202,7 +215,7 @@ async function loadCampaignData(userId: string): Promise<CampaignData> {
 }
 
 function formatDateTime(value: Date | null) {
-  if (!value) return "Non planifie";
+  if (!value) return "Non planifié";
 
   return new Intl.DateTimeFormat("fr-FR", {
     dateStyle: "medium",
@@ -210,18 +223,26 @@ function formatDateTime(value: Date | null) {
   }).format(value);
 }
 
+function formatDate(value: Date | null) {
+  if (!value) return "Non planifié";
+
+  return new Intl.DateTimeFormat("fr-FR", {
+    dateStyle: "medium",
+  }).format(value);
+}
+
 function formatStatus(value: string) {
   const labels: Record<string, string> = {
     DRAFT: "Brouillon",
-    READY: "Pret",
-    SCHEDULED: "Planifie",
-    PUBLISHED: "Publie",
+    READY: "Prêt",
+    SCHEDULED: "Planifié",
+    PUBLISHED: "Publié",
     FAILED: "Erreur",
-    CANCELLED: "Annule",
+    CANCELLED: "Annulé",
     ACTIVE: "Active",
     PAUSED: "En pause",
-    COMPLETED: "Terminee",
-    ARCHIVED: "Archivee",
+    COMPLETED: "Terminée",
+    ARCHIVED: "Archivée",
   };
 
   return labels[value] || value;
@@ -285,6 +306,42 @@ function buildCalendarDays(publications: CalendarPublication[]) {
   return calendar;
 }
 
+function decodeHtmlEntities(value: string) {
+  return value
+    .replace(/&nbsp;/g, " ")
+    .replace(/&amp;/g, "&")
+    .replace(/&quot;/g, '"')
+    .replace(/&#039;/g, "'")
+    .replace(/&#39;/g, "'")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">");
+}
+
+function richContentToPlainText(value: string) {
+  return decodeHtmlEntities(
+    value
+      .replace(/<script[\s\S]*?>[\s\S]*?<\/script>/gi, "")
+      .replace(/<style[\s\S]*?>[\s\S]*?<\/style>/gi, "")
+      .replace(
+        /<a[^>]*href=["']([^"']+)["'][^>]*>([\s\S]*?)<\/a>/gi,
+        (_match, href, text) => {
+          const label = String(text).replace(/<[^>]*>/g, "").trim();
+
+          return label ? `${label}: ${href}` : href;
+        }
+      )
+      .replace(/<img[^>]*src=["']([^"']+)["'][^>]*>/gi, (_match, src) => {
+        return `\nImage: ${src}\n`;
+      })
+      .replace(/<\/(p|div|h1|h2|h3|h4|li|figure)>/gi, "\n")
+      .replace(/<br\s*\/?>/gi, "\n")
+      .replace(/<[^>]*>/g, "")
+      .replace(/\n{3,}/g, "\n\n")
+      .replace(/[ \t]{2,}/g, " ")
+      .trim()
+  );
+}
+
 function getStatusClass(value: string) {
   if (value === "PUBLISHED" || value === "ACTIVE" || value === "COMPLETED") {
     return "crm-status-pill crm-status-pill-green";
@@ -301,6 +358,25 @@ function getStatusClass(value: string) {
   return "crm-status-pill";
 }
 
+function getCampaignAccentClass(status: string) {
+  if (status === "ACTIVE") return "crm-campaign-accent-active";
+  if (status === "COMPLETED") return "crm-campaign-accent-success";
+  if (status === "ARCHIVED" || status === "PAUSED") {
+    return "crm-campaign-accent-muted";
+  }
+
+  return "crm-campaign-accent-draft";
+}
+
+function getPublicationStateClass(status: string) {
+  if (status === "PUBLISHED") return "crm-publication-state-published";
+  if (status === "FAILED") return "crm-publication-state-failed";
+  if (status === "SCHEDULED") return "crm-publication-state-scheduled";
+  if (status === "CANCELLED") return "crm-publication-state-cancelled";
+
+  return "crm-publication-state-draft";
+}
+
 async function getRequestOrigin() {
   const requestHeaders = await headers();
   const host =
@@ -312,6 +388,84 @@ async function getRequestOrigin() {
   }
 
   return process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
+}
+
+function ChannelIcon({ channel }: { channel: string }) {
+  if (channel === "EMAIL") return <Mail size={14} />;
+  if (channel === "WEBSITE") return <Globe2 size={14} />;
+  if (channel === "INDEED") return <Briefcase size={14} />;
+  if (channel === "LINKEDIN" || channel === "FACEBOOK") {
+    return <Share2 size={14} />;
+  }
+
+  return <Megaphone size={14} />;
+}
+
+function ChannelBadge({ channel }: { channel: string }) {
+  return (
+    <span
+      className={`crm-channel-badge crm-channel-badge-${channel.toLowerCase()}`}
+    >
+      <ChannelIcon channel={channel} />
+      {formatChannel(channel)}
+    </span>
+  );
+}
+
+function PublicationPlatformMark({
+  publication,
+}: {
+  publication: CampaignRow["publications"][number];
+}) {
+  const channelLabel = formatChannel(publication.channel);
+
+  if (publication.status === "PUBLISHED" && publication.providerUrl) {
+    return (
+      <Link
+        href={publication.providerUrl}
+        target="_blank"
+        className="crm-platform-mark crm-platform-mark-success"
+      >
+        <BadgeCheck size={14} />
+        Publié sur {channelLabel}
+        <ExternalLink size={12} />
+      </Link>
+    );
+  }
+
+  if (publication.status === "PUBLISHED") {
+    return (
+      <span className="crm-platform-mark crm-platform-mark-success">
+        <BadgeCheck size={14} />
+        Publié sur {channelLabel}
+      </span>
+    );
+  }
+
+  if (publication.status === "FAILED") {
+    return (
+      <span className="crm-platform-mark crm-platform-mark-error">
+        <CircleAlert size={14} />
+        Échec {channelLabel}
+      </span>
+    );
+  }
+
+  if (publication.status === "SCHEDULED") {
+    return (
+      <span className="crm-platform-mark crm-platform-mark-waiting">
+        <Clock3 size={14} />
+        Planifié pour {channelLabel}
+      </span>
+    );
+  }
+
+  return (
+    <span className="crm-platform-mark crm-platform-mark-muted">
+      <Clock3 size={14} />
+      En attente {channelLabel}
+    </span>
+  );
 }
 
 function StatusAction({
@@ -347,7 +501,8 @@ function PublishNowAction({ publicationId }: { publicationId: string }) {
         type="submit"
         className="crm-marketing-action crm-marketing-action-primary"
       >
-        Publier maintenant
+        <Send size={14} />
+        Publier
       </button>
     </form>
   );
@@ -361,6 +516,7 @@ function DeleteCampaignAction({ campaignId }: { campaignId: string }) {
         type="submit"
         className="crm-marketing-action crm-marketing-action-danger"
       >
+        <Trash2 size={14} />
         Supprimer
       </button>
     </form>
@@ -370,13 +526,58 @@ function DeleteCampaignAction({ campaignId }: { campaignId: string }) {
 function CampaignSetupNotice({ error }: { error: string }) {
   return (
     <section className="crm-marketing-setup">
-      <h2>Module a initialiser</h2>
+      <h2>Module à initialiser</h2>
       <p>
-        La page est prete, mais la base doit recevoir la migration
+        La page est prête, mais la base doit recevoir la migration
         `add_crm_marketing_campaigns` avant de charger les campagnes.
       </p>
       <code>{error}</code>
     </section>
+  );
+}
+
+function CampaignSummaryStats({ campaign }: { campaign: CampaignRow }) {
+  const totalClicks = campaign.trackedLinks.reduce(
+    (sum, link) => sum + link.clickCount,
+    0
+  );
+
+  const publishedCount = campaign.publications.filter(
+    (publication) => publication.status === "PUBLISHED"
+  ).length;
+
+  const failedCount = campaign.publications.filter(
+    (publication) => publication.status === "FAILED"
+  ).length;
+
+  return (
+    <span className="crm-campaign-summary-badges">
+      <span className={getStatusClass(campaign.status)}>
+        {formatStatus(campaign.status)}
+      </span>
+
+      <span className="crm-summary-chip">
+        <Megaphone size={13} />
+        {campaign.publications.length} publication(s)
+      </span>
+
+      <span className="crm-summary-chip">
+        <BadgeCheck size={13} />
+        {publishedCount} publiée(s)
+      </span>
+
+      {failedCount > 0 ? (
+        <span className="crm-summary-chip crm-summary-chip-danger">
+          <CircleAlert size={13} />
+          {failedCount} erreur(s)
+        </span>
+      ) : null}
+
+      <span className="crm-summary-chip">
+        <MousePointerClick size={13} />
+        {totalClicks.toLocaleString("fr-FR")} clic(s)
+      </span>
+    </span>
   );
 }
 
@@ -412,29 +613,46 @@ export default async function CrmCampaignsPage() {
       campaignName: campaign.name,
     }))
   );
+
   const calendarDays = buildCalendarDays(calendarPublications);
   const currentMonth = formatMonth(new Date());
+
   const unscheduledCount = calendarPublications.filter(
     (publication) => !publication.scheduledAt
   ).length;
+
+  const calendarModalDays = calendarDays.map((day) => ({
+    key: day.key,
+    dateIso: day.date ? day.date.toISOString() : null,
+    dayNumber: day.date ? day.date.getDate() : null,
+    publications: day.publications.map((publication) => ({
+      id: publication.id,
+      campaignName: publication.campaignName,
+      title: publication.title,
+      channelLabel: formatChannel(publication.channel),
+    })),
+  }));
+
   const readiness = getCrmPublicationPublisherReadiness();
   const readyChannels = readiness.filter((channel) => channel.ready).length;
 
   return (
     <div className="crm-marketing-page">
+      <CampaignPublishToast />
+
       <header className="crm-page-header crm-marketing-header">
         <div>
           <p className="crm-eyebrow">Automation marketing</p>
           <h1 className="crm-title">Campagnes CRM</h1>
           <p className="crm-subtitle">
-            Preparez les publications LinkedIn, Facebook, Indeed ou email,
-            generez des liens suivis et rattachez les clics a votre CRM.
+            Préparez vos publications multi-canaux, suivez les liens, mesurez
+            les clics et gardez une trace claire des posts publiés.
           </p>
         </div>
 
         <div className="crm-marketing-header-badge">
           <Sparkles size={16} />
-          <span>Socle multi-canal</span>
+          <span>Publication assistée</span>
         </div>
       </header>
 
@@ -444,27 +662,55 @@ export default async function CrmCampaignsPage() {
         <>
           <section className="crm-marketing-stats">
             <div className="crm-marketing-stat">
-              <Megaphone size={20} />
-              <span>Campagnes</span>
-              <strong>{campaigns.length.toLocaleString("fr-FR")}</strong>
+              <div>
+                <span>Campagnes</span>
+                <strong>{campaigns.length.toLocaleString("fr-FR")}</strong>
+              </div>
+              <Megaphone size={21} />
             </div>
 
             <div className="crm-marketing-stat">
-              <CalendarClock size={20} />
-              <span>Planifiees</span>
-              <strong>{scheduledCount.toLocaleString("fr-FR")}</strong>
+              <div>
+                <span>Planifiées</span>
+                <strong>{scheduledCount.toLocaleString("fr-FR")}</strong>
+              </div>
+              <CalendarClock size={21} />
             </div>
 
             <div className="crm-marketing-stat">
-              <CheckCircle2 size={20} />
-              <span>Publiees</span>
-              <strong>{publishedCount.toLocaleString("fr-FR")}</strong>
+              <div>
+                <span>Publiées</span>
+                <strong>{publishedCount.toLocaleString("fr-FR")}</strong>
+              </div>
+              <CheckCircle2 size={21} />
             </div>
 
             <div className="crm-marketing-stat">
-              <MousePointerClick size={20} />
-              <span>Clics suivis</span>
-              <strong>{clickCount.toLocaleString("fr-FR")}</strong>
+              <div>
+                <span>Clics suivis</span>
+                <strong>{clickCount.toLocaleString("fr-FR")}</strong>
+              </div>
+              <MousePointerClick size={21} />
+            </div>
+          </section>
+
+          <section className="crm-marketing-toolbar-panel">
+            <div>
+              <p>Actions rapides</p>
+              <h2>Piloter les campagnes</h2>
+            </div>
+
+            <div className="crm-marketing-toolbar-actions">
+              <CampaignCreateModal
+                emailCampaigns={data.emailCampaigns}
+                channels={CHANNELS}
+              />
+
+              <CampaignCalendarModal
+                currentMonth={currentMonth}
+                calendarDays={calendarModalDays}
+                unscheduledCount={unscheduledCount}
+              />
             </div>
           </section>
 
@@ -472,7 +718,7 @@ export default async function CrmCampaignsPage() {
             <div className="crm-marketing-panel-head">
               <div>
                 <p>Configuration envoi</p>
-                <h2>Canaux prets a publier</h2>
+                <h2>Canaux prêts à publier</h2>
               </div>
               <Settings2 size={18} />
             </div>
@@ -510,294 +756,87 @@ export default async function CrmCampaignsPage() {
             </div>
           </section>
 
-          <section className="crm-marketing-panel crm-publication-calendar">
+          <section className="crm-marketing-panel crm-marketing-queue">
             <div className="crm-marketing-panel-head">
               <div>
-                <p>Calendrier</p>
-                <h2>{currentMonth}</h2>
+                <p>File de publication</p>
+                <h2>Campagnes et posts</h2>
               </div>
-              <CalendarClock size={18} />
-            </div>
 
-            <div className="crm-calendar-weekdays" aria-hidden="true">
-              {["Lun", "Mar", "Mer", "Jeu", "Ven", "Sam", "Dim"].map(
-                (day) => (
-                  <span key={day}>{day}</span>
-                )
-              )}
-            </div>
+              <div className="crm-marketing-actions">
+                {campaigns.length > 0 ? (
+                  <button
+                    type="submit"
+                    form="crm-bulk-delete-campaigns"
+                    className="crm-marketing-action crm-marketing-action-danger"
+                  >
+                    <Trash2 size={14} />
+                    Supprimer sélection
+                  </button>
+                ) : null}
 
-            <div className="crm-calendar-grid">
-              {calendarDays.map((day) => (
-                <div
-                  key={day.key}
-                  className={
-                    day.date
-                      ? "crm-calendar-day"
-                      : "crm-calendar-day crm-calendar-day-empty"
-                  }
-                >
-                  {day.date ? (
-                    <>
-                      <time dateTime={day.date.toISOString()}>
-                        {day.date.getDate()}
-                      </time>
-
-                      <div className="crm-calendar-events">
-                        {day.publications.length === 0 ? (
-                          <span className="crm-calendar-none">-</span>
-                        ) : (
-                          day.publications.slice(0, 3).map((publication) => (
-                            <span
-                              key={publication.id}
-                              className="crm-calendar-event"
-                              title={`${publication.campaignName} - ${publication.title}`}
-                            >
-                              <strong>
-                                {formatChannel(publication.channel)}
-                              </strong>
-                              {publication.title}
-                            </span>
-                          ))
-                        )}
-
-                        {day.publications.length > 3 ? (
-                          <span className="crm-calendar-more">
-                            +{day.publications.length - 3}
-                          </span>
-                        ) : null}
-                      </div>
-                    </>
-                  ) : null}
-                </div>
-              ))}
-            </div>
-
-            {unscheduledCount > 0 ? (
-              <div className="crm-calendar-unscheduled">
-                <AlertTriangle size={16} />
-                <span>
-                  {unscheduledCount} publication(s) sans date de planification.
-                </span>
+                <BarChart3 size={18} />
               </div>
-            ) : null}
-          </section>
+            </div>
 
-          <section className="crm-marketing-grid">
             <form
-              action={createCrmMarketingCampaign}
-              className="crm-marketing-panel crm-marketing-form"
-            >
-              <div className="crm-marketing-panel-head">
-                <div>
-                  <p>Nouvelle campagne</p>
-                  <h2>Publication + lien suivi</h2>
-                </div>
-                <Send size={18} />
-              </div>
+              id="crm-bulk-delete-campaigns"
+              action={deleteSelectedCrmMarketingCampaigns}
+            />
 
-              <label className="crm-marketing-field" htmlFor="name">
-                <span>Nom de campagne</span>
-                <input
-                  id="name"
-                  name="name"
-                  required
-                  placeholder="Relance SARA LinkedIn"
-                />
-              </label>
+            {campaigns.length === 0 ? (
+              <div className="crm-empty">Aucune campagne CRM pour le moment.</div>
+            ) : (
+              <div className="crm-campaign-accordion-list">
+                {campaigns.map((campaign, campaignIndex) => (
+                  <details
+                    key={campaign.id}
+                    className={`crm-campaign-accordion ${getCampaignAccentClass(
+                      campaign.status
+                    )}`}
+                    open={campaignIndex === 0}
+                  >
+                    <summary className="crm-campaign-accordion-summary">
+                      <span className="crm-accordion-chevron" aria-hidden="true">
+                        ▾
+                      </span>
 
-              <label className="crm-marketing-field" htmlFor="audience">
-                <span>Audience</span>
-                <input
-                  id="audience"
-                  name="audience"
-                  placeholder="DG, DAF, responsables operationnels"
-                />
-              </label>
+                      <span className="crm-campaign-icon">
+                        <Megaphone size={18} />
+                      </span>
 
-              <label className="crm-marketing-field" htmlFor="objective">
-                <span>Objectif</span>
-                <textarea
-                  id="objective"
-                  name="objective"
-                  rows={3}
-                  placeholder="Generer des demandes de demo qualifiees."
-                />
-              </label>
-
-              <fieldset className={`${styles.channelField} crm-marketing-field`}>
-                <legend className={styles.channelLegend}>
-                  Canaux de publication
-                </legend>
-
-                <div className={styles.channelCheckboxes}>
-                  {CHANNELS.filter((channel) => channel.value !== "OTHER").map(
-                    (channel) => (
-                      <label
-                        key={channel.value}
-                        className={`${styles.channelCheckbox} ${channel.className}`}
-                      >
-                        <input
-                          type="checkbox"
-                          name="channels"
-                          value={channel.value}
-                          defaultChecked={channel.value === "LINKEDIN"}
-                        />
-
-                        <span className={styles.channelName}>
-                          {channel.label}
+                      <span className="crm-campaign-summary-main">
+                        <span className="crm-campaign-summary-title">
+                          {campaign.name}
                         </span>
-                      </label>
-                    )
-                  )}
-                </div>
 
-                <p className={styles.channelHelp}>
-                  Une publication et un lien suivi seront crees pour chaque
-                  canal selectionne.
-                </p>
-              </fieldset>
+                        <span className="crm-campaign-summary-description">
+                          {campaign.objective ||
+                            campaign.audience ||
+                            "Campagne multi-canal préparée dans le CRM."}
+                        </span>
+                      </span>
 
-              <label className="crm-marketing-field" htmlFor="scheduledAt">
-                <span>Planification</span>
-                <input
-                  id="scheduledAt"
-                  name="scheduledAt"
-                  type="datetime-local"
-                />
-              </label>
+                      <CampaignSummaryStats campaign={campaign} />
+                    </summary>
 
-              <label className="crm-marketing-field" htmlFor="publicationTitle">
-                <span>Titre de publication</span>
-                <input
-                  id="publicationTitle"
-                  name="publicationTitle"
-                  required
-                  placeholder="Modernisez votre suivi terrain"
-                />
-              </label>
+                    <div className="crm-campaign-accordion-body">
+                      <div className="crm-campaign-accordion-toolbar">
+                        <label className="crm-campaign-select">
+                          <input
+                            type="checkbox"
+                            name="campaignIds"
+                            value={campaign.id}
+                            form="crm-bulk-delete-campaigns"
+                          />
+                          <span>Sélectionner cette campagne</span>
+                        </label>
 
-              <label className="crm-marketing-field" htmlFor="content">
-                <span>Contenu</span>
-                <textarea
-                  id="content"
-                  name="content"
-                  required
-                  rows={5}
-                  placeholder="Votre texte de publication pret a etre valide puis publie."
-                />
-              </label>
-
-              <div className="crm-marketing-field-row">
-                <label className="crm-marketing-field" htmlFor="destinationUrl">
-                  <span>Lien cible</span>
-                  <input
-                    id="destinationUrl"
-                    name="destinationUrl"
-                    required
-                    defaultValue="/contact-commercial"
-                  />
-                </label>
-
-                <label className="crm-marketing-field" htmlFor="ctaLabel">
-                  <span>CTA</span>
-                  <input
-                    id="ctaLabel"
-                    name="ctaLabel"
-                    placeholder="Demander une demo"
-                  />
-                </label>
-              </div>
-
-              <label className="crm-marketing-field" htmlFor="emailCampaignId">
-                <span>Campagne email liee</span>
-                <select
-                  id="emailCampaignId"
-                  name="emailCampaignId"
-                  defaultValue=""
-                >
-                  <option value="">Aucune</option>
-                  {data.emailCampaigns.map((campaign) => (
-                    <option key={campaign.id} value={campaign.id}>
-                      {campaign.name} - {formatStatus(campaign.status)}
-                    </option>
-                  ))}
-                </select>
-              </label>
-
-              <button type="submit" className="crm-marketing-submit">
-                <Send size={16} />
-                Creer la campagne
-              </button>
-            </form>
-
-            <section className="crm-marketing-panel crm-marketing-queue">
-              <div className="crm-marketing-panel-head">
-                <div>
-                  <p>File de publication</p>
-                  <h2>Actions a valider</h2>
-                </div>
-
-                <div className="crm-marketing-actions">
-                  {campaigns.length > 0 ? (
-                    <button
-                      type="submit"
-                      form="crm-bulk-delete-campaigns"
-                      className="crm-marketing-action crm-marketing-action-danger"
-                    >
-                      Supprimer selection
-                    </button>
-                  ) : null}
-
-                  <BarChart3 size={18} />
-                </div>
-              </div>
-
-              <form
-                id="crm-bulk-delete-campaigns"
-                action={deleteSelectedCrmMarketingCampaigns}
-              />
-
-              {campaigns.length === 0 ? (
-                <div className="crm-empty">
-                  Aucune campagne CRM pour le moment.
-                </div>
-              ) : (
-                <div className="crm-marketing-campaign-list">
-                  {campaigns.map((campaign) => (
-                    <article
-                      key={campaign.id}
-                      className="crm-marketing-campaign"
-                    >
-                      <div className="crm-marketing-campaign-head">
-                        <div>
-                          <label className="crm-campaign-select">
-                            <input
-                              type="checkbox"
-                              name="campaignIds"
-                              value={campaign.id}
-                              form="crm-bulk-delete-campaigns"
-                            />
-                            <span>Selectionner</span>
-                          </label>
-
-                          <span className={getStatusClass(campaign.status)}>
-                            {formatStatus(campaign.status)}
-                          </span>
-
-                          <h3>{campaign.name}</h3>
-
-                          <p>
-                            {campaign.objective ||
-                              campaign.audience ||
-                              "Campagne multi-canal preparee dans le CRM."}
-                          </p>
-                        </div>
-
-                        <div className="crm-marketing-actions">
+                        <div className="crm-campaign-toolbar-actions">
                           {campaign.emailCampaign ? (
                             <span className="crm-marketing-email-chip">
-                              Email: {campaign.emailCampaign.name}
+                              <Mail size={13} />
+                              {campaign.emailCampaign.name}
                             </span>
                           ) : null}
 
@@ -805,109 +844,196 @@ export default async function CrmCampaignsPage() {
                         </div>
                       </div>
 
-                      <div className="crm-marketing-publications">
-                        {campaign.publications.map((publication) => (
-                          <div
-                            key={publication.id}
-                            className="crm-marketing-publication"
-                          >
-                            <div className="crm-marketing-publication-main">
-                              <div className="crm-marketing-publication-title">
-                                <span>{formatChannel(publication.channel)}</span>
-                                <strong>{publication.title}</strong>
-                              </div>
+                      <div className="crm-publication-accordion-list">
+                        {campaign.publications.map(
+                          (publication, publicationIndex) => {
+                            const plainContent = richContentToPlainText(
+                              publication.content
+                            );
 
-                              <p>{publication.content}</p>
-
-                              <div className="crm-marketing-meta">
-                                <span
-                                  className={getStatusClass(publication.status)}
-                                >
-                                  {formatStatus(publication.status)}
-                                </span>
-
-                                <span>
-                                  {formatDateTime(publication.scheduledAt)}
-                                </span>
-
-                                {publication.trackedLink ? (
-                                  <Link
-                                    href={`/r/${publication.trackedLink.slug}`}
-                                    target="_blank"
-                                    className="crm-marketing-link"
+                            return (
+                              <details
+                                key={publication.id}
+                                className={`crm-publication-accordion ${getPublicationStateClass(
+                                  publication.status
+                                )}`}
+                                open={publicationIndex === 0}
+                              >
+                                <summary className="crm-publication-accordion-summary">
+                                  <span
+                                    className="crm-accordion-chevron"
+                                    aria-hidden="true"
                                   >
-                                    <Link2 size={13} />
-                                    /r/{publication.trackedLink.slug}
-                                    <ExternalLink size={12} />
-                                  </Link>
-                                ) : null}
-
-                                {publication.trackedLink ? (
-                                  <span>
-                                    {publication.trackedLink.clickCount.toLocaleString(
-                                      "fr-FR"
-                                    )}{" "}
-                                    clics
+                                    ▾
                                   </span>
-                                ) : null}
-                              </div>
 
-                              <PublicationAssistant
-                                channel={publication.channel}
-                                title={publication.title}
-                                content={publication.content}
-                                ctaLabel={publication.ctaLabel}
-                                destinationUrl={
-                                  publication.trackedLink?.destinationUrl ||
-                                  null
-                                }
-                                trackedUrl={
-                                  publication.trackedLink
-                                    ? `${origin}/r/${publication.trackedLink.slug}`
-                                    : null
-                                }
-                              />
-                            </div>
+                                  <span className="crm-publication-summary-main">
+                                    <ChannelBadge
+                                      channel={publication.channel}
+                                    />
 
-                            <div className="crm-marketing-actions">
-                              <StatusAction
-                                publicationId={publication.id}
-                                status="READY"
-                              >
-                                Pret
-                              </StatusAction>
+                                    <span className="crm-publication-summary-title">
+                                      {publication.title}
+                                    </span>
+                                  </span>
 
-                              {publication.channel === "LINKEDIN" ||
-                              publication.channel === "FACEBOOK" ? (
-                                <PublishNowAction
-                                  publicationId={publication.id}
-                                />
-                              ) : (
-                                <StatusAction
-                                  publicationId={publication.id}
-                                  status="PUBLISHED"
-                                  variant="primary"
-                                >
-                                  Publie
-                                </StatusAction>
-                              )}
+                                  <span className="crm-publication-summary-meta">
+                                    <span
+                                      className={getStatusClass(
+                                        publication.status
+                                      )}
+                                    >
+                                      {formatStatus(publication.status)}
+                                    </span>
 
-                              <StatusAction
-                                publicationId={publication.id}
-                                status="CANCELLED"
-                                variant="danger"
-                              >
-                                Annuler
-                              </StatusAction>
-                            </div>
-                          </div>
-                        ))}
+                                    <span className="crm-summary-chip">
+                                      <CalendarClock size={13} />
+                                      {formatDate(publication.scheduledAt)}
+                                    </span>
+
+                                    {publication.trackedLink ? (
+                                      <span className="crm-summary-chip">
+                                        <MousePointerClick size={13} />
+                                        {publication.trackedLink.clickCount.toLocaleString(
+                                          "fr-FR"
+                                        )}{" "}
+                                        clic(s)
+                                      </span>
+                                    ) : null}
+
+                                    <PublicationPlatformMark
+                                      publication={publication}
+                                    />
+                                  </span>
+                                </summary>
+
+                                <div className="crm-publication-accordion-body">
+                                  <div
+                                    className="crm-publication-rich-preview crm-publication-preview-card"
+                                    dangerouslySetInnerHTML={{
+                                      __html: publication.content,
+                                    }}
+                                  />
+
+                                  <div className="crm-publication-meta-row">
+                                    {publication.trackedLink ? (
+                                      <Link
+                                        href={`/r/${publication.trackedLink.slug}`}
+                                        target="_blank"
+                                        className="crm-marketing-link"
+                                      >
+                                        <Link2 size={13} />
+                                        /r/{publication.trackedLink.slug}
+                                        <ExternalLink size={12} />
+                                      </Link>
+                                    ) : null}
+
+                                    {publication.trackedLink ? (
+                                      <span>
+                                        <MousePointerClick size={13} />
+                                        {publication.trackedLink.clickCount.toLocaleString(
+                                          "fr-FR"
+                                        )}{" "}
+                                        clics
+                                      </span>
+                                    ) : null}
+
+                                    {publication.providerUrl ? (
+                                      <Link
+                                        href={publication.providerUrl}
+                                        target="_blank"
+                                        className="crm-marketing-link crm-provider-link"
+                                      >
+                                        <ExternalLink size={13} />
+                                        Ouvrir le post
+                                      </Link>
+                                    ) : null}
+
+                                    {publication.publishedAt ? (
+                                      <span>
+                                        <BadgeCheck size={13} />
+                                        Publié le{" "}
+                                        {formatDateTime(
+                                          publication.publishedAt
+                                        )}
+                                      </span>
+                                    ) : null}
+                                  </div>
+
+                                  {publication.failureReason ? (
+                                    <div className="crm-publication-failure">
+                                      <CircleAlert size={14} />
+                                      <code>
+                                        {publication.failureReason}
+                                      </code>
+                                    </div>
+                                  ) : null}
+
+                                  <details className="crm-publication-details">
+                                    <summary>
+                                      <CopyCheck size={14} />
+                                      Assistant de publication
+                                    </summary>
+
+                                    <PublicationAssistant
+                                      channel={publication.channel}
+                                      title={publication.title}
+                                      content={plainContent}
+                                      ctaLabel={publication.ctaLabel}
+                                      destinationUrl={
+                                        publication.trackedLink
+                                          ?.destinationUrl || null
+                                      }
+                                      trackedUrl={
+                                        publication.trackedLink
+                                          ? `${origin}/r/${publication.trackedLink.slug}`
+                                          : null
+                                      }
+                                    />
+                                  </details>
+
+                                  <footer className="crm-publication-actions">
+                                    <StatusAction
+                                      publicationId={publication.id}
+                                      status="READY"
+                                    >
+                                      Prêt
+                                    </StatusAction>
+
+                                    {publication.channel === "LINKEDIN" ||
+                                    publication.channel === "FACEBOOK" ? (
+                                      <PublishNowAction
+                                        publicationId={publication.id}
+                                      />
+                                    ) : (
+                                      <StatusAction
+                                        publicationId={publication.id}
+                                        status="PUBLISHED"
+                                        variant="primary"
+                                      >
+                                        Publié
+                                      </StatusAction>
+                                    )}
+
+                                    <StatusAction
+                                      publicationId={publication.id}
+                                      status="CANCELLED"
+                                      variant="danger"
+                                    >
+                                      Annuler
+                                    </StatusAction>
+                                  </footer>
+                                </div>
+                              </details>
+                            );
+                          }
+                        )}
                       </div>
-                    </article>
-                  ))}
-                </div>
-              )}
-            </section>
+                    </div>
+                  </details>
+                ))}
+              </div>
+            )}
           </section>
         </>
       )}
