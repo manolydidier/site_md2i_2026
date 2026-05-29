@@ -11,10 +11,23 @@ function formatChannel(value: string | null) {
   return value || "le canal";
 }
 
+function readCount(value: string | null) {
+  const count = Number(value);
+
+  return Number.isFinite(count) ? count : 0;
+}
+
 export default function CampaignPublishToast() {
   const router = useRouter();
   const searchParams = useSearchParams();
 
+  const queueStatus = searchParams.get("queue");
+  const queueMessage = searchParams.get("message");
+  const checked = readCount(searchParams.get("checked"));
+  const published = readCount(searchParams.get("published"));
+  const manualReady = readCount(searchParams.get("manualReady"));
+  const failed = readCount(searchParams.get("failed"));
+  const skipped = readCount(searchParams.get("skipped"));
   const status = searchParams.get("publish");
   const channel = searchParams.get("channel");
   const title = searchParams.get("title");
@@ -22,7 +35,42 @@ export default function CampaignPublishToast() {
   const [visible, setVisible] = useState(false);
 
   const toast = useMemo(() => {
+    if (queueStatus) {
+      if (queueStatus === "failed") {
+        return {
+          success: false,
+          title: "File non traitée",
+          message:
+            queueMessage ||
+            "Le traitement manuel de la file a rencontré une erreur.",
+        };
+      }
+
+      if (checked === 0) {
+        return {
+          success: true,
+          title: "File vérifiée",
+          message: "Aucune publication échue n'attendait un envoi.",
+        };
+      }
+
+      return {
+        success: failed === 0,
+        title: failed > 0 ? "File traitée avec erreurs" : "File traitée",
+        message: `${published} publiée(s), ${manualReady} prête(s) en manuel, ${failed} échec(s), ${skipped} ignorée(s).`,
+      };
+    }
+
     if (!status) return null;
+
+    if (status === "skipped") {
+      return {
+        success: true,
+        title: "Publication non renvoyée",
+        message:
+          "Cette publication est déjà publiée ou annulée. Aucun nouveau post n'a été créé.",
+      };
+    }
 
     const success = status === "success";
     const channelLabel = formatChannel(channel);
@@ -40,7 +88,18 @@ export default function CampaignPublishToast() {
           ? `"${title}" n’a pas pu être publiée. Consultez le détail de l’erreur dans la carte.`
           : "La publication n’a pas pu être publiée. Consultez le détail de l’erreur dans la carte.",
     };
-  }, [status, channel, title]);
+  }, [
+    queueStatus,
+    queueMessage,
+    checked,
+    published,
+    manualReady,
+    failed,
+    skipped,
+    status,
+    channel,
+    title,
+  ]);
 
   useEffect(() => {
     if (!toast) return;
@@ -63,6 +122,13 @@ export default function CampaignPublishToast() {
     url.searchParams.delete("publish");
     url.searchParams.delete("channel");
     url.searchParams.delete("title");
+    url.searchParams.delete("queue");
+    url.searchParams.delete("checked");
+    url.searchParams.delete("published");
+    url.searchParams.delete("manualReady");
+    url.searchParams.delete("failed");
+    url.searchParams.delete("skipped");
+    url.searchParams.delete("message");
 
     router.replace(`${url.pathname}${url.search}`, {
       scroll: false,

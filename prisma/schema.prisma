@@ -44,16 +44,17 @@ model User {
   emailAutomationEmails EmailAutomationEmail[]
 
   // CRM
-  crmCompanies     CrmCompany[]
-  crmOffers        CrmOffer[]
-  crmOpportunities CrmOpportunity[]
-  crmTenders       CrmTender[]
-  crmTasks         CrmTask[]
-  crmActivities    CrmActivity[]
-  crmStatusOptions CrmStatusOption[]
+  crmCompanies          CrmCompany[]
+  crmOffers             CrmOffer[]
+  crmOpportunities      CrmOpportunity[]
+  crmTenders            CrmTender[]
+  crmTasks              CrmTask[]
+  crmActivities         CrmActivity[]
+  crmStatusOptions      CrmStatusOption[]
   crmMarketingCampaigns CrmMarketingCampaign[]
   crmPublications       CrmPublication[]
   crmTrackedLinks       CrmTrackedLink[]
+  crmPublicationLogs    CrmPublicationLog[]
 
   @@index([email])
   @@index([username])
@@ -475,7 +476,6 @@ model Contact {
   consentSource String?
 
   // CRM - ancien statut enum, conservé temporairement pour compatibilité
-  // Tu pourras le supprimer plus tard quand tout ton code utilisera crmStatusOptionId.
   crmStatus CrmContactStatus @default(NEW)
 
   // CRM - statut dynamique
@@ -512,7 +512,6 @@ model Contact {
   @@index([createdAt], map: "contacts_created_at_idx")
   @@index([isActive], map: "contacts_is_active_idx")
   @@index([unsubscribed], map: "contacts_unsubscribed_idx")
-  // Index rapides pour les filtres CRM + pagination
   @@index([userId, createdAt], map: "contacts_user_created_idx")
   @@index([userId, groupId], map: "contacts_user_group_idx")
   @@index([userId, crmStatus], map: "contacts_user_crm_status_idx")
@@ -648,16 +647,8 @@ model EmailAutomation {
   name        String
   description String?
 
-  // Ancien déclencheur : conservé pour compatibilité avec ton code actuel.
-  // On le gardera pendant la transition.
   trigger EmailAutomationTrigger @default(CONTACT_CREATED)
 
-  // Nouveau système dynamique.
-  // Exemple :
-  // triggerEvent       = CONTACT_UPDATED
-  // conditionField     = CRM_STATUS
-  // conditionOperator  = CHANGED_TO
-  // conditionValue     = PROSPECT
   triggerEvent       EmailAutomationTriggerEvent      @default(CONTACT_CREATED)
   conditionField     EmailAutomationConditionField    @default(NONE)
   conditionOperator  EmailAutomationConditionOperator @default(ALWAYS)
@@ -683,13 +674,10 @@ model EmailAutomation {
   @@index([conditionValue])
   @@index([isActive])
   @@index([createdAt])
-  // Anciens index utiles
   @@index([userId, trigger])
   @@index([userId, isActive])
   @@index([userId, trigger, isActive])
   @@index([userId, isActive, createdAt])
-  // Nouveaux index utiles pour les déclencheurs dynamiques
-  // Les noms map: évitent les collisions Prisma/PostgreSQL sur les index longs.
   @@index([userId, triggerEvent], map: "idx_email_auto_user_event")
   @@index([userId, triggerEvent, isActive], map: "idx_email_auto_user_event_active")
   @@index([userId, triggerEvent, conditionField], map: "idx_email_auto_user_event_field")
@@ -742,13 +730,10 @@ model EmailAutomationRun {
   userId String @db.Uuid
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  // Ancien déclencheur conservé pour compatibilité.
   trigger EmailAutomationTrigger @default(CONTACT_CREATED)
 
-  // Nouveau déclencheur dynamique utilisé pour l’historique.
   triggerEvent EmailAutomationTriggerEvent @default(CONTACT_CREATED)
 
-  // Snapshot facultatif de la condition au moment du lancement.
   conditionSnapshot Json?
 
   status EmailAutomationRunStatus @default(ACTIVE)
@@ -769,7 +754,6 @@ model EmailAutomationRun {
   @@index([trigger])
   @@index([triggerEvent])
   @@index([startedAt])
-  // Index rapides pour éviter les doublons actifs et afficher l’historique
   @@index([userId, contactId, status])
   @@index([userId, automationId, status])
   @@index([userId, trigger, status])
@@ -818,10 +802,8 @@ model EmailAutomationEmail {
   @@index([status])
   @@index([scheduledAt])
   @@index([createdAt])
-  // Index critiques pour le cron d’envoi automatique
   @@index([status, scheduledAt])
   @@index([userId, status, scheduledAt])
-  // Index rapides pour historique, contact, run et reporting
   @@index([runId, status])
   @@index([contactId, status])
   @@index([userId, contactId, status])
@@ -953,6 +935,15 @@ model CrmOpportunity {
   landingPage String?
   referrer    String?
 
+  crmMarketingCampaignId String?
+  crmMarketingCampaign   CrmMarketingCampaign? @relation(fields: [crmMarketingCampaignId], references: [id], onDelete: SetNull)
+
+  crmPublicationId String?
+  crmPublication   CrmPublication? @relation(fields: [crmPublicationId], references: [id], onDelete: SetNull)
+
+  crmTrackedLinkId String?
+  crmTrackedLink   CrmTrackedLink? @relation(fields: [crmTrackedLinkId], references: [id], onDelete: SetNull)
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -967,12 +958,22 @@ model CrmOpportunity {
   @@index([requestType])
   @@index([createdAt])
   @@index([nextFollowUpAt])
+  @@index([crmMarketingCampaignId])
+  @@index([crmPublicationId])
+  @@index([crmTrackedLinkId])
   @@index([userId, stage])
   @@index([userId, source])
   @@index([userId, requestType])
   @@index([userId, stage, source])
   @@index([userId, createdAt])
   @@index([userId, nextFollowUpAt])
+  @@index([userId, crmMarketingCampaignId])
+  @@index([userId, crmPublicationId])
+  @@index([userId, crmTrackedLinkId])
+  @@index([userId, utmSource])
+  @@index([userId, utmCampaign])
+  @@index([userId, utmSource, createdAt])
+  @@index([userId, utmCampaign, createdAt])
   @@index([contactId, stage])
   @@index([companyId, stage])
   @@map("crm_opportunities")
@@ -1110,11 +1111,11 @@ model CrmActivity {
 // ============================================================
 
 model CrmMarketingCampaign {
-  id          String                     @id @default(cuid())
-  name        String
-  objective   String?                    @db.Text
-  audience    String?
-  status      CrmMarketingCampaignStatus @default(DRAFT)
+  id        String                     @id @default(cuid())
+  name      String
+  objective String?                    @db.Text
+  audience  String?
+  status    CrmMarketingCampaignStatus @default(DRAFT)
 
   budget   Decimal? @db.Decimal(12, 2)
   currency String?  @default("EUR") @db.VarChar(10)
@@ -1128,8 +1129,10 @@ model CrmMarketingCampaign {
   userId String @db.Uuid
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  publications CrmPublication[]
-  trackedLinks CrmTrackedLink[]
+  publications  CrmPublication[]
+  trackedLinks  CrmTrackedLink[]
+  opportunities CrmOpportunity[]
+  logs          CrmPublicationLog[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -1152,13 +1155,21 @@ model CrmPublication {
   ctaLabel  String?
   targetUrl String?
 
-  status        CrmPublicationStatus @default(DRAFT)
-  scheduledAt   DateTime?
-  publishedAt   DateTime?
+  status         CrmPublicationStatus @default(DRAFT)
+  scheduledAt    DateTime?
+  publishedAt    DateTime?
   providerPostId String?
   providerUrl    String?
-  failureReason  String? @db.Text
-  notes          String? @db.Text
+  failureReason  String?              @db.Text
+  notes          String?              @db.Text
+
+  // Retry / anti double-publication
+  retryCount    Int       @default(0)
+  maxRetries    Int       @default(3)
+  lastAttemptAt DateTime?
+  nextRetryAt   DateTime?
+  lockedAt      DateTime?
+  lockToken     String?
 
   campaignId String
   campaign   CrmMarketingCampaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
@@ -1168,6 +1179,9 @@ model CrmPublication {
 
   userId String @db.Uuid
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  opportunities CrmOpportunity[]
+  logs          CrmPublicationLog[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -1179,9 +1193,16 @@ model CrmPublication {
   @@index([status])
   @@index([scheduledAt])
   @@index([publishedAt])
+  @@index([retryCount])
+  @@index([nextRetryAt])
+  @@index([lockedAt])
+  @@index([lockToken])
   @@index([userId, status])
   @@index([userId, channel])
   @@index([userId, scheduledAt])
+  @@index([status, scheduledAt])
+  @@index([status, nextRetryAt])
+  @@index([userId, status, scheduledAt])
   @@map("crm_publications")
 }
 
@@ -1204,8 +1225,9 @@ model CrmTrackedLink {
   userId String @db.Uuid
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  publications CrmPublication[]
-  clicks       CrmTrackedLinkClick[]
+  publications  CrmPublication[]
+  clicks        CrmTrackedLinkClick[]
+  opportunities CrmOpportunity[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -1214,7 +1236,9 @@ model CrmTrackedLink {
   @@index([userId])
   @@index([campaignId])
   @@index([utmSource])
+  @@index([utmMedium])
   @@index([utmCampaign])
+  @@index([utmContent])
   @@index([userId, createdAt])
   @@map("crm_tracked_links")
 }
@@ -1224,14 +1248,58 @@ model CrmTrackedLinkClick {
   linkId    String
   referrer  String?
   userAgent String?
+  ipAddress String?  @db.VarChar(64)
+  isBot     Boolean  @default(false)
   createdAt DateTime @default(now())
 
   link CrmTrackedLink @relation(fields: [linkId], references: [id], onDelete: Cascade)
 
   @@index([linkId])
   @@index([createdAt])
+  @@index([isBot])
+  @@index([ipAddress])
   @@index([linkId, createdAt])
+  @@index([linkId, isBot])
   @@map("crm_tracked_link_clicks")
+}
+
+model CrmPublicationLog {
+  id String @id @default(cuid())
+
+  publicationId String?
+  publication   CrmPublication? @relation(fields: [publicationId], references: [id], onDelete: SetNull)
+
+  campaignId String?
+  campaign   CrmMarketingCampaign? @relation(fields: [campaignId], references: [id], onDelete: SetNull)
+
+  userId String @db.Uuid
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  channel CrmPublicationChannel?
+
+  action  String
+  status  String
+  message String?
+  error   String? @db.Text
+
+  attempt          Int   @default(1)
+  requestPayload   Json?
+  providerResponse Json?
+  metadata         Json?
+
+  createdAt DateTime @default(now())
+
+  @@index([publicationId])
+  @@index([campaignId])
+  @@index([userId])
+  @@index([channel])
+  @@index([action])
+  @@index([status])
+  @@index([createdAt])
+  @@index([publicationId, createdAt])
+  @@index([campaignId, createdAt])
+  @@index([userId, createdAt])
+  @@map("crm_publication_logs")
 }
 
 // ============================================================
@@ -1504,6 +1572,7 @@ enum CrmPublicationStatus {
   DRAFT
   READY
   SCHEDULED
+  PUBLISHING
   PUBLISHED
   FAILED
   CANCELLED
@@ -1514,7 +1583,7 @@ model CrmStatusOption {
   userId String @db.Uuid
 
   key         String
-  label       String
+  label       String  @default("")
   color       String  @default("#f97316")
   description String? @db.Text
 

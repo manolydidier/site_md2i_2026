@@ -16,6 +16,7 @@ import {
   Mail,
   Megaphone,
   MousePointerClick,
+  RefreshCw,
   Send,
   Settings2,
   Share2,
@@ -29,6 +30,7 @@ import { getCrmPublicationPublisherReadiness } from "@/app/lib/crm-publication-p
 import {
   deleteCrmMarketingCampaign,
   deleteSelectedCrmMarketingCampaigns,
+  processCrmPublicationQueue,
   publishCrmPublicationNow,
   updateCrmPublicationStatus,
 } from "./actions";
@@ -63,6 +65,8 @@ type CampaignRow = {
     status: string;
     scheduledAt: Date | null;
     publishedAt: Date | null;
+    nextRetryAt: Date | null;
+    lockedAt: Date | null;
     providerPostId: string | null;
     providerUrl: string | null;
     failureReason: string | null;
@@ -78,6 +82,16 @@ type CampaignRow = {
     clickCount: number;
     destinationUrl: string;
   }>;
+  opportunities: Array<{
+    id: string;
+    title: string;
+    stage: string;
+    source: string;
+    createdAt: Date;
+  }>;
+  _count: {
+    opportunities: number;
+  };
 };
 
 type EmailCampaignOption = {
@@ -101,6 +115,16 @@ type CampaignData =
 
 type CalendarPublication = CampaignRow["publications"][number] & {
   campaignName: string;
+};
+
+type CampaignPerformanceRow = {
+  campaign: CampaignRow;
+  clickCount: number;
+  leadCount: number;
+  publishedCount: number;
+  failedCount: number;
+  conversionRate: number;
+  topChannel: string | null;
 };
 
 const CHANNELS = [
@@ -175,6 +199,24 @@ async function loadCampaignData(userId: string): Promise<CampaignData> {
               destinationUrl: true,
             },
           },
+          opportunities: {
+            take: 3,
+            orderBy: {
+              createdAt: "desc",
+            },
+            select: {
+              id: true,
+              title: true,
+              stage: true,
+              source: true,
+              createdAt: true,
+            },
+          },
+          _count: {
+            select: {
+              opportunities: true,
+            },
+          },
         },
       }),
 
@@ -236,6 +278,7 @@ function formatStatus(value: string) {
     DRAFT: "Brouillon",
     READY: "Prêt",
     SCHEDULED: "Planifié",
+    PUBLISHING: "En publication",
     PUBLISHED: "Publié",
     FAILED: "Erreur",
     CANCELLED: "Annulé",
@@ -250,6 +293,87 @@ function formatStatus(value: string) {
 
 function formatChannel(value: string) {
   return CHANNELS.find((channel) => channel.value === value)?.label || value;
+}
+
+function formatPercent(value: number) {
+  return `${new Intl.NumberFormat("fr-FR", {
+    maximumFractionDigits: value > 0 && value < 10 ? 1 : 0,
+  }).format(value)} %`;
+}
+
+function formatOpportunityStage(value: string) {
+  const labels: Record<string, string> = {
+    NEW: "Nouveau",
+    CONTACTED: "Contacté",
+    QUALIFIED: "Qualifié",
+    DEMO_SCHEDULED: "Démo planifiée",
+    QUOTE_SENT: "Devis envoyé",
+    NEGOTIATION: "Négociation",
+    WON: "Gagné",
+    LOST: "Perdu",
+  };
+
+  return labels[value] || value;
+}
+
+function formatLeadSource(value: string) {
+  const labels: Record<string, string> = {
+    WEBSITE: "Site web",
+    FACEBOOK: "Facebook",
+    LINKEDIN: "LinkedIn",
+    EMAIL_CAMPAIGN: "Email",
+    GOOGLE: "Google",
+    DIRECT: "Direct",
+    TENDER: "Appel d'offres",
+    REFERRAL: "Recommandation",
+    MANUAL: "Manuel",
+    OTHER: "Autre",
+  };
+
+  return labels[value] || value;
+}
+
+function getCampaignClickCount(campaign: CampaignRow) {
+  return campaign.trackedLinks.reduce((sum, link) => sum + link.clickCount, 0);
+}
+
+function getCampaignTopChannel(campaign: CampaignRow) {
+  const channelClicks = new Map<string, number>();
+
+  for (const publication of campaign.publications) {
+    const currentClicks = channelClicks.get(publication.channel) || 0;
+    channelClicks.set(
+      publication.channel,
+      currentClicks + (publication.trackedLink?.clickCount || 0)
+    );
+  }
+
+  const [bestChannel] = [...channelClicks.entries()].sort(
+    (first, second) => second[1] - first[1]
+  )[0] || [null, 0];
+
+  return bestChannel;
+}
+
+function getCampaignPerformance(campaign: CampaignRow): CampaignPerformanceRow {
+  const clickCount = getCampaignClickCount(campaign);
+  const leadCount = campaign._count.opportunities;
+  const publishedCount = campaign.publications.filter(
+    (publication) => publication.status === "PUBLISHED"
+  ).length;
+  const failedCount = campaign.publications.filter(
+    (publication) => publication.status === "FAILED"
+  ).length;
+
+  return {
+    campaign,
+    clickCount,
+    leadCount,
+    publishedCount,
+    failedCount,
+    conversionRate: clickCount > 0 ? (leadCount / clickCount) * 100 : 0,
+    topChannel: getCampaignTopChannel(campaign),
+  };
 }
 
 function formatMonth(value: Date) {
@@ -351,6 +475,10 @@ function getStatusClass(value: string) {
     return "crm-status-pill crm-status-pill-blue";
   }
 
+  if (value === "PUBLISHING") {
+    return "crm-status-pill crm-status-pill-blue";
+  }
+
   if (value === "FAILED" || value === "CANCELLED") {
     return "crm-status-pill crm-status-pill-red";
   }
@@ -371,7 +499,9 @@ function getCampaignAccentClass(status: string) {
 function getPublicationStateClass(status: string) {
   if (status === "PUBLISHED") return "crm-publication-state-published";
   if (status === "FAILED") return "crm-publication-state-failed";
-  if (status === "SCHEDULED") return "crm-publication-state-scheduled";
+  if (status === "SCHEDULED" || status === "PUBLISHING") {
+    return "crm-publication-state-scheduled";
+  }
   if (status === "CANCELLED") return "crm-publication-state-cancelled";
 
   return "crm-publication-state-draft";
@@ -460,6 +590,15 @@ function PublicationPlatformMark({
     );
   }
 
+  if (publication.status === "PUBLISHING") {
+    return (
+      <span className="crm-platform-mark crm-platform-mark-waiting">
+        <Clock3 size={14} />
+        Publication en cours
+      </span>
+    );
+  }
+
   return (
     <span className="crm-platform-mark crm-platform-mark-muted">
       <Clock3 size={14} />
@@ -493,7 +632,13 @@ function StatusAction({
   );
 }
 
-function PublishNowAction({ publicationId }: { publicationId: string }) {
+function PublishNowAction({
+  publicationId,
+  label = "Publier",
+}: {
+  publicationId: string;
+  label?: string;
+}) {
   return (
     <form action={publishCrmPublicationNow}>
       <input type="hidden" name="publicationId" value={publicationId} />
@@ -502,7 +647,7 @@ function PublishNowAction({ publicationId }: { publicationId: string }) {
         className="crm-marketing-action crm-marketing-action-primary"
       >
         <Send size={14} />
-        Publier
+        {label}
       </button>
     </form>
   );
@@ -588,9 +733,24 @@ export default async function CrmCampaignsPage() {
 
   const campaigns = data.campaigns;
   const publications = campaigns.flatMap((campaign) => campaign.publications);
+  const now = new Date();
+  const stalePublishingBefore = new Date(now.getTime() - 15 * 60 * 1000);
 
   const scheduledCount = publications.filter(
     (publication) => publication.status === "SCHEDULED"
+  ).length;
+
+  const dueQueueCount = publications.filter(
+    (publication) =>
+      (publication.status === "SCHEDULED" &&
+        publication.scheduledAt !== null &&
+        publication.scheduledAt <= now) ||
+      (publication.status === "FAILED" &&
+        publication.nextRetryAt !== null &&
+        publication.nextRetryAt <= now) ||
+      (publication.status === "PUBLISHING" &&
+        publication.lockedAt !== null &&
+        publication.lockedAt <= stalePublishingBefore)
   ).length;
 
   const publishedCount = publications.filter(
@@ -598,14 +758,30 @@ export default async function CrmCampaignsPage() {
   ).length;
 
   const clickCount = campaigns.reduce(
-    (sum, campaign) =>
-      sum +
-      campaign.trackedLinks.reduce(
-        (linkSum, link) => linkSum + link.clickCount,
-        0
-      ),
+    (sum, campaign) => sum + getCampaignClickCount(campaign),
     0
   );
+
+  const campaignPerformance = campaigns
+    .map(getCampaignPerformance)
+    .sort(
+      (first, second) =>
+        second.leadCount - first.leadCount ||
+        second.clickCount - first.clickCount ||
+        second.publishedCount - first.publishedCount
+    );
+
+  const attributedLeadCount = campaignPerformance.reduce(
+    (sum, row) => sum + row.leadCount,
+    0
+  );
+
+  const globalConversionRate =
+    clickCount > 0 ? (attributedLeadCount / clickCount) * 100 : 0;
+
+  const bestCampaign =
+    campaignPerformance.find((row) => row.leadCount > 0 || row.clickCount > 0)
+      ?.campaign.name || "Aucune donnée";
 
   const calendarPublications = campaigns.flatMap((campaign) =>
     campaign.publications.map((publication) => ({
@@ -701,6 +877,24 @@ export default async function CrmCampaignsPage() {
             </div>
 
             <div className="crm-marketing-toolbar-actions">
+              <form
+                action={processCrmPublicationQueue}
+                className="crm-queue-runner"
+              >
+                <input type="hidden" name="limit" value="20" />
+                <button
+                  type="submit"
+                  className="crm-marketing-action crm-marketing-action-primary"
+                  disabled={dueQueueCount === 0}
+                >
+                  <RefreshCw size={14} />
+                  Traiter la file
+                </button>
+                <span className="crm-queue-runner-hint">
+                  {dueQueueCount.toLocaleString("fr-FR")} à traiter
+                </span>
+              </form>
+
               <CampaignCreateModal
                 emailCampaigns={data.emailCampaigns}
                 channels={CHANNELS}
@@ -712,6 +906,160 @@ export default async function CrmCampaignsPage() {
                 unscheduledCount={unscheduledCount}
               />
             </div>
+          </section>
+
+          <section className="crm-marketing-panel crm-performance-panel">
+            <div className="crm-marketing-panel-head">
+              <div>
+                <p>Performance campagnes</p>
+                <h2>Clics, leads et conversion</h2>
+              </div>
+              <BarChart3 size={18} />
+            </div>
+
+            <div
+              className="crm-performance-kpis"
+              aria-label="Synthese performance campagnes"
+            >
+              <div>
+                <span>Opportunit&eacute;s attribu&eacute;es</span>
+                <strong>{attributedLeadCount.toLocaleString("fr-FR")}</strong>
+              </div>
+
+              <div>
+                <span>Conversion globale</span>
+                <strong>{formatPercent(globalConversionRate)}</strong>
+              </div>
+
+              <div>
+                <span>Meilleure campagne</span>
+                <strong>{bestCampaign}</strong>
+              </div>
+            </div>
+
+            {campaignPerformance.length === 0 ? (
+              <div className="crm-empty">
+                Aucune performance de campagne pour le moment.
+              </div>
+            ) : (
+              <div className="crm-performance-table-wrap">
+                <table className="crm-performance-table">
+                  <caption className="crm-sr-only">
+                    Performance des campagnes CRM par clic, opportunité et
+                    conversion.
+                  </caption>
+                  <thead>
+                    <tr>
+                      <th scope="col">Campagne</th>
+                      <th scope="col">Canal fort</th>
+                      <th scope="col">Clics</th>
+                      <th scope="col">Leads</th>
+                      <th scope="col">Conversion</th>
+                      <th scope="col">Derniers leads</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {campaignPerformance.map((row) => {
+                      const conversionBarWidth = Math.min(
+                        row.conversionRate,
+                        100
+                      );
+                      const hiddenLeadCount =
+                        row.leadCount - row.campaign.opportunities.length;
+
+                      return (
+                        <tr key={row.campaign.id}>
+                          <th scope="row">
+                            <span className="crm-performance-campaign-name">
+                              {row.campaign.name}
+                            </span>
+                            <span className="crm-performance-campaign-meta">
+                              {formatStatus(row.campaign.status)} /{" "}
+                              {row.publishedCount.toLocaleString("fr-FR")}{" "}
+                              publiée(s)
+                              {row.failedCount > 0
+                                ? `, ${row.failedCount.toLocaleString(
+                                    "fr-FR"
+                                  )} erreur(s)`
+                                : ""}
+                            </span>
+                          </th>
+
+                          <td>
+                            {row.topChannel ? (
+                              <ChannelBadge channel={row.topChannel} />
+                            ) : (
+                              <span className="crm-performance-empty">
+                                Aucun canal
+                              </span>
+                            )}
+                          </td>
+
+                          <td>
+                            <strong>
+                              {row.clickCount.toLocaleString("fr-FR")}
+                            </strong>
+                          </td>
+
+                          <td>
+                            <strong>
+                              {row.leadCount.toLocaleString("fr-FR")}
+                            </strong>
+                          </td>
+
+                          <td>
+                            <span className="crm-performance-conversion">
+                              <span>{formatPercent(row.conversionRate)}</span>
+                              <span
+                                className="crm-performance-bar"
+                                aria-hidden="true"
+                              >
+                                <span
+                                  style={{
+                                    width: `${conversionBarWidth}%`,
+                                  }}
+                                />
+                              </span>
+                            </span>
+                          </td>
+
+                          <td>
+                            {row.campaign.opportunities.length > 0 ? (
+                              <span className="crm-performance-lead-list">
+                                {row.campaign.opportunities.map(
+                                  (opportunity) => (
+                                    <span key={opportunity.id}>
+                                      <strong>{opportunity.title}</strong>
+                                      <em>
+                                        {formatOpportunityStage(
+                                          opportunity.stage
+                                        )}{" "}
+                                        / {formatLeadSource(opportunity.source)}{" "}
+                                        / {formatDate(opportunity.createdAt)}
+                                      </em>
+                                    </span>
+                                  )
+                                )}
+                                {hiddenLeadCount > 0 ? (
+                                  <span>
+                                    +{hiddenLeadCount.toLocaleString("fr-FR")}{" "}
+                                    autre(s)
+                                  </span>
+                                ) : null}
+                              </span>
+                            ) : (
+                              <span className="crm-performance-empty">
+                                Aucun lead attribué
+                              </span>
+                            )}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
           </section>
 
           <section className="crm-marketing-panel crm-publisher-readiness">
@@ -850,6 +1198,31 @@ export default async function CrmCampaignsPage() {
                             const plainContent = richContentToPlainText(
                               publication.content
                             );
+                            const isAutoChannel =
+                              publication.channel === "LINKEDIN" ||
+                              publication.channel === "FACEBOOK";
+                            const isFinalStatus =
+                              publication.status === "PUBLISHED";
+                            const isCancelled =
+                              publication.status === "CANCELLED";
+                            const isPublishing =
+                              publication.status === "PUBLISHING";
+                            const canPrepare =
+                              publication.status !== "READY" &&
+                              !isFinalStatus &&
+                              !isPublishing;
+                            const canPublishAutomatically =
+                              isAutoChannel &&
+                              !isFinalStatus &&
+                              !isCancelled &&
+                              !isPublishing;
+                            const canMarkPublished =
+                              !isAutoChannel &&
+                              !isFinalStatus &&
+                              !isCancelled &&
+                              !isPublishing;
+                            const canCancel =
+                              !isFinalStatus && !isCancelled && !isPublishing;
 
                             return (
                               <details
@@ -993,19 +1366,27 @@ export default async function CrmCampaignsPage() {
                                   </details>
 
                                   <footer className="crm-publication-actions">
-                                    <StatusAction
-                                      publicationId={publication.id}
-                                      status="READY"
-                                    >
-                                      Prêt
-                                    </StatusAction>
+                                    {canPrepare ? (
+                                      <StatusAction
+                                        publicationId={publication.id}
+                                        status="READY"
+                                      >
+                                        {isCancelled ? "Réactiver" : "Prêt"}
+                                      </StatusAction>
+                                    ) : null}
 
-                                    {publication.channel === "LINKEDIN" ||
-                                    publication.channel === "FACEBOOK" ? (
+                                    {canPublishAutomatically ? (
                                       <PublishNowAction
                                         publicationId={publication.id}
+                                        label={
+                                          publication.status === "FAILED"
+                                            ? "Réessayer"
+                                            : "Publier"
+                                        }
                                       />
-                                    ) : (
+                                    ) : null}
+
+                                    {canMarkPublished ? (
                                       <StatusAction
                                         publicationId={publication.id}
                                         status="PUBLISHED"
@@ -1013,15 +1394,17 @@ export default async function CrmCampaignsPage() {
                                       >
                                         Publié
                                       </StatusAction>
-                                    )}
+                                    ) : null}
 
-                                    <StatusAction
-                                      publicationId={publication.id}
-                                      status="CANCELLED"
-                                      variant="danger"
-                                    >
-                                      Annuler
-                                    </StatusAction>
+                                    {canCancel ? (
+                                      <StatusAction
+                                        publicationId={publication.id}
+                                        status="CANCELLED"
+                                        variant="danger"
+                                      >
+                                        Annuler
+                                      </StatusAction>
+                                    ) : null}
                                   </footer>
                                 </div>
                               </details>

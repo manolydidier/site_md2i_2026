@@ -124,6 +124,7 @@ const leadSchema = z.object({
   utmCampaign: optionalText(220, "utmCampaign"),
   utmContent: optionalText(220, "utmContent"),
   utmTerm: optionalText(220, "utmTerm"),
+  trackedLinkSlug: optionalText(180, "trackedLinkSlug"),
   landingPage: optionalText(1000, "landingPage"),
   referrer: optionalText(1000, "referrer"),
 
@@ -501,6 +502,7 @@ export async function POST(request: Request) {
     const requestType = data.requestType as CrmRequestTypeValue;
     const source = resolveLeadSource(data.source || data.utmSource);
     const fullName = getFullName(firstName, lastName);
+    const trackedLinkSlug = cleanString(data.trackedLinkSlug);
 
     const hasProductReference =
       Boolean(cleanString(data.productId)) || Boolean(cleanString(data.productSlug));
@@ -526,6 +528,37 @@ export async function POST(request: Request) {
     const productGroupName = productLabel
       ? `Prospects - ${productLabel}`
       : "Prospects - Général";
+
+    const trackedLink = trackedLinkSlug
+      ? await prisma.crmTrackedLink.findFirst({
+          where: {
+            slug: trackedLinkSlug,
+            userId,
+          },
+          select: {
+            id: true,
+            slug: true,
+            campaignId: true,
+            publications: {
+              where: {
+                userId,
+              },
+              take: 1,
+              orderBy: {
+                createdAt: "desc",
+              },
+              select: {
+                id: true,
+                campaignId: true,
+              },
+            },
+          },
+        })
+      : null;
+
+    const trackedPublication = trackedLink?.publications[0] || null;
+    const trackedCampaignId =
+      trackedLink?.campaignId || trackedPublication?.campaignId || null;
 
     const result = await prisma.$transaction(async (tx) => {
       let company = null;
@@ -626,6 +659,10 @@ export async function POST(request: Request) {
             utmCampaign: cleanString(data.utmCampaign) || null,
             utmContent: cleanString(data.utmContent) || null,
             utmTerm: cleanString(data.utmTerm) || null,
+            trackedLinkSlug: trackedLink?.slug || trackedLinkSlug || null,
+            crmTrackedLinkId: trackedLink?.id || null,
+            crmPublicationId: trackedPublication?.id || null,
+            crmMarketingCampaignId: trackedCampaignId,
             landingPage: cleanString(data.landingPage) || null,
             referrer: cleanString(data.referrer) || null,
             lastSubmittedAt: new Date().toISOString(),
@@ -659,6 +696,10 @@ export async function POST(request: Request) {
             utmCampaign: cleanString(data.utmCampaign) || null,
             utmContent: cleanString(data.utmContent) || null,
             utmTerm: cleanString(data.utmTerm) || null,
+            trackedLinkSlug: trackedLink?.slug || trackedLinkSlug || null,
+            crmTrackedLinkId: trackedLink?.id || null,
+            crmPublicationId: trackedPublication?.id || null,
+            crmMarketingCampaignId: trackedCampaignId,
             landingPage: cleanString(data.landingPage) || null,
             referrer: cleanString(data.referrer) || null,
             firstSubmittedAt: new Date().toISOString(),
@@ -700,6 +741,9 @@ export async function POST(request: Request) {
           utmCampaign: cleanString(data.utmCampaign),
           utmContent: cleanString(data.utmContent),
           utmTerm: cleanString(data.utmTerm),
+          crmMarketingCampaignId: trackedCampaignId,
+          crmPublicationId: trackedPublication?.id || null,
+          crmTrackedLinkId: trackedLink?.id || null,
           landingPage: cleanString(data.landingPage),
           referrer: cleanString(data.referrer),
           nextFollowUpAt: getTaskDueDate(),
@@ -744,6 +788,10 @@ export async function POST(request: Request) {
             utmCampaign: cleanString(data.utmCampaign) || null,
             utmContent: cleanString(data.utmContent) || null,
             utmTerm: cleanString(data.utmTerm) || null,
+            trackedLinkSlug: trackedLink?.slug || trackedLinkSlug || null,
+            crmTrackedLinkId: trackedLink?.id || null,
+            crmPublicationId: trackedPublication?.id || null,
+            crmMarketingCampaignId: trackedCampaignId,
             landingPage: cleanString(data.landingPage) || null,
             referrer: cleanString(data.referrer) || null,
             clientIp,

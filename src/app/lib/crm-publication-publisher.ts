@@ -315,7 +315,9 @@ async function uploadLinkedInImage({
       Authorization: `Bearer ${accessToken}`,
       "Content-Type": imagePayload.contentType,
     },
-    body: imagePayload.bytes,
+    body: new Blob([new Uint8Array(imagePayload.bytes)], {
+      type: imagePayload.contentType,
+    }),
   });
 
   if (!uploadResponse.ok) {
@@ -504,7 +506,7 @@ async function publishToFacebook(input: PublishInput): Promise<PublishResult> {
   const canUseTrackedLink = isPublicFacebookUrl(input.trackedUrl);
 
   const message = buildPostText(input, {
-    includeTrackedUrl: canUseTrackedLink,
+    includeTrackedUrl: !canUseTrackedLink,
   });
 
   if (!message.trim()) {
@@ -524,7 +526,7 @@ async function publishToFacebook(input: PublishInput): Promise<PublishResult> {
     - http://127.0.0.1/...
     - http://192.168.x.x/...
 
-    Donc en local, on publie uniquement le texte.
+    Donc en local, on n'envoie pas le champ link.
     Quand votre site sera en ligne avec une vraie URL HTTPS,
     le champ link sera automatiquement envoyé.
   */
@@ -557,6 +559,8 @@ async function publishToFacebook(input: PublishInput): Promise<PublishResult> {
 }
 
 async function publishToIndeed(_input: PublishInput): Promise<PublishResult> {
+  void _input;
+
   throw new Error(
     "Intégration Indeed non disponible: Indeed doit être traité comme une offre structurée, pas comme un simple post texte."
   );
@@ -565,12 +569,16 @@ async function publishToIndeed(_input: PublishInput): Promise<PublishResult> {
 async function publishToEmailCampaign(
   _input: PublishInput
 ): Promise<PublishResult> {
+  void _input;
+
   throw new Error(
     "Intégration email non disponible: rattachez ce canal à votre module email ou à un provider comme Resend, SendGrid, Mailgun ou Brevo."
   );
 }
 
 async function publishToWebsite(_input: PublishInput): Promise<PublishResult> {
+  void _input;
+
   throw new Error(
     "Intégration site web non disponible: créez d'abord un modèle Article/Actualité puis branchez ce publisher dessus."
   );

@@ -117,6 +117,7 @@ function getTrackingParams() {
       utmCampaign: "",
       utmContent: "",
       utmTerm: "",
+      trackedLinkSlug: "",
       landingPage: "",
       referrer: "",
     };
@@ -130,6 +131,7 @@ function getTrackingParams() {
     utmCampaign: params.get("utm_campaign") || "",
     utmContent: params.get("utm_content") || "",
     utmTerm: params.get("utm_term") || "",
+    trackedLinkSlug: params.get("crm_tracked_link") || "",
     landingPage: window.location.pathname,
     referrer: document.referrer || "",
   };

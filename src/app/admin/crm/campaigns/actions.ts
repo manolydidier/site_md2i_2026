@@ -1,11 +1,19 @@
 "use server";
 
+import { randomUUID } from "node:crypto";
+
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
 import { getCrmOwnerUserId } from "@/app/lib/crm-owner";
 import { prisma } from "@/app/lib/prisma";
+import { processDueCrmPublications } from "@/app/lib/crm-publication-cron";
 import { publishCrmPublication } from "@/app/lib/crm-publication-publisher";
+import {
+  createCrmPublicationLog,
+  getErrorMessage,
+  getErrorPayload,
+} from "@/app/lib/crm-publication-log";
 
 type CrmPublicationChannelInput =
   | "LINKEDIN"
@@ -112,8 +120,7 @@ function readChannels(formData: FormData): CrmPublicationChannelInput[] {
 
   const channels = values
     .filter((value): value is string => typeof value === "string")
-    .map((value) => toChannel(value))
-    .filter((value) => value !== "OTHER");
+    .map((value) => toChannel(value));
 
   const uniqueChannels = Array.from(new Set(channels));
 
@@ -130,6 +137,41 @@ function toPublicationStatus(value: string) {
 
 function getSiteUrl() {
   return process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
+}
+
+function isAutomaticChannel(channel: string) {
+  return channel === "LINKEDIN" || channel === "FACEBOOK";
+}
+
+function canPublishNow(status: string) {
+  return ["DRAFT", "READY", "SCHEDULED", "FAILED"].includes(status);
+}
+
+function calculateNextRetryAt(retryCount: number) {
+  const minutesByAttempt = [5, 15, 60, 180, 720];
+  const minutes =
+    minutesByAttempt[Math.min(retryCount - 1, minutesByAttempt.length - 1)] ||
+    720;
+
+  return new Date(Date.now() + minutes * 60 * 1000);
+}
+
+function redirectWithPublishStatus({
+  status,
+  channel,
+  title,
+}: {
+  status: "success" | "failed" | "skipped";
+  channel: string;
+  title: string;
+}): never {
+  const params = new URLSearchParams();
+
+  params.set("publish", status);
+  params.set("channel", channel);
+  params.set("title", title);
+
+  redirect(`/admin/crm/campaigns?${params.toString()}`);
 }
 
 async function createUniqueSlug(name: string, channel: string) {
@@ -237,7 +279,7 @@ export async function createCrmMarketingCampaign(formData: FormData) {
         },
       });
 
-      await tx.crmPublication.create({
+      const publication = await tx.crmPublication.create({
         data: {
           campaignId: campaign.id,
           trackedLinkId: trackedLink.id,
@@ -250,16 +292,41 @@ export async function createCrmMarketingCampaign(formData: FormData) {
           scheduledAt,
           status: publicationStatus,
         },
+        select: {
+          id: true,
+          channel: true,
+        },
+      });
+
+      await tx.crmPublicationLog.create({
+        data: {
+          publicationId: publication.id,
+          campaignId: campaign.id,
+          userId,
+          channel: publication.channel,
+          action: "CREATE_PUBLICATION",
+          status: publicationStatus,
+          message: scheduledAt
+            ? "Publication planifiée."
+            : "Publication créée en brouillon.",
+          metadata: {
+            trackedLinkId: trackedLink.id,
+            slug: publicationPlan.slug,
+            destinationUrl,
+            utmCampaign,
+            utmContent: publicationPlan.utmContent,
+          },
+        },
       });
     }
 
     await tx.crmActivity.create({
       data: {
         type: "CAMPAIGN",
-        title: `Campagne marketing creee: ${name}`,
+        title: `Campagne marketing créée: ${name}`,
         description:
           objective ||
-          `Publications preparees sur ${publicationPlans.length} canal(aux).`,
+          `Publications préparées sur ${publicationPlans.length} canal(aux).`,
         metadata: {
           campaignId: campaign.id,
           channels: publicationPlans.map((plan) => plan.channel),
@@ -305,16 +372,67 @@ export async function publishCrmPublicationNow(formData: FormData) {
     throw new Error("Lien suivi introuvable pour cette publication.");
   }
 
-  if (
-    publication.channel !== "LINKEDIN" &&
-    publication.channel !== "FACEBOOK"
-  ) {
+  if (!isAutomaticChannel(publication.channel)) {
     throw new Error(
       `Publication automatique non disponible pour ${publication.channel}.`
     );
   }
 
+  if (!canPublishNow(publication.status)) {
+    redirectWithPublishStatus({
+      status: "skipped",
+      channel: publication.channel,
+      title: publication.title,
+    });
+  }
+
+  const lockToken = randomUUID();
+  const now = new Date();
+  const attempt = publication.retryCount + 1;
+
+  const reserved = await prisma.crmPublication.updateMany({
+    where: {
+      id: publication.id,
+      userId,
+      status: {
+        in: ["DRAFT", "READY", "SCHEDULED", "FAILED"],
+      },
+    },
+    data: {
+      status: "PUBLISHING",
+      lockedAt: now,
+      lockToken,
+      lastAttemptAt: now,
+      failureReason: null,
+    },
+  });
+
+  if (reserved.count === 0) {
+    redirectWithPublishStatus({
+      status: "skipped",
+      channel: publication.channel,
+      title: publication.title,
+    });
+  }
+
   const trackedUrl = `${getSiteUrl()}/r/${publication.trackedLink.slug}`;
+
+  await createCrmPublicationLog({
+    publicationId: publication.id,
+    campaignId: publication.campaignId,
+    userId,
+    channel: publication.channel,
+    action: "PUBLISH_START",
+    status: "PUBLISHING",
+    attempt,
+    requestPayload: {
+      publicationId: publication.id,
+      channel: publication.channel,
+      title: publication.title,
+      trackedUrl,
+      manual: true,
+    },
+  });
 
   let redirectStatus: "success" | "failed" = "success";
 
@@ -330,9 +448,12 @@ export async function publishCrmPublicationNow(formData: FormData) {
     });
 
     await prisma.$transaction(async (tx) => {
-      await tx.crmPublication.update({
+      await tx.crmPublication.updateMany({
         where: {
           id: publication.id,
+          userId,
+          status: "PUBLISHING",
+          lockToken,
         },
         data: {
           status: "PUBLISHED",
@@ -340,6 +461,9 @@ export async function publishCrmPublicationNow(formData: FormData) {
           providerPostId: result.externalId || null,
           providerUrl: result.externalUrl || null,
           failureReason: null,
+          nextRetryAt: null,
+          lockedAt: null,
+          lockToken: null,
         },
       });
 
@@ -355,7 +479,7 @@ export async function publishCrmPublicationNow(formData: FormData) {
       await tx.crmActivity.create({
         data: {
           type: "CAMPAIGN",
-          title: `Publication ${publication.channel.toLowerCase()} publiee`,
+          title: `Publication ${publication.channel.toLowerCase()} publiée`,
           description: publication.title,
           metadata: {
             publicationId: publication.id,
@@ -369,47 +493,123 @@ export async function publishCrmPublicationNow(formData: FormData) {
         },
       });
     });
+
+    await createCrmPublicationLog({
+      publicationId: publication.id,
+      campaignId: publication.campaignId,
+      userId,
+      channel: publication.channel,
+      action: "PUBLISH_SUCCESS",
+      status: "PUBLISHED",
+      attempt,
+      message: "Publication envoyée avec succès.",
+      providerResponse: {
+        externalId: result.externalId || null,
+        externalUrl: result.externalUrl || null,
+      },
+    });
   } catch (error) {
     redirectStatus = "failed";
 
-    const failureReason =
-      error instanceof Error ? error.message : "Erreur inconnue.";
+    const failureReason = getErrorMessage(error);
+    const nextRetryCount = publication.retryCount + 1;
+    const shouldRetry = nextRetryCount < publication.maxRetries;
+    const nextRetryAt = shouldRetry
+      ? calculateNextRetryAt(nextRetryCount)
+      : null;
 
     await prisma.$transaction(async (tx) => {
-      await tx.crmPublication.update({
+      await tx.crmPublication.updateMany({
         where: {
           id: publication.id,
+          userId,
+          status: "PUBLISHING",
+          lockToken,
         },
         data: {
           status: "FAILED",
           failureReason,
+          retryCount: {
+            increment: 1,
+          },
+          nextRetryAt,
+          lockedAt: null,
+          lockToken: null,
         },
       });
 
       await tx.crmActivity.create({
         data: {
           type: "CAMPAIGN",
-          title: `Echec publication ${publication.channel.toLowerCase()}`,
+          title: `Échec publication ${publication.channel.toLowerCase()}`,
           description: failureReason,
           metadata: {
             publicationId: publication.id,
             campaignId: publication.campaignId,
             channel: publication.channel,
+            retryCount: nextRetryCount,
+            maxRetries: publication.maxRetries,
+            nextRetryAt: nextRetryAt?.toISOString() || null,
           },
           userId,
         },
       });
+    });
+
+    await createCrmPublicationLog({
+      publicationId: publication.id,
+      campaignId: publication.campaignId,
+      userId,
+      channel: publication.channel,
+      action: "PUBLISH_FAILED",
+      status: "FAILED",
+      attempt,
+      error: failureReason,
+      providerResponse: getErrorPayload(error),
+      metadata: {
+        retryCount: nextRetryCount,
+        maxRetries: publication.maxRetries,
+        nextRetryAt: nextRetryAt?.toISOString() || null,
+        willRetry: shouldRetry,
+      },
     });
   }
 
   revalidatePath("/admin/crm/campaigns");
   revalidatePath("/admin/crm");
 
+  redirectWithPublishStatus({
+    status: redirectStatus,
+    channel: publication.channel,
+    title: publication.title,
+  });
+}
+
+export async function processCrmPublicationQueue(formData: FormData) {
+  const userId = await getCrmOwnerUserId();
+  const rawLimit = Number(readText(formData, "limit", "20"));
+  const limit = Number.isFinite(rawLimit)
+    ? Math.min(50, Math.max(1, Math.trunc(rawLimit)))
+    : 20;
+
   const params = new URLSearchParams();
 
-  params.set("publish", redirectStatus);
-  params.set("channel", publication.channel);
-  params.set("title", publication.title);
+  try {
+    const result = await processDueCrmPublications({ limit, userId });
+
+    params.set("queue", "success");
+    params.set("checked", String(result.checked));
+    params.set("published", String(result.published));
+    params.set("manualReady", String(result.manualReady));
+    params.set("failed", String(result.failed));
+    params.set("skipped", String(result.skipped));
+  } catch (error) {
+    params.set("queue", "failed");
+    params.set("message", getErrorMessage(error));
+  }
+
+  revalidatePath("/admin/crm/campaigns");
+  revalidatePath("/admin/crm");
 
   redirect(`/admin/crm/campaigns?${params.toString()}`);
 }
@@ -433,6 +633,7 @@ export async function updateCrmPublicationStatus(formData: FormData) {
       campaignId: true,
       title: true,
       channel: true,
+      retryCount: true,
     },
   });
 
@@ -448,6 +649,19 @@ export async function updateCrmPublicationStatus(formData: FormData) {
       data: {
         status: nextStatus,
         publishedAt: nextStatus === "PUBLISHED" ? new Date() : undefined,
+        failureReason:
+          nextStatus === "READY" || nextStatus === "DRAFT"
+            ? null
+            : undefined,
+        nextRetryAt:
+          nextStatus === "READY" ||
+          nextStatus === "DRAFT" ||
+          nextStatus === "CANCELLED" ||
+          nextStatus === "PUBLISHED"
+            ? null
+            : undefined,
+        lockedAt: null,
+        lockToken: null,
       },
     });
 
@@ -473,6 +687,19 @@ export async function updateCrmPublicationStatus(formData: FormData) {
           status: nextStatus,
         },
         userId,
+      },
+    });
+
+    await tx.crmPublicationLog.create({
+      data: {
+        publicationId: publication.id,
+        campaignId: publication.campaignId,
+        userId,
+        channel: publication.channel,
+        action: "STATUS_CHANGE",
+        status: nextStatus,
+        message: `Statut modifié manuellement vers ${nextStatus}.`,
+        attempt: Math.max(1, publication.retryCount + 1),
       },
     });
   });
@@ -550,9 +777,9 @@ export async function deleteCrmMarketingCampaign(formData: FormData) {
     await tx.crmActivity.create({
       data: {
         type: "CAMPAIGN",
-        title: `Campagne marketing supprimee: ${campaign.name}`,
+        title: `Campagne marketing supprimée: ${campaign.name}`,
         description:
-          "Campagne, publications, liens suivis et clics associes supprimes.",
+          "Campagne, publications, liens suivis et clics associés supprimés.",
         metadata: {
           deletedCampaignId: campaign.id,
           deletedCampaignName: campaign.name,
@@ -572,7 +799,7 @@ export async function deleteSelectedCrmMarketingCampaigns(formData: FormData) {
   const campaignIds = readIds(formData, "campaignIds");
 
   if (campaignIds.length === 0) {
-    throw new Error("Aucune campagne selectionnee.");
+    throw new Error("Aucune campagne sélectionnée.");
   }
 
   const campaigns = await prisma.crmMarketingCampaign.findMany({
@@ -589,7 +816,7 @@ export async function deleteSelectedCrmMarketingCampaigns(formData: FormData) {
   });
 
   if (campaigns.length === 0) {
-    throw new Error("Aucune campagne valide a supprimer.");
+    throw new Error("Aucune campagne valide à supprimer.");
   }
 
   const authorizedCampaignIds = campaigns.map((campaign) => campaign.id);
@@ -649,7 +876,7 @@ export async function deleteSelectedCrmMarketingCampaigns(formData: FormData) {
     await tx.crmActivity.create({
       data: {
         type: "CAMPAIGN",
-        title: `${campaigns.length} campagne(s) marketing supprimee(s)`,
+        title: `${campaigns.length} campagne(s) marketing supprimée(s)`,
         description: campaigns.map((campaign) => campaign.name).join(", "),
         metadata: {
           deletedCampaignIds: authorizedCampaignIds,
