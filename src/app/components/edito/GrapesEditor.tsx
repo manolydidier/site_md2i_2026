@@ -1615,7 +1615,7 @@ export default function GrapesEditor({ mode, postId }: GrapesEditorProps) {
     <p>Ceci est un exemple injecté par copier-coller dans GrapesJS.</p>
     <div class="demo-actions">
       <button class="demo-btn" type="button">Cliquer</button>
-      <a href="#" class="demo-link">Voir plus</a>
+      <button class="demo-link" type="button">Voir plus</button>
     </div>
     <div class="demo-grid">
       <article class="demo-card"><h3>Bloc 1</h3><p>Carte sombre avec accent orange.</p></article>

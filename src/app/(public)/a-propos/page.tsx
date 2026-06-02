@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import { T } from '@/app/i18n/T'
+import { buildMetadata } from '@/app/seo'
 import styles from './apropos.module.css'
 
 const aboutImages = {
@@ -38,11 +39,20 @@ const officeImages = [
   'https://images.unsplash.com/photo-1516026672322-bc52d61a55d5?auto=format&fit=crop&w=900&q=80',
 ]
 
-export const metadata: Metadata = {
-  title: 'À propos | MD2I',
+export const metadata: Metadata = buildMetadata({
+  title: 'À propos - logiciel SARA, expertise projet et présence internationale',
   description:
-    "MD2I accompagne les projets de développement avec des solutions logicielles, de l'expertise métier et un appui durable sur le terrain.",
-}
+    "MD2I, créé à Paris en 1987, conçoit des logiciels de gestion de projets de développement et intervient dans 54 pays avec appui, formation et maintenance.",
+  path: '/a-propos',
+  keywords: [
+    'MD2I Paris 1987',
+    'MD2I Madagascar',
+    'logiciels projets de développement',
+    'expertise bailleurs de fonds',
+    'formation et maintenance logiciel',
+    '54 pays MD2I',
+  ],
+})
 
 const keyFigures = [
   {

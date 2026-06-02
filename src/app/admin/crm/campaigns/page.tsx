@@ -75,6 +75,9 @@ type CampaignRow = {
       clickCount: number;
       destinationUrl: string;
     } | null;
+    _count: {
+      opportunities: number;
+    };
   }>;
   trackedLinks: Array<{
     id: string;
@@ -125,6 +128,17 @@ type CampaignPerformanceRow = {
   failedCount: number;
   conversionRate: number;
   topChannel: string | null;
+};
+
+type ChannelPerformanceRow = {
+  channel: string;
+  publicationCount: number;
+  publishedCount: number;
+  scheduledCount: number;
+  failedCount: number;
+  clickCount: number;
+  leadCount: number;
+  conversionRate: number;
 };
 
 const CHANNELS = [
@@ -187,6 +201,11 @@ async function loadCampaignData(userId: string): Promise<CampaignData> {
                   slug: true,
                   clickCount: true,
                   destinationUrl: true,
+                },
+              },
+              _count: {
+                select: {
+                  opportunities: true,
                 },
               },
             },
@@ -374,6 +393,41 @@ function getCampaignPerformance(campaign: CampaignRow): CampaignPerformanceRow {
     conversionRate: clickCount > 0 ? (leadCount / clickCount) * 100 : 0,
     topChannel: getCampaignTopChannel(campaign),
   };
+}
+
+function getChannelPerformanceRows(
+  publications: Array<CampaignRow["publications"][number]>
+): ChannelPerformanceRow[] {
+  return CHANNELS.map((channel) => {
+    const channelPublications = publications.filter(
+      (publication) => publication.channel === channel.value
+    );
+    const clickCount = channelPublications.reduce(
+      (sum, publication) => sum + (publication.trackedLink?.clickCount || 0),
+      0
+    );
+    const leadCount = channelPublications.reduce(
+      (sum, publication) => sum + publication._count.opportunities,
+      0
+    );
+
+    return {
+      channel: channel.value,
+      publicationCount: channelPublications.length,
+      publishedCount: channelPublications.filter(
+        (publication) => publication.status === "PUBLISHED"
+      ).length,
+      scheduledCount: channelPublications.filter(
+        (publication) => publication.status === "SCHEDULED"
+      ).length,
+      failedCount: channelPublications.filter(
+        (publication) => publication.status === "FAILED"
+      ).length,
+      clickCount,
+      leadCount,
+      conversionRate: clickCount > 0 ? (leadCount / clickCount) * 100 : 0,
+    };
+  });
 }
 
 function formatMonth(value: Date) {
@@ -783,6 +837,8 @@ export default async function CrmCampaignsPage() {
     campaignPerformance.find((row) => row.leadCount > 0 || row.clickCount > 0)
       ?.campaign.name || "Aucune donnée";
 
+  const channelPerformance = getChannelPerformanceRows(publications);
+
   const calendarPublications = campaigns.flatMap((campaign) =>
     campaign.publications.map((publication) => ({
       ...publication,
@@ -936,6 +992,75 @@ export default async function CrmCampaignsPage() {
                 <strong>{bestCampaign}</strong>
               </div>
             </div>
+
+            {campaigns.length > 0 ? (
+              <div
+                className="crm-channel-performance-list"
+                aria-label="Performance par canal"
+              >
+                {channelPerformance.map((row) => {
+                  const conversionBarWidth = Math.min(row.conversionRate, 100);
+
+                  return (
+                    <div
+                      key={row.channel}
+                      className="crm-channel-performance-item"
+                    >
+                      <div className="crm-channel-performance-head">
+                        <ChannelBadge channel={row.channel} />
+                        <span>
+                          {row.scheduledCount.toLocaleString("fr-FR")}{" "}
+                          planifiée(s)
+                        </span>
+                        {row.failedCount > 0 ? (
+                          <span className="crm-channel-performance-alert">
+                            {row.failedCount.toLocaleString("fr-FR")} erreur(s)
+                          </span>
+                        ) : null}
+                      </div>
+
+                      <dl className="crm-channel-performance-metrics">
+                        <div>
+                          <dt>Posts</dt>
+                          <dd>
+                            {row.publicationCount.toLocaleString("fr-FR")}
+                          </dd>
+                        </div>
+                        <div>
+                          <dt>Publiés</dt>
+                          <dd>
+                            {row.publishedCount.toLocaleString("fr-FR")}
+                          </dd>
+                        </div>
+                        <div>
+                          <dt>Clics</dt>
+                          <dd>{row.clickCount.toLocaleString("fr-FR")}</dd>
+                        </div>
+                        <div>
+                          <dt>Leads</dt>
+                          <dd>{row.leadCount.toLocaleString("fr-FR")}</dd>
+                        </div>
+                      </dl>
+
+                      <div className="crm-channel-performance-footer">
+                        <span>Conversion</span>
+                        <strong>{formatPercent(row.conversionRate)}</strong>
+                        <span
+                          className="crm-channel-performance-meter"
+                          aria-hidden="true"
+                        >
+                          <span
+                            style={{
+                              width: `${conversionBarWidth}%`,
+                            }}
+                          />
+                        </span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            ) : null}
 
             {campaignPerformance.length === 0 ? (
               <div className="crm-empty">

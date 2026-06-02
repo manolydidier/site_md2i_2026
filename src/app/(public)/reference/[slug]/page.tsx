@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { prisma } from "@/app/lib/prisma";
+import { buildMetadata } from "@/app/seo";
 
 type ReferencePageProps = {
   params: Promise<{
@@ -92,23 +93,30 @@ export async function generateMetadata({ params }: ReferencePageProps) {
   const reference = await getReference(slug);
 
   if (!reference) {
-    return {
-      title: "Référence introuvable | MD2I",
-      description: "Cette référence est introuvable ou non publiée.",
-    };
+    return buildMetadata({
+      title: "Référence introuvable",
+      description: "Cette référence MD2I est introuvable ou non publiée.",
+      path: `/reference/${slug}`,
+      noIndex: true,
+    });
   }
 
   const description = stripHtml(reference.excerpt).slice(0, 160);
 
-  return {
-    title: `${reference.title} | Référence MD2I`,
+  return buildMetadata({
+    title: `${reference.title} - référence projet`,
     description,
-    openGraph: {
-      title: reference.title,
-      description,
-      images: reference.image ? [{ url: reference.image }] : [],
-    },
-  };
+    path: `/reference/${reference.slug}`,
+    image: reference.image || "/logo.png",
+    keywords: [
+      reference.title,
+      reference.client,
+      reference.country,
+      reference.category,
+      "référence MD2I",
+      "déploiement logiciel SARA",
+    ].filter(Boolean),
+  });
 }
 
 export default async function ReferenceDetailPage({

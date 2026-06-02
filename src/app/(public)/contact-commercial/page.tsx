@@ -1,5 +1,6 @@
 // src/app/contact-commercial/page.tsx
 
+import type { Metadata } from "next";
 import { ReactNode } from "react";
 import {
   ArrowRight,
@@ -14,9 +15,25 @@ import {
 
 import { prisma } from "@/app/lib/prisma";
 import { T } from "@/app/i18n/T";
+import { buildMetadata } from "@/app/seo";
 import { LocalizedProductLeadForm } from "./LocalizedProductLeadForm";
 
 export const dynamic = "force-dynamic";
+
+export const metadata: Metadata = buildMetadata({
+  title: "Demande commerciale - démonstration logiciel SARA et devis MD2I",
+  description:
+    "Demandez une démonstration, un devis ou une qualification commerciale pour les logiciels SARA, licences, support, formation et solutions de gestion MD2I.",
+  path: "/contact-commercial",
+  keywords: [
+    "demande demo SARA",
+    "devis logiciel SARA",
+    "licence SARA",
+    "logiciel gestion projet devis",
+    "contact commercial MD2I",
+    "support logiciel multi-bailleurs",
+  ],
+});
 
 export default async function ContactCommercialPage() {
   const products = await prisma.product.findMany({

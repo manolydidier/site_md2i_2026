@@ -79,7 +79,17 @@ export default function Hero3D() {
       style={{ background: theme.bg }}
       data-mode={mode}
     >
-      <canvas ref={canvasRef} className={styles.hero3dCanvas} />
+      <canvas
+        ref={canvasRef}
+        className={styles.hero3dCanvas}
+        role="img"
+        aria-label={String(
+          t('homeHero.sceneLabel', {
+            defaultValue:
+              'Scene 3D interactive representant les expertises digitales de MD2I',
+          })
+        )}
+      />
 
       <div className={styles.hero3dOverlay}>
         <div className={styles.hero3dHeader}>

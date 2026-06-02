@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useEffect, useMemo, useRef, useState } from "react";
+import Link from "next/link";
 import type { TFunction } from "i18next";
 import { useTranslation } from "react-i18next";
 import { useTheme } from "@/app/context/ThemeContext";
@@ -12,12 +13,7 @@ type IconProps = {
   size?: number;
 };
 
-type ServiceCategory =
-  | "Pilotage"
-  | "Transformation"
-  | "Infrastructure"
-  | "Data & IA"
-  | "Compétences";
+type ServiceCategory = string;
 
 type ModalTab = "overview" | "missions" | "livrables" | "impacts";
 
@@ -29,6 +25,12 @@ type ServiceCategoryId =
   | "skills";
 
 type CategoryFilter = ServiceCategoryId | "all";
+
+type ServiceProductBridge = {
+  href: string;
+  label: string;
+  hint: string;
+};
 
 type Service = {
   id: string;
@@ -579,6 +581,60 @@ const SERVICE_CATEGORY_IDS: Record<string, ServiceCategoryId> = {
   training: "skills",
 };
 
+const DEFAULT_PRODUCT_BRIDGE: ServiceProductBridge = {
+  href: "/produits",
+  label: "Voir le catalogue produits",
+  hint: "Logiciels, modules et outils métier prêts à relier à vos missions.",
+};
+
+const SERVICE_PRODUCT_BRIDGES: Record<string, ServiceProductBridge> = {
+  project: {
+    href: "/produits?search=tableau%20de%20bord",
+    label: "Produits de pilotage",
+    hint: "Tableaux de bord, suivi terrain et reporting opérationnel.",
+  },
+  institution: {
+    href: "/produits?search=gouvernance",
+    label: "Outils de gouvernance",
+    hint: "Solutions pour structurer les processus et la redevabilité.",
+  },
+  digital: {
+    href: "/produits?search=transformation",
+    label: "Solutions digitales",
+    hint: "Applications et modules pour digitaliser les parcours métier.",
+  },
+  software: {
+    href: "/produits?search=logiciel",
+    label: "Logiciels métier",
+    hint: "Fiches produits, modules applicatifs et demandes de démonstration.",
+  },
+  hydraulic: {
+    href: "/produits?search=terrain",
+    label: "Outils terrain",
+    hint: "Supports numériques pour le suivi d'infrastructures et d'enquêtes.",
+  },
+  accounting: {
+    href: "/produits?search=comptabilite",
+    label: "Solutions de gestion",
+    hint: "Modules de gestion, traçabilité et pilotage administratif.",
+  },
+  studies: {
+    href: "/produits?search=analyse",
+    label: "Produits data",
+    hint: "Outils d'analyse, visualisation et restitution des indicateurs.",
+  },
+  ai: {
+    href: "/produits?search=IA",
+    label: "Solutions IA",
+    hint: "Modules d'automatisation et d'aide à la décision.",
+  },
+  training: {
+    href: "/produits?search=formation",
+    label: "Supports de formation",
+    hint: "Outils d'appropriation, guides et parcours d'accompagnement.",
+  },
+};
+
 function getServiceCategoryId(serviceId: string): ServiceCategoryId {
   return SERVICE_CATEGORY_IDS[serviceId] ?? "transformation";
 }
@@ -591,6 +647,24 @@ function translateArray(t: TFunction, key: string, values: string[]) {
   return values.map((value, index) =>
     translateText(t, `${key}.${index}`, value)
   );
+}
+
+function getServiceProductBridge(t: TFunction, serviceId: string): ServiceProductBridge {
+  const fallback = SERVICE_PRODUCT_BRIDGES[serviceId] ?? DEFAULT_PRODUCT_BRIDGE;
+
+  return {
+    href: fallback.href,
+    label: translateText(
+      t,
+      `servicesPage.products.${serviceId}.label`,
+      fallback.label
+    ),
+    hint: translateText(
+      t,
+      `servicesPage.products.${serviceId}.hint`,
+      fallback.hint
+    ),
+  };
 }
 
 function localizeServices(t: TFunction): Service[] {
@@ -807,7 +881,7 @@ function FilterButton({
 
 function CTAButton({
   theme,
-  href = "#contact",
+  href = "/contact",
   label,
   filled = false,
 }: {
@@ -820,33 +894,28 @@ function CTAButton({
   const [hovered, setHovered] = useState(false);
   const buttonLabel =
     label ?? t("servicesPage.actions.contact", { defaultValue: "Nous contacter" });
-
-  return (
-    <a
-      href={href}
-      onMouseEnter={() => setHovered(true)}
-      onMouseLeave={() => setHovered(false)}
-      style={{
-        display: "inline-flex",
-        alignItems: "center",
-        justifyContent: "center",
-        gap: 10,
-        padding: "14px 22px",
-        minHeight: 48,
-        borderRadius: 14,
-        textDecoration: "none",
-        fontWeight: 800,
-        fontSize: "0.875rem",
-        fontFamily: "'Inter', sans-serif",
-        whiteSpace: "nowrap",
-        transition: "all .28s cubic-bezier(.22,1,.36,1)",
-        background: filled ? theme.accent : theme.accentSoft,
-        color: filled ? "#FFFFFF" : theme.accent,
-        border: `1.5px solid ${filled ? theme.accent : "rgba(225,161,44,.28)"}`,
-        boxShadow: filled && hovered ? "0 16px 36px rgba(225,161,44,.25)" : "none",
-        transform: hovered ? "translateY(-1px)" : "translateY(0)",
-      }}
-    >
+  const buttonStyle: React.CSSProperties = {
+    display: "inline-flex",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 10,
+    padding: "14px 22px",
+    minHeight: 48,
+    borderRadius: 14,
+    textDecoration: "none",
+    fontWeight: 800,
+    fontSize: "0.875rem",
+    fontFamily: "'Inter', sans-serif",
+    whiteSpace: "nowrap",
+    transition: "all .28s cubic-bezier(.22,1,.36,1)",
+    background: filled ? theme.accent : theme.accentSoft,
+    color: filled ? "#FFFFFF" : theme.accent,
+    border: `1.5px solid ${filled ? theme.accent : "rgba(225,161,44,.28)"}`,
+    boxShadow: filled && hovered ? "0 16px 36px rgba(225,161,44,.25)" : "none",
+    transform: hovered ? "translateY(-1px)" : "translateY(0)",
+  };
+  const content = (
+    <>
       {buttonLabel}
       <span
         style={{
@@ -857,7 +926,89 @@ function CTAButton({
       >
         <Icons.ArrowRight color={filled ? "#FFFFFF" : theme.accent} size={15} />
       </span>
+    </>
+  );
+
+  if (href.startsWith("/")) {
+    return (
+      <Link
+        href={href}
+        onMouseEnter={() => setHovered(true)}
+        onMouseLeave={() => setHovered(false)}
+        style={buttonStyle}
+      >
+        {content}
+      </Link>
+    );
+  }
+
+  return (
+    <a
+      href={href}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+      style={buttonStyle}
+    >
+      {content}
     </a>
+  );
+}
+
+function ProductLink({
+  theme,
+  href,
+  label,
+  hint,
+  accent,
+  filled = false,
+  compact = false,
+  showHint = true,
+  onClick,
+}: {
+  theme: ReturnType<typeof serviceTokens>;
+  href: string;
+  label: string;
+  hint?: string;
+  accent?: string;
+  filled?: boolean;
+  compact?: boolean;
+  showHint?: boolean;
+  onClick?: React.MouseEventHandler<HTMLAnchorElement>;
+}) {
+  const linkAccent = accent ?? theme.accent;
+  const linkStyle = {
+    "--md2i-product-accent": linkAccent,
+    "--md2i-product-bg": filled ? linkAccent : theme.panel2,
+    "--md2i-product-soft": filled ? "rgba(255,255,255,.16)" : theme.accentSoft,
+    "--md2i-product-border": filled ? linkAccent : theme.border,
+    "--md2i-product-text": filled ? "#FFFFFF" : theme.text,
+    "--md2i-product-muted": filled ? "rgba(255,255,255,.78)" : theme.textSoft,
+    "--md2i-product-icon": filled ? "#FFFFFF" : linkAccent,
+    "--md2i-product-shadow": filled
+      ? "0 16px 36px rgba(225,161,44,.24)"
+      : theme.cardShadow,
+  } as React.CSSProperties;
+
+  return (
+    <Link
+      href={href}
+      className={`md2i-product-link${filled ? " is-filled" : ""}${
+        compact ? " is-compact" : ""
+      }`}
+      style={linkStyle}
+      onClick={onClick}
+    >
+      <span className="md2i-product-link-icon">
+        <Icons.Layers color="currentColor" size={compact ? 16 : 18} />
+      </span>
+      <span className="md2i-product-link-copy">
+        <span>{label}</span>
+        {showHint && hint && <small>{hint}</small>}
+      </span>
+      <span className="md2i-product-link-arrow">
+        <Icons.ArrowRight color="currentColor" size={14} />
+      </span>
+    </Link>
   );
 }
 
@@ -941,6 +1092,7 @@ function FeaturedService({
 }) {
   const { t } = useTranslation();
   const { Icon } = service;
+  const productBridge = getServiceProductBridge(t, service.id);
 
   return (
     <div
@@ -1208,6 +1360,55 @@ function FeaturedService({
               </span>
             ))}
           </div>
+
+          <div
+            className="md2i-product-quick-panel"
+            style={{
+              display: "grid",
+              gap: 14,
+              padding: "16px",
+              borderRadius: 18,
+              background: theme.panel3,
+              border: `1px solid ${theme.border}`,
+            }}
+          >
+            <div style={{ display: "grid", gap: 6 }}>
+              <div
+                style={{
+                  color: theme.accent,
+                  fontSize: "0.72rem",
+                  fontWeight: 800,
+                  letterSpacing: "0.12em",
+                  textTransform: "uppercase",
+                  fontFamily: "'Inter', sans-serif",
+                }}
+              >
+                {t("servicesPage.products.panelKicker", {
+                  defaultValue: "Lien produit associé",
+                })}
+              </div>
+              <p
+                style={{
+                  margin: 0,
+                  color: theme.textSoft,
+                  fontSize: "0.86rem",
+                  lineHeight: 1.7,
+                  fontFamily: "'Inter', sans-serif",
+                }}
+              >
+                {productBridge.hint}
+              </p>
+            </div>
+            <ProductLink
+              theme={theme}
+              href={productBridge.href}
+              label={productBridge.label}
+              hint={productBridge.hint}
+              accent={service.accent}
+              compact
+              showHint={false}
+            />
+          </div>
         </div>
 
         <div style={{ display: "flex", flexWrap: "wrap", gap: 12, alignItems: "center" }}>
@@ -1235,6 +1436,17 @@ function FeaturedService({
             })}
             <Icons.ArrowRight color="#FFFFFF" size={15} />
           </button>
+          <ProductLink
+            theme={theme}
+            href={productBridge.href}
+            label={t("servicesPage.actions.openProducts", {
+              defaultValue: "Voir les produits",
+            })}
+            hint={productBridge.hint}
+            accent={service.accent}
+            compact
+            showHint={false}
+          />
           <CTAButton theme={theme} />
         </div>
       </div>
@@ -1261,14 +1473,27 @@ function ServiceCard({
 }) {
   const { t } = useTranslation();
   const [hovered, setHovered] = useState(false);
-  const [ref, visible] = useVisible<HTMLButtonElement>(0.08);
+  const [ref, visible] = useVisible<HTMLElement>(0.08);
   const { Icon } = service;
+  const productBridge = getServiceProductBridge(t, service.id);
 
   return (
-    <button
+    <article
       ref={ref}
-      type="button"
+      role="button"
+      tabIndex={0}
+      aria-label={`${t("servicesPage.actions.viewDetail", {
+        defaultValue: "Voir le dÃ©tail",
+      })} : ${service.title}`}
+      className="md2i-service-card"
       onClick={() => onOpen(service)}
+      onKeyDown={(event) => {
+        if (event.currentTarget !== event.target) return;
+        if (event.key !== "Enter" && event.key !== " ") return;
+
+        event.preventDefault();
+        onOpen(service);
+      }}
       onMouseEnter={() => {
         setHovered(true);
         onPreview(service);
@@ -1467,7 +1692,26 @@ function ServiceCard({
         </span>
         <Icons.ChevronRight color={service.accent} size={13} />
       </div>
-    </button>
+
+      <div
+        style={{
+          position: "relative",
+          zIndex: 1,
+          marginTop: 2,
+        }}
+      >
+        <ProductLink
+          theme={theme}
+          href={productBridge.href}
+          label={productBridge.label}
+          hint={productBridge.hint}
+          accent={service.accent}
+          compact
+          showHint={false}
+          onClick={(event) => event.stopPropagation()}
+        />
+      </div>
+    </article>
   );
 }
 
@@ -1486,6 +1730,7 @@ function ServiceModal({
   const [activeTab, setActiveTab] = useState<ModalTab>("overview");
   const [isMounted, setIsMounted] = useState(false);
   const panelRef = useRef<HTMLDivElement | null>(null);
+  const productBridge = getServiceProductBridge(t, service.id);
 
   useEffect(() => {
     const timer = window.setTimeout(() => setActiveTab("overview"), 0);
@@ -1944,6 +2189,15 @@ function ServiceModal({
                   defaultValue: "Parler à MD2I",
                 })}
               />
+              <ProductLink
+                theme={theme}
+                href={productBridge.href}
+                label={productBridge.label}
+                hint={productBridge.hint}
+                accent={service.accent}
+                filled
+                compact
+              />
               <button
                 type="button"
                 onClick={onClose}
@@ -2153,6 +2407,27 @@ export default function MD2IServicesSection() {
                     "MD2I Madagascar accompagne les institutions publiques, les projets de développement et les organisations partenaires avec une approche fondée sur la rigueur, la lisibilité des processus, la digitalisation et l'adaptation au terrain.",
                 })}
               </p>
+              <div className="md2i-hero-actions">
+                <ProductLink
+                  theme={T}
+                  href="/produits"
+                  label={t("servicesPage.actions.catalog", {
+                    defaultValue: "Explorer le catalogue produits",
+                  })}
+                  hint={t("servicesPage.actions.catalogHint", {
+                    defaultValue:
+                      "Accéder aux logiciels, modules et fiches de démonstration.",
+                  })}
+                  filled
+                />
+                <CTAButton
+                  theme={T}
+                  href="/contact-commercial"
+                  label={t("servicesPage.actions.commercial", {
+                    defaultValue: "Demander un accompagnement",
+                  })}
+                />
+              </div>
             </div>
           </div>
 
@@ -2306,6 +2581,47 @@ export default function MD2IServicesSection() {
                     />
                   ))}
                 </div>
+
+                <div className="md2i-sidebar-product-card">
+                  <div
+                    style={{
+                      color: T.text,
+                      fontSize: "0.92rem",
+                      fontWeight: 800,
+                      fontFamily: "'Inter', sans-serif",
+                    }}
+                  >
+                    {t("servicesPage.products.sidebarTitle", {
+                      defaultValue: "Solutions produit",
+                    })}
+                  </div>
+                  <p
+                    style={{
+                      margin: 0,
+                      color: T.textSoft,
+                      fontSize: "0.82rem",
+                      lineHeight: 1.65,
+                      fontFamily: "'Inter', sans-serif",
+                    }}
+                  >
+                    {t("servicesPage.products.sidebarText", {
+                      defaultValue:
+                        "Accéder aux fiches produits, tarifs et demandes de démonstration.",
+                    })}
+                  </p>
+                  <ProductLink
+                    theme={T}
+                    href="/produits"
+                    label={t("servicesPage.actions.openProducts", {
+                      defaultValue: "Voir les produits",
+                    })}
+                    hint={t("servicesPage.products.catalogHint", {
+                      defaultValue: "Catalogue complet MD2I",
+                    })}
+                    compact
+                    showHint={false}
+                  />
+                </div>
               </div>
             </div>
           </aside>
@@ -2400,7 +2716,29 @@ export default function MD2IServicesSection() {
             </p>
           </div>
 
-          <div style={{ position: "relative", zIndex: 1 }}>
+          <div
+            style={{
+              position: "relative",
+              zIndex: 1,
+              display: "flex",
+              flexWrap: "wrap",
+              gap: 12,
+              justifyContent: "flex-end",
+            }}
+          >
+            <ProductLink
+              theme={T}
+              href="/produits"
+              label={t("servicesPage.actions.openProducts", {
+                defaultValue: "Voir les produits",
+              })}
+              hint={t("servicesPage.products.catalogHint", {
+                defaultValue: "Catalogue complet MD2I",
+              })}
+              filled
+              compact
+              showHint={false}
+            />
             <CTAButton theme={T} filled />
           </div>
         </div>
@@ -2473,6 +2811,111 @@ export default function MD2IServicesSection() {
           display: flex;
           flex-direction: column;
           gap: 10px;
+        }
+
+        .md2i-hero-actions {
+          display: flex;
+          justify-content: center;
+          align-items: center;
+          flex-wrap: wrap;
+          gap: 12px;
+          margin-top: 8px;
+        }
+
+        .md2i-service-card:focus-visible,
+        .md2i-product-link:focus-visible {
+          outline: 3px solid rgba(225,161,44,.44);
+          outline-offset: 4px;
+        }
+
+        .md2i-product-link {
+          min-width: 0;
+          min-height: 52px;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          gap: 10px;
+          padding: 11px 14px;
+          border-radius: 14px;
+          border: 1px solid var(--md2i-product-border);
+          background: var(--md2i-product-bg);
+          color: var(--md2i-product-text);
+          text-decoration: none;
+          box-shadow: var(--md2i-product-shadow);
+          font-family: 'Inter', sans-serif;
+          transition:
+            transform .24s cubic-bezier(.22,1,.36,1),
+            box-shadow .24s ease,
+            border-color .24s ease,
+            background .24s ease;
+        }
+
+        .md2i-product-link:hover {
+          transform: translateY(-2px);
+          border-color: var(--md2i-product-accent);
+          box-shadow: 0 18px 42px rgba(17,24,39,.12);
+        }
+
+        .md2i-product-link.is-filled:hover {
+          box-shadow: 0 18px 42px rgba(225,161,44,.28);
+        }
+
+        .md2i-product-link.is-compact {
+          min-height: 46px;
+          padding: 10px 13px;
+        }
+
+        .md2i-product-link-icon {
+          width: 30px;
+          height: 30px;
+          flex: 0 0 auto;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          border-radius: 10px;
+          color: var(--md2i-product-icon);
+          background: var(--md2i-product-soft);
+        }
+
+        .md2i-product-link-copy {
+          min-width: 0;
+          display: grid;
+          gap: 2px;
+          text-align: left;
+        }
+
+        .md2i-product-link-copy > span {
+          font-size: .82rem;
+          font-weight: 850;
+          line-height: 1.2;
+          white-space: nowrap;
+        }
+
+        .md2i-product-link-copy small {
+          color: var(--md2i-product-muted);
+          font-size: .72rem;
+          line-height: 1.38;
+          font-weight: 650;
+        }
+
+        .md2i-product-link-arrow {
+          display: inline-flex;
+          flex: 0 0 auto;
+          color: var(--md2i-product-icon);
+          transition: transform .24s ease;
+        }
+
+        .md2i-product-link:hover .md2i-product-link-arrow {
+          transform: translateX(3px);
+        }
+
+        .md2i-sidebar-product-card {
+          display: grid;
+          gap: 10px;
+          padding: 14px;
+          border-radius: 18px;
+          background: ${dark ? "rgba(255,255,255,.04)" : "rgba(248,243,234,.74)"};
+          border: 1px solid ${dark ? "rgba(255,255,255,.08)" : "rgba(225,161,44,.18)"};
         }
 
         .md2i-modal-overlay {
@@ -2558,6 +3001,20 @@ export default function MD2IServicesSection() {
         @media (max-width: 700px) {
           .md2i-grid {
             grid-template-columns: 1fr !important;
+          }
+
+          .md2i-hero-actions,
+          .md2i-cta > div:last-child {
+            width: 100%;
+            justify-content: stretch !important;
+          }
+
+          .md2i-product-link {
+            width: 100%;
+          }
+
+          .md2i-product-link-copy > span {
+            white-space: normal;
           }
 
           .md2i-services-sidebar-card {

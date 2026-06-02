@@ -159,13 +159,7 @@ const DEFAULT_EMAIL_HTML = `
     <p class="email-text">
       Présentez ici votre message principal. Ce contenu est éditable directement dans GrapesJS.
     </p>
-    <a href="#" class="email-btn">Découvrir</a>
-  </section>
-
-  <section class="email-section">
-    <div class="email-card">
-      <h2 style="margin:0 0 10px;font-size:22px;">Votre section email</h2>
-      <p class="email-text">
+      <a href="#" class="email-btn">Découvrir</a>
         Ajoutez vos textes, images, liens, boutons et contenus personnalisés.
       </p>
     </div>

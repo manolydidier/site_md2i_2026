@@ -56,6 +56,78 @@ type ImageMode = 'all' | 'with-image' | 'without-image'
 
 const EXCERPT_LIMIT = 90
 
+const API_SORT_BY_UI_SORT: Record<SortKey, string> = {
+  'date-desc': 'published-desc',
+  'date-asc': 'published-asc',
+  'price-asc': 'price-asc',
+  'price-desc': 'price-desc',
+  'name-asc': 'name-asc',
+  'name-desc': 'name-desc',
+}
+
+function normalizeSortParam(value: string | null): SortKey {
+  switch (value) {
+    case 'published-asc':
+    case 'date-asc':
+      return 'date-asc'
+    case 'price-asc':
+      return 'price-asc'
+    case 'price-desc':
+      return 'price-desc'
+    case 'name-asc':
+      return 'name-asc'
+    case 'name-desc':
+      return 'name-desc'
+    case 'published-desc':
+    case 'date-desc':
+    default:
+      return 'date-desc'
+  }
+}
+
+function normalizeImageModeParam(value: string | null): ImageMode {
+  if (!value) return 'all'
+
+  const normalized = value.trim().toLowerCase()
+
+  if (['1', 'true', 'yes', 'with', 'with-image'].includes(normalized)) {
+    return 'with-image'
+  }
+
+  if (['0', 'false', 'no', 'without', 'without-image'].includes(normalized)) {
+    return 'without-image'
+  }
+
+  return 'all'
+}
+
+function readInitialProductsQuery() {
+  if (typeof window === 'undefined') {
+    return null
+  }
+
+  const params = new URLSearchParams(window.location.search)
+  const search = params.get('search') ?? params.get('q') ?? ''
+  const category = params.get('category') ?? ''
+  const minPrice = params.get('minPrice')?.replace(/[^\d]/g, '') ?? ''
+  const maxPrice = params.get('maxPrice')?.replace(/[^\d]/g, '') ?? ''
+  const sort = normalizeSortParam(params.get('sort'))
+  const imageMode = normalizeImageModeParam(params.get('hasImage'))
+
+  if (!search && !category && !minPrice && !maxPrice && sort === 'date-desc' && imageMode === 'all') {
+    return null
+  }
+
+  return {
+    search,
+    category,
+    minPrice,
+    maxPrice,
+    sort,
+    imageMode,
+  }
+}
+
 function useScroll() {
   const [prog, setProg] = useState(0)
   const [top, setTop] = useState(false)
@@ -513,6 +585,7 @@ export default function PublicProductsPage({ router }: PublicProductsPageProps) 
   const filterRef = useRef<HTMLDivElement>(null)
   const sortRef = useRef<HTMLDivElement>(null)
   const autoCloseRef = useRef<number | null>(null)
+  const querySyncRef = useRef(false)
 
   const isDark = mounted ? dark : false
   const { prog, top } = useScroll()
@@ -530,6 +603,24 @@ export default function PublicProductsPage({ router }: PublicProductsPageProps) 
   useEffect(() => {
     setMounted(true)
   }, [])
+
+  useEffect(() => {
+    if (!mounted || querySyncRef.current) return
+
+    querySyncRef.current = true
+    const initialQuery = readInitialProductsQuery()
+
+    if (!initialQuery) return
+
+    setSearch(initialQuery.search)
+    setDebSearch(initialQuery.search)
+    setSelCat(initialQuery.category)
+    setMinPrice(initialQuery.minPrice)
+    setMaxPrice(initialQuery.maxPrice)
+    setImageMode(initialQuery.imageMode)
+    setSort(initialQuery.sort)
+    setPage(1)
+  }, [mounted])
 
   useEffect(() => {
     const timer = setTimeout(() => setDebSearch(search), 350)
@@ -616,7 +707,7 @@ export default function PublicProductsPage({ router }: PublicProductsPageProps) 
         const q = new URLSearchParams({
           page: String(nextPage),
           limit: '9',
-          sort: nextSort,
+          sort: API_SORT_BY_UI_SORT[nextSort],
         })
 
         if (kw.trim()) q.set('search', kw.trim())
@@ -834,6 +925,54 @@ export default function PublicProductsPage({ router }: PublicProductsPageProps) 
             </div>
           </div>
         </header>
+
+        <section
+          className={s.serviceBridge}
+          aria-label={t('productsPage.serviceBridge.aria', {
+            defaultValue: 'Lien entre services et produits MD2I',
+          })}
+        >
+          <div className={s.serviceBridgeCopy}>
+            <span className={s.serviceBridgeKicker}>
+              {t('productsPage.serviceBridge.kicker', {
+                defaultValue: 'Besoin de cadrage avant achat',
+              })}
+            </span>
+            <h2>
+              {t('productsPage.serviceBridge.title', {
+                defaultValue: 'Reliez chaque solution à un accompagnement MD2I',
+              })}
+            </h2>
+            <p>
+              {t('productsPage.serviceBridge.text', {
+                defaultValue:
+                  'Les services MD2I aident à choisir, intégrer et déployer les bons outils selon votre contexte terrain.',
+              })}
+            </p>
+          </div>
+
+          <div className={s.serviceBridgeActions}>
+            <button
+              type="button"
+              className={s.serviceBridgePrimary}
+              onClick={() => nav.push('/services')}
+            >
+              {t('productsPage.serviceBridge.servicesCta', {
+                defaultValue: 'Voir les services',
+              })}
+              <IconArrow />
+            </button>
+            <button
+              type="button"
+              className={s.serviceBridgeSecondary}
+              onClick={() => nav.push('/contact-commercial?requestType=DEMO')}
+            >
+              {t('productsPage.serviceBridge.demoCta', {
+                defaultValue: 'Demander une démo',
+              })}
+            </button>
+          </div>
+        </section>
 
         <div className={s.sticky}>
           <div className={s.stickyBar}>

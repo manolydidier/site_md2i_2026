@@ -173,79 +173,113 @@ export const resources = {
           impact: 'Impact',
         },
       },
-      footer: {
-        links: [
-          'Accueil',
-          'Services',
-          'Portfolio',
-          'Blog',
-          'À propos',
-          'Contact',
-          'Contact commercial',
-        ],
-        services: [
-          'Développement web',
-          'Applications mobiles',
-          'Conseil IT',
-          'Infogérance',
-          'Cybersécurité',
-          'Formation digitale',
-        ],
-        brand: {
-          tagline: 'Cabinet IT & Solutions digitales',
-          availability: 'Disponible pour nouveaux projets',
-          description:
-            "Nous accompagnons les entreprises dans leur transformation digitale — conseil, développement sur mesure, logiciels métiers et solutions IT innovantes à Madagascar et à l'international.",
-        },
-        newsletter: {
-          title: 'Recevoir les actualités MD2I',
-          text:
-            "Votre email sera ajouté au CRM comme nouveau contact. Le nom et l'entreprise seront complétés automatiquement si possible.",
-          crmContact: 'Contact CRM',
-          companyDetected: 'Entreprise détectée : {{company}}',
-          adding: 'Ajout en cours...',
-          addEmail: 'Ajouter mon email →',
-          validation: {
-            email: 'Veuillez saisir une adresse email valide.',
-          },
-          errors: {
-            add: "Impossible d'ajouter ce contact.",
-            generic: "Erreur pendant l'inscription.",
-          },
-          success: {
-            createdTitle: 'Bienvenue chez MD2I',
-            updatedTitle: 'Contact déjà enregistré',
-            createdMessage:
-              'Votre email a bien été ajouté au CRM. Nous pourrons vous envoyer nos actualités, offres utiles et informations produits.',
-            updatedMessage:
-              'Ce contact existait déjà dans le CRM. Ses informations ont été complétées et mises à jour.',
-          },
-        },
-        sections: {
-          navigation: 'Navigation',
-          services: 'Services',
-        },
-        location: {
-          title: 'Localisation MD2I',
-          openMaps: 'Ouvrir MD2I dans Google Maps',
-          mapTitle: 'Localisation MD2I Madagascar sur Google Maps',
-          logoAlt: 'MD2I Madagascar',
-          unavailable:
-            "La géolocalisation n'est pas disponible sur ce navigateur.",
-          detected:
-            "Position détectée. Ouverture de l'itinéraire Google Maps.",
-          denied:
-            'Localisation refusée. Ouverture de Google Maps sans position de départ.',
-          locating: 'Localisation...',
-          useMyLocation: "Me localiser et ouvrir l'itinéraire",
-        },
-        legal: {
-          rights: '— Tous droits réservés. Conçu avec soin à Madagascar 🇲🇬',
-          mentions: 'Mentions légales',
-          privacy: 'Confidentialité',
-          terms: 'CGU',
-        },
-      },
+footer: {
+  brand: {
+    tagline: 'Cabinet IT & Solutions digitales',
+    availability: 'Disponible pour nouveaux projets',
+    description:
+      "Nous accompagnons les entreprises dans leur transformation digitale : conseil, développement sur mesure, logiciels métiers, maintenance et solutions IT à Madagascar et à l'international.",
+  },
+  sections: {
+    navigation: 'Navigation',
+    quickLinks: 'Accès rapides',
+    serviceCategories: 'Domaines services',
+    usefulServices: 'Services utiles',
+    sources: 'Sources utiles',
+  },
+  links: {
+    home: 'Accueil',
+    services: 'Services',
+    references: 'Références',
+    products: 'Produits',
+    about: 'À propos',
+    contact: 'Contact',
+    sales: 'Contact commercial',
+  },
+  quickLinks: {
+    products: 'Catalogue produits',
+    services: 'Voir nos services',
+    quote: 'Demander un devis',
+    demo: 'Demander une démo',
+    contact: 'Nous contacter',
+  },
+  serviceCategories: {
+    pilotage: 'Pilotage',
+    transformation: 'Transformation',
+    infrastructure: 'Infrastructure',
+    dataAi: 'Data & IA',
+    skills: 'Compétences',
+  },
+  serviceLinks: {
+    project: 'Assistance technique',
+    institution: 'Appui institutionnel',
+    digital: 'Digitalisation',
+    software: 'Développement logiciel',
+    hydraulic: 'Génie hydraulique',
+    accounting: 'Gestion comptable & RH',
+    studies: 'Études & enquêtes',
+    ai: 'Intelligence artificielle',
+    training: 'Formation',
+  },
+  sourceLinks: {
+    officialSite: 'Site officiel MD2I',
+    googleMaps: 'Fiche Google Maps',
+    directions: 'Itinéraire Google Maps',
+    email: 'Email MD2I Madagascar',
+  },
+  bottomLinks: {
+    contact: 'Contact',
+    sales: 'Contact commercial',
+    products: 'Produits',
+  },
+  newsletter: {
+    title: 'Recevoir les actualités MD2I',
+    text:
+      'Votre email sera ajouté au CRM comme contact marketing. Nous vous enverrons uniquement des informations utiles.',
+    placeholder: 'votre@email.com',
+    crmContact: 'Contact CRM',
+    companyDetected: 'Entreprise détectée : {{company}}',
+    adding: 'Ajout en cours...',
+    addEmail: 'Ajouter mon email',
+    validation: {
+      email: 'Veuillez saisir une adresse email valide.',
+    },
+    errors: {
+      add: "Impossible d'ajouter ce contact.",
+      generic: "Erreur pendant l'inscription.",
+    },
+    success: {
+      createdTitle: 'Bienvenue chez MD2I',
+      updatedTitle: 'Contact déjà enregistré',
+      createdMessage:
+        'Votre email a bien été ajouté au CRM. Nous pourrons vous envoyer nos actualités, offres utiles et informations produits.',
+      updatedMessage:
+        'Ce contact existait déjà dans le CRM. Ses informations ont été complétées et mises à jour.',
+    },
+  },
+  location: {
+    title: 'Localisation MD2I',
+    openMaps: 'Ouvrir MD2I dans Google Maps',
+    mapTitle: 'Localisation MD2I Madagascar sur Google Maps',
+    logoAlt: 'MD2I Madagascar',
+    unavailable:
+      "La géolocalisation n'est pas disponible sur ce navigateur.",
+    detected:
+      "Position détectée. Ouverture de l'itinéraire Google Maps.",
+    denied:
+      'Localisation refusée. Ouverture de Google Maps sans position de départ.',
+    locating: 'Localisation...',
+    useMyLocation: "Me localiser et ouvrir l'itinéraire",
+  },
+  contact: {
+    title: 'Coordonnées',
+    subtitle:
+      "Contactez MD2I Madagascar ou ouvrez directement l'itinéraire.",
+  },
+  legal: {
+    rights: '— Tous droits réservés. Conçu avec soin à Madagascar 🇲🇬',
+  },
+},
       techList: {
         kicker: 'Stack technique',
         summary: '{{categories}} pôles · {{technologies}} techs',
@@ -1543,77 +1577,113 @@ export const resources = {
           impact: 'Impact',
         },
       },
-      footer: {
-        links: [
-          'Home',
-          'Services',
-          'Portfolio',
-          'Blog',
-          'About',
-          'Contact',
-          'Sales contact',
-        ],
-        services: [
-          'Web development',
-          'Mobile applications',
-          'IT consulting',
-          'Managed services',
-          'Cybersecurity',
-          'Digital training',
-        ],
-        brand: {
-          tagline: 'IT consulting & digital solutions',
-          availability: 'Available for new projects',
-          description:
-            'We support companies in their digital transformation through consulting, tailored development, business software, and innovative IT solutions in Madagascar and internationally.',
-        },
-        newsletter: {
-          title: 'Receive MD2I updates',
-          text:
-            'Your email will be added to the CRM as a new contact. The name and company will be completed automatically if possible.',
-          crmContact: 'CRM contact',
-          companyDetected: 'Detected company: {{company}}',
-          adding: 'Adding...',
-          addEmail: 'Add my email →',
-          validation: {
-            email: 'Please enter a valid email address.',
-          },
-          errors: {
-            add: 'Unable to add this contact.',
-            generic: 'An error occurred during subscription.',
-          },
-          success: {
-            createdTitle: 'Welcome to MD2I',
-            updatedTitle: 'Contact already registered',
-            createdMessage:
-              'Your email has been added to the CRM. We will be able to send you updates, useful offers, and product information.',
-            updatedMessage:
-              'This contact already existed in the CRM. Its information has been completed and updated.',
-          },
-        },
-        sections: {
-          navigation: 'Navigation',
-          services: 'Services',
-        },
-        location: {
-          title: 'MD2I location',
-          openMaps: 'Open MD2I in Google Maps',
-          mapTitle: 'MD2I Madagascar location on Google Maps',
-          logoAlt: 'MD2I Madagascar',
-          unavailable: 'Geolocation is not available in this browser.',
-          detected: 'Position detected. Opening Google Maps directions.',
-          denied:
-            'Location denied. Opening Google Maps without a starting point.',
-          locating: 'Locating...',
-          useMyLocation: 'Use my location and open directions',
-        },
-        legal: {
-          rights: '— All rights reserved. Designed with care in Madagascar 🇲🇬',
-          mentions: 'Legal notice',
-          privacy: 'Privacy',
-          terms: 'Terms',
-        },
-      },
+  footer: {
+  brand: {
+    tagline: 'Cabinet IT & Solutions digitales',
+    availability: 'Disponible pour nouveaux projets',
+    description:
+      "Nous accompagnons les entreprises dans leur transformation digitale : conseil, développement sur mesure, logiciels métiers, maintenance et solutions IT à Madagascar et à l'international.",
+  },
+  sections: {
+    navigation: 'Navigation',
+    quickLinks: 'Accès rapides',
+    serviceCategories: 'Domaines services',
+    usefulServices: 'Services utiles',
+    sources: 'Sources utiles',
+  },
+  links: {
+    home: 'Accueil',
+    services: 'Services',
+    references: 'Références',
+    products: 'Produits',
+    about: 'À propos',
+    contact: 'Contact',
+    sales: 'Contact commercial',
+  },
+  quickLinks: {
+    products: 'Catalogue produits',
+    services: 'Voir nos services',
+    quote: 'Demander un devis',
+    demo: 'Demander une démo',
+    contact: 'Nous contacter',
+  },
+  serviceCategories: {
+    pilotage: 'Pilotage',
+    transformation: 'Transformation',
+    infrastructure: 'Infrastructure',
+    dataAi: 'Data & IA',
+    skills: 'Compétences',
+  },
+  serviceLinks: {
+    project: 'Assistance technique',
+    institution: 'Appui institutionnel',
+    digital: 'Digitalisation',
+    software: 'Développement logiciel',
+    hydraulic: 'Génie hydraulique',
+    accounting: 'Gestion comptable & RH',
+    studies: 'Études & enquêtes',
+    ai: 'Intelligence artificielle',
+    training: 'Formation',
+  },
+  sourceLinks: {
+    officialSite: 'Site officiel MD2I',
+    googleMaps: 'Fiche Google Maps',
+    directions: 'Itinéraire Google Maps',
+    email: 'Email MD2I Madagascar',
+  },
+  bottomLinks: {
+    contact: 'Contact',
+    sales: 'Contact commercial',
+    products: 'Produits',
+  },
+  newsletter: {
+    title: 'Recevoir les actualités MD2I',
+    text:
+      'Votre email sera ajouté au CRM comme contact marketing. Nous vous enverrons uniquement des informations utiles.',
+    placeholder: 'votre@email.com',
+    crmContact: 'Contact CRM',
+    companyDetected: 'Entreprise détectée : {{company}}',
+    adding: 'Ajout en cours...',
+    addEmail: 'Ajouter mon email',
+    validation: {
+      email: 'Veuillez saisir une adresse email valide.',
+    },
+    errors: {
+      add: "Impossible d'ajouter ce contact.",
+      generic: "Erreur pendant l'inscription.",
+    },
+    success: {
+      createdTitle: 'Bienvenue chez MD2I',
+      updatedTitle: 'Contact déjà enregistré',
+      createdMessage:
+        'Votre email a bien été ajouté au CRM. Nous pourrons vous envoyer nos actualités, offres utiles et informations produits.',
+      updatedMessage:
+        'Ce contact existait déjà dans le CRM. Ses informations ont été complétées et mises à jour.',
+    },
+  },
+  location: {
+    title: 'Localisation MD2I',
+    openMaps: 'Ouvrir MD2I dans Google Maps',
+    mapTitle: 'Localisation MD2I Madagascar sur Google Maps',
+    logoAlt: 'MD2I Madagascar',
+    unavailable:
+      "La géolocalisation n'est pas disponible sur ce navigateur.",
+    detected:
+      "Position détectée. Ouverture de l'itinéraire Google Maps.",
+    denied:
+      'Localisation refusée. Ouverture de Google Maps sans position de départ.',
+    locating: 'Localisation...',
+    useMyLocation: "Me localiser et ouvrir l'itinéraire",
+  },
+  contact: {
+    title: 'Coordonnées',
+    subtitle:
+      "Contactez MD2I Madagascar ou ouvrez directement l'itinéraire.",
+  },
+  legal: {
+    rights: '— Tous droits réservés. Conçu avec soin à Madagascar 🇲🇬',
+  },
+},
       techList: {
         kicker: 'Tech stack',
         summary: '{{categories}} areas · {{technologies}} techs',

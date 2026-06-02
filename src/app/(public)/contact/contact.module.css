@@ -1146,3 +1146,329 @@
     border-radius: 24px;
   }
 }
+.page {
+  --contact-bg: #f8fafc;
+  --contact-bg-soft: #ffffff;
+  --contact-panel: rgba(255, 255, 255, 0.86);
+  --contact-panel-solid: #ffffff;
+  --contact-panel-soft: #f8fafc;
+  --contact-border: rgba(15, 23, 42, 0.09);
+  --contact-border-strong: rgba(15, 23, 42, 0.14);
+  --contact-text: #0f172a;
+  --contact-text-soft: #475569;
+  --contact-text-muted: #64748b;
+  --contact-input: #ffffff;
+  --contact-input-focus: #ffffff;
+  --contact-orange: #ef9f27;
+  --contact-orange-soft: rgba(239, 159, 39, 0.1);
+  --contact-orange-border: rgba(239, 159, 39, 0.3);
+  --contact-shadow: 0 18px 55px rgba(15, 23, 42, 0.08);
+  --contact-shadow-soft: 0 10px 30px rgba(15, 23, 42, 0.06);
+  --contact-hero-overlay:
+    radial-gradient(circle at 10% 0%, rgba(239, 159, 39, 0.12), transparent 32%),
+    radial-gradient(circle at 92% 12%, rgba(59, 130, 246, 0.08), transparent 30%),
+    linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
+  background: var(--contact-bg);
+  color: var(--contact-text);
+}
+
+.page[data-theme='dark'] {
+  --contact-bg: #080a0f;
+  --contact-bg-soft: #0c1017;
+  --contact-panel: rgba(18, 23, 32, 0.78);
+  --contact-panel-solid: #111722;
+  --contact-panel-soft: rgba(255, 255, 255, 0.045);
+  --contact-border: rgba(255, 255, 255, 0.08);
+  --contact-border-strong: rgba(255, 255, 255, 0.14);
+  --contact-text: #f8fafc;
+  --contact-text-soft: rgba(248, 250, 252, 0.74);
+  --contact-text-muted: rgba(248, 250, 252, 0.52);
+  --contact-input: rgba(255, 255, 255, 0.055);
+  --contact-input-focus: rgba(255, 255, 255, 0.085);
+  --contact-orange: #ef9f27;
+  --contact-orange-soft: rgba(239, 159, 39, 0.14);
+  --contact-orange-border: rgba(239, 159, 39, 0.36);
+  --contact-shadow: 0 22px 70px rgba(0, 0, 0, 0.34);
+  --contact-shadow-soft: 0 12px 36px rgba(0, 0, 0, 0.24);
+  --contact-hero-overlay:
+    radial-gradient(circle at 10% 0%, rgba(239, 159, 39, 0.13), transparent 34%),
+    radial-gradient(circle at 90% 12%, rgba(59, 130, 246, 0.08), transparent 32%),
+    linear-gradient(180deg, #080a0f 0%, #0c1017 100%);
+  background: var(--contact-bg);
+  color: var(--contact-text);
+}
+
+.hero {
+  background: var(--contact-hero-overlay);
+}
+
+.cardsSection,
+.mainSection {
+  background:
+    radial-gradient(circle at 12% 0%, rgba(239, 159, 39, 0.05), transparent 30%),
+    var(--contact-bg);
+}
+
+.page[data-theme='dark'] .cardsSection,
+.page[data-theme='dark'] .mainSection {
+  background:
+    radial-gradient(circle at 14% 0%, rgba(239, 159, 39, 0.07), transparent 30%),
+    radial-gradient(circle at 88% 20%, rgba(59, 130, 246, 0.045), transparent 32%),
+    var(--contact-bg);
+}
+
+.heroPanel,
+.cCard,
+.formBox,
+.sCard,
+.nudge,
+.statCard,
+.successBox {
+  background: var(--contact-panel);
+  border: 1px solid var(--contact-border);
+  color: var(--contact-text);
+  box-shadow: var(--contact-shadow-soft);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+}
+
+.page[data-theme='dark'] .heroPanel,
+.page[data-theme='dark'] .cCard,
+.page[data-theme='dark'] .formBox,
+.page[data-theme='dark'] .sCard,
+.page[data-theme='dark'] .nudge,
+.page[data-theme='dark'] .statCard,
+.page[data-theme='dark'] .successBox {
+  background:
+    linear-gradient(180deg, rgba(255,255,255,0.065), rgba(255,255,255,0.035)),
+    var(--contact-panel);
+  border-color: var(--contact-border);
+  box-shadow: var(--contact-shadow);
+}
+
+.heroTitle,
+.h2,
+.cTitle,
+.sTitle,
+.officeCity,
+.heroPanel strong,
+.successBox strong,
+.formStep strong,
+.requestSummary strong,
+.statN {
+  color: var(--contact-text);
+}
+
+.heroSub,
+.sectionSub,
+.cDesc,
+.formNote,
+.officeRole,
+.officeAddr,
+.nudge p,
+.legal,
+.requestSummary p,
+.statS,
+.heroPanel p,
+.fLabel {
+  color: var(--contact-text-soft);
+}
+
+.statU,
+.panelKicker,
+.cardTag,
+.nudgeLabel,
+.pill,
+.eyebrow {
+  color: var(--contact-orange);
+}
+
+.pill,
+.cardTag,
+.panelKicker,
+.nudgeLabel {
+  background: var(--contact-orange-soft);
+  border-color: var(--contact-orange-border);
+}
+
+.cIcon,
+.officeFlag,
+.formStep span,
+.successCheck {
+  background: var(--contact-orange-soft);
+  color: var(--contact-orange);
+  border-color: var(--contact-orange-border);
+}
+
+.cCardBar {
+  background: linear-gradient(90deg, var(--contact-orange), transparent);
+}
+
+.cCardHov,
+.cCard:hover {
+  border-color: var(--contact-orange-border);
+  box-shadow: var(--contact-shadow);
+}
+
+.cLink,
+.qItem {
+  color: var(--contact-text-soft);
+  background: var(--contact-panel-soft);
+  border: 1px solid var(--contact-border);
+}
+
+.cLink:hover,
+.qItem:hover {
+  color: var(--contact-orange);
+  background: var(--contact-orange-soft);
+  border-color: var(--contact-orange-border);
+}
+
+.office,
+.requestSummary,
+.formStep {
+  background: var(--contact-panel-soft);
+  border: 1px solid var(--contact-border);
+}
+
+.field input,
+.field textarea,
+.field select {
+  background: var(--contact-input);
+  border: 1px solid var(--contact-border);
+  color: var(--contact-text);
+  box-shadow: none;
+}
+
+.field input::placeholder,
+.field textarea::placeholder {
+  color: var(--contact-text-muted);
+}
+
+.field input:focus,
+.field textarea:focus,
+.field select:focus {
+  background: var(--contact-input-focus);
+  border-color: var(--contact-orange-border);
+  box-shadow: 0 0 0 4px rgba(239, 159, 39, 0.13);
+  outline: none;
+}
+
+.selWrap {
+  background: transparent;
+}
+
+.selArrow {
+  color: var(--contact-text-muted);
+}
+
+.page[data-theme='dark'] .field select option {
+  background: #111722;
+  color: #f8fafc;
+}
+
+.btnPrimary {
+  background: linear-gradient(135deg, var(--contact-orange), #d8891e);
+  color: #ffffff;
+  border-color: transparent;
+  box-shadow: 0 16px 36px rgba(239, 159, 39, 0.22);
+}
+
+.btnPrimary:hover {
+  box-shadow: 0 20px 44px rgba(239, 159, 39, 0.3);
+}
+
+.btnDark {
+  background: var(--contact-text);
+  color: var(--contact-bg);
+  border-color: var(--contact-text);
+}
+
+.page[data-theme='dark'] .btnDark {
+  background: rgba(255, 255, 255, 0.09);
+  color: #f8fafc;
+  border-color: rgba(255, 255, 255, 0.12);
+}
+
+.btnOutline {
+  background: transparent;
+  color: var(--contact-text);
+  border: 1px solid var(--contact-border-strong);
+}
+
+.btnOutline:hover {
+  background: var(--contact-panel-soft);
+  border-color: var(--contact-orange-border);
+  color: var(--contact-orange);
+}
+
+.btnFull {
+  background: var(--contact-orange);
+  color: #ffffff;
+  border-color: transparent;
+}
+
+.trustRow span {
+  background: var(--contact-panel-soft);
+  color: var(--contact-text-soft);
+  border: 1px solid var(--contact-border);
+}
+
+.blob {
+  background:
+    radial-gradient(circle, rgba(239, 159, 39, 0.28), transparent 62%);
+}
+
+.blobSecondary {
+  background:
+    radial-gradient(circle, rgba(59, 130, 246, 0.12), transparent 62%);
+}
+
+.page[data-theme='dark'] .blob {
+  opacity: 0.56;
+  filter: blur(10px);
+}
+
+.page[data-theme='dark'] .blobSecondary {
+  opacity: 0.42;
+  filter: blur(16px);
+}
+
+.heroNoise {
+  opacity: 0.28;
+}
+
+.page[data-theme='dark'] .heroNoise {
+  opacity: 0.16;
+}
+
+.errorBox {
+  margin-top: 16px;
+  padding: 14px 16px;
+  border-radius: 14px;
+  background: rgba(239, 68, 68, 0.1);
+  border: 1px solid rgba(239, 68, 68, 0.28);
+  color: #ef4444;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.page[data-theme='dark'] .errorBox {
+  background: rgba(239, 68, 68, 0.13);
+  border-color: rgba(248, 113, 113, 0.28);
+  color: #fca5a5;
+}
+
+.loader {
+  border-color: rgba(255, 255, 255, 0.35);
+  border-top-color: #ffffff;
+}
+
+@media (max-width: 860px) {
+  .page[data-theme='dark'] .heroPanel,
+  .page[data-theme='dark'] .formBox,
+  .page[data-theme='dark'] .sCard,
+  .page[data-theme='dark'] .nudge {
+    background: rgba(17, 23, 34, 0.9);
+  }
+}

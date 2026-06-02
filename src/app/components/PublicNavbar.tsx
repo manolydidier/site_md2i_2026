@@ -14,6 +14,13 @@ import {
 import { createPortal } from 'react-dom'
 import { AnimatePresence, motion } from 'framer-motion'
 import { useTranslation } from 'react-i18next'
+import {
+  Search,
+  X,
+  ChevronDown as ChevronDownLucide,
+  ArrowRight as ArrowRightLucide,
+  type LucideIcon,
+} from 'lucide-react'
 import { useTheme } from '../context/ThemeContext'
 import { LANGUAGE_OPTIONS, normalizeLocale } from '../i18n/settings'
 import logo from '../../assets/logo.png'
@@ -93,87 +100,329 @@ const LINK_DEFS: NavItemDefinition[] = [
   },
 ]
 
+function AnimatedLucideIcon({
+  icon: Icon,
+  className = '',
+  size = 18,
+  strokeWidth = 2.25,
+}: {
+  icon: LucideIcon
+  className?: string
+  size?: number
+  strokeWidth?: number
+}) {
+  return (
+    <motion.span
+      className={`pro-lucide-icon ${className}`}
+      whileHover={{ scale: 1.16, rotate: 8 }}
+      whileTap={{ scale: 0.92 }}
+      transition={{ type: 'spring', stiffness: 420, damping: 18 }}
+      aria-hidden="true"
+    >
+      <Icon size={size} strokeWidth={strokeWidth} />
+    </motion.span>
+  )
+}
+
 const SearchIcon = () => (
-  <svg
-    width="17"
-    height="17"
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="2.1"
-    strokeLinecap="round"
-  >
-    <circle cx="11" cy="11" r="7.5" />
-    <line x1="20" y1="20" x2="16.6" y2="16.6" />
-  </svg>
+  <AnimatedLucideIcon icon={Search} className="pro-lucide-search" />
 )
 
-const SunIcon = () => (
-  <svg
-    width="17"
-    height="17"
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="2"
-    strokeLinecap="round"
-  >
-    <circle cx="12" cy="12" r="4.6" />
-    <line x1="12" y1="2" x2="12" y2="4" />
-    <line x1="12" y1="20" x2="12" y2="22" />
-    <line x1="4.93" y1="4.93" x2="6.34" y2="6.34" />
-    <line x1="17.66" y1="17.66" x2="19.07" y2="19.07" />
-    <line x1="2" y1="12" x2="4" y2="12" />
-    <line x1="20" y1="12" x2="22" y2="12" />
-  </svg>
-)
-
-const MoonIcon = () => (
-  <svg
-    width="17"
-    height="17"
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="2"
-    strokeLinecap="round"
-  >
-    <path d="M20.5 14.2A8.8 8.8 0 1 1 9.8 3.5 7.2 7.2 0 0 0 20.5 14.2z" />
-  </svg>
+const CloseIcon = () => (
+  <AnimatedLucideIcon icon={X} className="pro-lucide-close" size={20} />
 )
 
 const ChevronDown = ({ open }: { open: boolean }) => (
-  <svg
-    width="12"
-    height="12"
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="2.3"
-    strokeLinecap="round"
+  <ChevronDownLucide
+    size={14}
+    strokeWidth={2.4}
+    aria-hidden="true"
     style={{
       transform: open ? 'rotate(180deg)' : 'rotate(0deg)',
       transition: 'transform .22s ease',
     }}
-  >
-    <polyline points="6 9 12 15 18 9" />
-  </svg>
+  />
 )
 
 const ArrowRight = () => (
-  <svg
-    width="14"
-    height="14"
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="2.3"
-    strokeLinecap="round"
-  >
-    <line x1="5" y1="12" x2="19" y2="12" />
-    <polyline points="12 5 19 12 12 19" />
-  </svg>
+  <ArrowRightLucide size={15} strokeWidth={2.4} aria-hidden="true" />
 )
+
+function ThemeSwitch({
+  dark,
+  onToggle,
+  ariaLabel,
+}: {
+  dark: boolean
+  onToggle: () => void
+  ariaLabel: string
+}) {
+  return (
+    <>
+      <style>{`
+        .ts {
+          --sz: 12.3px;
+          --w: 5.625em;
+          --h: 2.5em;
+          --r: 6.25em;
+          --light-bg: linear-gradient(135deg, #f7b64c 0%, #ef9f27 48%, #d8790b 100%);
+          --night-bg: linear-gradient(135deg, #050505 0%, #111111 45%, #1f1f1f 100%);
+          --dia: 3.375em;
+          --sun-dia: 2.125em;
+          --sun-bg: #fff0bf;
+          --moon-bg: #f4f4f5;
+          --spot: #2a2a2a;
+          --offset: calc((var(--dia) - var(--h)) / 2 * -1);
+          --stars: #f4f4f5;
+          --clouds: #fff2d2;
+          --back-clouds: #d87512;
+          --tr: .5s cubic-bezier(0, -0.02, 0.4, 1.25);
+          --ctr: .3s cubic-bezier(0, -0.02, 0.35, 1.17);
+          position: relative;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          font-size: var(--sz);
+          line-height: 1;
+          -webkit-tap-highlight-color: transparent;
+        }
+
+        .ts,
+        .ts *,
+        .ts *::before,
+        .ts *::after {
+          box-sizing: border-box;
+          margin: 0;
+          padding: 0;
+          font-size: var(--sz);
+        }
+
+        .ts__cb {
+          position: absolute;
+          width: 1px;
+          height: 1px;
+          opacity: 0;
+          pointer-events: none;
+        }
+
+        .ts__container {
+          width: var(--w);
+          height: var(--h);
+          background: var(--light-bg);
+          border-radius: var(--r);
+          overflow: hidden;
+          cursor: pointer;
+          box-shadow:
+            0 0 0 1px rgba(239, 159, 39, .32),
+            0 .45em 1.2em rgba(239, 159, 39, .22),
+            0em -0.062em 0.062em rgba(0, 0, 0, 0.20),
+            0em 0.062em 0.125em rgba(255, 255, 255, 0.72);
+          transition: var(--tr);
+          position: relative;
+        }
+
+        .ts__container::before {
+          content: '';
+          position: absolute;
+          z-index: 1;
+          inset: 0;
+          box-shadow:
+            0em 0.05em 0.187em rgba(0, 0, 0, 0.22) inset,
+            0em 0.05em 0.187em rgba(255, 255, 255, 0.15) inset;
+          border-radius: var(--r);
+          pointer-events: none;
+        }
+
+        .ts:focus-within .ts__container {
+          outline: 2px solid rgba(239, 159, 39, .52);
+          outline-offset: 3px;
+        }
+
+        .ts__circle-container {
+          width: var(--dia);
+          height: var(--dia);
+          background-color: rgba(255, 255, 255, 0.12);
+          position: absolute;
+          left: var(--offset);
+          top: var(--offset);
+          border-radius: var(--r);
+          box-shadow:
+            inset 0 0 0 3.375em rgba(255, 255, 255, 0.10),
+            0 0 0 0.625em rgba(255, 226, 178, 0.10),
+            0 0 0 1.25em rgba(255, 226, 178, 0.10);
+          display: flex;
+          transition: var(--ctr);
+          pointer-events: none;
+        }
+
+        .ts__sun-moon-container {
+          pointer-events: auto;
+          position: relative;
+          z-index: 2;
+          width: var(--sun-dia);
+          height: var(--sun-dia);
+          margin: auto;
+          border-radius: var(--r);
+          background-color: var(--sun-bg);
+          box-shadow:
+            0.062em 0.062em 0.062em 0em rgba(255, 255, 255, 0.72) inset,
+            0em -0.062em 0.062em 0em rgba(168, 94, 8, .55) inset;
+          filter:
+            drop-shadow(0.062em 0.125em 0.125em rgba(0, 0, 0, 0.25))
+            drop-shadow(0em 0.062em 0.125em rgba(239, 159, 39, 0.30));
+          overflow: hidden;
+          transition: var(--tr);
+        }
+
+        .ts__moon {
+          transform: translateX(100%);
+          width: 100%;
+          height: 100%;
+          background-color: var(--moon-bg);
+          border-radius: inherit;
+          box-shadow:
+            0.062em 0.062em 0.062em 0em rgba(255, 255, 255, 0.50) inset,
+            0em -0.062em 0.062em 0em rgba(0, 0, 0, .45) inset;
+          transition: var(--tr);
+          position: relative;
+        }
+
+        .ts__spot {
+          position: absolute;
+          top: 0.75em;
+          left: 0.312em;
+          width: 0.75em;
+          height: 0.75em;
+          border-radius: var(--r);
+          background-color: var(--spot);
+          box-shadow: 0em 0.0312em 0.062em rgba(0, 0, 0, 0.22) inset;
+        }
+
+        .ts__spot:nth-of-type(2) {
+          width: 0.375em;
+          height: 0.375em;
+          top: 0.937em;
+          left: 1.375em;
+        }
+
+        .ts__spot:nth-last-of-type(3) {
+          width: 0.25em;
+          height: 0.25em;
+          top: 0.312em;
+          left: 0.812em;
+        }
+
+        .ts__clouds {
+          width: 1.25em;
+          height: 1.25em;
+          background-color: var(--clouds);
+          border-radius: var(--r);
+          position: absolute;
+          bottom: -0.625em;
+          left: 0.312em;
+          box-shadow:
+            0.937em 0.312em var(--clouds),
+            -0.312em -0.312em var(--back-clouds),
+            1.437em 0.375em var(--clouds),
+            0.5em -0.125em var(--back-clouds),
+            2.187em 0 var(--clouds),
+            1.25em -0.062em var(--back-clouds),
+            2.937em 0.312em var(--clouds),
+            2em -0.312em var(--back-clouds),
+            3.625em -0.062em var(--clouds),
+            2.625em 0em var(--back-clouds),
+            4.5em -0.312em var(--clouds),
+            3.375em -0.437em var(--back-clouds),
+            4.625em -1.75em 0 0.437em var(--clouds),
+            4em -0.625em var(--back-clouds),
+            4.125em -2.125em 0 0.437em var(--back-clouds);
+          transition: 0.5s cubic-bezier(0, -0.02, 0.4, 1.25);
+        }
+
+        .ts__stars-container {
+          position: absolute;
+          color: var(--stars);
+          top: -100%;
+          left: 0.312em;
+          width: 2.75em;
+          height: auto;
+          transition: var(--tr);
+        }
+
+        .ts__cb:checked + .ts__container {
+          background: var(--night-bg);
+          box-shadow:
+            0 0 0 1px rgba(255, 255, 255, .16),
+            0 .45em 1.35em rgba(0, 0, 0, .34),
+            0em -0.062em 0.062em rgba(0, 0, 0, 0.55),
+            0em 0.062em 0.125em rgba(255, 255, 255, 0.10);
+        }
+
+        .ts__cb:checked + .ts__container .ts__circle-container {
+          left: calc(100% - var(--offset) - var(--dia));
+        }
+
+        .ts__cb:checked + .ts__container .ts__circle-container:hover {
+          left: calc(100% - var(--offset) - var(--dia) - 0.187em);
+        }
+
+        .ts__circle-container:hover {
+          left: calc(var(--offset) + 0.187em);
+        }
+
+        .ts__cb:checked + .ts__container .ts__moon {
+          transform: translate(0);
+        }
+
+        .ts__cb:checked + .ts__container .ts__clouds {
+          bottom: -4.062em;
+        }
+
+        .ts__cb:checked + .ts__container .ts__stars-container {
+          top: 50%;
+          transform: translateY(-50%);
+        }
+      `}</style>
+
+      <label className="ts" aria-label={ariaLabel}>
+        <input
+          type="checkbox"
+          className="ts__cb"
+          checked={dark}
+          onChange={onToggle}
+          aria-label={ariaLabel}
+        />
+        <div className="ts__container">
+          <div className="ts__clouds" />
+          <div className="ts__stars-container">
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              viewBox="0 0 144 55"
+              fill="none"
+              aria-hidden="true"
+            >
+              <path
+                fillRule="evenodd"
+                clipRule="evenodd"
+                d="M135.831 3.00688C135.055 3.85027 134.111 4.29946 133 4.35447C134.111 4.40947 135.055 4.85867 135.831 5.71123C136.607 6.55462 136.996 7.56303 136.996 8.72727C136.996 7.95722 137.172 7.25134 137.525 6.59129C137.886 5.93124 138.372 5.39954 138.98 5.00535C139.598 4.60199 140.268 4.39114 141 4.35447C139.88 4.2903 138.936 3.85027 138.16 3.00688C137.384 2.16348 136.996 1.16425 136.996 0C136.996 1.16425 136.607 2.16348 135.831 3.00688ZM31 23.3545C32.1114 23.2995 33.0551 22.8503 33.8313 22.0069C34.6075 21.1635 34.9956 20.1642 34.9956 19C34.9956 20.1642 35.3837 21.1635 36.1599 22.0069C36.9361 22.8503 37.8798 23.2903 39 23.3545C38.2679 23.3911 37.5976 23.602 36.9802 24.0053C36.3716 24.3995 35.8864 24.9312 35.5248 25.5913C35.172 26.2513 34.9956 26.9572 34.9956 27.7273C34.9956 26.563 34.6075 25.5546 33.8313 24.7112C33.0551 23.8587 32.1114 23.4095 31 23.3545ZM0 36.3545C1.11136 36.2995 2.05513 35.8503 2.83131 35.0069C3.6075 34.1635 3.99559 33.1642 3.99559 32C3.99559 33.1642 4.38368 34.1635 5.15987 35.0069C5.93605 35.8503 6.87982 36.2903 8 36.3545C7.26792 36.3911 6.59757 36.602 5.98015 37.0053C5.37155 37.3995 4.88644 37.9312 4.52481 38.5913C4.172 39.2513 3.99559 39.9572 3.99559 40.7273C3.99559 39.563 3.6075 38.5546 2.83131 37.7112C2.05513 36.8587 1.11136 36.4095 0 36.3545ZM56.8313 24.0069C56.0551 24.8503 55.1114 25.2995 54 25.3545C55.1114 25.4095 56.0551 25.8587 56.8313 26.7112C57.6075 27.5546 57.9956 28.563 57.9956 29.7273C57.9956 28.9572 58.172 28.2513 58.5248 27.5913C58.8864 26.9312 59.3716 26.3995 59.9802 26.0053C60.5976 25.602 61.2679 25.3911 62 25.3545C60.8798 25.2903 59.9361 24.8503 59.1599 24.0069C58.3837 23.1635 57.9956 22.1642 57.9956 21C57.9956 22.1642 57.6075 23.1635 56.8313 24.0069ZM81 25.3545C82.1114 25.2995 83.0551 24.8503 83.8313 24.0069C84.6075 23.1635 84.9956 22.1642 84.9956 21C84.9956 22.1642 85.3837 23.1635 86.1599 24.0069C86.9361 24.8503 87.8798 25.2903 89 25.3545C88.2679 25.3911 87.5976 25.602 86.9802 26.0053C86.3716 26.3995 85.8864 26.9312 85.5248 27.5913C85.172 28.2513 84.9956 28.9572 84.9956 29.7273C84.9956 28.563 84.6075 27.5546 83.8313 26.7112C83.0551 25.8587 82.1114 25.4095 81 25.3545ZM136 36.3545C137.111 36.2995 138.055 35.8503 138.831 35.0069C139.607 34.1635 139.996 33.1642 139.996 32C139.996 33.1642 140.384 34.1635 141.16 35.0069C141.936 35.8503 142.88 36.2903 144 36.3545C143.268 36.3911 142.598 36.602 141.98 37.0053C141.372 37.3995 140.886 37.9312 140.525 38.5913C140.172 39.2513 139.996 39.9572 139.996 40.7273C139.996 39.563 139.607 38.5546 138.831 37.7112C138.055 36.8587 137.111 36.4095 136 36.3545ZM101.831 49.0069C101.055 49.8503 100.111 50.2995 99 50.3545C100.111 50.4095 101.055 50.8587 101.831 51.7112C102.607 52.5546 102.996 53.563 102.996 54.7273C102.996 53.9572 103.172 53.2513 103.525 52.5913C103.886 51.9312 104.372 51.3995 104.98 51.0053C105.598 50.602 106.268 50.3911 107 50.3545C105.88 50.2903 104.936 49.8503 104.16 49.0069C103.384 48.1635 102.996 47.1642 102.996 46C102.996 47.1642 102.607 48.1635 101.831 49.0069Z"
+                fill="currentColor"
+              />
+            </svg>
+          </div>
+          <div className="ts__circle-container">
+            <div className="ts__sun-moon-container">
+              <div className="ts__moon">
+                <div className="ts__spot" />
+                <div className="ts__spot" />
+                <div className="ts__spot" />
+              </div>
+            </div>
+          </div>
+        </div>
+      </label>
+    </>
+  )
+}
 
 function tokens(dark: boolean, scrolled: boolean) {
   return {
@@ -549,11 +798,12 @@ function SearchModal({
                 width: 38,
                 height: 38,
                 cursor: 'pointer',
-                fontSize: 22,
-                lineHeight: 1,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
               }}
             >
-              ×
+              <CloseIcon />
             </button>
           </div>
 
@@ -1082,9 +1332,9 @@ export default function PublicNavbar() {
 
   const iconBtn = useMemo(
     () => ({
-      width: 40,
-      height: 40,
-      borderRadius: 14,
+      width: 42,
+      height: 42,
+      borderRadius: 15,
       border: `1px solid ${t.iconBorder}`,
       background: t.iconBg,
       color: t.softText,
@@ -1092,9 +1342,12 @@ export default function PublicNavbar() {
       alignItems: 'center',
       justifyContent: 'center',
       cursor: 'pointer',
-      transition: 'all .18s ease',
+      transition:
+        'transform .18s ease, color .18s ease, background .18s ease, border-color .18s ease, box-shadow .18s ease',
       backdropFilter: 'blur(10px)',
       WebkitBackdropFilter: 'blur(10px)',
+      position: 'relative' as const,
+      overflow: 'hidden' as const,
     }),
     [t]
   )
@@ -1121,6 +1374,37 @@ export default function PublicNavbar() {
         @keyframes submenuIn {
           from { opacity: 0; transform: translateY(8px) scale(.98); }
           to   { opacity: 1; transform: translateY(0) scale(1); }
+        }
+
+        @keyframes searchPulse {
+          0%, 100% { transform: scale(1); opacity: .88; }
+          50%      { transform: scale(1.12); opacity: 1; }
+        }
+
+        .pro-lucide-icon {
+          width: 20px;
+          height: 20px;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          flex-shrink: 0;
+          color: currentColor;
+          line-height: 1;
+        }
+
+        .pro-lucide-icon svg {
+          width: 20px;
+          height: 20px;
+          display: block;
+          stroke: currentColor;
+        }
+
+        .pro-lucide-search {
+          animation: searchPulse 1.8s ease-in-out infinite;
+        }
+
+        .pro-lucide-close {
+          opacity: .92;
         }
 
         .pro-nav-link {
@@ -1170,13 +1454,12 @@ export default function PublicNavbar() {
 
         .pro-icon:hover {
           transform: translateY(-1px);
-          color: ${t.text} !important;
+          color: ${ORANGE} !important;
           background: ${
-            dark ? 'rgba(255,255,255,.08)' : 'rgba(0,0,0,.05)'
+            dark ? 'rgba(239,159,39,.11)' : 'rgba(239,159,39,.09)'
           } !important;
-          border-color: ${
-            dark ? 'rgba(255,255,255,.12)' : 'rgba(0,0,0,.08)'
-          } !important;
+          border-color: rgba(239,159,39,.40) !important;
+          box-shadow: 0 10px 26px rgba(239,159,39,.18);
         }
 
         .pro-lang-item:hover   { background: ${t.itemHover} !important; }
@@ -1483,28 +1766,32 @@ export default function PublicNavbar() {
             </div>
           </div>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 9 }}>
             <button
               className="pro-icon"
               onClick={() => setSearchOpen(true)}
               aria-label={translate('navbar.search.aria')}
-              style={iconBtn}
+              style={{
+                ...iconBtn,
+                color: ORANGE,
+                background: dark
+                  ? 'rgba(239,159,39,.10)'
+                  : 'rgba(239,159,39,.08)',
+                border: '1px solid rgba(239,159,39,.30)',
+              }}
             >
               <SearchIcon />
             </button>
 
-            <button
-              className="pro-icon"
-              onClick={toggleTheme}
-              aria-label={
+            <ThemeSwitch
+              dark={dark}
+              onToggle={toggleTheme}
+              ariaLabel={
                 dark
                   ? translate('navbar.theme.light')
                   : translate('navbar.theme.dark')
               }
-              style={iconBtn}
-            >
-              {dark ? <SunIcon /> : <MoonIcon />}
-            </button>
+            />
 
             <div ref={langRef} style={{ position: 'relative' }}>
               <button

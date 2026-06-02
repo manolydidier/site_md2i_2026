@@ -230,6 +230,118 @@
 
 /* ─── Sticky toolbar ───────────────────────────────────────────────────────── */
 
+.serviceBridge {
+  margin: 24px 0 28px;
+  padding: 18px;
+  border: 1px solid var(--line2);
+  border-radius: 16px;
+  background:
+    linear-gradient(135deg, rgba(239, 159, 39, .10), rgba(255, 255, 255, 0) 46%),
+    var(--card);
+  box-shadow: var(--card-sh);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+}
+
+.serviceBridgeCopy {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+}
+
+.serviceBridgeKicker {
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  color: var(--acc-text);
+}
+
+.serviceBridge h2 {
+  margin: 0;
+  font-family: 'Roboto', 'Syne', sans-serif;
+  font-size: clamp(18px, 2.1vw, 26px);
+  line-height: 1.18;
+  font-weight: 800;
+  color: var(--t1);
+  letter-spacing: 0;
+}
+
+.serviceBridge p {
+  margin: 0;
+  max-width: 640px;
+  font-size: 13px;
+  line-height: 1.7;
+  color: var(--t2);
+}
+
+.serviceBridgeActions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  flex-wrap: wrap;
+  flex-shrink: 0;
+}
+
+.serviceBridgePrimary,
+.serviceBridgeSecondary {
+  min-height: 44px;
+  border-radius: 12px;
+  padding: 0 14px;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 12px;
+  font-weight: 800;
+  cursor: pointer;
+  white-space: nowrap;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  transition:
+    transform .22s cubic-bezier(.22, .61, .36, 1),
+    box-shadow .22s cubic-bezier(.22, .61, .36, 1),
+    background .18s ease,
+    border-color .18s ease;
+}
+
+.serviceBridgePrimary {
+  color: #fff;
+  border: none;
+  background: linear-gradient(135deg, #EF9F27 0%, #F7C060 100%);
+  box-shadow: 0 8px 24px rgba(239, 159, 39, .26);
+}
+
+.serviceBridgePrimary svg {
+  width: 12px;
+  height: 12px;
+  transition: transform .22s ease;
+}
+
+.serviceBridgePrimary:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 32px rgba(239, 159, 39, .36);
+}
+
+.serviceBridgePrimary:hover svg {
+  transform: translateX(3px);
+}
+
+.serviceBridgeSecondary {
+  color: var(--t2);
+  background: transparent;
+  border: 1px solid var(--line2);
+}
+
+.serviceBridgeSecondary:hover {
+  color: var(--t1);
+  background: var(--bg2);
+  transform: translateY(-1px);
+  border-color: var(--acc-bd);
+}
+
 .sticky {
   position: sticky;
   top: 0;
@@ -1219,6 +1331,8 @@
 .clearBtn:focus-visible,
 .chip button:focus-visible,
 .resetBtn:focus-visible,
+.serviceBridgePrimary:focus-visible,
+.serviceBridgeSecondary:focus-visible,
 .pBtn:focus-visible,
 .scrollTop:focus-visible {
   outline: 3px solid rgba(239, 159, 39, 0.45);
@@ -1547,6 +1661,21 @@
     font-size: 40px;
   }
 
+  .serviceBridge {
+    flex-direction: column;
+    align-items: stretch;
+    margin: 18px 0 24px;
+  }
+
+  .serviceBridgeActions {
+    justify-content: stretch;
+  }
+
+  .serviceBridgePrimary,
+  .serviceBridgeSecondary {
+    flex: 1;
+  }
+
   .sticky {
     margin: 0 -20px;
     padding: 12px 20px 10px;
@@ -1647,5 +1776,10 @@
     flex: 1;
     min-width: 0;
     padding: 0 10px;
+  }
+
+  .serviceBridgePrimary,
+  .serviceBridgeSecondary {
+    width: 100%;
   }
 }

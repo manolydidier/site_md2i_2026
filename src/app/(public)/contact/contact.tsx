@@ -5,6 +5,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import Link from 'next/link'
 import { useTranslation } from 'react-i18next'
 import styles from './contact.module.css'
+import { useTheme } from '@/app/context/ThemeContext'
 
 type FieldName =
   | 'firstName'
@@ -184,6 +185,8 @@ function validateFront(
 
 export default function ContactPage() {
   const { t } = useTranslation()
+  const { dark } = useTheme()
+
   const [hovered, setHovered] = useState<number | null>(null)
   const [sending, setSending] = useState(false)
   const [sent, setSent] = useState(false)
@@ -193,7 +196,9 @@ export default function ContactPage() {
   const [subject, setSubject] = useState('')
   const [formStartedAt, setFormStartedAt] = useState(() => Date.now())
   const blobRef = useRef<HTMLDivElement>(null)
+
   const subjects = useMemo(() => [...subjectKeys], [])
+
   const contactCards = useMemo(
     () =>
       contactCardDefs.map((card) => ({
@@ -204,6 +209,7 @@ export default function ContactPage() {
       })),
     [t],
   )
+
   const offices = useMemo(
     () =>
       officeDefs.map((office) => ({
@@ -213,6 +219,7 @@ export default function ContactPage() {
       })),
     [t],
   )
+
   const quickLinks = useMemo(
     () => quickLinkKeys.map((key) => t(`contactPage.frequent.${key}`)),
     [t],
@@ -336,7 +343,10 @@ export default function ContactPage() {
   }
 
   return (
-    <main className={styles.page}>
+    <main
+      className={styles.page}
+      data-theme={dark ? 'dark' : 'light'}
+    >
       <section className={styles.hero}>
         <div className={styles.heroNoise} aria-hidden />
         <div className={styles.blobWrap} aria-hidden>
@@ -377,7 +387,10 @@ export default function ContactPage() {
                   {t('contactPage.ctaSales')}
                 </Link>
 
-                <Link href="/apropos" className={`${styles.btn} ${styles.btnOutline}`}>
+                <Link
+                  href="/a-propos"
+                  className={`${styles.btn} ${styles.btnOutline}`}
+                >
                   {t('contactPage.ctaDiscover')}
                 </Link>
               </div>
@@ -678,16 +691,7 @@ export default function ContactPage() {
                   {error ? (
                     <div
                       role="alert"
-                      style={{
-                        marginTop: 16,
-                        padding: '14px 16px',
-                        borderRadius: 14,
-                        background: 'rgba(239, 68, 68, 0.10)',
-                        border: '1px solid rgba(239, 68, 68, 0.28)',
-                        color: '#EF4444',
-                        fontSize: 13,
-                        fontWeight: 700,
-                      }}
+                      className={styles.errorBox}
                     >
                       {error}
                     </div>
