@@ -17,6 +17,8 @@ import { useTranslation } from 'react-i18next'
 import {
   Search,
   X,
+  Moon,
+  Sun,
   ChevronDown as ChevronDownLucide,
   ArrowRight as ArrowRightLucide,
   type LucideIcon,
@@ -152,10 +154,14 @@ function ThemeSwitch({
   dark,
   onToggle,
   ariaLabel,
+  lightLabel,
+  darkLabel,
 }: {
   dark: boolean
   onToggle: () => void
   ariaLabel: string
+  lightLabel: string
+  darkLabel: string
 }) {
   return (
     <>
@@ -382,17 +388,187 @@ function ThemeSwitch({
           top: 50%;
           transform: translateY(-50%);
         }
+
+        .ts {
+          --toggle-w: 9.25rem;
+          --toggle-h: 2.75rem;
+          --toggle-pad: .25rem;
+          --toggle-radius: 1rem;
+          font-size: 1rem;
+        }
+
+        .ts__container,
+        .ts__cb:checked + .ts__container {
+          width: var(--toggle-w);
+          min-width: var(--toggle-w);
+          height: var(--toggle-h);
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          align-items: center;
+          padding: var(--toggle-pad);
+          border-radius: var(--toggle-radius);
+          border: 1px solid ${
+            dark ? 'rgba(255,255,255,.13)' : 'rgba(15,23,42,.10)'
+          };
+          background: ${
+            dark
+              ? 'linear-gradient(135deg, rgba(15,23,42,.94), rgba(24,24,32,.92))'
+              : 'linear-gradient(135deg, rgba(255,255,255,.96), rgba(248,250,252,.92))'
+          };
+          box-shadow: ${
+            dark
+              ? '0 14px 34px rgba(0,0,0,.24), inset 0 1px 0 rgba(255,255,255,.07)'
+              : '0 12px 28px rgba(15,23,42,.10), inset 0 1px 0 rgba(255,255,255,.9)'
+          };
+          overflow: hidden;
+          isolation: isolate;
+          backdrop-filter: blur(12px);
+          -webkit-backdrop-filter: blur(12px);
+        }
+
+        .ts__container::before {
+          content: '';
+          position: absolute;
+          z-index: 0;
+          top: var(--toggle-pad);
+          bottom: var(--toggle-pad);
+          left: var(--toggle-pad);
+          width: calc(50% - var(--toggle-pad));
+          border-radius: calc(var(--toggle-radius) - .2rem);
+          background: ${
+            dark
+              ? 'linear-gradient(135deg, rgba(239,159,39,.24), rgba(239,159,39,.12))'
+              : 'linear-gradient(135deg, rgba(239,159,39,.16), rgba(239,159,39,.08))'
+          };
+          box-shadow: 0 10px 24px rgba(239,159,39,.16);
+          transform: translateX(0);
+          transition: transform .22s ease, background .22s ease, box-shadow .22s ease;
+        }
+
+        .ts__cb:checked + .ts__container::before {
+          transform: translateX(calc(100% + var(--toggle-pad)));
+        }
+
+        .ts:focus-within .ts__container,
+        .ts__cb:focus-visible + .ts__container {
+          outline: 3px solid rgba(239, 159, 39, .35);
+          outline-offset: 3px;
+        }
+
+        .ts__segment {
+          position: relative;
+          z-index: 1;
+          height: 100%;
+          min-width: 0;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          gap: .38rem;
+          border-radius: calc(var(--toggle-radius) - .28rem);
+          color: ${dark ? 'rgba(255,255,255,.56)' : 'rgba(15,23,42,.54)'};
+          font-size: .78rem;
+          font-weight: 750;
+          line-height: 1;
+          letter-spacing: 0;
+          transition: color .18s ease, transform .18s ease;
+          pointer-events: none;
+        }
+
+        .ts__segment--active {
+          color: ${dark ? '#F8FAFC' : '#0F172A'};
+        }
+
+        .ts__segment svg {
+          width: 1rem;
+          height: 1rem;
+          stroke-width: 2.35;
+          flex-shrink: 0;
+        }
+
+        .ts__container:hover .ts__segment--active {
+          transform: translateY(-1px);
+        }
+
+        .ts__clouds,
+        .ts__stars-container,
+        .ts__circle-container {
+          display: none;
+        }
+
+        @media (max-width: 760px) {
+          .ts {
+            --toggle-w: 2.75rem;
+            --toggle-h: 2.75rem;
+          }
+
+          .ts__container,
+          .ts__cb:checked + .ts__container {
+            grid-template-columns: 1fr;
+          }
+
+          .ts__container::before,
+          .ts__cb:checked + .ts__container::before {
+            width: auto;
+            right: var(--toggle-pad);
+            transform: none;
+          }
+
+          .ts__segment {
+            grid-column: 1;
+            grid-row: 1;
+            opacity: 0;
+          }
+
+          .ts__segment--active {
+            opacity: 1;
+          }
+
+          .ts__segment-label {
+            position: absolute;
+            width: 1px;
+            height: 1px;
+            padding: 0;
+            margin: -1px;
+            overflow: hidden;
+            clip: rect(0, 0, 0, 0);
+            white-space: nowrap;
+            border: 0;
+          }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+          .ts__container::before,
+          .ts__segment {
+            transition: none;
+          }
+        }
       `}</style>
 
-      <label className="ts" aria-label={ariaLabel}>
+      <label className="ts" aria-label={ariaLabel} title={ariaLabel}>
         <input
           type="checkbox"
           className="ts__cb"
           checked={dark}
           onChange={onToggle}
+          role="switch"
+          aria-checked={dark}
           aria-label={ariaLabel}
         />
         <div className="ts__container">
+          <span
+            className={`ts__segment ${dark ? '' : 'ts__segment--active'}`}
+            aria-hidden="true"
+          >
+            <Sun />
+            <span className="ts__segment-label">{lightLabel}</span>
+          </span>
+          <span
+            className={`ts__segment ${dark ? 'ts__segment--active' : ''}`}
+            aria-hidden="true"
+          >
+            <Moon />
+            <span className="ts__segment-label">{darkLabel}</span>
+          </span>
           <div className="ts__clouds" />
           <div className="ts__stars-container">
             <svg
@@ -497,6 +673,7 @@ function SearchModal({
   links: NavItem[]
 }) {
   const router = useRouter()
+  const { t: translate } = useTranslation()
 
   const [query, setQuery] = useState('')
   const [scope, setScope] = useState<'all' | SearchCategory>('all')
@@ -512,21 +689,39 @@ function SearchModal({
     value: 'all' | SearchCategory
     label: string
   }> = [
-    { value: 'all', label: 'Tout' },
-    { value: 'products', label: 'Produits' },
-    { value: 'articles', label: 'Articles' },
-    { value: 'references', label: 'Références' },
-    { value: 'links', label: 'Liens' },
+    { value: 'all', label: translate('navbar.search.categories.all') },
+    {
+      value: 'products',
+      label: translate('navbar.search.categories.products'),
+    },
+    {
+      value: 'articles',
+      label: translate('navbar.search.categories.articles'),
+    },
+    {
+      value: 'references',
+      label: translate('navbar.search.categories.references'),
+    },
+    { value: 'links', label: translate('navbar.search.categories.links') },
   ]
 
   const resultGroups: Array<{
     value: SearchCategory
     label: string
   }> = [
-    { value: 'products', label: 'Produits' },
-    { value: 'articles', label: 'Articles' },
-    { value: 'references', label: 'Références' },
-    { value: 'links', label: 'Liens' },
+    {
+      value: 'products',
+      label: translate('navbar.search.categories.products'),
+    },
+    {
+      value: 'articles',
+      label: translate('navbar.search.categories.articles'),
+    },
+    {
+      value: 'references',
+      label: translate('navbar.search.categories.references'),
+    },
+    { value: 'links', label: translate('navbar.search.categories.links') },
   ]
 
   const flatResults = useMemo(() => {
@@ -604,7 +799,7 @@ function SearchModal({
 
         const json = (await response.json()) as ApiSearchResponse
         setData(json)
-      } catch (error) {
+      } catch {
         if (!controller.signal.aborted) {
           setData(null)
           setError(true)
@@ -772,7 +967,7 @@ function SearchModal({
               value={query}
               onChange={(event) => setQuery(event.target.value)}
               onKeyDown={handleInputKeyDown}
-              placeholder="Rechercher un produit, article, référence ou lien..."
+              placeholder={translate('navbar.search.modalPlaceholder')}
               autoComplete="off"
               style={{
                 flex: 1,
@@ -789,7 +984,7 @@ function SearchModal({
 
             <button
               onClick={onClose}
-              aria-label="Fermer la recherche"
+              aria-label={translate('navbar.search.close')}
               style={{
                 border: `1px solid ${t.iconBorder}`,
                 background: t.iconBg,
@@ -863,7 +1058,7 @@ function SearchModal({
                     fontSize: 14,
                   }}
                 >
-                  Commence à taper pour rechercher dans le site.
+                  {translate('navbar.search.hint')}
                 </div>
 
                 <div style={{ display: 'grid', gap: 6 }}>
@@ -904,7 +1099,7 @@ function SearchModal({
             ) : query.trim().length < 2 ? (
               <EmptySearchMessage
                 color={t.subtleText}
-                message="Tape au moins 2 caractères pour lancer la recherche."
+                message={translate('navbar.search.minChars')}
               />
             ) : loading ? (
               <div style={{ padding: '22px 14px' }}>
@@ -932,7 +1127,7 @@ function SearchModal({
             ) : error ? (
               <EmptySearchMessage
                 color={t.subtleText}
-                message="Une erreur est survenue pendant la recherche."
+                message={translate('navbar.search.error')}
               />
             ) : data && flatResults.length > 0 ? (
               <>
@@ -1115,7 +1310,9 @@ function SearchModal({
             ) : (
               <EmptySearchMessage
                 color={t.subtleText}
-                message={`Aucun résultat pour “${query}”.`}
+                message={translate('navbar.search.noResults', {
+                  query: query.trim(),
+                })}
               />
             )}
           </div>
@@ -1132,8 +1329,8 @@ function SearchModal({
               fontSize: 12,
             }}
           >
-            <span>↑ ↓ pour naviguer · Entrée pour ouvrir</span>
-            <span>Échap pour fermer</span>
+            <span>{translate('navbar.search.keyboardHint')}</span>
+            <span>{translate('navbar.search.escapeClose')}</span>
           </div>
         </motion.div>
       </motion.div>
@@ -1788,9 +1985,11 @@ export default function PublicNavbar() {
               onToggle={toggleTheme}
               ariaLabel={
                 dark
-                  ? translate('navbar.theme.light')
-                  : translate('navbar.theme.dark')
+                  ? translate('navbar.theme.toggleToLight')
+                  : translate('navbar.theme.toggleToDark')
               }
+              lightLabel={translate('navbar.theme.lightShort')}
+              darkLabel={translate('navbar.theme.darkShort')}
             />
 
             <div ref={langRef} style={{ position: 'relative' }}>

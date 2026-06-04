@@ -65,34 +65,59 @@ type EditorWithEventHandlers = Editor & {
   __eventHandlers?: CanvasEventHandlers
 }
 
+type EditorWithOptionalHighlighter = Editor & {
+  getHighlighter?: () => {
+    remove: () => void
+  }
+}
+
 function getUiColors(dark: boolean) {
   return {
-    buttonBg: dark ? 'rgba(15, 23, 42, 0.82)' : 'rgba(255,255,255,.92)',
-    buttonBgHover: dark ? 'rgba(15, 23, 42, 0.96)' : 'rgba(255,255,255,1)',
-    buttonText: dark ? '#f8fafc' : '#18181b',
-    buttonBorder: dark ? 'rgba(255,255,255,.08)' : 'rgba(15,23,42,.08)',
+    buttonBg: dark ? 'rgba(15, 23, 42, 0.78)' : 'rgba(255, 255, 255, 0.96)',
+    buttonBgHover: dark ? 'rgba(15, 23, 42, 0.96)' : 'rgba(255, 255, 255, 1)',
+    buttonText: dark ? '#fff7ed' : '#111827',
+    buttonBorder: dark ? 'rgba(255, 226, 194, 0.13)' : 'rgba(15, 23, 42, 0.08)',
     buttonShadow: dark
-      ? '0 14px 34px rgba(0,0,0,.38)'
-      : '0 14px 34px rgba(15,23,42,.14)',
-    panelBg: dark ? 'rgba(15, 23, 42, 0.78)' : 'rgba(255,255,255,.94)',
-    panelBorder: dark ? 'rgba(255,255,255,.10)' : 'rgba(15,23,42,.08)',
-    panelText: dark ? '#f8fafc' : '#18181b',
-    panelMuted: dark ? '#94a3b8' : '#6b7280',
+      ? '0 24px 70px rgba(0,0,0,.42)'
+      : '0 24px 70px rgba(15,23,42,.10)',
+
+    panelBg: dark ? 'rgba(15, 23, 42, 0.72)' : 'rgba(255, 255, 255, 0.94)',
+    panelBorder: dark ? 'rgba(255, 226, 194, 0.13)' : 'rgba(15, 23, 42, 0.08)',
+    panelText: dark ? '#fff7ed' : '#111827',
+    panelMuted: dark ? '#d8c3ab' : '#475569',
+
     appBg: dark ? '#020617' : '#f8fafc',
+
     pageBg: dark
-      ? 'radial-gradient(circle at top left, rgba(239,159,39,.10), transparent 30%), linear-gradient(180deg, #020617 0%, #080b13 42%, #020617 100%)'
-      : 'radial-gradient(circle at top left, rgba(239,159,39,.10), transparent 30%), linear-gradient(180deg, #fffaf3 0%, #ffffff 44%, #f8fafc 100%)',
-    cardBg: dark ? 'rgba(15,23,42,.94)' : 'rgba(255,255,255,.96)',
-    cardBorder: dark ? 'rgba(255,255,255,.10)' : 'rgba(15,23,42,.08)',
-    mutedText: dark ? '#94a3b8' : '#6b7280',
+      ? 'radial-gradient(circle at 12% 8%, rgba(239,159,39,.18), transparent 28rem), radial-gradient(circle at 88% 12%, rgba(255,190,107,.10), transparent 32rem), linear-gradient(180deg, #020617 0%, #07101f 42%, #020617 100%)'
+      : 'radial-gradient(circle at 12% 8%, rgba(239,159,39,.10), transparent 26rem), radial-gradient(circle at 88% 12%, rgba(15,23,42,.04), transparent 30rem), linear-gradient(180deg, #ffffff 0%, #f8fafc 52%, #ffffff 100%)',
+
+    cardBg: dark ? 'rgba(15, 23, 42, 0.86)' : 'rgba(255, 255, 255, 0.96)',
+    cardBorder: dark ? 'rgba(255, 226, 194, 0.13)' : 'rgba(15, 23, 42, 0.08)',
+
+    mutedText: dark ? '#d8c3ab' : '#64748b',
+
     accent1: '#ef9f27',
     accent2: '#f7c060',
-    text: dark ? '#f8fafc' : '#18181b',
-    textSoft: dark ? 'rgba(248,250,252,.72)' : 'rgba(24,24,27,.72)',
-    textMuted: dark ? 'rgba(248,250,252,.46)' : 'rgba(24,24,27,.46)',
-    line: dark ? 'rgba(255,255,255,.10)' : 'rgba(15,23,42,.08)',
-    orangeSoft: dark ? 'rgba(239,159,39,.16)' : 'rgba(239,159,39,.10)',
-    orangeBorder: 'rgba(239,159,39,.34)',
+    accent3: '#d9791f',
+
+    neutral1: dark ? '#ead7c0' : '#64748b',
+    neutral2: dark ? '#94a3b8' : '#475569',
+
+    text: dark ? '#fff7ed' : '#0f172a',
+    textSoft: dark ? 'rgba(255,247,237,.76)' : 'rgba(15,23,42,.72)',
+    textMuted: dark ? 'rgba(255,247,237,.52)' : 'rgba(15,23,42,.48)',
+
+    line: dark ? 'rgba(255,226,194,.13)' : 'rgba(15,23,42,.08)',
+
+    orangeSoft: dark ? 'rgba(239,159,39,.17)' : 'rgba(239,159,39,.08)',
+    orangeBorder: dark ? 'rgba(247,192,96,.36)' : 'rgba(239,159,39,.28)',
+
+    glassBg: dark
+      ? 'linear-gradient(135deg, rgba(255,255,255,.10), rgba(255,255,255,.045))'
+      : 'linear-gradient(135deg, rgba(255,255,255,.96), rgba(248,250,252,.84))',
+
+    glassBorder: dark ? 'rgba(255,226,194,.14)' : 'rgba(15,23,42,.08)',
   }
 }
 
@@ -173,8 +198,17 @@ function syncEmbeddedTheme(editor: Editor, dark: boolean) {
   if (!canvasDoc) return
 
   const theme = dark ? 'dark' : 'light'
-  const pageBg = dark ? '#020617' : '#ffffff'
-  const pageText = dark ? '#f5f7fb' : '#181818'
+  const pageText = dark ? '#fff7ed' : '#20130a'
+  const softText = dark ? '#d8c3ab' : '#75563a'
+  const accent1 = '#ef9f27'
+  const accent2 = '#f7c060'
+  const line = dark ? 'rgba(255,226,194,.13)' : 'rgba(118,77,38,.13)'
+  const glass = dark
+    ? 'linear-gradient(135deg, rgba(255,255,255,.10), rgba(255,255,255,.045))'
+    : 'linear-gradient(135deg, rgba(255,255,255,.86), rgba(255,244,229,.62))'
+  const pageBackground = dark
+    ? 'radial-gradient(circle at 12% 8%, rgba(239,159,39,.18), transparent 28rem), radial-gradient(circle at 88% 12%, rgba(255,190,107,.10), transparent 32rem), linear-gradient(180deg, #020617 0%, #07101f 42%, #020617 100%)'
+    : 'radial-gradient(circle at 12% 8%, rgba(239,159,39,.18), transparent 28rem), radial-gradient(circle at 88% 12%, rgba(122,92,62,.10), transparent 32rem), linear-gradient(180deg, #fff8ee 0%, #ffffff 46%, #f8fafc 100%)'
 
   let baseStyle = canvasDoc.getElementById(
     'viewer-base-style',
@@ -187,12 +221,122 @@ function syncEmbeddedTheme(editor: Editor, dark: boolean) {
   }
 
   baseStyle.innerHTML = `
-    html, body {
+    html,
+    body {
       margin: 0 !important;
       padding: 0 !important;
-      background: ${pageBg} !important;
+      background: ${pageBackground} !important;
       color: ${pageText} !important;
       overflow-x: hidden !important;
+    }
+
+    html[data-app-theme="${theme}"],
+    body[data-app-theme="${theme}"] {
+      color-scheme: ${dark ? 'dark' : 'light'};
+    }
+
+    .project-theme,
+    .md2i-support,
+    .sara-page,
+    [data-theme] {
+      background: ${pageBackground} !important;
+      color: ${pageText} !important;
+      min-height: 100% !important;
+    }
+
+    .project-theme[data-theme="${theme}"],
+    .md2i-support[data-theme="${theme}"],
+    .sara-page[data-theme="${theme}"],
+    [data-theme="${theme}"] {
+      background: ${pageBackground} !important;
+      color: ${pageText} !important;
+    }
+
+    .project-theme h1,
+    .project-theme h2,
+    .project-theme h3,
+    .project-theme h4,
+    .project-theme strong,
+    .md2i-support h1,
+    .md2i-support h2,
+    .md2i-support h3,
+    .md2i-support h4,
+    .md2i-support strong,
+    .sara-page h1,
+    .sara-page h2,
+    .sara-page h3,
+    .sara-page h4,
+    .sara-page strong {
+      color: ${pageText};
+    }
+
+    .project-theme p,
+    .project-theme span,
+    .project-theme li,
+    .md2i-support p,
+    .md2i-support span,
+    .md2i-support li,
+    .sara-page p,
+    .sara-page span,
+    .sara-page li {
+      border-color: ${line};
+    }
+
+    .project-theme p,
+    .md2i-support p,
+    .sara-page p {
+      color: ${softText};
+    }
+
+    .project-theme .glass,
+    .project-theme .card,
+    .project-theme .panel,
+    .project-theme .tabs,
+    .md2i-support .glass,
+    .md2i-support .card,
+    .md2i-support .panel,
+    .md2i-support .tabs,
+    .sara-page .glass,
+    .sara-page .card,
+    .sara-page .panel,
+    .sara-page .tabs {
+      background: ${glass};
+      border-color: ${line};
+      backdrop-filter: blur(22px);
+      -webkit-backdrop-filter: blur(22px);
+    }
+
+    .project-theme button,
+    .project-theme a,
+    .md2i-support button,
+    .md2i-support a,
+    .sara-page button,
+    .sara-page a {
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    .project-theme .primary,
+    .project-theme .active,
+    .project-theme [data-active="true"],
+    .md2i-support .primary,
+    .md2i-support .active,
+    .md2i-support [data-active="true"],
+    .sara-page .primary,
+    .sara-page .active,
+    .sara-page [data-active="true"] {
+      border-color: rgba(239,159,39,.34);
+    }
+
+    .project-theme .accent,
+    .md2i-support .accent,
+    .sara-page .accent {
+      color: ${accent1};
+    }
+
+    .project-theme .orange-gradient,
+    .md2i-support .orange-gradient,
+    .sara-page .orange-gradient {
+      background: linear-gradient(135deg, ${accent1}, ${accent2});
     }
   `
 
@@ -202,12 +346,13 @@ function syncEmbeddedTheme(editor: Editor, dark: boolean) {
   const themeRoot = (
     canvasDoc.querySelector('.project-theme') ||
     canvasDoc.querySelector('.md2i-support') ||
+    canvasDoc.querySelector('.sara-page') ||
     canvasDoc.querySelector('[data-theme]')
   ) as HTMLElement | null
 
   if (themeRoot) {
     themeRoot.setAttribute('data-theme', theme)
-    themeRoot.style.background = pageBg
+    themeRoot.style.background = pageBackground
     themeRoot.style.color = pageText
     themeRoot.style.minHeight = '100%'
   }
@@ -216,7 +361,7 @@ function syncEmbeddedTheme(editor: Editor, dark: boolean) {
 
   if (wrapper) {
     wrapper.addStyle({
-      'background-color': pageBg,
+      background: pageBackground,
       color: pageText,
       'min-height': '100%',
       height: 'auto',
@@ -414,17 +559,17 @@ export default function ProductDetailClient() {
       deviceManager: {
         disable: true,
       },
-      allowScripts: true,
-    })
+      allowScripts: Boolean(product.gjsJs?.trim()),
+    } as unknown as Parameters<typeof grapesjs.init>[0])
 
     gjsRef.current = editor
 
     editor.on('component:selected', () => {
-      editor.select(null)
+      editor.select(undefined)
     })
 
     editor.on('component:mouseover', () => {
-      editor.getHighlighter().remove()
+      ;(editor as EditorWithOptionalHighlighter).getHighlighter?.().remove()
     })
 
     editor.on('load', () => {
@@ -471,7 +616,9 @@ export default function ProductDetailClient() {
         }
       }
 
-      allComponents.forEach((component) =>
+      ;(allComponents as unknown as {
+        forEach: (callback: (component: unknown) => void) => void
+      }).forEach((component) =>
         disableComponent(component as unknown as GrapesComponentNode),
       )
 
@@ -815,6 +962,35 @@ export default function ProductDetailClient() {
           background: ${ui.pageBg};
           color: ${ui.text};
           font-family: Inter, Arial, Helvetica, sans-serif;
+          position: relative;
+          isolation: isolate;
+          overflow-x: hidden;
+        }
+
+        .product-detail-page::before {
+          content: '';
+          position: fixed;
+          inset: 0;
+          z-index: -2;
+          pointer-events: none;
+          opacity: ${dark ? '.18' : '.16'};
+          background-image:
+            linear-gradient(${dark ? 'rgba(255,226,194,.08)' : 'rgba(118,77,38,.08)'} 1px, transparent 1px),
+            linear-gradient(90deg, ${dark ? 'rgba(255,226,194,.08)' : 'rgba(118,77,38,.08)'} 1px, transparent 1px);
+          background-size: 92px 92px;
+          mask-image: radial-gradient(circle at 50% 12%, #000 0, transparent 72%);
+        }
+
+        .product-detail-page::after {
+          content: '';
+          position: fixed;
+          inset: 0;
+          z-index: -3;
+          pointer-events: none;
+          opacity: ${dark ? '.20' : '.12'};
+          background:
+            radial-gradient(circle at 16% 10%, rgba(239,159,39,.20), transparent 30rem),
+            radial-gradient(circle at 86% 18%, ${dark ? 'rgba(247,192,96,.12)' : 'rgba(122,92,62,.10)'}, transparent 34rem);
         }
 
         .product-hero {
@@ -826,11 +1002,38 @@ export default function ProductDetailClient() {
           isolation: isolate;
         }
 
+        .product-hero::before {
+          content: '';
+          position: absolute;
+          right: -14%;
+          top: 10%;
+          z-index: -1;
+          width: min(58vw, 760px);
+          aspect-ratio: 1;
+          opacity: ${dark ? '.42' : '.34'};
+          background: rgba(239,159,39,.22);
+          filter: blur(4px);
+          clip-path: polygon(46% 0, 86% 13%, 100% 51%, 71% 92%, 24% 100%, 0 62%, 12% 18%);
+          animation: productMorph 16s ease-in-out infinite alternate;
+        }
+
+        @keyframes productMorph {
+          0% {
+            clip-path: polygon(46% 0, 86% 13%, 100% 51%, 71% 92%, 24% 100%, 0 62%, 12% 18%);
+            transform: translate3d(0, 0, 0) rotate(0deg);
+          }
+
+          100% {
+            clip-path: polygon(58% 3%, 100% 30%, 82% 82%, 48% 100%, 8% 76%, 0 29%, 25% 7%);
+            transform: translate3d(-4%, 3%, 0) rotate(8deg);
+          }
+        }
+
         .product-hero-bg {
           position: absolute;
           inset: 0;
-          z-index: -2;
-          background: #020617;
+          z-index: -3;
+          background: ${dark ? '#020617' : '#fff8ee'};
         }
 
         .product-hero-bg img {
@@ -838,15 +1041,25 @@ export default function ProductDetailClient() {
           height: 100%;
           object-fit: cover;
           display: block;
-          filter: saturate(1.04) contrast(1.04);
+          filter: saturate(${dark ? '1.02' : '1.06'}) contrast(1.05);
+          opacity: ${dark ? '.74' : '.86'};
         }
 
         .product-hero-overlay {
           position: absolute;
           inset: 0;
           background:
-            linear-gradient(90deg, rgba(2,6,23,.86), rgba(2,6,23,.54), rgba(2,6,23,.20)),
-            linear-gradient(180deg, rgba(2,6,23,.10), rgba(2,6,23,.88));
+            linear-gradient(
+              90deg,
+              ${dark ? 'rgba(2,6,23,.92)' : 'rgba(32,19,10,.72)'},
+              ${dark ? 'rgba(2,6,23,.66)' : 'rgba(32,19,10,.44)'},
+              ${dark ? 'rgba(2,6,23,.22)' : 'rgba(32,19,10,.10)'}
+            ),
+            linear-gradient(
+              180deg,
+              ${dark ? 'rgba(2,6,23,.14)' : 'rgba(255,248,238,.06)'},
+              ${dark ? 'rgba(2,6,23,.94)' : 'rgba(255,248,238,.92)'}
+            );
         }
 
         .product-hero-inner {
@@ -874,7 +1087,7 @@ export default function ProductDetailClient() {
         }
 
         .breadcrumb a:hover {
-          color: ${ui.accent1};
+          color: ${ui.accent2};
         }
 
         .breadcrumb strong {
@@ -920,9 +1133,10 @@ export default function ProductDetailClient() {
 
         .product-kicker {
           background: rgba(239,159,39,.24);
-          border: 1px solid rgba(239,159,39,.42);
+          border: 1px solid rgba(247,192,96,.42);
           color: #fff;
           text-transform: uppercase;
+          box-shadow: 0 0 34px rgba(239,159,39,.16);
         }
 
         .product-chip {
@@ -937,6 +1151,8 @@ export default function ProductDetailClient() {
           line-height: .96;
           letter-spacing: -.065em;
           font-weight: 950;
+          color: #fff;
+          text-shadow: 0 18px 42px rgba(0,0,0,.28);
         }
 
         .product-lead {
@@ -966,14 +1182,20 @@ export default function ProductDetailClient() {
           text-decoration: none;
           font-size: 14px;
           font-weight: 850;
-          transition: transform .18s ease, box-shadow .18s ease, background .18s ease;
+          transition:
+            transform .18s ease,
+            box-shadow .18s ease,
+            background .18s ease,
+            border-color .18s ease;
         }
 
         .primary-action {
           border: none;
           background: linear-gradient(135deg, ${ui.accent1}, ${ui.accent2});
-          color: #fff;
-          box-shadow: 0 14px 30px rgba(239,159,39,.30);
+          color: ${dark ? '#1d0d03' : '#fff'};
+          box-shadow:
+            0 14px 30px rgba(239,159,39,.30),
+            inset 0 1px 0 rgba(255,255,255,.28);
         }
 
         .secondary-action {
@@ -989,20 +1211,48 @@ export default function ProductDetailClient() {
           transform: translateY(-2px);
         }
 
+        .primary-action:hover {
+          box-shadow:
+            0 18px 42px rgba(239,159,39,.38),
+            inset 0 1px 0 rgba(255,255,255,.34);
+        }
+
+        .secondary-action:hover {
+          background: rgba(255,255,255,.18);
+          border-color: rgba(247,192,96,.30);
+        }
+
         .product-summary-card {
           border-radius: 24px;
           padding: 22px;
           background: rgba(255,255,255,.13);
           border: 1px solid rgba(255,255,255,.16);
-          backdrop-filter: blur(22px);
-          -webkit-backdrop-filter: blur(22px);
+          backdrop-filter: blur(24px);
+          -webkit-backdrop-filter: blur(24px);
           box-shadow: 0 26px 90px rgba(0,0,0,.28);
+          position: relative;
+          overflow: hidden;
+        }
+
+        .product-summary-card::before {
+          content: '';
+          position: absolute;
+          inset: -1px;
+          pointer-events: none;
+          opacity: .7;
+          background:
+            radial-gradient(circle at 18% 0%, rgba(239,159,39,.24), transparent 32%),
+            linear-gradient(135deg, rgba(255,255,255,.14), transparent 58%);
+        }
+
+        .product-summary-card > * {
+          position: relative;
         }
 
         .summary-eyebrow {
           display: block;
           margin-bottom: 12px;
-          color: ${ui.accent1};
+          color: ${ui.accent2};
           font-size: 11px;
           font-weight: 950;
           letter-spacing: .12em;
@@ -1020,6 +1270,7 @@ export default function ProductDetailClient() {
         .summary-title strong {
           font-size: 18px;
           line-height: 1.25;
+          color: #fff;
         }
 
         .summary-title span {
@@ -1068,6 +1319,8 @@ export default function ProductDetailClient() {
           border-top: 1px solid ${ui.cardBorder};
           border-bottom: 1px solid ${ui.cardBorder};
           box-shadow: ${ui.buttonShadow};
+          backdrop-filter: blur(24px);
+          -webkit-backdrop-filter: blur(24px);
         }
 
         .product-content-head {
@@ -1110,7 +1363,9 @@ export default function ProductDetailClient() {
         .product-builder-shell {
           width: 100%;
           min-height: 720px;
-          background: ${dark ? '#020617' : '#ffffff'};
+          background: ${dark
+            ? 'radial-gradient(circle at 12% 8%, rgba(239,159,39,.12), transparent 28rem), #020617'
+            : 'radial-gradient(circle at 12% 8%, rgba(239,159,39,.10), transparent 28rem), #fffaf3'};
           border-top: 1px solid ${ui.line};
         }
 
@@ -1142,7 +1397,7 @@ export default function ProductDetailClient() {
           overflow: hidden;
           border-radius: 18px;
           border: 1px solid ${ui.cardBorder};
-          background: ${dark ? '#0b1220' : '#f8fafc'};
+          background: ${dark ? '#0b1220' : '#fffaf3'};
           box-shadow: ${ui.buttonShadow};
         }
 
@@ -1164,7 +1419,7 @@ export default function ProductDetailClient() {
           padding: clamp(24px, 4vw, 34px);
           background:
             radial-gradient(circle at top right, rgba(239,159,39,.24), transparent 42%),
-            ${dark ? '#0f172a' : '#111827'};
+            ${dark ? '#0f172a' : '#20130a'};
           border: 1px solid rgba(255,255,255,.10);
           color: #fff;
           box-shadow: ${ui.buttonShadow};
@@ -1198,7 +1453,7 @@ export default function ProductDetailClient() {
           align-items: center;
           justify-content: center;
           background: linear-gradient(135deg, ${ui.accent1}, ${ui.accent2});
-          color: #fff;
+          color: ${dark ? '#1d0d03' : '#fff'};
           text-decoration: none;
           font-size: 14px;
           font-weight: 900;
@@ -1230,6 +1485,8 @@ export default function ProductDetailClient() {
           color: ${ui.textSoft};
           text-align: center;
           font-size: 14px;
+          backdrop-filter: blur(22px);
+          -webkit-backdrop-filter: blur(22px);
         }
 
         .product-state-card p {
@@ -1242,7 +1499,7 @@ export default function ProductDetailClient() {
           border-radius: 14px;
           border: none;
           background: linear-gradient(135deg, ${ui.accent1}, ${ui.accent2});
-          color: #fff;
+          color: ${dark ? '#1d0d03' : '#fff'};
           font-size: 14px;
           font-weight: 800;
           cursor: pointer;
@@ -1304,7 +1561,7 @@ export default function ProductDetailClient() {
         }
       `}</style>
 
-      <main className="product-detail-page">
+      <main className="product-detail-page" data-theme={dark ? 'dark' : 'light'}>
         <section className="product-hero">
           <div className="product-hero-bg">
             <img src={heroImage} alt="" />
@@ -1386,7 +1643,7 @@ export default function ProductDetailClient() {
           <div className="product-full-content">
             <article className="product-content-card">
               {hasGjsContent ? (
-                <div className="product-builder-shell">
+                <div className="product-builder-shell" data-theme={dark ? 'dark' : 'light'}>
                   <div
                     className="product-builder-canvas"
                     style={{

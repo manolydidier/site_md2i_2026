@@ -11,11 +11,11 @@ export default function LeadThemeShell({
   const { dark } = useTheme();
 
   return (
-    <main
-      className={`lead-root ${dark ? "lead-dark" : "lead-light"}`}
+    <div
+      className={`lead-root ${dark ? "lp-dark lead-dark" : "lp-light lead-light"}`}
       data-theme={dark ? "dark" : "light"}
     >
       {children}
-    </main>
+    </div>
   );
 }

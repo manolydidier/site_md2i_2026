@@ -1,16 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
-        import { Prisma } from '../../../../generated/prisma/client'
-import * as prismaModule from '@/app/lib/prisma'
+import { prisma } from '@/app/lib/prisma'
+import type { Prisma } from '@/generated/prisma/client'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
-
-const prisma = ((prismaModule as any).default ??
-  (prismaModule as any).prisma ??
-  prismaModule) as {
-  product: any
-  $transaction: <T>(queries: Promise<T>[]) => Promise<T[]>
-}
 
 type PublicProductSortKey =
   | 'published-desc'
@@ -91,7 +84,23 @@ function toSerializableNumber(value: unknown): number | null {
   return null
 }
 
-function serializeProduct(item: any) {
+type ProductListItem = {
+  id: string
+  name: string
+  slug: string
+  excerpt: string | null
+  price: unknown
+  coverImage: string | null
+  publishedAt: Date | string | null
+  createdAt: Date | string | null
+  category: {
+    id: string
+    name: string
+    slug: string | null
+  } | null
+}
+
+function serializeProduct(item: ProductListItem) {
   return {
     id: item.id,
     name: item.name,
@@ -131,8 +140,14 @@ export async function GET(request: NextRequest) {
       maxPrice = temp
     }
 
+    const now = new Date()
+
     const basePublishedWhere: Prisma.ProductWhereInput = {
-      publishedAt: { not: null },
+      status: 'PUBLISHED',
+      publishedAt: {
+        not: null,
+        lte: now,
+      },
     }
 
     const filters: Prisma.ProductWhereInput[] = [basePublishedWhere]
@@ -187,11 +202,7 @@ export async function GET(request: NextRequest) {
     const skip = (page - 1) * limit
     const orderBy = getOrderBy(sort)
 
-    const [products, total, categoryRows] = await prisma.$transaction<[
-      any[],
-      number,
-      Array<{ category?: { id: string; name: string; slug?: string | null } | null }>
-    ]>([
+    const [products, total, categoryRows] = await prisma.$transaction([
       prisma.product.findMany({
         where,
         orderBy,

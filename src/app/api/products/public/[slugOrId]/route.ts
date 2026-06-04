@@ -1,16 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
-import * as prismaModule from '@/app/lib/prisma'
+import { prisma } from '@/app/lib/prisma'
+import type { Prisma } from '@/generated/prisma/client'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
 
-const prisma = ((prismaModule as any).default ??
-  (prismaModule as any).prisma ??
-  prismaModule) as {
-  product: {
-    findFirst: (args: any) => Promise<any>
-  }
-}
+const ALLOW_PUBLIC_PRODUCT_SCRIPTS =
+  process.env.ALLOW_PUBLIC_PRODUCT_SCRIPTS === 'true'
 
 function toSerializableNumber(value: unknown): number | null {
   if (value == null) return null
@@ -48,37 +44,25 @@ function toIsoDate(value: unknown): string | null {
   if (!value) return null
 
   try {
-    const d = value instanceof Date ? value : new Date(value as any)
+    const d = value instanceof Date ? value : new Date(String(value))
     return Number.isNaN(d.getTime()) ? null : d.toISOString()
   } catch {
     return null
   }
 }
 
-function serializeProduct(product: any) {
-  return {
-    id: product.id,
-    name: product.name,
-    slug: product.slug,
-    excerpt: product.excerpt ?? null,
-    price: toSerializableNumber(product.price),
-    coverImage: product.coverImage ?? null,
-    images: product.images ?? null,
-    publishedAt: toIsoDate(product.publishedAt),
-    createdAt: toIsoDate(product.createdAt),
-    updatedAt: toIsoDate(product.updatedAt),
-    gjsComponents: product.gjsComponents ?? null,
-    gjsStyles: product.gjsStyles ?? null,
-    gjsHtml: product.gjsHtml ?? null,
-    gjsJs: product.gjsJs ?? null,
-    category: product.category
-      ? {
-          id: product.category.id,
-          name: product.category.name,
-          slug: product.category.slug ?? null,
-        }
-      : null,
+function decodeIdentifier(value?: string | null) {
+  try {
+    return decodeURIComponent(value ?? '').trim()
+  } catch {
+    return String(value ?? '').trim()
   }
+}
+
+function isUuid(value: string) {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
+    value
+  )
 }
 
 const publicProductSelect = {
@@ -103,6 +87,36 @@ const publicProductSelect = {
       slug: true,
     },
   },
+} satisfies Prisma.ProductSelect
+
+type PublicProduct = Prisma.ProductGetPayload<{
+  select: typeof publicProductSelect
+}>
+
+function serializeProduct(product: PublicProduct) {
+  return {
+    id: product.id,
+    name: product.name,
+    slug: product.slug,
+    excerpt: product.excerpt ?? null,
+    price: toSerializableNumber(product.price),
+    coverImage: product.coverImage ?? null,
+    images: product.images ?? null,
+    publishedAt: toIsoDate(product.publishedAt),
+    createdAt: toIsoDate(product.createdAt),
+    updatedAt: toIsoDate(product.updatedAt),
+    gjsComponents: product.gjsComponents ?? null,
+    gjsStyles: product.gjsStyles ?? null,
+    gjsHtml: product.gjsHtml ?? null,
+    gjsJs: ALLOW_PUBLIC_PRODUCT_SCRIPTS ? product.gjsJs ?? null : null,
+    category: product.category
+      ? {
+          id: product.category.id,
+          name: product.category.name,
+          slug: product.category.slug ?? null,
+        }
+      : null,
+  }
 }
 
 export async function GET(
@@ -111,7 +125,7 @@ export async function GET(
 ) {
   try {
     const { slugOrId: rawSlugOrId } = await params
-    const slugOrId = decodeURIComponent(rawSlugOrId ?? '').trim()
+    const slugOrId = decodeIdentifier(rawSlugOrId)
 
     if (!slugOrId) {
       return NextResponse.json(
@@ -122,10 +136,9 @@ export async function GET(
 
     const now = new Date()
 
-    let product: any = null
-
-    product = await prisma.product.findFirst({
+    let product = await prisma.product.findFirst({
       where: {
+        status: 'PUBLISHED',
         slug: {
           equals: slugOrId,
           mode: 'insensitive',
@@ -138,9 +151,10 @@ export async function GET(
       select: publicProductSelect,
     })
 
-    if (!product) {
+    if (!product && isUuid(slugOrId)) {
       product = await prisma.product.findFirst({
         where: {
+          status: 'PUBLISHED',
           id: slugOrId,
           publishedAt: {
             not: null,

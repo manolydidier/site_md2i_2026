@@ -30,25 +30,33 @@ type ContactApiResponse = {
 
 const contactCardDefs = [
   {
-    icon: <IconBuilding />,
+    image: '/team/direction.jpg',
+    fallback: 'DG',
+    name: 'Responsable direction générale',
     key: 'direction',
     email: 'direction@md2i.com',
     phone: '+261 34 00 000 00',
   },
   {
-    icon: <IconSales />,
+    image: '/team/commercial.jpg',
+    fallback: 'CO',
+    name: 'Responsable commercial',
     key: 'sales',
     email: 'contact@md2i.com',
     phone: '+261 34 00 000 10',
   },
   {
-    icon: <IconSupport />,
+    image: '/team/support.jpg',
+    fallback: 'SP',
+    name: 'Responsable support & formation',
     key: 'support',
     email: 'support@md2i.com',
     phone: '+261 34 00 000 03',
   },
   {
-    icon: <IconCode />,
+    image: '/team/technique.jpg',
+    fallback: 'IT',
+    name: 'Responsable technique',
     key: 'technical',
     email: 'dev@md2i.com',
     phone: '+261 34 00 000 02',
@@ -58,13 +66,13 @@ const contactCardDefs = [
 const officeDefs = [
   {
     city: 'Antananarivo',
-    flag: '🇲🇬',
+    flag: 'MG',
     roleKey: 'contactPage.offices.operational',
     addressKey: 'contactPage.offices.tanaAddress',
   },
   {
     city: 'Paris',
-    flag: '🇫🇷',
+    flag: 'FR',
     roleKey: 'contactPage.offices.institutional',
     addressKey: 'contactPage.offices.parisAddress',
   },
@@ -203,7 +211,10 @@ export default function ContactPage() {
     () =>
       contactCardDefs.map((card) => ({
         ...card,
-        title: t(`contactPage.cards.${card.key}.title`),
+        name: t(`contactPage.cards.${card.key}.name`, {
+          defaultValue: card.name,
+        }),
+        role: t(`contactPage.cards.${card.key}.title`),
         description: t(`contactPage.cards.${card.key}.description`),
         tag: t(`contactPage.cards.${card.key}.tag`),
       })),
@@ -377,7 +388,9 @@ export default function ContactPage() {
                   className={`${styles.btn} ${styles.btnPrimary}`}
                 >
                   {t('contactPage.ctaMessage')}
-                  <span aria-hidden>→</span>
+                  <span aria-hidden>
+                    <IconArrowRight />
+                  </span>
                 </a>
 
                 <Link
@@ -445,38 +458,62 @@ export default function ContactPage() {
             </div>
           </div>
 
-          <div className={styles.grid4}>
+          <div className={styles.teamGrid}>
             {contactCards.map((card, index) => (
               <article
-                key={card.title}
-                className={`${styles.cCard} ${
-                  hovered === index ? styles.cCardHov : ''
+                key={card.key}
+                className={`${styles.teamCard} ${
+                  hovered === index ? styles.teamCardHov : ''
                 }`}
                 onMouseEnter={() => setHovered(index)}
                 onMouseLeave={() => setHovered(null)}
                 style={{ '--delay': `${index * 80}ms` } as CSSProperties}
               >
-                <span className={styles.cCardBar} aria-hidden />
+                <span className={styles.teamCardBar} aria-hidden />
 
-                <div className={styles.cardTop}>
-                  <div className={styles.cIcon}>{card.icon}</div>
-                  <span className={styles.cardTag}>{card.tag}</span>
+                <div className={styles.teamPhotoWrap}>
+                  <TeamPhoto
+                    src={card.image}
+                    alt={card.name}
+                    fallback={card.fallback}
+                  />
                 </div>
 
-                <h3 className={styles.cTitle}>{card.title}</h3>
-                <p className={styles.cDesc}>{card.description}</p>
+                <div className={styles.teamCardBody}>
+                  <span className={styles.teamTag}>{card.tag}</span>
 
-                <div className={styles.cLinks}>
-                  <a href={`mailto:${card.email}`} className={styles.cLink}>
-                    <IconMail /> {card.email}
-                  </a>
+                  <h3 className={styles.teamName}>{card.name}</h3>
 
-                  <a
-                    href={`tel:${card.phone.replace(/\s/g, '')}`}
-                    className={styles.cLink}
+                  <p className={styles.teamRole}>{card.role}</p>
+                  <p className={styles.teamDesc}>{card.description}</p>
+
+                  <div
+                    className={styles.teamContactList}
+                    aria-label={`Coordonnées de ${card.name}`}
                   >
-                    <IconPhone /> {card.phone}
-                  </a>
+                    <a href={`mailto:${card.email}`} className={styles.teamContactLink}>
+                      <span className={styles.teamContactIcon} aria-hidden>
+                        <IconMail />
+                      </span>
+                      <span>
+                        <small>Email</small>
+                        <strong>{card.email}</strong>
+                      </span>
+                    </a>
+
+                    <a
+                      href={`tel:${card.phone.replace(/\s/g, '')}`}
+                      className={styles.teamContactLink}
+                    >
+                      <span className={styles.teamContactIcon} aria-hidden>
+                        <IconPhone />
+                      </span>
+                      <span>
+                        <small>Téléphone</small>
+                        <strong>{card.phone}</strong>
+                      </span>
+                    </a>
+                  </div>
                 </div>
               </article>
             ))}
@@ -504,7 +541,9 @@ export default function ContactPage() {
 
               {sent ? (
                 <div className={styles.successBox}>
-                  <div className={styles.successCheck}>✓</div>
+                  <div className={styles.successCheck}>
+                    <IconCheck />
+                  </div>
                   <strong>{t('contactPage.form.successTitle')}</strong>
                   <p>
                     {t('contactPage.form.successText')}
@@ -663,7 +702,7 @@ export default function ContactPage() {
                       </select>
 
                       <span aria-hidden className={styles.selArrow}>
-                        ▾
+                        <IconChevronDown />
                       </span>
                     </div>
                   </F>
@@ -716,7 +755,10 @@ export default function ContactPage() {
                         </>
                       ) : (
                         <>
-                          {t('contactPage.form.submit')} <span aria-hidden>→</span>
+                          {t('contactPage.form.submit')}
+                          <span aria-hidden>
+                            <IconArrowRight />
+                          </span>
                         </>
                       )}
                     </button>
@@ -769,7 +811,7 @@ export default function ContactPage() {
                     <li key={item}>
                       <a href="#contact-form" className={styles.qItem}>
                         <span className={styles.qArrow} aria-hidden>
-                          ↗
+                          <IconArrowUpRight />
                         </span>
                         {item}
                       </a>
@@ -801,6 +843,34 @@ export default function ContactPage() {
 
 function Pill({ children }: { children: ReactNode }) {
   return <span className={styles.pill}>{children}</span>
+}
+
+function TeamPhoto({
+  src,
+  alt,
+  fallback,
+}: {
+  src: string
+  alt: string
+  fallback: string
+}) {
+  const [imageError, setImageError] = useState(false)
+
+  return (
+    <div className={styles.teamPhoto}>
+      {!imageError ? (
+        <img
+          src={src}
+          alt={alt}
+          loading="lazy"
+          decoding="async"
+          onError={() => setImageError(true)}
+        />
+      ) : (
+        <span>{fallback}</span>
+      )}
+    </div>
+  )
 }
 
 function F({
@@ -840,49 +910,6 @@ function F({
 
       {children}
     </label>
-  )
-}
-
-const ico = (children: ReactNode) => (
-  <svg
-    width="21"
-    height="21"
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="1.85"
-    strokeLinecap="round"
-    strokeLinejoin="round"
-  >
-    {children}
-  </svg>
-)
-
-function IconBuilding() {
-  return ico(
-    <>
-      <rect x="3" y="3" width="18" height="18" rx="2" />
-      <path d="M9 3v18M15 3v18M3 9h18M3 15h18" />
-    </>
-  )
-}
-
-function IconSales() {
-  return ico(<polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />)
-}
-
-function IconSupport() {
-  return ico(
-    <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
-  )
-}
-
-function IconCode() {
-  return ico(
-    <>
-      <polyline points="16 18 22 12 16 6" />
-      <polyline points="8 6 2 12 8 18" />
-    </>
   )
 }
 
@@ -933,4 +960,30 @@ function IconPin() {
       <circle cx="12" cy="10" r="3" />
     </svg>
   )
+}
+
+function IconArrowRight() {
+  return sico(
+    <>
+      <path d="M5 12h14" />
+      <path d="m13 6 6 6-6 6" />
+    </>
+  )
+}
+
+function IconArrowUpRight() {
+  return sico(
+    <>
+      <path d="M7 17 17 7" />
+      <path d="M7 7h10v10" />
+    </>
+  )
+}
+
+function IconChevronDown() {
+  return sico(<path d="m6 9 6 6 6-6" />)
+}
+
+function IconCheck() {
+  return sico(<path d="m5 12 4 4L19 6" />)
 }

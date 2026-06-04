@@ -1,0 +1,1654 @@
+<!doctype html>
+<html lang="fr" data-theme="light">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta
+      name="description"
+      content="SARA Ultimate, solution de comptabilité budgétaire, comptabilité générale et fonctions spécifiques FED 11."
+    />
+    <title>SARA Ultimate - Compatible FED 11</title>
+    <style>
+      :root {
+        color-scheme: light;
+        --bg: #f7fafb;
+        --bg-2: #e8f4f5;
+        --ink: #101724;
+        --muted: #68727f;
+        --panel: rgba(255, 255, 255, 0.72);
+        --panel-2: rgba(255, 255, 255, 0.94);
+        --line: rgba(16, 23, 36, 0.13);
+        --dominant: #0f6f8f;
+        --red: var(--dominant);
+        --orange: var(--dominant);
+        --cyan: var(--dominant);
+        --blue: var(--dominant);
+        --pink: var(--dominant);
+        --violet: var(--dominant);
+        --green: var(--dominant);
+        --accent: var(--dominant);
+        --accent-ink: #ffffff;
+        --shadow: 0 30px 90px rgba(23, 47, 68, 0.16);
+        --radius: 8px;
+        --max: 1200px;
+        --mx: 60%;
+        --my: 18%;
+      }
+
+      html[data-theme="dark"] {
+        color-scheme: dark;
+        --bg: #070b12;
+        --bg-2: #101a22;
+        --ink: #f7fbff;
+        --muted: #a5b1bd;
+        --panel: rgba(255, 255, 255, 0.075);
+        --panel-2: rgba(255, 255, 255, 0.12);
+        --line: rgba(255, 255, 255, 0.15);
+        --dominant: #54c7ee;
+        --accent-ink: #06121a;
+        --shadow: 0 32px 90px rgba(0, 0, 0, 0.34);
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      html {
+        scroll-behavior: smooth;
+      }
+
+      body {
+        margin: 0;
+        overflow-x: hidden;
+        color: var(--ink);
+        background:
+          radial-gradient(circle at var(--mx) var(--my), color-mix(in srgb, var(--cyan) 24%, transparent), transparent 34rem),
+          radial-gradient(circle at 12% 70%, color-mix(in srgb, var(--green) 20%, transparent), transparent 30rem),
+          linear-gradient(135deg, var(--bg) 0%, var(--bg-2) 100%);
+        font-family:
+          Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        line-height: 1.55;
+        transition: background 500ms ease, color 280ms ease;
+      }
+
+      body::before {
+        position: fixed;
+        inset: 0;
+        z-index: -3;
+        content: "";
+        pointer-events: none;
+        opacity: 0.22;
+        background-image:
+          linear-gradient(var(--line) 1px, transparent 1px),
+          linear-gradient(90deg, var(--line) 1px, transparent 1px);
+        background-size: 86px 86px;
+        mask-image: radial-gradient(circle at 54% 10%, #000 0, transparent 72%);
+      }
+
+      body::after {
+        position: fixed;
+        inset: 0;
+        z-index: -2;
+        content: "";
+        pointer-events: none;
+        opacity: 0.1;
+        background-image: radial-gradient(currentColor 0.8px, transparent 0.8px);
+        background-size: 18px 18px;
+        mix-blend-mode: soft-light;
+      }
+
+      a {
+        color: inherit;
+        text-decoration: none;
+      }
+
+      button,
+      a,
+      input {
+        -webkit-tap-highlight-color: transparent;
+      }
+
+      button:focus-visible,
+      a:focus-visible {
+        outline: 3px solid var(--orange);
+        outline-offset: 4px;
+      }
+
+      .sr-only {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        padding: 0;
+        margin: -1px;
+        overflow: hidden;
+        clip: rect(0, 0, 0, 0);
+        white-space: nowrap;
+        border: 0;
+      }
+
+      .cursor-dot,
+      .cursor-ring {
+        position: fixed;
+        top: 0;
+        left: 0;
+        z-index: 999;
+        pointer-events: none;
+        opacity: 0;
+        transform: translate3d(-50%, -50%, 0);
+      }
+
+      .cursor-dot {
+        width: 8px;
+        height: 8px;
+        background: var(--orange);
+        border-radius: 50%;
+      }
+
+      .cursor-ring {
+        width: 36px;
+        height: 36px;
+        border: 1px solid color-mix(in srgb, var(--orange) 78%, transparent);
+        border-radius: 50%;
+        transition: width 160ms ease, height 160ms ease, border-color 160ms ease;
+      }
+
+      body.cursor-ready .cursor-dot,
+      body.cursor-ready .cursor-ring {
+        opacity: 1;
+      }
+
+      body.cursor-active .cursor-ring {
+        width: 56px;
+        height: 56px;
+        border-color: var(--cyan);
+      }
+
+      .shell {
+        width: min(var(--max), calc(100% - 40px));
+        margin: 0 auto;
+      }
+
+      .topbar {
+        position: sticky;
+        top: 10px;
+        z-index: 80;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 16px;
+        min-height: 74px;
+        width: min(1240px, calc(100% - 28px));
+        margin: 10px auto 0;
+        padding: 12px;
+        border: 1px solid var(--line);
+        border-radius: var(--radius);
+        background: color-mix(in srgb, var(--bg) 76%, transparent);
+        backdrop-filter: blur(24px);
+      }
+
+      .brand {
+        display: inline-flex;
+        align-items: center;
+        gap: 12px;
+        min-height: 44px;
+        font-weight: 950;
+      }
+
+      .brand-mark,
+      .globe-mark {
+        display: grid;
+        place-items: center;
+        width: 42px;
+        height: 42px;
+        color: #ffffff;
+        background: var(--red);
+        border-radius: var(--radius);
+        font-size: 0.84rem;
+        font-weight: 950;
+        box-shadow: inset 0 -10px 20px rgba(0, 0, 0, 0.18);
+      }
+
+      .nav {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+      }
+
+      .nav a {
+        display: inline-flex;
+        align-items: center;
+        min-height: 44px;
+        padding: 0 13px;
+        color: var(--muted);
+        border-radius: var(--radius);
+        font-size: 0.92rem;
+        font-weight: 760;
+        transition: color 180ms ease, background 180ms ease;
+      }
+
+      .nav a:hover {
+        color: var(--ink);
+        background: var(--panel);
+      }
+
+      .theme-toggle,
+      .menu-btn {
+        display: inline-grid;
+        place-items: center;
+        width: 44px;
+        height: 44px;
+        cursor: pointer;
+        color: var(--ink);
+        background: var(--panel);
+        border: 1px solid var(--line);
+        border-radius: var(--radius);
+      }
+
+      .theme-toggle svg,
+      .menu-btn svg {
+        width: 21px;
+        height: 21px;
+        fill: none;
+        stroke: currentColor;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+        stroke-width: 2;
+      }
+
+      .menu-btn {
+        display: none;
+      }
+
+      .hero {
+        position: relative;
+        display: grid;
+        grid-template-columns: minmax(0, 0.88fr) minmax(420px, 1.12fr);
+        gap: clamp(28px, 5vw, 80px);
+        align-items: center;
+        min-height: calc(100vh - 94px);
+        padding: clamp(60px, 8vw, 108px) 0 56px;
+        overflow: hidden;
+      }
+
+      .hero::before {
+        position: absolute;
+        inset: 2% -8% auto auto;
+        z-index: -1;
+        width: min(64vw, 820px);
+        aspect-ratio: 1.5;
+        content: "";
+        background:
+          linear-gradient(135deg, color-mix(in srgb, var(--cyan) 42%, transparent), transparent 42%),
+          linear-gradient(20deg, color-mix(in srgb, var(--green) 42%, transparent), transparent 54%),
+          linear-gradient(155deg, color-mix(in srgb, var(--blue) 38%, transparent), transparent 62%);
+        clip-path: polygon(0 30%, 100% 0, 86% 66%, 8% 100%);
+        filter: blur(2px);
+        opacity: 0.85;
+        animation: waveMorph 14s ease-in-out infinite alternate;
+      }
+
+      @keyframes waveMorph {
+        to {
+          clip-path: polygon(6% 8%, 100% 24%, 72% 100%, 0 72%);
+          transform: translate3d(-3%, 4%, 0) rotate(-3deg);
+        }
+      }
+
+      .eyebrow {
+        display: inline-flex;
+        align-items: center;
+        gap: 10px;
+        min-height: 34px;
+        margin: 0 0 18px;
+        color: var(--muted);
+        font-size: 0.76rem;
+        font-weight: 850;
+        letter-spacing: 0.15em;
+        text-transform: uppercase;
+      }
+
+      .eyebrow::before {
+        width: 34px;
+        height: 1px;
+        content: "";
+        background: var(--orange);
+      }
+
+      h1,
+      h2,
+      h3,
+      p {
+        overflow-wrap: anywhere;
+      }
+
+      h1 {
+        min-height: 2.18em;
+        margin: 0;
+        font-size: clamp(3.7rem, 9.4vw, 8.9rem);
+        line-height: 0.78;
+        letter-spacing: -0.06em;
+      }
+
+      .brand-red {
+        color: var(--red);
+      }
+
+      .typing-caret {
+        display: inline-block;
+        width: 0.08em;
+        height: 0.72em;
+        margin-left: 0.05em;
+        background: var(--orange);
+        transform: translateY(0.08em);
+        animation: blink 900ms steps(1) infinite;
+      }
+
+      @keyframes blink {
+        50% {
+          opacity: 0;
+        }
+      }
+
+      .hero-lead {
+        max-width: 660px;
+        margin: 26px 0 0;
+        color: var(--muted);
+        font-size: clamp(1.03rem, 2vw, 1.24rem);
+      }
+
+      .hero-actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px;
+        margin-top: 34px;
+      }
+
+      .button {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 10px;
+        min-height: 50px;
+        padding: 0 18px;
+        border: 1px solid var(--line);
+        border-radius: var(--radius);
+        font-weight: 850;
+        transition: transform 180ms ease, border-color 180ms ease, background 180ms ease, color 180ms ease;
+      }
+
+      .button svg {
+        width: 20px;
+        height: 20px;
+        fill: none;
+        stroke: currentColor;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+        stroke-width: 2;
+      }
+
+      .button:hover {
+        transform: translateY(-2px);
+      }
+
+      .button.primary {
+        color: var(--accent-ink);
+        background: var(--orange);
+        border-color: var(--orange);
+      }
+
+      .button.ghost {
+        color: var(--ink);
+        background: var(--panel);
+      }
+
+      .button.ghost:hover {
+        border-color: color-mix(in srgb, var(--cyan) 72%, var(--line));
+      }
+
+      .fed-strip {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 10px;
+        max-width: 680px;
+        margin: 34px 0 0;
+      }
+
+      .fed-strip div {
+        min-height: 98px;
+        padding: 14px;
+        border: 1px solid var(--line);
+        border-radius: var(--radius);
+        background: var(--panel);
+        backdrop-filter: blur(18px);
+      }
+
+      .fed-strip strong {
+        display: block;
+        color: var(--orange);
+        font-size: 1.12rem;
+      }
+
+      .fed-strip span {
+        display: block;
+        margin-top: 4px;
+        color: var(--muted);
+        font-size: 0.84rem;
+      }
+
+      .product-stage {
+        min-width: 0;
+        perspective: 1300px;
+      }
+
+      .ultimate-console {
+        position: relative;
+        min-height: 600px;
+        overflow: hidden;
+        border: 1px solid var(--line);
+        border-radius: var(--radius);
+        background:
+          linear-gradient(135deg, var(--panel-2), color-mix(in srgb, var(--panel) 72%, transparent)),
+          radial-gradient(circle at 28% 18%, color-mix(in srgb, var(--orange) 22%, transparent), transparent 34%);
+        box-shadow: var(--shadow);
+        backdrop-filter: blur(24px);
+        transform: rotateX(var(--rx, 0deg)) rotateY(var(--ry, 0deg));
+        transform-style: preserve-3d;
+        transition: transform 240ms ease;
+      }
+
+      .console-top {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        min-height: 52px;
+        padding: 0 16px;
+        border-bottom: 1px solid var(--line);
+      }
+
+      .console-top span {
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+      }
+
+      .console-top span:nth-child(1) {
+        background: var(--red);
+      }
+
+      .console-top span:nth-child(2) {
+        background: var(--orange);
+      }
+
+      .console-top span:nth-child(3) {
+        background: var(--green);
+      }
+
+      .console-top strong {
+        margin-left: auto;
+        color: var(--muted);
+        font-size: 0.86rem;
+      }
+
+      .orbit {
+        position: absolute;
+        inset: 80px 24px 24px;
+        transform-style: preserve-3d;
+      }
+
+      .spine {
+        position: absolute;
+        top: 0;
+        bottom: 0;
+        left: 50%;
+        width: 3px;
+        background: linear-gradient(var(--cyan), var(--orange), var(--pink));
+        border-radius: 999px;
+        transform: translateX(-50%);
+      }
+
+      .spine::before,
+      .spine::after {
+        position: absolute;
+        left: 50%;
+        width: 190px;
+        height: 190px;
+        content: "";
+        border: 1px solid var(--line);
+        border-radius: 50%;
+        transform: translateX(-50%);
+      }
+
+      .spine::before {
+        top: 18%;
+      }
+
+      .spine::after {
+        bottom: 10%;
+      }
+
+      .center-badge {
+        position: absolute;
+        left: 50%;
+        bottom: 7%;
+        display: grid;
+        place-items: center;
+        width: 164px;
+        height: 164px;
+        color: #ffffff;
+        background:
+          radial-gradient(circle at 35% 25%, color-mix(in srgb, var(--accent) 48%, #ffffff), transparent 35%),
+          linear-gradient(135deg, color-mix(in srgb, var(--accent) 82%, var(--bg)), color-mix(in srgb, var(--accent) 46%, var(--bg)));
+        border-radius: 50%;
+        box-shadow: var(--shadow);
+        transform: translateX(-50%) translateZ(50px);
+      }
+
+      .center-badge b {
+        color: var(--red);
+        font-size: 2.4rem;
+        line-height: 0.8;
+        text-shadow: 0 2px 0 #ffffff, 0 4px 0 rgba(0, 0, 0, 0.32);
+      }
+
+      .center-badge span {
+        color: var(--orange);
+        font-size: 1.2rem;
+        font-weight: 950;
+        text-shadow: 0 2px 0 #ffffff, 0 4px 0 rgba(0, 0, 0, 0.28);
+      }
+
+      .node {
+        position: absolute;
+        display: grid;
+        gap: 4px;
+        width: 150px;
+        min-height: 92px;
+        padding: 12px;
+        border: 1px solid var(--line);
+        border-radius: var(--radius);
+        background: color-mix(in srgb, var(--panel-2) 86%, transparent);
+        box-shadow: var(--shadow);
+        transform: translateZ(32px);
+        animation: floatNode 6s ease-in-out infinite;
+      }
+
+      .node::before {
+        position: absolute;
+        top: 50%;
+        width: var(--wire);
+        height: 2px;
+        content: "";
+        background: color-mix(in srgb, currentColor 38%, transparent);
+      }
+
+      .node.left::before {
+        right: -1px;
+        transform: translate(100%, -50%);
+      }
+
+      .node.right::before {
+        left: -1px;
+        transform: translate(-100%, -50%);
+      }
+
+      .node b {
+        color: currentColor;
+        font-size: 0.82rem;
+        text-transform: uppercase;
+      }
+
+      .node span {
+        color: var(--muted);
+        font-size: 0.78rem;
+      }
+
+      .node svg {
+        width: 26px;
+        height: 26px;
+        fill: none;
+        stroke: currentColor;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+        stroke-width: 2;
+      }
+
+      .n1 {
+        top: 2%;
+        right: 2%;
+        color: var(--red);
+        --wire: 134px;
+      }
+
+      .n2 {
+        top: 22%;
+        left: 3%;
+        color: var(--cyan);
+        --wire: 146px;
+        animation-delay: 0.7s;
+      }
+
+      .n3 {
+        top: 26%;
+        right: 8%;
+        color: var(--orange);
+        --wire: 96px;
+        animation-delay: 1.2s;
+      }
+
+      .n4 {
+        top: 50%;
+        left: 0;
+        color: var(--accent);
+        --wire: 160px;
+        animation-delay: 1.7s;
+      }
+
+      .n5 {
+        top: 49%;
+        right: 2%;
+        color: var(--blue);
+        --wire: 126px;
+        animation-delay: 2.1s;
+      }
+
+      .n6 {
+        bottom: 18%;
+        left: 7%;
+        color: var(--pink);
+        --wire: 108px;
+        animation-delay: 2.6s;
+      }
+
+      .n7 {
+        bottom: 20%;
+        right: 1%;
+        color: var(--violet);
+        --wire: 138px;
+        animation-delay: 3s;
+      }
+
+      @keyframes floatNode {
+        50% {
+          transform: translateY(-10px) translateZ(42px);
+        }
+      }
+
+      .ticker {
+        display: grid;
+        grid-template-columns: repeat(5, minmax(0, 1fr));
+        gap: 1px;
+        overflow: hidden;
+        border-block: 1px solid var(--line);
+        background: var(--line);
+      }
+
+      .ticker span {
+        display: grid;
+        place-items: center;
+        min-height: 72px;
+        padding: 12px;
+        color: var(--muted);
+        background: color-mix(in srgb, var(--bg) 86%, transparent);
+        font-size: clamp(0.72rem, 1.1vw, 0.9rem);
+        font-weight: 850;
+        text-align: center;
+        text-transform: uppercase;
+      }
+
+      section {
+        padding: clamp(74px, 10vw, 132px) 0;
+      }
+
+      .section-head {
+        display: grid;
+        grid-template-columns: minmax(0, 0.82fr) minmax(280px, 0.5fr);
+        gap: 28px;
+        align-items: end;
+        margin-bottom: 42px;
+      }
+
+      .section-head h2 {
+        margin: 0;
+        font-size: clamp(2.4rem, 6.4vw, 6.6rem);
+        line-height: 0.9;
+        letter-spacing: -0.06em;
+      }
+
+      .section-head p {
+        margin: 0;
+        color: var(--muted);
+      }
+
+      .module-grid {
+        display: grid;
+        grid-template-columns: repeat(12, 1fr);
+        gap: 16px;
+      }
+
+      .module-card {
+        position: relative;
+        min-height: 410px;
+        overflow: hidden;
+        padding: 22px;
+        border: 1px solid var(--line);
+        border-radius: var(--radius);
+        background: var(--panel);
+        box-shadow: var(--shadow);
+        transform-style: preserve-3d;
+        transition: transform 220ms ease, border-color 220ms ease, background 220ms ease;
+        backdrop-filter: blur(18px);
+      }
+
+      .module-card:nth-child(1),
+      .module-card:nth-child(2),
+      .module-card:nth-child(3) {
+        grid-column: span 4;
+      }
+
+      .module-card:nth-child(4),
+      .module-card:nth-child(5) {
+        grid-column: span 6;
+      }
+
+      .module-card:nth-child(6) {
+        grid-column: span 7;
+      }
+
+      .module-card:nth-child(7) {
+        grid-column: span 5;
+        margin-top: 54px;
+      }
+
+      .module-card::before {
+        position: absolute;
+        inset: -1px;
+        content: "";
+        opacity: 0;
+        background: radial-gradient(circle at var(--card-x, 50%) var(--card-y, 20%), color-mix(in srgb, var(--card-color, var(--orange)) 44%, transparent), transparent 40%);
+        transition: opacity 220ms ease;
+      }
+
+      .module-card:hover,
+      .module-card:focus-within {
+        border-color: color-mix(in srgb, var(--card-color, var(--orange)) 70%, var(--line));
+        background: var(--panel-2);
+      }
+
+      .module-card:hover::before,
+      .module-card:focus-within::before {
+        opacity: 1;
+      }
+
+      .module-card > * {
+        position: relative;
+        z-index: 1;
+      }
+
+      .card-top {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+      }
+
+      .pill {
+        display: inline-flex;
+        align-items: center;
+        min-height: 32px;
+        padding: 0 10px;
+        color: #ffffff;
+        background: var(--card-color, var(--orange));
+        border-radius: 999px;
+        font-size: 0.72rem;
+        font-weight: 900;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+      }
+
+      .card-number {
+        color: var(--muted);
+        font-variant-numeric: tabular-nums;
+        font-weight: 900;
+      }
+
+      .module-card h3 {
+        max-width: 13ch;
+        margin: 34px 0 0;
+        color: var(--card-color, var(--orange));
+        font-size: clamp(1.9rem, 3.8vw, 3.9rem);
+        line-height: 0.94;
+        letter-spacing: -0.055em;
+      }
+
+      .module-card p {
+        max-width: 58ch;
+        margin: 18px 0 0;
+        color: var(--muted);
+      }
+
+      .check-list {
+        display: grid;
+        gap: 8px;
+        padding: 0;
+        margin: 22px 0 0;
+        list-style: none;
+      }
+
+      .check-list li {
+        display: grid;
+        grid-template-columns: 18px 18px 1fr;
+        gap: 8px;
+        align-items: start;
+        color: var(--muted);
+        font-size: 0.92rem;
+      }
+
+      .box {
+        display: grid;
+        place-items: center;
+        width: 18px;
+        height: 18px;
+        border: 1px solid currentColor;
+        border-radius: 4px;
+        font-size: 0.72rem;
+        font-weight: 900;
+      }
+
+      .dp {
+        color: var(--red);
+      }
+
+      .on {
+        color: var(--accent);
+      }
+
+      .details {
+        position: relative;
+        overflow: hidden;
+      }
+
+      .detail-panel {
+        display: grid;
+        grid-template-columns: minmax(280px, 0.42fr) minmax(0, 1fr);
+        gap: 16px;
+        align-items: stretch;
+      }
+
+      .detail-controls,
+      .detail-copy {
+        border: 1px solid var(--line);
+        border-radius: var(--radius);
+        background: var(--panel);
+        box-shadow: var(--shadow);
+        backdrop-filter: blur(18px);
+      }
+
+      .detail-controls {
+        display: grid;
+        gap: 10px;
+        align-content: start;
+        padding: 14px;
+      }
+
+      .detail-tab {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        min-height: 58px;
+        padding: 0 14px;
+        cursor: pointer;
+        color: var(--muted);
+        background: color-mix(in srgb, var(--bg) 38%, transparent);
+        border: 1px solid var(--line);
+        border-radius: var(--radius);
+        font: inherit;
+        font-weight: 850;
+        text-align: left;
+        transition: color 180ms ease, background 180ms ease, border-color 180ms ease;
+      }
+
+      .detail-tab:hover,
+      .detail-tab.active {
+        color: var(--ink);
+        border-color: color-mix(in srgb, var(--orange) 72%, var(--line));
+        background: var(--panel-2);
+      }
+
+      .detail-tab span {
+        color: var(--orange);
+      }
+
+      .detail-copy {
+        min-height: 430px;
+        padding: clamp(24px, 5vw, 46px);
+      }
+
+      .detail-content[hidden] {
+        display: none;
+      }
+
+      .detail-copy h2 {
+        max-width: 12ch;
+        margin: 0;
+        font-size: clamp(2.5rem, 6vw, 5.8rem);
+        line-height: 0.9;
+        letter-spacing: -0.06em;
+      }
+
+      .detail-copy p {
+        max-width: 900px;
+        color: var(--muted);
+      }
+
+      .legend {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px;
+        margin-top: 24px;
+      }
+
+      .legend span {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        min-height: 40px;
+        padding: 0 12px;
+        border: 1px solid var(--line);
+        border-radius: var(--radius);
+        background: color-mix(in srgb, var(--bg) 38%, transparent);
+        font-weight: 850;
+      }
+
+      .workflow {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 1px;
+        overflow: hidden;
+        border: 1px solid var(--line);
+        border-radius: var(--radius);
+        background: var(--line);
+      }
+
+      .workflow article {
+        min-height: 250px;
+        padding: 22px;
+        background: color-mix(in srgb, var(--bg) 84%, var(--panel));
+      }
+
+      .workflow span {
+        display: inline-grid;
+        place-items: center;
+        width: 46px;
+        height: 46px;
+        color: #ffffff;
+        background: var(--orange);
+        border-radius: var(--radius);
+        font-weight: 950;
+      }
+
+      .workflow h3 {
+        margin: 70px 0 0;
+        font-size: clamp(1.4rem, 2.4vw, 2.2rem);
+        line-height: 1;
+        letter-spacing: -0.04em;
+      }
+
+      .workflow p {
+        margin: 12px 0 0;
+        color: var(--muted);
+      }
+
+      .cta {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto;
+        gap: 28px;
+        align-items: center;
+        margin-bottom: 74px;
+        padding: clamp(28px, 6vw, 60px);
+        overflow: hidden;
+        border: 1px solid var(--line);
+        border-radius: var(--radius);
+        background: var(--panel-2);
+        box-shadow: var(--shadow);
+      }
+
+      .cta h2 {
+        max-width: 900px;
+        margin: 0;
+        font-size: clamp(2.4rem, 6vw, 6rem);
+        line-height: 0.9;
+        letter-spacing: -0.06em;
+      }
+
+      .cta p {
+        max-width: 760px;
+        margin: 18px 0 0;
+        color: var(--muted);
+      }
+
+      .footer {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 20px;
+        min-height: 92px;
+        color: var(--muted);
+        border-top: 1px solid var(--line);
+      }
+
+      .socials {
+        display: flex;
+        gap: 10px;
+      }
+
+      .socials a {
+        display: grid;
+        place-items: center;
+        width: 42px;
+        height: 42px;
+        border: 1px solid var(--line);
+        border-radius: 50%;
+        transition: transform 180ms ease, border-color 180ms ease;
+      }
+
+      .socials a:hover {
+        transform: translateY(-2px);
+        border-color: var(--orange);
+      }
+
+      .socials svg {
+        width: 18px;
+        height: 18px;
+        fill: none;
+        stroke: currentColor;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+        stroke-width: 2;
+      }
+
+      [data-reveal] {
+        opacity: 0;
+        transform: translateY(28px);
+        transition: opacity 700ms ease, transform 700ms cubic-bezier(0.2, 0.8, 0.2, 1);
+        transition-delay: var(--delay, 0ms);
+      }
+
+      [data-reveal].is-visible {
+        opacity: 1;
+        transform: translateY(0);
+      }
+
+      @media (hover: none), (pointer: coarse) {
+        .cursor-dot,
+        .cursor-ring {
+          display: none;
+        }
+      }
+
+      @media (max-width: 1080px) {
+        .hero,
+        .section-head,
+        .detail-panel,
+        .cta {
+          grid-template-columns: 1fr;
+        }
+
+        .hero {
+          min-height: auto;
+        }
+
+        .ultimate-console {
+          max-width: 760px;
+          margin: 0 auto;
+        }
+
+        .module-card,
+        .module-card:nth-child(n) {
+          grid-column: 1 / -1;
+          margin-top: 0;
+        }
+
+        .workflow {
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+      }
+
+      @media (max-width: 760px) {
+        .shell {
+          width: min(100% - 28px, var(--max));
+        }
+
+        .topbar {
+          top: 6px;
+          width: calc(100% - 20px);
+        }
+
+        .nav {
+          position: fixed;
+          inset: 88px 10px auto;
+          display: grid;
+          gap: 8px;
+          padding: 12px;
+          border: 1px solid var(--line);
+          border-radius: var(--radius);
+          background: color-mix(in srgb, var(--bg) 92%, transparent);
+          backdrop-filter: blur(24px);
+          transform: translateY(-12px);
+          opacity: 0;
+          pointer-events: none;
+          transition: opacity 180ms ease, transform 180ms ease;
+        }
+
+        .nav.is-open {
+          transform: translateY(0);
+          opacity: 1;
+          pointer-events: auto;
+        }
+
+        .nav a {
+          justify-content: center;
+        }
+
+        .menu-btn {
+          display: inline-grid;
+        }
+
+        h1 {
+          min-height: 2.2em;
+          font-size: clamp(3.2rem, 18vw, 5.8rem);
+        }
+
+        .hero-actions,
+        .button {
+          width: 100%;
+        }
+
+        .fed-strip,
+        .ticker,
+        .workflow {
+          grid-template-columns: 1fr;
+        }
+
+        .ultimate-console {
+          min-height: 760px;
+        }
+
+        .orbit {
+          inset: 74px 12px 18px;
+        }
+
+        .node {
+          width: min(45vw, 160px);
+          animation: none;
+        }
+
+        .node::before {
+          display: none;
+        }
+
+        .n1,
+        .n3,
+        .n5,
+        .n7 {
+          right: 0;
+        }
+
+        .n2,
+        .n4,
+        .n6 {
+          left: 0;
+        }
+
+        .center-badge {
+          width: 132px;
+          height: 132px;
+        }
+
+        .module-card {
+          min-height: 520px;
+        }
+
+        .footer {
+          align-items: flex-start;
+          flex-direction: column;
+          padding: 22px 0;
+        }
+      }
+
+      @media (max-width: 460px) {
+        .brand span:last-child {
+          display: none;
+        }
+
+        .ultimate-console {
+          min-height: 820px;
+        }
+
+        .node {
+          width: 148px;
+          padding: 10px;
+        }
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        *,
+        *::before,
+        *::after {
+          scroll-behavior: auto !important;
+          animation-duration: 0.001ms !important;
+          animation-iteration-count: 1 !important;
+          transition-duration: 0.001ms !important;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="cursor-dot" aria-hidden="true"></div>
+    <div class="cursor-ring" aria-hidden="true"></div>
+
+    <header class="topbar" data-reveal>
+      <a class="brand" href="#top" aria-label="SARA Ultimate, accueil">
+        <span class="brand-mark" aria-hidden="true">S</span>
+        <span>SARA Ultimate</span>
+      </a>
+
+      <nav class="nav" id="navigation" aria-label="Navigation principale">
+        <a href="#modules">Modules</a>
+        <a href="#details">Détails</a>
+        <a href="#workflow">Workflow</a>
+        <a href="#contact">Contact</a>
+      </nav>
+
+      <button class="theme-toggle" type="button" aria-label="Changer de thème" data-theme-toggle>
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v2m0 14v2M5 12H3m18 0h-2M6.3 6.3 4.9 4.9m14.2 14.2-1.4-1.4m0-11.4 1.4-1.4M4.9 19.1l1.4-1.4M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8Z" /></svg>
+      </button>
+
+      <button class="menu-btn" type="button" aria-label="Ouvrir le menu" aria-controls="navigation" aria-expanded="false" data-menu>
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16" /></svg>
+      </button>
+    </header>
+
+    <main id="top">
+      <section class="hero shell" aria-labelledby="hero-title">
+        <div data-reveal>
+          <p class="eyebrow">Compatible FED 11</p>
+          <h1 id="hero-title"><span data-typewriter>SARA<br />Ultimate</span><span class="typing-caret" aria-hidden="true"></span></h1>
+          <p class="hero-lead">
+            Une suite complète pour les engagements financiers, la comptabilité budgétaire multiannuelle, la comptabilité générale et les fonctions spécifiques FED.
+          </p>
+          <div class="hero-actions">
+            <a class="button primary magnetic" href="#modules">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6" /></svg>
+              Explorer les fonctions
+            </a>
+            <a class="button ghost magnetic" href="#details">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h10" /></svg>
+              Voir les détails
+            </a>
+          </div>
+
+          <div class="fed-strip" aria-label="Résumé SARA Ultimate">
+            <div><strong>7 familles</strong><span>Du budget au tableau de bord.</span></div>
+            <div><strong>FED 11</strong><span>Fonctions spécifiques et états requis.</span></div>
+            <div><strong>DP + ON</strong><span>Lecture par profil et périmètre.</span></div>
+          </div>
+        </div>
+
+        <div class="product-stage" data-reveal style="--delay: 120ms">
+          <div class="ultimate-console" data-console-tilt>
+            <div class="console-top"><span></span><span></span><span></span><strong>SARA Ultimate Console</strong></div>
+            <div class="orbit">
+              <div class="spine" aria-hidden="true"></div>
+              <div class="center-badge" aria-hidden="true"><div><b>SARA</b><br /><span>ULTIMATE</span></div></div>
+
+              <article class="node right n1">
+                <svg viewBox="0 0 24 24"><path d="M4 19V5M8 17v-6M13 17V7M18 17v-9M3 19h18" /></svg>
+                <b>Engagement</b><span>Subventions, devis-programmes, contrats.</span>
+              </article>
+              <article class="node left n2">
+                <svg viewBox="0 0 24 24"><path d="M4 5h16v14H4zM8 9h8M8 13h5" /></svg>
+                <b>Budget</b><span>Suivi engagements et décaissements.</span>
+              </article>
+              <article class="node right n3">
+                <svg viewBox="0 0 24 24"><path d="M6 3h12v18H6zM9 7h6M9 11h6M9 15h3" /></svg>
+                <b>Générale</b><span>Double partie et états comptables.</span>
+              </article>
+              <article class="node left n4">
+                <svg viewBox="0 0 24 24"><path d="M12 3v18M5 8h14M7 21h10M6 8l-3 6h6zM18 8l-3 6h6z" /></svg>
+                <b>Comptable</b><span>Contrats, fournisseurs, inventaires.</span>
+              </article>
+              <article class="node right n5">
+                <svg viewBox="0 0 24 24"><path d="M12 3l7 4v5c0 5-3 8-7 9-4-1-7-4-7-9V7zM9 12l2 2 4-5" /></svg>
+                <b>FED</b><span>Formulaires, états, rapprochements.</span>
+              </article>
+              <article class="node left n6">
+                <svg viewBox="0 0 24 24"><path d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6ZM19.4 15a1.8 1.8 0 0 0 .36 2l.04.04-2.12 2.12-.04-.04a1.8 1.8 0 0 0-2-.36 1.8 1.8 0 0 0-1 1.64V21h-3v-.06a1.8 1.8 0 0 0-1-1.64 1.8 1.8 0 0 0-2 .36l-.04.04-2.12-2.12.04-.04a1.8 1.8 0 0 0 .36-2 1.8 1.8 0 0 0-1.64-1H5v-3h.06a1.8 1.8 0 0 0 1.64-1 1.8 1.8 0 0 0-.36-2L6.3 8.5 8.42 6.38l.04.04a1.8 1.8 0 0 0 2 .36 1.8 1.8 0 0 0 1-1.64V5h3v.06a1.8 1.8 0 0 0 1 1.64 1.8 1.8 0 0 0 2-.36l.04-.04 2.12 2.12-.04.04a1.8 1.8 0 0 0-.36 2 1.8 1.8 0 0 0 1.64 1H21v3h-.06a1.8 1.8 0 0 0-1.54 1.54Z" /></svg>
+                <b>Paramètres</b><span>Profils, validations, exports, sauvegarde.</span>
+              </article>
+              <article class="node right n7">
+                <svg viewBox="0 0 24 24"><path d="M4 19V5M8 17v-4M12 17V9M16 17v-6M20 17V7M3 19h18" /></svg>
+                <b>Convention</b><span>Subventions, financement, PIN.</span>
+              </article>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <div class="ticker" aria-hidden="true">
+        <span>Engagement financier</span>
+        <span>Budget multiannuel</span>
+        <span>Comptabilité générale</span>
+        <span>Fonctions FED</span>
+        <span>Tableaux de bord</span>
+      </div>
+
+      <section class="shell" id="modules" aria-labelledby="modules-title">
+        <div class="section-head" data-reveal>
+          <h2 id="modules-title">Sept blocs qui couvrent toute la chaîne financière.</h2>
+          <p>La page modernise l’affiche d’origine en transformant les listes fonctionnelles en modules lisibles, interactifs et orientés décision.</p>
+        </div>
+
+        <div class="module-grid">
+          <article class="module-card" data-card data-reveal style="--card-color: var(--red)">
+            <div class="card-top"><span class="pill">Engagement</span><span class="card-number">01</span></div>
+            <h3>Type engagement financier</h3>
+            <p>Gestion des subventions, devis-programmes FED et engagements spécifiques FED.</p>
+            <ul class="check-list">
+              <li><span class="box dp">✓</span><span class="box on">✓</span>Gestion Subvention</li>
+              <li><span class="box dp">✓</span><span class="box on">✓</span>Gestion Devis-Programmes FED</li>
+              <li><span class="box dp"></span><span class="box on">✓</span>Contrats de services, fournitures et travaux</li>
+            </ul>
+          </article>
+
+          <article class="module-card" data-card data-reveal style="--card-color: var(--cyan); --delay: 70ms">
+            <div class="card-top"><span class="pill">Budget</span><span class="card-number">02</span></div>
+            <h3>Comptabilité budgétaire multiannuelle</h3>
+            <p>Suivi du budget par rapport aux engagements et aux décaissements.</p>
+            <ul class="check-list">
+              <li><span class="box dp">✓</span><span class="box on">✓</span>Suivi du budget par rapport aux engagements</li>
+              <li><span class="box dp">✓</span><span class="box on">✓</span>Suivi du budget par rapport aux décaissements</li>
+            </ul>
+          </article>
+
+          <article class="module-card" data-card data-reveal style="--card-color: var(--orange); --delay: 140ms">
+            <div class="card-top"><span class="pill">Générale</span><span class="card-number">03</span></div>
+            <h3>Comptabilité générale</h3>
+            <p>Comptabilité à partie double et édition des états classiques.</p>
+            <ul class="check-list">
+              <li><span class="box dp">✓</span><span class="box on">✓</span>Comptabilité générale à partie double</li>
+              <li><span class="box dp">✓</span><span class="box on">✓</span>Tableau Ressource-Emploi, Balance, Grand Livre, Journal Banque</li>
+            </ul>
+          </article>
+
+          <article class="module-card" data-card data-reveal style="--card-color: var(--accent)">
+            <div class="card-top"><span class="pill">Comptable</span><span class="card-number">04</span></div>
+            <h3>Autres fonctions comptables</h3>
+            <p>Multidevise, contrats, fournisseurs, avances, statistiques, ligne budgétaire et inventaires.</p>
+            <ul class="check-list">
+              <li><span class="box dp">✓</span><span class="box on">✓</span>Gestion multidevise et fournisseurs</li>
+              <li><span class="box dp">✓</span><span class="box on">✓</span>Suivi statistique des dépenses</li>
+              <li><span class="box dp">✓</span><span class="box on">✓</span>Clôture des engagements financiers et projet</li>
+            </ul>
+          </article>
+
+          <article class="module-card" data-card data-reveal style="--card-color: var(--blue); --delay: 80ms">
+            <div class="card-top"><span class="pill">FED</span><span class="card-number">05</span></div>
+            <h3>Fonctions spécifiques FED</h3>
+            <p>Réaménagement du budget, états constitutifs, demandes de fonds, ordre de paiement et rapprochements.</p>
+            <ul class="check-list">
+              <li><span class="box dp">✓</span><span class="box on">✓</span>Suivi de réaménagement du budget</li>
+              <li><span class="box dp">✓</span><span class="box on">✓</span>Édition automatique des états constitutifs</li>
+              <li><span class="box dp">✓</span><span class="box on">✓</span>Rapprochement données SARA vs CRIS</li>
+            </ul>
+          </article>
+
+          <article class="module-card" data-card data-reveal style="--card-color: var(--pink)">
+            <div class="card-top"><span class="pill">Utilities</span><span class="card-number">06</span></div>
+            <h3>Paramétrage et utilitaires</h3>
+            <p>Monoposte ou réseau local, profils utilisateurs, contrôle de saisie, exports PDF/Excel et sauvegardes.</p>
+            <ul class="check-list">
+              <li><span class="box dp">✓</span><span class="box on">✓</span>Droit d’accès selon profil utilisateur</li>
+              <li><span class="box dp">✓</span><span class="box on">✓</span>Système de validation des écritures</li>
+              <li><span class="box dp">✓</span><span class="box on">✓</span>Gestion de la base de données et sauvegardes</li>
+            </ul>
+          </article>
+
+          <article class="module-card" data-card data-reveal style="--card-color: var(--violet); --delay: 80ms">
+            <div class="card-top"><span class="pill">Convention</span><span class="card-number">07</span></div>
+            <h3>Suivi convention et tableaux de bord</h3>
+            <p>Suivi global des subventions, conventions de financement et tableaux PIN.</p>
+            <ul class="check-list">
+              <li><span class="box dp">✓</span><span class="box on">✓</span>Suivi global des subventions</li>
+              <li><span class="box dp"></span><span class="box on">✓</span>Suivi de la convention de financement</li>
+              <li><span class="box dp"></span><span class="box on">✓</span>Tableaux de suivi du PIN</li>
+            </ul>
+          </article>
+        </div>
+      </section>
+
+      <section class="details shell" id="details" aria-labelledby="details-title">
+        <div class="section-head" data-reveal>
+          <h2 id="details-title">Deux niveaux de lecture pour présenter vite ou convaincre longtemps.</h2>
+          <p>La version courte sert à introduire SARA Ultimate. La version longue reprend l’esprit de l’affiche fonctionnelle, avec une lecture plus commerciale.</p>
+        </div>
+
+        <div class="detail-panel" data-reveal>
+          <div class="detail-controls" role="tablist" aria-label="Niveau de détail">
+            <button class="detail-tab active" type="button" role="tab" aria-selected="true" aria-controls="detail-short" id="tab-short" data-detail-tab="short">
+              Plus de détails <span>court</span>
+            </button>
+            <button class="detail-tab" type="button" role="tab" aria-selected="false" aria-controls="detail-long" id="tab-long" data-detail-tab="long">
+              Plus de détails <span>long</span>
+            </button>
+          </div>
+
+          <div class="detail-copy">
+            <article class="detail-content" id="detail-short" role="tabpanel" aria-labelledby="tab-short" data-detail-content="short">
+              <h2>Version courte.</h2>
+              <p>
+                SARA Ultimate est une solution complète de gestion financière compatible FED 11. Elle couvre les engagements, le suivi budgétaire, la comptabilité générale, les fonctions spécifiques FED, les utilitaires et les tableaux de bord de convention.
+              </p>
+              <div class="legend" aria-label="Légende DP ON">
+                <span><b class="dp">SARA DP</b> fonctions dédiées au périmètre DP</span>
+                <span><b class="on">SARA ON</b> fonctions dédiées au périmètre ON</span>
+              </div>
+            </article>
+
+            <article class="detail-content" id="detail-long" role="tabpanel" aria-labelledby="tab-long" data-detail-content="long" hidden>
+              <h2>Version longue.</h2>
+              <p>
+                SARA Ultimate rassemble les fonctions essentielles de gestion financière pour les projets et programmes compatibles FED 11. La solution permet de gérer les types d'engagement financier, notamment les subventions, les devis-programmes FED et les engagements spécifiques liés aux contrats de services, fournitures ou travaux.
+              </p>
+              <p>
+                Elle intègre une comptabilité budgétaire multiannuelle pour suivre le budget par rapport aux engagements et aux décaissements. La comptabilité générale prend en charge la partie double et l'édition des états classiques : tableau Ressource-Emploi, balance, grand livre, journal banque, caisse et opérations diverses.
+              </p>
+              <p>
+                Les fonctions spécifiques FED ajoutent le suivi de réaménagement budgétaire, l'édition automatique des états constitutifs, les formulaires de demande de fonds, les ordres de paiement, le calcul des décomptes successifs et le rapprochement des données SARA avec CRIS. Les modules de paramétrage complètent l'ensemble avec les droits d'accès, validations, exports PDF/Excel et sauvegardes.
+              </p>
+              <div class="legend" aria-label="Légende DP ON">
+                <span><b class="dp">SARA DP</b> Directeur de programme</span>
+                <span><b class="on">SARA ON</b> Ordonnateur national</span>
+              </div>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <section class="shell" id="workflow" aria-labelledby="workflow-title">
+        <div class="section-head" data-reveal>
+          <h2 id="workflow-title">Une chaîne financière fluide, du contrat au tableau de bord.</h2>
+          <p>La structure remplace la longue affiche par une narration simple : paramétrer, engager, suivre, rendre compte.</p>
+        </div>
+
+        <div class="workflow">
+          <article data-reveal><span>01</span><h3>Paramétrer</h3><p>Profils, validation, base de données, exports et environnement local ou réseau.</p></article>
+          <article data-reveal style="--delay: 80ms"><span>02</span><h3>Engager</h3><p>Subventions, devis-programmes FED, contrats et engagements spécifiques.</p></article>
+          <article data-reveal style="--delay: 160ms"><span>03</span><h3>Suivre</h3><p>Budget, décaissements, avances, fournisseurs, dépenses et inventaires.</p></article>
+          <article data-reveal style="--delay: 240ms"><span>04</span><h3>Éditer</h3><p>États comptables, formulaires FED, tableaux de bord et rapprochements.</p></article>
+        </div>
+      </section>
+
+      <section class="shell cta" id="contact" aria-labelledby="contact-title" data-reveal>
+        <div>
+          <p class="eyebrow">Présentation prête</p>
+          <h2 id="contact-title">SARA Ultimate devient une vitrine produit moderne.</h2>
+          <p>Une page autonome, responsive et interactive, inspirée de l’affiche originale mais pensée comme une expérience SaaS haut de gamme.</p>
+        </div>
+        <a class="button primary magnetic" href="mailto:france@md2i.eu">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16v14H4zM4 7l8 6 8-6" /></svg>
+          Contacter MD2I
+        </a>
+      </section>
+    </main>
+
+    <footer class="footer shell">
+      <p>© <span data-year></span> SARA Ultimate. Compatible FED 11.</p>
+      <div class="socials" aria-label="Liens sociaux">
+        <a href="#" aria-label="LinkedIn"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 10v8M6 6v.01M11 18v-8M11 14a4 4 0 0 1 8 0v4" /></svg></a>
+        <a href="#" aria-label="X"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 5l14 14M19 5 5 19" /></svg></a>
+        <a href="#" aria-label="Site web"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18ZM3 12h18M12 3c3 3 3 15 0 18M12 3c-3 3-3 15 0 18" /></svg></a>
+      </div>
+    </footer>
+
+    <script>
+      const root = document.documentElement;
+      const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+      const savedTheme = localStorage.getItem("sara-ultimate-theme");
+      const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+
+      root.dataset.theme = savedTheme || (prefersDark ? "dark" : "light");
+      document.querySelector("[data-year]").textContent = new Date().getFullYear();
+
+      const nav = document.querySelector(".nav");
+      const menu = document.querySelector("[data-menu]");
+      const themeToggle = document.querySelector("[data-theme-toggle]");
+
+      themeToggle.addEventListener("click", () => {
+        const next = root.dataset.theme === "dark" ? "light" : "dark";
+        root.dataset.theme = next;
+        localStorage.setItem("sara-ultimate-theme", next);
+      });
+
+      menu.addEventListener("click", () => {
+        const isOpen = nav.classList.toggle("is-open");
+        menu.setAttribute("aria-expanded", String(isOpen));
+      });
+
+      nav.addEventListener("click", (event) => {
+        if (event.target instanceof HTMLAnchorElement) {
+          nav.classList.remove("is-open");
+          menu.setAttribute("aria-expanded", "false");
+        }
+      });
+
+      const typeTarget = document.querySelector("[data-typewriter]");
+      const finalCopy = "SARA\nUltimate";
+
+      if (!reduceMotion) {
+        typeTarget.textContent = "";
+        [...finalCopy].forEach((char, index) => {
+          window.setTimeout(() => {
+            typeTarget.textContent += char;
+          }, 42 * index + 180);
+        });
+      } else {
+        typeTarget.textContent = finalCopy;
+      }
+
+      const revealObserver = new IntersectionObserver(
+        (entries) => {
+          entries.forEach((entry) => {
+            if (entry.isIntersecting) {
+              entry.target.classList.add("is-visible");
+              revealObserver.unobserve(entry.target);
+            }
+          });
+        },
+        { threshold: 0.14, rootMargin: "0px 0px -8% 0px" }
+      );
+
+      document.querySelectorAll("[data-reveal]").forEach((item) => revealObserver.observe(item));
+
+      const consolePanel = document.querySelector("[data-console-tilt]");
+
+      window.addEventListener(
+        "mousemove",
+        (event) => {
+          root.style.setProperty("--mx", `${(event.clientX / innerWidth) * 100}%`);
+          root.style.setProperty("--my", `${(event.clientY / innerHeight) * 100}%`);
+
+          if (!consolePanel || reduceMotion || innerWidth < 760) return;
+          const rect = consolePanel.getBoundingClientRect();
+          const x = (event.clientX - rect.left) / rect.width - 0.5;
+          const y = (event.clientY - rect.top) / rect.height - 0.5;
+          consolePanel.style.setProperty("--ry", `${x * 6}deg`);
+          consolePanel.style.setProperty("--rx", `${-y * 6}deg`);
+        },
+        { passive: true }
+      );
+
+      document.querySelectorAll("[data-card]").forEach((card) => {
+        card.addEventListener("mousemove", (event) => {
+          if (reduceMotion) return;
+          const rect = card.getBoundingClientRect();
+          const x = event.clientX - rect.left;
+          const y = event.clientY - rect.top;
+          const rotateY = (x / rect.width - 0.5) * 9;
+          const rotateX = -(y / rect.height - 0.5) * 9;
+          card.style.setProperty("--card-x", `${x}px`);
+          card.style.setProperty("--card-y", `${y}px`);
+          card.style.transform = `perspective(900px) rotateX(${rotateX}deg) rotateY(${rotateY}deg) translateY(-6px)`;
+        });
+        card.addEventListener("mouseleave", () => {
+          card.style.transform = "";
+        });
+      });
+
+      const detailTabs = [...document.querySelectorAll("[data-detail-tab]")];
+      const detailContents = [...document.querySelectorAll("[data-detail-content]")];
+
+      detailTabs.forEach((tab) => {
+        tab.addEventListener("click", () => {
+          const target = tab.dataset.detailTab;
+          detailTabs.forEach((item) => {
+            const active = item === tab;
+            item.classList.toggle("active", active);
+            item.setAttribute("aria-selected", String(active));
+          });
+          detailContents.forEach((content) => {
+            content.hidden = content.dataset.detailContent !== target;
+          });
+        });
+      });
+
+      const cursorDot = document.querySelector(".cursor-dot");
+      const cursorRing = document.querySelector(".cursor-ring");
+      let mouseX = 0;
+      let mouseY = 0;
+      let ringX = 0;
+      let ringY = 0;
+
+      function animateCursor() {
+        ringX += (mouseX - ringX) * 0.18;
+        ringY += (mouseY - ringY) * 0.18;
+        cursorDot.style.transform = `translate3d(${mouseX}px, ${mouseY}px, 0) translate(-50%, -50%)`;
+        cursorRing.style.transform = `translate3d(${ringX}px, ${ringY}px, 0) translate(-50%, -50%)`;
+        requestAnimationFrame(animateCursor);
+      }
+
+      if (matchMedia("(hover: hover) and (pointer: fine)").matches && !reduceMotion) {
+        document.body.classList.add("cursor-ready");
+        window.addEventListener("mousemove", (event) => {
+          mouseX = event.clientX;
+          mouseY = event.clientY;
+        });
+        document.querySelectorAll("a, button, [data-card]").forEach((element) => {
+          element.addEventListener("mouseenter", () => document.body.classList.add("cursor-active"));
+          element.addEventListener("mouseleave", () => document.body.classList.remove("cursor-active"));
+        });
+        animateCursor();
+      }
+    </script>
+  </body>
+</html>

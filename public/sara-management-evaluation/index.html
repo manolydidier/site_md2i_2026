@@ -1,0 +1,1672 @@
+<!doctype html>
+<html lang="fr" data-theme="dark">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta
+      name="description"
+      content="SARA Management et Évaluation : suivi du cadre logique, objectifs, résultats, indicateurs, budget et cartographie des bénéficiaires."
+    />
+    <title>SARA Management et Évaluation</title>
+    <style>
+      :root {
+        color-scheme: dark;
+        --bg: #090a0b;
+        --bg-2: #111315;
+        --ink: #f6f2e8;
+        --muted: #a8aaa6;
+        --panel: rgba(246, 242, 232, 0.08);
+        --panel-2: rgba(246, 242, 232, 0.13);
+        --line: rgba(246, 242, 232, 0.16);
+        --accent: #35f28f;
+        --accent-2: #80d8ff;
+        --warn: #ffcf5c;
+        --danger: #ff6f61;
+        --accent-ink: #061108;
+        --shadow: 0 32px 90px rgba(0, 0, 0, 0.36);
+        --radius: 8px;
+        --max: 1200px;
+        --mx: 50%;
+        --my: 20%;
+      }
+
+      html[data-theme="light"] {
+        color-scheme: light;
+        --bg: #f5f2ea;
+        --bg-2: #ebe7dc;
+        --ink: #131514;
+        --muted: #626862;
+        --panel: rgba(255, 255, 255, 0.68);
+        --panel-2: rgba(255, 255, 255, 0.92);
+        --line: rgba(19, 21, 20, 0.14);
+        --accent: #087a43;
+        --accent-2: #005bb8;
+        --warn: #a56500;
+        --danger: #b3261e;
+        --accent-ink: #ffffff;
+        --shadow: 0 28px 80px rgba(37, 39, 36, 0.16);
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      html {
+        scroll-behavior: smooth;
+      }
+
+      body {
+        margin: 0;
+        overflow-x: hidden;
+        color: var(--ink);
+        background:
+          radial-gradient(circle at var(--mx) var(--my), color-mix(in srgb, var(--accent) 18%, transparent), transparent 32rem),
+          radial-gradient(circle at 8% 78%, color-mix(in srgb, var(--accent-2) 14%, transparent), transparent 28rem),
+          linear-gradient(135deg, var(--bg) 0%, var(--bg-2) 100%);
+        font-family:
+          "Segoe UI", Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+        line-height: 1.55;
+        transition: background 450ms ease, color 250ms ease;
+      }
+
+      body::before {
+        position: fixed;
+        inset: 0;
+        z-index: -3;
+        content: "";
+        pointer-events: none;
+        opacity: 0.18;
+        background-image:
+          linear-gradient(var(--line) 1px, transparent 1px),
+          linear-gradient(90deg, var(--line) 1px, transparent 1px);
+        background-size: 74px 74px;
+        mask-image: linear-gradient(#000, transparent 86%);
+      }
+
+      body::after {
+        position: fixed;
+        inset: 0;
+        z-index: -2;
+        content: "";
+        pointer-events: none;
+        opacity: 0.12;
+        background-image: radial-gradient(currentColor 0.75px, transparent 0.75px);
+        background-size: 17px 17px;
+        mix-blend-mode: soft-light;
+      }
+
+      a {
+        color: inherit;
+        text-decoration: none;
+      }
+
+      button,
+      a,
+      input {
+        -webkit-tap-highlight-color: transparent;
+      }
+
+      button:focus-visible,
+      a:focus-visible,
+      input:focus-visible {
+        outline: 3px solid var(--accent);
+        outline-offset: 4px;
+      }
+
+      .sr-only {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        padding: 0;
+        margin: -1px;
+        overflow: hidden;
+        clip: rect(0, 0, 0, 0);
+        white-space: nowrap;
+        border: 0;
+      }
+
+      .cursor-dot,
+      .cursor-ring {
+        position: fixed;
+        top: 0;
+        left: 0;
+        z-index: 999;
+        pointer-events: none;
+        opacity: 0;
+        transform: translate3d(-50%, -50%, 0);
+      }
+
+      .cursor-dot {
+        width: 7px;
+        height: 7px;
+        background: var(--accent);
+        border-radius: 50%;
+      }
+
+      .cursor-ring {
+        width: 36px;
+        height: 36px;
+        border: 1px solid color-mix(in srgb, var(--accent) 76%, transparent);
+        border-radius: 50%;
+        transition: width 160ms ease, height 160ms ease, border-color 160ms ease;
+      }
+
+      body.cursor-ready .cursor-dot,
+      body.cursor-ready .cursor-ring {
+        opacity: 1;
+      }
+
+      body.cursor-active .cursor-ring {
+        width: 56px;
+        height: 56px;
+        border-color: var(--accent-2);
+      }
+
+      .shell {
+        width: min(var(--max), calc(100% - 40px));
+        margin: 0 auto;
+      }
+
+      .topbar {
+        position: sticky;
+        top: 10px;
+        z-index: 80;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 16px;
+        min-height: 74px;
+        width: min(1240px, calc(100% - 28px));
+        margin: 10px auto 0;
+        padding: 12px;
+        border: 1px solid var(--line);
+        border-radius: var(--radius);
+        background: color-mix(in srgb, var(--bg) 76%, transparent);
+        backdrop-filter: blur(24px);
+      }
+
+      .brand {
+        display: inline-flex;
+        align-items: center;
+        gap: 12px;
+        min-height: 44px;
+        font-weight: 900;
+        letter-spacing: 0;
+      }
+
+      .brand-mark,
+      .node-mark {
+        display: grid;
+        place-items: center;
+        width: 42px;
+        height: 42px;
+        color: var(--accent-ink);
+        background: var(--accent);
+        border-radius: var(--radius);
+        font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+        font-size: 0.82rem;
+        font-weight: 900;
+      }
+
+      .nav {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+      }
+
+      .nav a {
+        display: inline-flex;
+        align-items: center;
+        min-height: 44px;
+        padding: 0 13px;
+        color: var(--muted);
+        border-radius: var(--radius);
+        font-size: 0.92rem;
+        font-weight: 760;
+        transition: color 180ms ease, background 180ms ease;
+      }
+
+      .nav a:hover {
+        color: var(--ink);
+        background: var(--panel);
+      }
+
+      .theme-toggle,
+      .menu-btn {
+        display: inline-grid;
+        place-items: center;
+        width: 44px;
+        height: 44px;
+        cursor: pointer;
+        color: var(--ink);
+        background: var(--panel);
+        border: 1px solid var(--line);
+        border-radius: var(--radius);
+      }
+
+      .theme-toggle svg,
+      .menu-btn svg {
+        width: 21px;
+        height: 21px;
+        fill: none;
+        stroke: currentColor;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+        stroke-width: 2;
+      }
+
+      .menu-btn {
+        display: none;
+      }
+
+      .hero {
+        position: relative;
+        display: grid;
+        grid-template-columns: minmax(0, 0.9fr) minmax(420px, 1.1fr);
+        gap: clamp(28px, 5vw, 76px);
+        align-items: center;
+        min-height: calc(100vh - 94px);
+        padding: clamp(60px, 8vw, 110px) 0 60px;
+        overflow: hidden;
+      }
+
+      .hero::before {
+        position: absolute;
+        inset: 8% auto auto 42%;
+        z-index: -1;
+        width: min(58vw, 730px);
+        aspect-ratio: 1;
+        content: "";
+        background: color-mix(in srgb, var(--accent) 12%, transparent);
+        clip-path: polygon(44% 0, 88% 13%, 100% 46%, 78% 90%, 33% 100%, 0 70%, 8% 21%);
+        filter: blur(6px);
+        animation: morph 16s ease-in-out infinite alternate;
+      }
+
+      @keyframes morph {
+        to {
+          clip-path: polygon(58% 2%, 100% 34%, 82% 86%, 42% 100%, 6% 77%, 0 28%, 29% 7%);
+          transform: rotate(9deg) translate3d(-2%, 3%, 0);
+        }
+      }
+
+      .eyebrow {
+        display: inline-flex;
+        align-items: center;
+        gap: 10px;
+        min-height: 34px;
+        margin: 0 0 18px;
+        color: var(--muted);
+        font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+        font-size: 0.75rem;
+        font-weight: 800;
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+      }
+
+      .eyebrow::before {
+        width: 34px;
+        height: 1px;
+        content: "";
+        background: var(--accent);
+      }
+
+      h1,
+      h2,
+      h3,
+      p {
+        overflow-wrap: anywhere;
+      }
+
+      h1 {
+        min-height: 2.3em;
+        margin: 0;
+        font-size: clamp(3.25rem, 8.7vw, 8.4rem);
+        line-height: 0.82;
+        letter-spacing: -0.055em;
+      }
+
+      .typing-caret {
+        display: inline-block;
+        width: 0.08em;
+        height: 0.72em;
+        margin-left: 0.05em;
+        background: var(--accent);
+        transform: translateY(0.08em);
+        animation: blink 900ms steps(1) infinite;
+      }
+
+      @keyframes blink {
+        50% {
+          opacity: 0;
+        }
+      }
+
+      .hero-lead {
+        max-width: 650px;
+        margin: 26px 0 0;
+        color: var(--muted);
+        font-size: clamp(1.02rem, 2vw, 1.24rem);
+      }
+
+      .hero-actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px;
+        margin-top: 34px;
+      }
+
+      .button {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 10px;
+        min-height: 50px;
+        padding: 0 18px;
+        border: 1px solid var(--line);
+        border-radius: var(--radius);
+        font-weight: 850;
+        transition: transform 180ms ease, border-color 180ms ease, background 180ms ease, color 180ms ease;
+      }
+
+      .button svg {
+        width: 20px;
+        height: 20px;
+        fill: none;
+        stroke: currentColor;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+        stroke-width: 2;
+      }
+
+      .button:hover {
+        transform: translateY(-2px);
+      }
+
+      .button.primary {
+        color: var(--accent-ink);
+        background: var(--accent);
+        border-color: var(--accent);
+      }
+
+      .button.ghost {
+        color: var(--ink);
+        background: var(--panel);
+      }
+
+      .button.ghost:hover {
+        border-color: color-mix(in srgb, var(--accent) 72%, var(--line));
+      }
+
+      .logic-strip {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 1px;
+        max-width: 690px;
+        margin: 34px 0 0;
+        overflow: hidden;
+        background: var(--line);
+        border: 1px solid var(--line);
+        border-radius: var(--radius);
+      }
+
+      .logic-strip div {
+        min-height: 94px;
+        padding: 14px;
+        background: color-mix(in srgb, var(--bg) 72%, var(--panel));
+      }
+
+      .logic-strip strong {
+        display: block;
+        font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+        color: var(--accent);
+      }
+
+      .logic-strip span {
+        display: block;
+        margin-top: 4px;
+        color: var(--muted);
+        font-size: 0.82rem;
+      }
+
+      .observatory {
+        min-width: 0;
+        perspective: 1300px;
+      }
+
+      .dashboard {
+        position: relative;
+        display: grid;
+        grid-template-columns: 0.68fr 1fr;
+        gap: 14px;
+        min-height: 590px;
+        padding: 16px;
+        border: 1px solid var(--line);
+        border-radius: var(--radius);
+        background:
+          linear-gradient(135deg, color-mix(in srgb, var(--panel-2) 70%, transparent), color-mix(in srgb, var(--bg) 50%, transparent)),
+          radial-gradient(circle at 30% 20%, color-mix(in srgb, var(--accent) 18%, transparent), transparent 34%);
+        box-shadow: var(--shadow);
+        backdrop-filter: blur(22px);
+        transform: rotateX(var(--rx, 0deg)) rotateY(var(--ry, 0deg));
+        transform-style: preserve-3d;
+        transition: transform 260ms ease;
+      }
+
+      .dashboard::after {
+        position: absolute;
+        inset: 16px;
+        z-index: -1;
+        content: "";
+        border-radius: inherit;
+        background: var(--accent);
+        opacity: 0.1;
+        transform: translateZ(-48px);
+        filter: blur(12px);
+      }
+
+      .panel {
+        border: 1px solid var(--line);
+        border-radius: var(--radius);
+        background: color-mix(in srgb, var(--panel) 78%, transparent);
+        transform: translateZ(22px);
+      }
+
+      .panel-title {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        min-height: 52px;
+        padding: 0 14px;
+        border-bottom: 1px solid var(--line);
+        font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+        font-size: 0.78rem;
+        font-weight: 800;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+      }
+
+      .status-dot {
+        display: inline-flex;
+        width: 10px;
+        height: 10px;
+        background: var(--accent);
+        border-radius: 50%;
+        box-shadow: 0 0 24px var(--accent);
+      }
+
+      .score-panel {
+        display: grid;
+        gap: 14px;
+        padding: 14px;
+      }
+
+      .score-card {
+        padding: 16px;
+        border: 1px solid var(--line);
+        border-radius: var(--radius);
+        background: color-mix(in srgb, var(--bg) 40%, transparent);
+      }
+
+      .score-card small {
+        display: block;
+        color: var(--muted);
+        font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+        font-weight: 800;
+        text-transform: uppercase;
+      }
+
+      .score-card strong {
+        display: block;
+        margin-top: 8px;
+        font-size: clamp(2rem, 4vw, 3.4rem);
+        line-height: 1;
+      }
+
+      .meter {
+        position: relative;
+        height: 12px;
+        margin-top: 14px;
+        overflow: hidden;
+        background: color-mix(in srgb, var(--ink) 12%, transparent);
+        border-radius: 999px;
+      }
+
+      .meter span {
+        position: absolute;
+        inset: 0 auto 0 0;
+        width: var(--value);
+        background: var(--accent);
+        border-radius: inherit;
+      }
+
+      .score-card:nth-child(2) .meter span {
+        background: var(--warn);
+      }
+
+      .matrix {
+        display: grid;
+        grid-template-rows: auto 1fr;
+      }
+
+      .matrix-body {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 10px;
+        padding: 14px;
+      }
+
+      .matrix-item {
+        min-height: 124px;
+        padding: 12px;
+        border: 1px solid var(--line);
+        border-radius: var(--radius);
+        background: color-mix(in srgb, var(--bg) 38%, transparent);
+      }
+
+      .matrix-item b {
+        display: block;
+        font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+        color: var(--accent-2);
+      }
+
+      .matrix-item span {
+        display: block;
+        margin-top: 36px;
+        color: var(--muted);
+        font-size: 0.86rem;
+      }
+
+      .map-panel {
+        grid-column: 1 / -1;
+        overflow: hidden;
+      }
+
+      .map-art {
+        position: relative;
+        height: 210px;
+      }
+
+      .map-art svg {
+        width: 100%;
+        height: 100%;
+      }
+
+      .pin {
+        transform-origin: center;
+        animation: pinPulse 2.8s ease-in-out infinite;
+      }
+
+      .pin:nth-of-type(2) {
+        animation-delay: 600ms;
+      }
+
+      .pin:nth-of-type(3) {
+        animation-delay: 1200ms;
+      }
+
+      @keyframes pinPulse {
+        50% {
+          opacity: 0.45;
+          transform: scale(1.3);
+        }
+      }
+
+      .ticker {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 1px;
+        overflow: hidden;
+        border-block: 1px solid var(--line);
+        background: var(--line);
+      }
+
+      .ticker span {
+        display: grid;
+        place-items: center;
+        min-height: 72px;
+        padding: 12px;
+        color: var(--muted);
+        background: color-mix(in srgb, var(--bg) 86%, transparent);
+        font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+        font-size: clamp(0.72rem, 1.2vw, 0.9rem);
+        font-weight: 800;
+        text-align: center;
+        text-transform: uppercase;
+      }
+
+      section {
+        padding: clamp(74px, 10vw, 132px) 0;
+      }
+
+      .section-head {
+        display: grid;
+        grid-template-columns: minmax(0, 0.82fr) minmax(280px, 0.5fr);
+        gap: 28px;
+        align-items: end;
+        margin-bottom: 42px;
+      }
+
+      .section-head h2 {
+        margin: 0;
+        font-size: clamp(2.4rem, 6.4vw, 6.6rem);
+        line-height: 0.9;
+        letter-spacing: -0.06em;
+      }
+
+      .section-head p {
+        margin: 0;
+        color: var(--muted);
+      }
+
+      .feature-grid {
+        display: grid;
+        grid-template-columns: repeat(12, 1fr);
+        gap: 16px;
+      }
+
+      .feature-card {
+        position: relative;
+        min-height: 400px;
+        overflow: hidden;
+        padding: 22px;
+        border: 1px solid var(--line);
+        border-radius: var(--radius);
+        background: var(--panel);
+        box-shadow: var(--shadow);
+        transform-style: preserve-3d;
+        transition: transform 220ms ease, border-color 220ms ease, background 220ms ease;
+        backdrop-filter: blur(18px);
+      }
+
+      .feature-card:nth-child(1) {
+        grid-column: span 6;
+      }
+
+      .feature-card:nth-child(2) {
+        grid-column: span 6;
+        margin-top: 46px;
+      }
+
+      .feature-card:nth-child(3) {
+        grid-column: span 7;
+      }
+
+      .feature-card:nth-child(4) {
+        grid-column: span 5;
+        margin-top: -46px;
+      }
+
+      .feature-card::before {
+        position: absolute;
+        inset: -1px;
+        content: "";
+        opacity: 0;
+        background: radial-gradient(circle at var(--card-x, 50%) var(--card-y, 20%), color-mix(in srgb, var(--accent) 42%, transparent), transparent 38%);
+        transition: opacity 220ms ease;
+      }
+
+      .feature-card:hover,
+      .feature-card:focus-within {
+        border-color: color-mix(in srgb, var(--accent) 70%, var(--line));
+        background: var(--panel-2);
+      }
+
+      .feature-card:hover::before,
+      .feature-card:focus-within::before {
+        opacity: 1;
+      }
+
+      .feature-card > * {
+        position: relative;
+        z-index: 1;
+      }
+
+      .card-top {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+      }
+
+      .pill {
+        display: inline-flex;
+        align-items: center;
+        min-height: 32px;
+        padding: 0 10px;
+        color: var(--accent-ink);
+        background: var(--accent);
+        border-radius: 999px;
+        font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+        font-size: 0.72rem;
+        font-weight: 900;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+      }
+
+      .card-number {
+        color: var(--muted);
+        font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+        font-weight: 900;
+      }
+
+      .feature-card h3 {
+        max-width: 13ch;
+        margin: 34px 0 0;
+        font-size: clamp(2rem, 4vw, 4.2rem);
+        line-height: 0.92;
+        letter-spacing: -0.055em;
+      }
+
+      .feature-card p {
+        max-width: 56ch;
+        margin: 18px 0 0;
+        color: var(--muted);
+      }
+
+      .card-art {
+        position: absolute;
+        right: clamp(12px, 3vw, 30px);
+        bottom: clamp(10px, 3vw, 28px);
+        width: min(48%, 300px);
+        aspect-ratio: 1;
+        transform: translateZ(44px);
+      }
+
+      .card-art svg {
+        width: 100%;
+        height: 100%;
+        overflow: visible;
+      }
+
+      .stroke {
+        fill: none;
+        stroke: currentColor;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+      }
+
+      .art-accent {
+        color: var(--accent);
+      }
+
+      .art-cyan {
+        color: var(--accent-2);
+      }
+
+      .art-muted {
+        color: color-mix(in srgb, var(--ink) 34%, transparent);
+      }
+
+      .details {
+        position: relative;
+        overflow: hidden;
+      }
+
+      .details::before {
+        position: absolute;
+        inset: 6% 0 auto auto;
+        z-index: -1;
+        width: 42%;
+        aspect-ratio: 1;
+        content: "";
+        background: color-mix(in srgb, var(--accent-2) 12%, transparent);
+        clip-path: polygon(50% 0, 100% 36%, 80% 100%, 12% 88%, 0 24%);
+        filter: blur(8px);
+      }
+
+      .detail-panel {
+        display: grid;
+        grid-template-columns: minmax(280px, 0.44fr) minmax(0, 1fr);
+        gap: 16px;
+        align-items: stretch;
+      }
+
+      .detail-controls,
+      .detail-copy {
+        border: 1px solid var(--line);
+        border-radius: var(--radius);
+        background: var(--panel);
+        box-shadow: var(--shadow);
+        backdrop-filter: blur(18px);
+      }
+
+      .detail-controls {
+        display: grid;
+        gap: 10px;
+        align-content: start;
+        padding: 14px;
+      }
+
+      .detail-tab {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        min-height: 58px;
+        padding: 0 14px;
+        cursor: pointer;
+        color: var(--muted);
+        background: color-mix(in srgb, var(--bg) 38%, transparent);
+        border: 1px solid var(--line);
+        border-radius: var(--radius);
+        font: inherit;
+        font-weight: 850;
+        text-align: left;
+        transition: color 180ms ease, background 180ms ease, border-color 180ms ease;
+      }
+
+      .detail-tab:hover,
+      .detail-tab.active {
+        color: var(--ink);
+        border-color: color-mix(in srgb, var(--accent) 70%, var(--line));
+        background: var(--panel-2);
+      }
+
+      .detail-tab span {
+        color: var(--accent);
+        font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+      }
+
+      .detail-copy {
+        min-height: 420px;
+        padding: clamp(24px, 5vw, 46px);
+      }
+
+      .detail-content[hidden] {
+        display: none;
+      }
+
+      .detail-copy h2 {
+        max-width: 11ch;
+        margin: 0;
+        font-size: clamp(2.5rem, 6vw, 5.8rem);
+        line-height: 0.9;
+        letter-spacing: -0.06em;
+      }
+
+      .detail-copy p {
+        max-width: 860px;
+        color: var(--muted);
+      }
+
+      .detail-list {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 10px;
+        padding: 0;
+        margin: 24px 0 0;
+        list-style: none;
+      }
+
+      .detail-list li {
+        min-height: 86px;
+        padding: 14px;
+        border: 1px solid var(--line);
+        border-radius: var(--radius);
+        background: color-mix(in srgb, var(--bg) 36%, transparent);
+      }
+
+      .detail-list b {
+        display: block;
+        color: var(--accent);
+        font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+      }
+
+      .simulator {
+        display: grid;
+        grid-template-columns: minmax(0, 0.9fr) minmax(300px, 0.55fr);
+        gap: 16px;
+        align-items: stretch;
+      }
+
+      .sim-box,
+      .sim-result {
+        border: 1px solid var(--line);
+        border-radius: var(--radius);
+        background: var(--panel);
+        box-shadow: var(--shadow);
+        backdrop-filter: blur(18px);
+      }
+
+      .sim-box {
+        padding: clamp(22px, 4vw, 38px);
+      }
+
+      .sim-box h2 {
+        margin: 0;
+        font-size: clamp(2.3rem, 5.6vw, 5.5rem);
+        line-height: 0.9;
+        letter-spacing: -0.06em;
+      }
+
+      .range-grid {
+        display: grid;
+        gap: 22px;
+        margin-top: 34px;
+      }
+
+      .range-label {
+        display: grid;
+        gap: 10px;
+        color: var(--muted);
+        font-weight: 800;
+      }
+
+      .range-label span {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 16px;
+      }
+
+      .range-label output {
+        color: var(--ink);
+        font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+      }
+
+      input[type="range"] {
+        width: 100%;
+        accent-color: var(--accent);
+        cursor: pointer;
+      }
+
+      .sim-result {
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+        gap: 24px;
+        padding: clamp(22px, 4vw, 34px);
+      }
+
+      .sim-result p {
+        margin: 0;
+        color: var(--muted);
+      }
+
+      .delta {
+        font-size: clamp(3.2rem, 8vw, 7rem);
+        line-height: 0.85;
+        letter-spacing: -0.07em;
+      }
+
+      .delta.positive {
+        color: var(--accent);
+      }
+
+      .delta.negative {
+        color: var(--danger);
+      }
+
+      .cta {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto;
+        gap: 28px;
+        align-items: center;
+        margin-bottom: 74px;
+        padding: clamp(28px, 6vw, 60px);
+        overflow: hidden;
+        border: 1px solid var(--line);
+        border-radius: var(--radius);
+        background: var(--panel-2);
+        box-shadow: var(--shadow);
+      }
+
+      .cta h2 {
+        max-width: 920px;
+        margin: 0;
+        font-size: clamp(2.4rem, 6vw, 6rem);
+        line-height: 0.9;
+        letter-spacing: -0.06em;
+      }
+
+      .cta p {
+        max-width: 760px;
+        margin: 18px 0 0;
+        color: var(--muted);
+      }
+
+      .footer {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 20px;
+        min-height: 92px;
+        color: var(--muted);
+        border-top: 1px solid var(--line);
+      }
+
+      .socials {
+        display: flex;
+        gap: 10px;
+      }
+
+      .socials a {
+        display: grid;
+        place-items: center;
+        width: 42px;
+        height: 42px;
+        border: 1px solid var(--line);
+        border-radius: 50%;
+        transition: transform 180ms ease, border-color 180ms ease;
+      }
+
+      .socials a:hover {
+        transform: translateY(-2px);
+        border-color: var(--accent);
+      }
+
+      .socials svg {
+        width: 18px;
+        height: 18px;
+        fill: none;
+        stroke: currentColor;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+        stroke-width: 2;
+      }
+
+      [data-reveal] {
+        opacity: 0;
+        transform: translateY(28px);
+        transition: opacity 700ms ease, transform 700ms cubic-bezier(0.2, 0.8, 0.2, 1);
+        transition-delay: var(--delay, 0ms);
+      }
+
+      [data-reveal].is-visible {
+        opacity: 1;
+        transform: translateY(0);
+      }
+
+      @media (hover: none), (pointer: coarse) {
+        .cursor-dot,
+        .cursor-ring {
+          display: none;
+        }
+      }
+
+      @media (max-width: 1050px) {
+        .hero,
+        .section-head,
+        .detail-panel,
+        .simulator,
+        .cta {
+          grid-template-columns: 1fr;
+        }
+
+        .hero {
+          min-height: auto;
+        }
+
+        .dashboard {
+          max-width: 760px;
+          margin: 0 auto;
+        }
+
+        .feature-card,
+        .feature-card:nth-child(1),
+        .feature-card:nth-child(2),
+        .feature-card:nth-child(3),
+        .feature-card:nth-child(4) {
+          grid-column: 1 / -1;
+          margin-top: 0;
+        }
+      }
+
+      @media (max-width: 760px) {
+        .shell {
+          width: min(100% - 28px, var(--max));
+        }
+
+        .topbar {
+          top: 6px;
+          width: calc(100% - 20px);
+        }
+
+        .nav {
+          position: fixed;
+          inset: 88px 10px auto;
+          display: grid;
+          gap: 8px;
+          padding: 12px;
+          border: 1px solid var(--line);
+          border-radius: var(--radius);
+          background: color-mix(in srgb, var(--bg) 92%, transparent);
+          backdrop-filter: blur(24px);
+          transform: translateY(-12px);
+          opacity: 0;
+          pointer-events: none;
+          transition: opacity 180ms ease, transform 180ms ease;
+        }
+
+        .nav.is-open {
+          transform: translateY(0);
+          opacity: 1;
+          pointer-events: auto;
+        }
+
+        .nav a {
+          justify-content: center;
+        }
+
+        .menu-btn {
+          display: inline-grid;
+        }
+
+        h1 {
+          min-height: 2.2em;
+          font-size: clamp(3.1rem, 17vw, 5.6rem);
+        }
+
+        .hero-actions,
+        .button {
+          width: 100%;
+        }
+
+        .logic-strip,
+        .ticker,
+        .matrix-body,
+        .detail-list {
+          grid-template-columns: 1fr;
+        }
+
+        .dashboard {
+          grid-template-columns: 1fr;
+          min-height: auto;
+        }
+
+        .map-panel {
+          grid-column: auto;
+        }
+
+        .feature-card {
+          min-height: 500px;
+        }
+
+        .card-art {
+          width: min(72%, 300px);
+        }
+
+        .footer {
+          align-items: flex-start;
+          flex-direction: column;
+          padding: 22px 0;
+        }
+      }
+
+      @media (max-width: 460px) {
+        .brand span:last-child {
+          display: none;
+        }
+
+        .dashboard {
+          padding: 10px;
+        }
+
+        .score-card strong {
+          font-size: 2.1rem;
+        }
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        *,
+        *::before,
+        *::after {
+          scroll-behavior: auto !important;
+          animation-duration: 0.001ms !important;
+          animation-iteration-count: 1 !important;
+          transition-duration: 0.001ms !important;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="cursor-dot" aria-hidden="true"></div>
+    <div class="cursor-ring" aria-hidden="true"></div>
+
+    <header class="topbar" data-reveal>
+      <a class="brand" href="#top" aria-label="SARA Management et Évaluation, accueil">
+        <span class="brand-mark" aria-hidden="true">SME</span>
+        <span>SARA M&E</span>
+      </a>
+
+      <nav class="nav" id="navigation" aria-label="Navigation principale">
+        <a href="#cadre">Cadre logique</a>
+        <a href="#details">Détails</a>
+        <a href="#simulateur">Comparaison</a>
+        <a href="#contact">Contact</a>
+      </nav>
+
+      <button class="theme-toggle" type="button" aria-label="Changer de thème" data-theme-toggle>
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v2m0 14v2M5 12H3m18 0h-2M6.3 6.3 4.9 4.9m14.2 14.2-1.4-1.4m0-11.4 1.4-1.4M4.9 19.1l1.4-1.4M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8Z" /></svg>
+      </button>
+
+      <button class="menu-btn" type="button" aria-label="Ouvrir le menu" aria-controls="navigation" aria-expanded="false" data-menu>
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16" /></svg>
+      </button>
+    </header>
+
+    <main id="top">
+      <section class="hero shell" aria-labelledby="hero-title">
+        <div data-reveal>
+          <p class="eyebrow">Management, suivi, évaluation</p>
+          <h1 id="hero-title"><span data-typewriter>SARA Management<br />et Évaluation</span><span class="typing-caret" aria-hidden="true"></span></h1>
+          <p class="hero-lead">
+            La version complète de SARA pour piloter tout le cadre logique d'un projet : objectifs, résultats, indicateurs, budget, bénéficiaires et géographie d'intervention.
+          </p>
+          <div class="hero-actions">
+            <a class="button primary magnetic" href="#details">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6" /></svg>
+              Lire les détails
+            </a>
+            <a class="button ghost magnetic" href="#simulateur">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 19V5M8 17v-6M13 17V7M18 17v-9M3 19h18" /></svg>
+              Comparer
+            </a>
+          </div>
+
+          <div class="logic-strip" aria-label="Cadre logique suivi par SARA">
+            <div><strong>OBJ</strong><span>Objectifs du projet</span></div>
+            <div><strong>RES</strong><span>Résultats attendus</span></div>
+            <div><strong>IND</strong><span>Indicateurs vérifiables</span></div>
+            <div><strong>BUD</strong><span>Budget et dépenses</span></div>
+          </div>
+        </div>
+
+        <div class="observatory" data-reveal style="--delay: 120ms">
+          <div class="dashboard" data-dashboard-tilt>
+            <aside class="panel score-panel">
+              <div class="panel-title">Synchronisation <span class="status-dot" aria-hidden="true"></span></div>
+              <article class="score-card">
+                <small>Résultats obtenus</small>
+                <strong>68%</strong>
+                <div class="meter" aria-hidden="true"><span style="--value: 68%"></span></div>
+              </article>
+              <article class="score-card">
+                <small>Dépenses réalisées</small>
+                <strong>52%</strong>
+                <div class="meter" aria-hidden="true"><span style="--value: 52%"></span></div>
+              </article>
+              <article class="score-card">
+                <small>Écart d'efficience</small>
+                <strong>+16 pts</strong>
+                <div class="meter" aria-hidden="true"><span style="--value: 78%"></span></div>
+              </article>
+            </aside>
+
+            <section class="panel matrix" aria-label="Tableau de bord cadre logique">
+              <div class="panel-title">Cadre logique vivant <span>Q2</span></div>
+              <div class="matrix-body">
+                <article class="matrix-item"><b>Objectif 01</b><span>Accès renforcé aux services prioritaires.</span></article>
+                <article class="matrix-item"><b>Résultat 02</b><span>Livrables terrain validés par zone.</span></article>
+                <article class="matrix-item"><b>Indicateur 14</b><span>Taux de réalisation consolidé.</span></article>
+                <article class="matrix-item"><b>Budget 08</b><span>Suivi dépenses / enveloppe.</span></article>
+                <article class="matrix-item"><b>Bénéficiaires</b><span>Ventilation par groupe cible.</span></article>
+                <article class="matrix-item"><b>Carte</b><span>Activités situées par localité.</span></article>
+              </div>
+            </section>
+
+            <section class="panel map-panel" aria-label="Carte des bénéficiaires">
+              <div class="panel-title">Localisation bénéficiaires <span>3 zones actives</span></div>
+              <div class="map-art">
+                <svg viewBox="0 0 900 260" role="img" aria-label="Carte abstraite des activités et bénéficiaires">
+                  <path d="M55 166C180 68 290 214 405 120c115-94 190-16 288-64 61-30 112-24 160 22" fill="none" stroke="currentColor" opacity=".2" stroke-width="26" stroke-linecap="round" />
+                  <path d="M80 170C198 88 300 194 408 128c120-74 185-24 282-54 62-19 112-5 158 32" fill="none" stroke="currentColor" opacity=".22" stroke-width="3" stroke-dasharray="10 14" />
+                  <circle class="pin" cx="210" cy="120" r="12" fill="var(--accent)" />
+                  <circle class="pin" cx="486" cy="118" r="12" fill="var(--accent-2)" />
+                  <circle class="pin" cx="710" cy="88" r="12" fill="var(--warn)" />
+                  <g fill="none" stroke="currentColor" opacity=".36">
+                    <path d="M210 120l276-2 224-30" />
+                    <path d="M210 120l500-32" stroke-dasharray="7 12" />
+                  </g>
+                </svg>
+              </div>
+            </section>
+          </div>
+        </div>
+      </section>
+
+      <div class="ticker" aria-hidden="true">
+        <span>Résultats vs dépenses</span>
+        <span>Indicateurs vérifiables</span>
+        <span>Budget consolidé</span>
+        <span>Bénéficiaires cartographiés</span>
+      </div>
+
+      <section class="shell" id="cadre" aria-labelledby="cadre-title">
+        <div class="section-head" data-reveal>
+          <h2 id="cadre-title">Le cadre logique cesse d'être un document figé.</h2>
+          <p>SARA Management et Évaluation transforme la structure du projet en système de pilotage : chaque objectif, résultat, indicateur et budget devient mesurable.</p>
+        </div>
+
+        <div class="feature-grid">
+          <article class="feature-card" data-card data-reveal>
+            <div class="card-top"><span class="pill">Cadre</span><span class="card-number">01</span></div>
+            <h3>Objectifs reliés</h3>
+            <p>Les objectifs, résultats et activités sont organisés dans une architecture claire pour suivre la logique d'intervention.</p>
+            <div class="card-art" aria-hidden="true">
+              <svg viewBox="0 0 260 260">
+                <circle cx="130" cy="64" r="28" fill="currentColor" class="art-accent" opacity=".8" />
+                <circle cx="74" cy="164" r="24" fill="none" stroke="currentColor" class="art-cyan" stroke-width="10" />
+                <circle cx="186" cy="164" r="24" fill="none" stroke="currentColor" class="art-cyan" stroke-width="10" />
+                <path class="stroke art-muted" stroke-width="10" d="M130 92v34M112 126H74v14M148 126h38v14" />
+                <path class="stroke art-accent" stroke-width="8" d="M74 188v32M186 188v32M58 220h144" />
+              </svg>
+            </div>
+          </article>
+
+          <article class="feature-card" data-card data-reveal style="--delay: 80ms">
+            <div class="card-top"><span class="pill">Indice</span><span class="card-number">02</span></div>
+            <h3>Indicateurs suivis</h3>
+            <p>Les indicateurs deviennent des signaux de décision : avancement, retard, écart, performance et preuve de réalisation.</p>
+            <div class="card-art" aria-hidden="true">
+              <svg viewBox="0 0 260 260">
+                <path class="stroke art-muted" stroke-width="10" d="M48 206h164M70 180V94M116 180V62M162 180v-48M208 180V82" />
+                <path class="stroke art-accent" stroke-width="10" d="M52 152c36 10 66 2 90-28 24-31 50-42 82-34" />
+                <circle cx="116" cy="62" r="14" fill="currentColor" class="art-accent" />
+                <circle cx="208" cy="82" r="14" fill="currentColor" class="art-cyan" />
+              </svg>
+            </div>
+          </article>
+
+          <article class="feature-card" data-card data-reveal>
+            <div class="card-top"><span class="pill">Budget</span><span class="card-number">03</span></div>
+            <h3>Résultats vs dépenses</h3>
+            <p>Le principe central : comparer le pourcentage de résultats obtenus avec le pourcentage de dépenses réalisées par rapport au budget.</p>
+            <div class="card-art" aria-hidden="true">
+              <svg viewBox="0 0 260 260">
+                <circle cx="130" cy="130" r="80" fill="none" stroke="currentColor" class="art-muted" stroke-width="18" />
+                <path d="M130 50a80 80 0 1 1-73 47" fill="none" stroke="currentColor" class="art-accent" stroke-width="18" stroke-linecap="round" />
+                <path d="M130 82a48 48 0 1 1-44 29" fill="none" stroke="currentColor" class="art-cyan" stroke-width="12" stroke-linecap="round" />
+                <path class="stroke art-accent" stroke-width="8" d="M104 130l20 20 42-52" />
+              </svg>
+            </div>
+          </article>
+
+          <article class="feature-card" data-card data-reveal style="--delay: 80ms">
+            <div class="card-top"><span class="pill">Terrain</span><span class="card-number">04</span></div>
+            <h3>Bénéficiaires cartographiés</h3>
+            <p>Lorsque le projet l'exige, les activités sont ventilées par bénéficiaire et situées sur une carte d'intervention.</p>
+            <div class="card-art" aria-hidden="true">
+              <svg viewBox="0 0 260 260">
+                <path class="stroke art-muted" stroke-width="10" d="M46 178c40-84 100 22 146-48 18-27 28-52 28-52" />
+                <path class="stroke art-cyan" stroke-width="8" d="M54 204h152M74 70h88M74 96h54" />
+                <path d="M188 68c-26 0-46 20-46 46 0 36 46 88 46 88s46-52 46-88c0-26-20-46-46-46Z" fill="none" stroke="currentColor" class="art-accent" stroke-width="10" />
+                <circle cx="188" cy="114" r="15" fill="currentColor" class="art-accent" />
+              </svg>
+            </div>
+          </article>
+        </div>
+      </section>
+
+      <section class="details shell" id="details" aria-labelledby="details-title">
+        <div class="section-head" data-reveal>
+          <h2 id="details-title">Deux niveaux de lecture.</h2>
+          <p>Une accroche courte pour présenter vite le logiciel, puis une version longue pour expliquer la logique de suivi-évaluation.</p>
+        </div>
+
+        <div class="detail-panel" data-reveal>
+          <div class="detail-controls" role="tablist" aria-label="Niveau de détail">
+            <button class="detail-tab active" type="button" role="tab" aria-selected="true" aria-controls="detail-short" id="tab-short" data-detail-tab="short">
+              Plus de détails <span>court</span>
+            </button>
+            <button class="detail-tab" type="button" role="tab" aria-selected="false" aria-controls="detail-long" id="tab-long" data-detail-tab="long">
+              Plus de détails <span>long</span>
+            </button>
+          </div>
+
+          <div class="detail-copy">
+            <article class="detail-content" id="detail-short" role="tabpanel" aria-labelledby="tab-short" data-detail-content="short">
+              <h2>Version courte.</h2>
+              <p>
+                SARA Management et Évaluation est la version complète de SARA dédiée au suivi du cadre logique d'un projet. Elle permet de suivre les objectifs, résultats, indicateurs et budgets, puis de comparer l'avancement réel avec les dépenses engagées.
+              </p>
+              <ul class="detail-list">
+                <li><b>Suivi intégré</b> Objectifs, résultats, indicateurs et budget dans une même lecture.</li>
+                <li><b>Comparaison clé</b> Résultats obtenus en pourcentage face aux dépenses réalisées.</li>
+                <li><b>Vision terrain</b> Activités ventilées par bénéficiaire et localisées sur carte si besoin.</li>
+                <li><b>Décision rapide</b> Les écarts deviennent visibles avant qu'ils ne bloquent le projet.</li>
+              </ul>
+            </article>
+
+            <article class="detail-content" id="detail-long" role="tabpanel" aria-labelledby="tab-long" data-detail-content="long" hidden>
+              <h2>Version longue.</h2>
+              <p>
+                SARA Management et Évaluation accompagne le pilotage complet d'un projet en structurant toutes les informations autour du cadre logique. Les objectifs définissent la direction, les résultats mesurent les changements attendus, les indicateurs permettent de vérifier l'avancement et le budget donne la réalité financière du projet.
+              </p>
+              <p>
+                Le principe de lecture est simple : le logiciel rapproche le pourcentage de résultats obtenus du pourcentage de dépenses réalisées par rapport au budget prévu. Cette comparaison met en évidence les situations d'efficience, de retard, de surconsommation ou de sous-exécution. L'équipe projet peut ainsi comprendre si les moyens engagés produisent les résultats attendus.
+              </p>
+              <p>
+                Dans les projets nécessitant un suivi terrain détaillé, les activités peuvent aussi être ventilées par bénéficiaire. Elles peuvent être localisées sur une carte afin d'identifier les zones couvertes, les bénéficiaires atteints et les territoires où l'intervention doit être renforcée.
+              </p>
+              <ul class="detail-list">
+                <li><b>Cadre logique</b> Liaison structurée entre objectifs, résultats, activités et indicateurs.</li>
+                <li><b>Suivi budgétaire</b> Lecture croisée entre budget prévu, dépenses engagées et résultats obtenus.</li>
+                <li><b>Évaluation</b> Identification des écarts entre planification, exécution financière et réalisation.</li>
+                <li><b>Cartographie</b> Localisation possible des activités et des bénéficiaires sur carte.</li>
+              </ul>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <section class="shell" id="simulateur" aria-labelledby="simulateur-title">
+        <div class="simulator" data-reveal>
+          <div class="sim-box">
+            <p class="eyebrow">Comparateur dynamique</p>
+            <h2 id="simulateur-title">Résultats obtenus contre dépenses réalisées.</h2>
+            <div class="range-grid">
+              <label class="range-label">
+                <span>Résultats obtenus <output data-result-output>68%</output></span>
+                <input type="range" min="0" max="100" value="68" data-result-range />
+              </label>
+              <label class="range-label">
+                <span>Dépenses réalisées <output data-spend-output>52%</output></span>
+                <input type="range" min="0" max="100" value="52" data-spend-range />
+              </label>
+            </div>
+          </div>
+
+          <aside class="sim-result" aria-live="polite">
+            <div>
+              <p>Écart d'efficience</p>
+              <strong class="delta positive" data-delta-output>+16 pts</strong>
+            </div>
+            <p data-delta-comment>Les résultats progressent plus vite que les dépenses : le projet est en zone favorable.</p>
+          </aside>
+        </div>
+      </section>
+
+      <section class="shell cta" id="contact" aria-labelledby="contact-title" data-reveal>
+        <div>
+          <p class="eyebrow">Présentation prête</p>
+          <h2 id="contact-title">SARA M&E donne une lecture claire de l'exécution projet.</h2>
+          <p>Une page autonome, responsive et interactive pour présenter le produit avec une tonalité haut de gamme, orientée décision et terrain.</p>
+        </div>
+        <a class="button primary magnetic" href="mailto:contact@md2i.mg">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16v14H4zM4 7l8 6 8-6" /></svg>
+          Contacter MD2I
+        </a>
+      </section>
+    </main>
+
+    <footer class="footer shell">
+      <p>© <span data-year></span> SARA Management et Évaluation.</p>
+      <div class="socials" aria-label="Liens sociaux">
+        <a href="#" aria-label="LinkedIn"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 10v8M6 6v.01M11 18v-8M11 14a4 4 0 0 1 8 0v4" /></svg></a>
+        <a href="#" aria-label="X"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 5l14 14M19 5 5 19" /></svg></a>
+        <a href="#" aria-label="Site web"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18ZM3 12h18M12 3c3 3 3 15 0 18M12 3c-3 3-3 15 0 18" /></svg></a>
+      </div>
+    </footer>
+
+    <script>
+      const root = document.documentElement;
+      const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+      const savedTheme = localStorage.getItem("sara-me-theme");
+      const prefersLight = window.matchMedia("(prefers-color-scheme: light)").matches;
+
+      root.dataset.theme = savedTheme || (prefersLight ? "light" : "dark");
+      document.querySelector("[data-year]").textContent = new Date().getFullYear();
+
+      const nav = document.querySelector(".nav");
+      const menu = document.querySelector("[data-menu]");
+      const themeToggle = document.querySelector("[data-theme-toggle]");
+
+      themeToggle.addEventListener("click", () => {
+        const next = root.dataset.theme === "dark" ? "light" : "dark";
+        root.dataset.theme = next;
+        localStorage.setItem("sara-me-theme", next);
+      });
+
+      menu.addEventListener("click", () => {
+        const isOpen = nav.classList.toggle("is-open");
+        menu.setAttribute("aria-expanded", String(isOpen));
+      });
+
+      nav.addEventListener("click", (event) => {
+        if (event.target instanceof HTMLAnchorElement) {
+          nav.classList.remove("is-open");
+          menu.setAttribute("aria-expanded", "false");
+        }
+      });
+
+      const typeTarget = document.querySelector("[data-typewriter]");
+      const finalCopy = "SARA Management\net Évaluation";
+
+      if (!reduceMotion) {
+        typeTarget.textContent = "";
+        [...finalCopy].forEach((char, index) => {
+          window.setTimeout(() => {
+            typeTarget.textContent += char;
+          }, 28 * index + 180);
+        });
+      } else {
+        typeTarget.textContent = finalCopy;
+      }
+
+      const revealObserver = new IntersectionObserver(
+        (entries) => {
+          entries.forEach((entry) => {
+            if (entry.isIntersecting) {
+              entry.target.classList.add("is-visible");
+              revealObserver.unobserve(entry.target);
+            }
+          });
+        },
+        { threshold: 0.14, rootMargin: "0px 0px -8% 0px" }
+      );
+
+      document.querySelectorAll("[data-reveal]").forEach((item) => revealObserver.observe(item));
+
+      const dashboard = document.querySelector("[data-dashboard-tilt]");
+
+      window.addEventListener(
+        "mousemove",
+        (event) => {
+          root.style.setProperty("--mx", `${(event.clientX / innerWidth) * 100}%`);
+          root.style.setProperty("--my", `${(event.clientY / innerHeight) * 100}%`);
+
+          if (!dashboard || reduceMotion || innerWidth < 760) return;
+          const rect = dashboard.getBoundingClientRect();
+          const x = (event.clientX - rect.left) / rect.width - 0.5;
+          const y = (event.clientY - rect.top) / rect.height - 0.5;
+          dashboard.style.setProperty("--ry", `${x * 7}deg`);
+          dashboard.style.setProperty("--rx", `${-y * 7}deg`);
+        },
+        { passive: true }
+      );
+
+      document.querySelectorAll("[data-card]").forEach((card) => {
+        card.addEventListener("mousemove", (event) => {
+          if (reduceMotion) return;
+          const rect = card.getBoundingClientRect();
+          const x = event.clientX - rect.left;
+          const y = event.clientY - rect.top;
+          const rotateY = (x / rect.width - 0.5) * 9;
+          const rotateX = -(y / rect.height - 0.5) * 9;
+          card.style.setProperty("--card-x", `${x}px`);
+          card.style.setProperty("--card-y", `${y}px`);
+          card.style.transform = `perspective(900px) rotateX(${rotateX}deg) rotateY(${rotateY}deg) translateY(-6px)`;
+        });
+        card.addEventListener("mouseleave", () => {
+          card.style.transform = "";
+        });
+      });
+
+      const detailTabs = [...document.querySelectorAll("[data-detail-tab]")];
+      const detailContents = [...document.querySelectorAll("[data-detail-content]")];
+
+      detailTabs.forEach((tab) => {
+        tab.addEventListener("click", () => {
+          const target = tab.dataset.detailTab;
+          detailTabs.forEach((item) => {
+            const active = item === tab;
+            item.classList.toggle("active", active);
+            item.setAttribute("aria-selected", String(active));
+          });
+          detailContents.forEach((content) => {
+            content.hidden = content.dataset.detailContent !== target;
+          });
+        });
+      });
+
+      const resultRange = document.querySelector("[data-result-range]");
+      const spendRange = document.querySelector("[data-spend-range]");
+      const resultOutput = document.querySelector("[data-result-output]");
+      const spendOutput = document.querySelector("[data-spend-output]");
+      const deltaOutput = document.querySelector("[data-delta-output]");
+      const deltaComment = document.querySelector("[data-delta-comment]");
+
+      function updateDelta() {
+        const result = Number(resultRange.value);
+        const spend = Number(spendRange.value);
+        const delta = result - spend;
+        resultOutput.textContent = `${result}%`;
+        spendOutput.textContent = `${spend}%`;
+        deltaOutput.textContent = `${delta >= 0 ? "+" : ""}${delta} pts`;
+        deltaOutput.classList.toggle("positive", delta >= 0);
+        deltaOutput.classList.toggle("negative", delta < 0);
+        deltaComment.textContent =
+          delta >= 12
+            ? "Les résultats progressent plus vite que les dépenses : le projet est en zone favorable."
+            : delta >= 0
+              ? "Les résultats restent alignés avec les dépenses : le projet avance de manière équilibrée."
+              : "Les dépenses dépassent les résultats obtenus : une analyse des activités et du budget est nécessaire.";
+      }
+
+      resultRange.addEventListener("input", updateDelta);
+      spendRange.addEventListener("input", updateDelta);
+      updateDelta();
+
+      const cursorDot = document.querySelector(".cursor-dot");
+      const cursorRing = document.querySelector(".cursor-ring");
+      let mouseX = 0;
+      let mouseY = 0;
+      let ringX = 0;
+      let ringY = 0;
+
+      function animateCursor() {
+        ringX += (mouseX - ringX) * 0.18;
+        ringY += (mouseY - ringY) * 0.18;
+        cursorDot.style.transform = `translate3d(${mouseX}px, ${mouseY}px, 0) translate(-50%, -50%)`;
+        cursorRing.style.transform = `translate3d(${ringX}px, ${ringY}px, 0) translate(-50%, -50%)`;
+        requestAnimationFrame(animateCursor);
+      }
+
+      if (matchMedia("(hover: hover) and (pointer: fine)").matches && !reduceMotion) {
+        document.body.classList.add("cursor-ready");
+        window.addEventListener("mousemove", (event) => {
+          mouseX = event.clientX;
+          mouseY = event.clientY;
+        });
+        document.querySelectorAll("a, button, input, [data-card]").forEach((element) => {
+          element.addEventListener("mouseenter", () => document.body.classList.add("cursor-active"));
+          element.addEventListener("mouseleave", () => document.body.classList.remove("cursor-active"));
+        });
+        animateCursor();
+      }
+    </script>
+  </body>
+</html>

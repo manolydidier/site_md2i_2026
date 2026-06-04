@@ -35,8 +35,10 @@ function stripHtml(value?: string | null) {
 
 function buildProductWhere(identifier: string): Prisma.ProductWhereInput {
   return {
+    status: 'PUBLISHED',
     publishedAt: {
       not: null,
+      lte: new Date(),
     },
     OR: [
       {

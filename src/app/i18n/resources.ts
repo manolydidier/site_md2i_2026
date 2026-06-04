@@ -23,13 +23,31 @@ export const resources = {
         search: {
           aria: 'Recherche',
           placeholder: 'Rechercher une page...',
+          modalPlaceholder:
+            'Rechercher un produit, article, référence ou lien...',
+          close: 'Fermer la recherche',
           escape: 'Échap',
           hint: 'Commencez à taper pour chercher dans le site.',
+          minChars: 'Tapez au moins 2 caractères pour lancer la recherche.',
+          error: 'Une erreur est survenue pendant la recherche.',
+          keyboardHint: '↑ ↓ pour naviguer · Entrée pour ouvrir',
+          escapeClose: 'Échap pour fermer',
           noResults: 'Aucun résultat pour "{{query}}".',
+          categories: {
+            all: 'Tout',
+            products: 'Produits',
+            articles: 'Articles',
+            references: 'Références',
+            links: 'Liens',
+          },
         },
         theme: {
           light: 'Mode clair',
           dark: 'Mode sombre',
+          lightShort: 'Clair',
+          darkShort: 'Sombre',
+          toggleToLight: 'Passer au mode clair',
+          toggleToDark: 'Passer au mode sombre',
         },
         language: {
           menu: 'Changer de langue',
@@ -195,6 +213,7 @@ footer: {
     about: 'À propos',
     contact: 'Contact',
     sales: 'Contact commercial',
+    blog: 'Blog',
   },
   quickLinks: {
     products: 'Catalogue produits',
@@ -1427,13 +1446,30 @@ footer: {
         search: {
           aria: 'Search',
           placeholder: 'Search a page...',
+          modalPlaceholder: 'Search products, articles, references or links...',
+          close: 'Close search',
           escape: 'Esc',
           hint: 'Start typing to search the site.',
+          minChars: 'Type at least 2 characters to start searching.',
+          error: 'An error occurred while searching.',
+          keyboardHint: '↑ ↓ to navigate · Enter to open',
+          escapeClose: 'Esc to close',
           noResults: 'No results for "{{query}}".',
+          categories: {
+            all: 'All',
+            products: 'Products',
+            articles: 'Articles',
+            references: 'References',
+            links: 'Links',
+          },
         },
         theme: {
           light: 'Light mode',
           dark: 'Dark mode',
+          lightShort: 'Light',
+          darkShort: 'Dark',
+          toggleToLight: 'Switch to light mode',
+          toggleToDark: 'Switch to dark mode',
         },
         language: {
           menu: 'Change language',
@@ -1577,113 +1613,111 @@ footer: {
           impact: 'Impact',
         },
       },
-  footer: {
-  brand: {
-    tagline: 'Cabinet IT & Solutions digitales',
-    availability: 'Disponible pour nouveaux projets',
-    description:
-      "Nous accompagnons les entreprises dans leur transformation digitale : conseil, développement sur mesure, logiciels métiers, maintenance et solutions IT à Madagascar et à l'international.",
-  },
-  sections: {
-    navigation: 'Navigation',
-    quickLinks: 'Accès rapides',
-    serviceCategories: 'Domaines services',
-    usefulServices: 'Services utiles',
-    sources: 'Sources utiles',
-  },
-  links: {
-    home: 'Accueil',
-    services: 'Services',
-    references: 'Références',
-    products: 'Produits',
-    about: 'À propos',
-    contact: 'Contact',
-    sales: 'Contact commercial',
-  },
-  quickLinks: {
-    products: 'Catalogue produits',
-    services: 'Voir nos services',
-    quote: 'Demander un devis',
-    demo: 'Demander une démo',
-    contact: 'Nous contacter',
-  },
-  serviceCategories: {
-    pilotage: 'Pilotage',
-    transformation: 'Transformation',
-    infrastructure: 'Infrastructure',
-    dataAi: 'Data & IA',
-    skills: 'Compétences',
-  },
-  serviceLinks: {
-    project: 'Assistance technique',
-    institution: 'Appui institutionnel',
-    digital: 'Digitalisation',
-    software: 'Développement logiciel',
-    hydraulic: 'Génie hydraulique',
-    accounting: 'Gestion comptable & RH',
-    studies: 'Études & enquêtes',
-    ai: 'Intelligence artificielle',
-    training: 'Formation',
-  },
-  sourceLinks: {
-    officialSite: 'Site officiel MD2I',
-    googleMaps: 'Fiche Google Maps',
-    directions: 'Itinéraire Google Maps',
-    email: 'Email MD2I Madagascar',
-  },
-  bottomLinks: {
-    contact: 'Contact',
-    sales: 'Contact commercial',
-    products: 'Produits',
-  },
-  newsletter: {
-    title: 'Recevoir les actualités MD2I',
-    text:
-      'Votre email sera ajouté au CRM comme contact marketing. Nous vous enverrons uniquement des informations utiles.',
-    placeholder: 'votre@email.com',
-    crmContact: 'Contact CRM',
-    companyDetected: 'Entreprise détectée : {{company}}',
-    adding: 'Ajout en cours...',
-    addEmail: 'Ajouter mon email',
-    validation: {
-      email: 'Veuillez saisir une adresse email valide.',
-    },
-    errors: {
-      add: "Impossible d'ajouter ce contact.",
-      generic: "Erreur pendant l'inscription.",
-    },
-    success: {
-      createdTitle: 'Bienvenue chez MD2I',
-      updatedTitle: 'Contact déjà enregistré',
-      createdMessage:
-        'Votre email a bien été ajouté au CRM. Nous pourrons vous envoyer nos actualités, offres utiles et informations produits.',
-      updatedMessage:
-        'Ce contact existait déjà dans le CRM. Ses informations ont été complétées et mises à jour.',
-    },
-  },
-  location: {
-    title: 'Localisation MD2I',
-    openMaps: 'Ouvrir MD2I dans Google Maps',
-    mapTitle: 'Localisation MD2I Madagascar sur Google Maps',
-    logoAlt: 'MD2I Madagascar',
-    unavailable:
-      "La géolocalisation n'est pas disponible sur ce navigateur.",
-    detected:
-      "Position détectée. Ouverture de l'itinéraire Google Maps.",
-    denied:
-      'Localisation refusée. Ouverture de Google Maps sans position de départ.',
-    locating: 'Localisation...',
-    useMyLocation: "Me localiser et ouvrir l'itinéraire",
-  },
-  contact: {
-    title: 'Coordonnées',
-    subtitle:
-      "Contactez MD2I Madagascar ou ouvrez directement l'itinéraire.",
-  },
-  legal: {
-    rights: '— Tous droits réservés. Conçu avec soin à Madagascar 🇲🇬',
-  },
-},
+      footer: {
+        brand: {
+          tagline: 'IT consulting & digital solutions',
+          availability: 'Available for new projects',
+          description:
+            'We support companies in their digital transformation: consulting, custom development, business software, maintenance, and IT solutions in Madagascar and internationally.',
+        },
+        sections: {
+          navigation: 'Navigation',
+          quickLinks: 'Quick access',
+          serviceCategories: 'Service areas',
+          usefulServices: 'Useful services',
+          sources: 'Useful sources',
+        },
+        links: {
+          home: 'Home',
+          services: 'Services',
+          references: 'References',
+          products: 'Products',
+          about: 'About',
+          contact: 'Contact',
+          sales: 'Sales contact',
+          blog: 'Blog',
+        },
+        quickLinks: {
+          products: 'Product catalog',
+          services: 'View our services',
+          quote: 'Request a quote',
+          demo: 'Request a demo',
+          contact: 'Contact us',
+        },
+        serviceCategories: {
+          pilotage: 'Project steering',
+          transformation: 'Transformation',
+          infrastructure: 'Infrastructure',
+          dataAi: 'Data & AI',
+          skills: 'Skills',
+        },
+        serviceLinks: {
+          project: 'Technical assistance',
+          institution: 'Institutional support',
+          digital: 'Digitalization',
+          software: 'Software development',
+          hydraulic: 'Hydraulic engineering',
+          accounting: 'Accounting & HR management',
+          studies: 'Studies & surveys',
+          ai: 'Artificial intelligence',
+          training: 'Training',
+        },
+        sourceLinks: {
+          officialSite: 'Official MD2I website',
+          googleMaps: 'Google Maps listing',
+          directions: 'Google Maps directions',
+          email: 'MD2I Madagascar email',
+        },
+        bottomLinks: {
+          contact: 'Contact',
+          sales: 'Sales contact',
+          products: 'Products',
+        },
+        newsletter: {
+          title: 'Receive MD2I news',
+          text:
+            'Your email will be added to the CRM as a marketing contact. We will only send useful information.',
+          placeholder: 'your@email.com',
+          crmContact: 'CRM contact',
+          companyDetected: 'Company detected: {{company}}',
+          adding: 'Adding...',
+          addEmail: 'Add my email',
+          validation: {
+            email: 'Please enter a valid email address.',
+          },
+          errors: {
+            add: 'Unable to add this contact.',
+            generic: 'An error occurred during subscription.',
+          },
+          success: {
+            createdTitle: 'Welcome to MD2I',
+            updatedTitle: 'Contact already registered',
+            createdMessage:
+              'Your email has been added to the CRM. We will be able to send you our news, useful offers, and product information.',
+            updatedMessage:
+              'This contact already existed in the CRM. Its information has been completed and updated.',
+          },
+        },
+        location: {
+          title: 'MD2I location',
+          openMaps: 'Open MD2I in Google Maps',
+          mapTitle: 'MD2I Madagascar location on Google Maps',
+          logoAlt: 'MD2I Madagascar',
+          unavailable: 'Geolocation is not available in this browser.',
+          detected: 'Location detected. Opening Google Maps directions.',
+          denied:
+            'Location denied. Opening Google Maps without a starting point.',
+          locating: 'Locating...',
+          useMyLocation: 'Use my location and open directions',
+        },
+        contact: {
+          title: 'Contact details',
+          subtitle: 'Contact MD2I Madagascar or open directions directly.',
+        },
+        legal: {
+          rights: '— All rights reserved. Carefully designed in Madagascar 🇲🇬',
+        },
+      },
       techList: {
         kicker: 'Tech stack',
         summary: '{{categories}} areas · {{technologies}} techs',

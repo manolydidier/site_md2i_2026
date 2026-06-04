@@ -174,38 +174,6 @@ const LINKS: FooterLink[] = [
   },
 ]
 
-const QUICK_LINKS: BasicLink[] = [
-  {
-    href: '/produits',
-    label: 'Catalogue produits',
-    key: 'products',
-    icon: <Package size={14} />,
-  },
-  {
-    href: '/services',
-    label: 'Voir nos services',
-    key: 'services',
-    icon: <BriefcaseBusiness size={14} />,
-  },
-  {
-    href: '/contact-commercial',
-    label: 'Demander un devis',
-    key: 'quote',
-    icon: <ExternalLink size={14} />,
-  },
-  {
-    href: '/contact-commercial?requestType=DEMO',
-    label: 'Demander une démo',
-    key: 'demo',
-    icon: <ExternalLink size={14} />,
-  },
-  {
-    href: '/contact',
-    label: 'Nous contacter',
-    key: 'contact',
-    icon: <MessageCircle size={14} />,
-  },
-]
 
 const BOTTOM_LINKS: BasicLink[] = [
   {
@@ -347,7 +315,8 @@ function buildDirectionsUrl(location?: VisitorLocation | null) {
 
 export default function PublicFooter() {
   const { dark } = useTheme()
-  const { t: translate } = useTranslation()
+  const { t: translate, i18n } = useTranslation()
+  const currentLanguage = i18n.resolvedLanguage || i18n.language
 
   const palette = useMemo(() => tokens(dark), [dark])
 
@@ -369,30 +338,10 @@ export default function PublicFooter() {
           defaultValue: link.label,
         }) as string,
       })),
-    [translate]
+    [translate, currentLanguage]
   )
 
-  const quickLinks = useMemo(
-    () =>
-      QUICK_LINKS.map((link) => ({
-        ...link,
-        label: translate(`footer.quickLinks.${link.key}`, {
-          defaultValue: link.label,
-        }) as string,
-      })),
-    [translate]
-  )
 
-  // const sourceLinks = useMemo(
-  //   () =>
-  //     SOURCE_LINKS.map((link) => ({
-  //       ...link,
-  //       label: translate(`footer.sourceLinks.${link.key}`, {
-  //         defaultValue: link.label,
-  //       }) as string,
-  //     })),
-  //   [translate]
-  // )
 
   const bottomLinks = useMemo(
     () =>
@@ -402,7 +351,7 @@ export default function PublicFooter() {
           defaultValue: link.label,
         }) as string,
       })),
-    [translate]
+    [translate, currentLanguage]
   )
 
   const socials = useMemo(
@@ -949,12 +898,24 @@ export default function PublicFooter() {
           align-items: center;
           justify-content: center;
           flex-shrink: 0;
-          transition: transform .16s ease, opacity .16s ease;
+          background: var(--ft-icon);
+          border: 1px solid var(--ft-icon-border);
+          color: var(--ft-subtle);
+          opacity: .72;
+          transition:
+            transform .16s ease,
+            opacity .16s ease,
+            color .16s ease,
+            background .16s ease,
+            border-color .16s ease;
         }
 
         .footer-link:hover .footer-link-icon {
           transform: scale(1.06);
           opacity: 1;
+          color: var(--item-color, var(--ft-orange));
+          background: color-mix(in srgb, var(--item-color, var(--ft-orange)) 10%, transparent);
+          border-color: color-mix(in srgb, var(--item-color, var(--ft-orange)) 26%, transparent);
         }
 
         .footer-link-label {
@@ -1588,11 +1549,7 @@ export default function PublicFooter() {
                     <Link key={link.href} href={link.href} className="footer-link">
                       <span
                         className="footer-link-icon"
-                        style={{
-                          background: `${link.color}18`,
-                          border: `1px solid ${link.color}28`,
-                          color: link.color,
-                        }}
+                        style={{ '--item-color': link.color } as CSSProperties}
                       >
                         <Icon size={14} />
                       </span>
@@ -1602,62 +1559,6 @@ export default function PublicFooter() {
                   )
                 })}
               </div>
-            </div>
-
-            <div style={fadeStyle(0.16)}>
-              <p className="footer-col-title">
-                {tr('footer.sections.quickLinks', 'Accès rapides')}
-              </p>
-
-              <div className="footer-list">
-                {quickLinks.map((link) => (
-                  <Link key={link.href} href={link.href} className="footer-link">
-                    <span
-                      className="footer-link-icon"
-                      style={{
-                        background: 'var(--ft-orange-soft)',
-                        border: '1px solid var(--ft-orange-border)',
-                        color: 'var(--ft-orange)',
-                      }}
-                    >
-                      {link.icon || <ExternalLink size={14} />}
-                    </span>
-
-                    <span className="footer-link-label">{link.label}</span>
-                  </Link>
-                ))}
-              </div>
-
-              {/* <div className="footer-source-block">
-                <p className="footer-col-title">
-                  {tr('footer.sections.sources', 'Sources utiles')}
-                </p>
-
-                <div className="footer-list">
-                  {sourceLinks.map((link) => (
-                    <a
-                      key={link.href}
-                      href={link.href}
-                      target={link.external ? '_blank' : undefined}
-                      rel={link.external ? 'noreferrer' : undefined}
-                      className="footer-link"
-                    >
-                      <span
-                        className="footer-link-icon"
-                        style={{
-                          background: 'var(--ft-icon)',
-                          border: '1px solid var(--ft-icon-border)',
-                          color: 'var(--ft-soft)',
-                        }}
-                      >
-                        {link.icon || <ExternalLink size={14} />}
-                      </span>
-
-                      <span className="footer-link-label">{link.label}</span>
-                    </a>
-                  ))}
-                </div>
-              </div> */}
             </div>
 
             <div className="footer-side" style={fadeStyle(0.24)}>
