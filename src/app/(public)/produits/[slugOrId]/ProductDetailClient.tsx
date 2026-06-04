@@ -197,6 +197,10 @@ function syncEmbeddedTheme(editor: Editor, dark: boolean) {
 
   if (!canvasDoc) return
 
+  const productPageRootSelector =
+    ':where(.project-theme, .md2i-support, .sara-page, [data-theme], [id$="-page"], body > div:first-child, body > main:first-child)'
+  const productPageRootQuery =
+    '.project-theme, .md2i-support, .sara-page, [data-theme], [id$="-page"], body > div:first-child, body > main:first-child'
   const theme = dark ? 'dark' : 'light'
   const pageText = dark ? '#fff7ed' : '#20130a'
   const softText = dark ? '#d8c3ab' : '#75563a'
@@ -235,107 +239,49 @@ function syncEmbeddedTheme(editor: Editor, dark: boolean) {
       color-scheme: ${dark ? 'dark' : 'light'};
     }
 
-    .project-theme,
-    .md2i-support,
-    .sara-page,
-    [data-theme] {
+    ${productPageRootSelector} {
       background: ${pageBackground} !important;
       color: ${pageText} !important;
       min-height: 100% !important;
     }
 
-    .project-theme[data-theme="${theme}"],
-    .md2i-support[data-theme="${theme}"],
-    .sara-page[data-theme="${theme}"],
-    [data-theme="${theme}"] {
+    ${productPageRootSelector}[data-theme="${theme}"] {
       background: ${pageBackground} !important;
       color: ${pageText} !important;
     }
 
-    .project-theme h1,
-    .project-theme h2,
-    .project-theme h3,
-    .project-theme h4,
-    .project-theme strong,
-    .md2i-support h1,
-    .md2i-support h2,
-    .md2i-support h3,
-    .md2i-support h4,
-    .md2i-support strong,
-    .sara-page h1,
-    .sara-page h2,
-    .sara-page h3,
-    .sara-page h4,
-    .sara-page strong {
+    ${productPageRootSelector} :where(h1, h2, h3, h4, strong) {
       color: ${pageText};
     }
 
-    .project-theme p,
-    .project-theme span,
-    .project-theme li,
-    .md2i-support p,
-    .md2i-support span,
-    .md2i-support li,
-    .sara-page p,
-    .sara-page span,
-    .sara-page li {
+    ${productPageRootSelector} :where(p, span, li) {
       border-color: ${line};
     }
 
-    .project-theme p,
-    .md2i-support p,
-    .sara-page p {
+    ${productPageRootSelector} p {
       color: ${softText};
     }
 
-    .project-theme .glass,
-    .project-theme .card,
-    .project-theme .panel,
-    .project-theme .tabs,
-    .md2i-support .glass,
-    .md2i-support .card,
-    .md2i-support .panel,
-    .md2i-support .tabs,
-    .sara-page .glass,
-    .sara-page .card,
-    .sara-page .panel,
-    .sara-page .tabs {
+    ${productPageRootSelector} :where(.glass, .card, .panel, .tabs) {
       background: ${glass};
       border-color: ${line};
       backdrop-filter: blur(22px);
       -webkit-backdrop-filter: blur(22px);
     }
 
-    .project-theme button,
-    .project-theme a,
-    .md2i-support button,
-    .md2i-support a,
-    .sara-page button,
-    .sara-page a {
+    ${productPageRootSelector} :where(button, a) {
       -webkit-tap-highlight-color: transparent;
     }
 
-    .project-theme .primary,
-    .project-theme .active,
-    .project-theme [data-active="true"],
-    .md2i-support .primary,
-    .md2i-support .active,
-    .md2i-support [data-active="true"],
-    .sara-page .primary,
-    .sara-page .active,
-    .sara-page [data-active="true"] {
+    ${productPageRootSelector} :where(.primary, .active, [data-active="true"]) {
       border-color: rgba(239,159,39,.34);
     }
 
-    .project-theme .accent,
-    .md2i-support .accent,
-    .sara-page .accent {
+    ${productPageRootSelector} .accent {
       color: ${accent1};
     }
 
-    .project-theme .orange-gradient,
-    .md2i-support .orange-gradient,
-    .sara-page .orange-gradient {
+    ${productPageRootSelector} .orange-gradient {
       background: linear-gradient(135deg, ${accent1}, ${accent2});
     }
   `
@@ -343,11 +289,8 @@ function syncEmbeddedTheme(editor: Editor, dark: boolean) {
   canvasDoc.documentElement.setAttribute('data-app-theme', theme)
   canvasDoc.body.setAttribute('data-app-theme', theme)
 
-  const themeRoot = (
-    canvasDoc.querySelector('.project-theme') ||
-    canvasDoc.querySelector('.md2i-support') ||
-    canvasDoc.querySelector('.sara-page') ||
-    canvasDoc.querySelector('[data-theme]')
+  const themeRoot = canvasDoc.querySelector(
+    productPageRootQuery,
   ) as HTMLElement | null
 
   if (themeRoot) {

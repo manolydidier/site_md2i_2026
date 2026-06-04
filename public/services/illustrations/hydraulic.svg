@@ -1,0 +1,39 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1000" role="img">
+  <title>Hydraulic infrastructure and risk mapping illustration</title>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#0f172a"/>
+      <stop offset=".48" stop-color="#064e3b"/>
+      <stop offset="1" stop-color="#0ea5e9"/>
+    </linearGradient>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="24" stdDeviation="26" flood-color="#020617" flood-opacity=".35"/>
+    </filter>
+  </defs>
+  <rect width="1600" height="1000" fill="url(#bg)"/>
+  <g opacity=".22" fill="none" stroke="#fff" stroke-width="2">
+    <path d="M80 250c170-92 334-88 498 12 164 100 336 104 514 12 160-82 310-80 450 10"/>
+    <path d="M50 382c188-80 354-72 500 22 154 98 334 96 540-4 164-80 312-70 452 34"/>
+    <path d="M96 690c240-140 472-132 696 22 184 126 402 118 654-24"/>
+  </g>
+  <path d="M0 612c230-78 414-52 552 78 166 158 362 168 588 34 184-108 338-126 460-54v330H0Z" fill="#bae6fd" opacity=".9"/>
+  <path d="M0 692c252-92 444-68 576 72 168 178 380 176 636-8 148-106 278-128 388-66v310H0Z" fill="#0284c7" opacity=".72"/>
+  <g filter="url(#shadow)">
+    <rect x="220" y="206" width="500" height="360" rx="34" fill="#f8fafc"/>
+    <rect x="880" y="192" width="420" height="260" rx="34" fill="#f8fafc"/>
+  </g>
+  <g fill="none" stroke-linecap="round">
+    <path d="M278 470c80-126 168-166 264-120 64 30 108 24 134-18" stroke="#16a34a" stroke-width="18"/>
+    <path d="M278 398c84-74 162-82 234-24 56 46 110 40 164-18" stroke="#0ea5e9" stroke-width="14"/>
+    <path d="M936 326h286" stroke="#0f172a" stroke-width="18"/>
+    <path d="M936 382h188" stroke="#64748b" stroke-width="14"/>
+  </g>
+  <g>
+    <circle cx="420" cy="356" r="30" fill="#ef9f27"/>
+    <circle cx="612" cy="314" r="30" fill="#ef4444"/>
+    <circle cx="1030" cy="268" r="26" fill="#0ea5e9"/>
+    <circle cx="1168" cy="268" r="26" fill="#22c55e"/>
+    <rect x="925" y="638" width="330" height="90" rx="18" fill="#f8fafc"/>
+    <rect x="966" y="674" width="248" height="20" rx="10" fill="#0f172a"/>
+  </g>
+</svg>

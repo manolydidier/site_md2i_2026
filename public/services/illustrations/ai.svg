@@ -1,0 +1,42 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1000" role="img">
+  <title>Artificial intelligence automation illustration</title>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#020617"/>
+      <stop offset=".52" stop-color="#172554"/>
+      <stop offset="1" stop-color="#f59e0b"/>
+    </linearGradient>
+    <filter id="glow" x="-40%" y="-40%" width="180%" height="180%">
+      <feGaussianBlur stdDeviation="10" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="28" stdDeviation="28" flood-color="#020617" flood-opacity=".42"/>
+    </filter>
+  </defs>
+  <rect width="1600" height="1000" fill="url(#bg)"/>
+  <g opacity=".18" stroke="#38bdf8" stroke-width="3">
+    <path d="M248 210 558 382 362 650M558 382l310-160 286 184M868 222l118 376 356-92M986 598l-258 194-366-142"/>
+  </g>
+  <g filter="url(#glow)">
+    <circle cx="248" cy="210" r="22" fill="#38bdf8"/>
+    <circle cx="558" cy="382" r="26" fill="#f59e0b"/>
+    <circle cx="362" cy="650" r="22" fill="#38bdf8"/>
+    <circle cx="868" cy="222" r="22" fill="#38bdf8"/>
+    <circle cx="1154" cy="406" r="26" fill="#f59e0b"/>
+    <circle cx="986" cy="598" r="22" fill="#38bdf8"/>
+    <circle cx="728" cy="792" r="22" fill="#38bdf8"/>
+    <circle cx="1342" cy="506" r="22" fill="#38bdf8"/>
+  </g>
+  <g filter="url(#shadow)">
+    <rect x="540" y="250" width="520" height="500" rx="54" fill="#f8fafc"/>
+    <rect x="612" y="322" width="376" height="356" rx="44" fill="#0f172a"/>
+  </g>
+  <g fill="none" stroke-linecap="round">
+    <path d="M700 446c46-72 154-72 200 0" stroke="#38bdf8" stroke-width="18"/>
+    <path d="M684 532h232" stroke="#f59e0b" stroke-width="18"/>
+    <path d="M730 594h140" stroke="#e2e8f0" stroke-width="14"/>
+  </g>
+  <circle cx="738" cy="446" r="24" fill="#38bdf8"/>
+  <circle cx="862" cy="446" r="24" fill="#38bdf8"/>
+</svg>

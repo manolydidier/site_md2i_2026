@@ -2,6 +2,7 @@
 
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import type { TFunction } from "i18next";
 import { useTranslation } from "react-i18next";
 import { useTheme } from "@/app/context/ThemeContext";
@@ -229,7 +230,7 @@ const baseServices: Service[] = [
       "Initiatives financées par partenaires techniques et financiers",
     ],
     kpi: "21+ ans d'expérience sectorielle",
-    imageUrl: "https://picsum.photos/seed/md2i-project-premium/1600/1000",
+    imageUrl: "/services/illustrations/project.svg",
   },
   {
     id: "institution",
@@ -269,7 +270,7 @@ const baseServices: Service[] = [
       "Structures partenaires de projets",
     ],
     kpi: "Procédures clarifiées et mieux traçables",
-    imageUrl: "https://picsum.photos/seed/md2i-institution-premium/1600/1000",
+    imageUrl: "/services/illustrations/institution.svg",
   },
   {
     id: "digital",
@@ -309,7 +310,7 @@ const baseServices: Service[] = [
       "Données de programme à grande échelle",
     ],
     kpi: "Processus plus rapides et mieux sécurisés",
-    imageUrl: "https://picsum.photos/seed/md2i-digital-premium/1600/1000",
+    imageUrl: "/services/illustrations/digital.svg",
   },
   {
     id: "software",
@@ -349,7 +350,7 @@ const baseServices: Service[] = [
       "Outils de suivi de programmes",
     ],
     kpi: "Outils alignés sur les usages réels",
-    imageUrl: "https://picsum.photos/seed/md2i-software-premium/1600/1000",
+    imageUrl: "/services/illustrations/software.svg",
   },
   {
     id: "hydraulic",
@@ -389,7 +390,7 @@ const baseServices: Service[] = [
       "Appui aux collectivités et programmes territoriaux",
     ],
     kpi: "Aide à la décision fondée sur le terrain",
-    imageUrl: "https://picsum.photos/seed/md2i-hydraulic-premium/1600/1000",
+    imageUrl: "/services/illustrations/hydraulic.svg",
   },
   {
     id: "accounting",
@@ -429,7 +430,7 @@ const baseServices: Service[] = [
       "Suivi budgétaire et reporting",
     ],
     kpi: "Fiabilité renforcée des données de gestion",
-    imageUrl: "https://picsum.photos/seed/md2i-accounting-premium/1600/1000",
+    imageUrl: "/services/illustrations/accounting.svg",
   },
   {
     id: "studies",
@@ -469,7 +470,7 @@ const baseServices: Service[] = [
       "Analyses sectorielles et territoriales",
     ],
     kpi: "Recommandations utiles à la décision",
-    imageUrl: "https://picsum.photos/seed/md2i-studies-premium/1600/1000",
+    imageUrl: "/services/illustrations/studies.svg",
   },
   {
     id: "ai",
@@ -509,7 +510,7 @@ const baseServices: Service[] = [
       "Aide à la décision dans les systèmes publics",
     ],
     kpi: "Analyse accélérée et automatisation ciblée",
-    imageUrl: "https://picsum.photos/seed/md2i-ai-premium/1600/1000",
+    imageUrl: "/services/illustrations/ai.svg",
   },
   {
     id: "training",
@@ -549,7 +550,7 @@ const baseServices: Service[] = [
       "Renforcement institutionnel sur le long terme",
     ],
     kpi: "Appropriation plus durable des dispositifs",
-    imageUrl: "https://picsum.photos/seed/md2i-training-premium/1600/1000",
+    imageUrl: "/services/illustrations/training.svg",
   },
 ];
 
@@ -1083,12 +1084,10 @@ function FeaturedService({
   service,
   theme,
   onOpen,
-  reduceMotion,
 }: {
   service: Service;
   theme: ReturnType<typeof serviceTokens>;
   onOpen: (service: Service) => void;
-  reduceMotion: boolean;
 }) {
   const { t } = useTranslation();
   const { Icon } = service;
@@ -1116,15 +1115,16 @@ function FeaturedService({
           overflow: "hidden",
         }}
       >
-        <img
+        <Image
           src={service.imageUrl}
           alt={service.illustrationLabel}
+          fill
+          priority
+          sizes="(max-width: 1080px) 100vw, 52vw"
+          unoptimized
           style={{
-            width: "100%",
-            height: "100%",
-            objectFit: "cover",
-            display: "block",
-            transform: reduceMotion ? "none" : "scale(1.03)",
+            objectFit: "contain",
+            padding: 18,
           }}
         />
         <div
@@ -1553,6 +1553,92 @@ function ServiceCard({
       />
 
       <div
+        className="md2i-service-card-media"
+        role="img"
+        aria-label={service.illustrationLabel}
+        style={{
+          position: "relative",
+          zIndex: 1,
+          minHeight: 168,
+          borderRadius: 20,
+          overflow: "hidden",
+          border: `1px solid ${hovered ? theme.borderStrong : theme.border}`,
+          background: theme.panel2,
+          boxShadow: hovered
+            ? "0 18px 42px rgba(17,24,39,.12)"
+            : "0 10px 24px rgba(17,24,39,.06)",
+          transition:
+            "border-color .24s ease, box-shadow .24s ease, transform .24s ease",
+          transform: hovered && !reduceMotion ? "translateY(-2px)" : "translateY(0)",
+        }}
+      >
+        <div
+          style={{
+            position: "absolute",
+            inset: 0,
+            backgroundImage: `url(${service.imageUrl})`,
+            backgroundSize: "cover",
+            backgroundPosition: "center",
+            transform: "none",
+            transition: "none",
+          }}
+        />
+        <div
+          style={{
+            position: "absolute",
+            inset: 0,
+            background:
+              "linear-gradient(180deg, rgba(15,23,42,.04) 0%, rgba(15,23,42,.18) 48%, rgba(15,23,42,.62) 100%)",
+          }}
+        />
+        <div
+          style={{
+            position: "absolute",
+            left: 14,
+            right: 14,
+            bottom: 14,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            gap: 12,
+          }}
+        >
+          <span
+            style={{
+              minWidth: 0,
+              color: "#FFFFFF",
+              fontSize: "0.72rem",
+              lineHeight: 1.35,
+              fontWeight: 750,
+              fontFamily: "'Inter', sans-serif",
+              textShadow: "0 2px 14px rgba(0,0,0,.32)",
+            }}
+          >
+            {service.illustrationLabel}
+          </span>
+          <span
+            aria-hidden="true"
+            style={{
+              width: 34,
+              height: 34,
+              flexShrink: 0,
+              display: "inline-flex",
+              alignItems: "center",
+              justifyContent: "center",
+              borderRadius: 12,
+              color: "#FFFFFF",
+              background: "rgba(255,255,255,.14)",
+              border: "1px solid rgba(255,255,255,.18)",
+              backdropFilter: "blur(10px)",
+              WebkitBackdropFilter: "blur(10px)",
+            }}
+          >
+            <Icon color="#FFFFFF" size={17} />
+          </span>
+        </div>
+      </div>
+
+      <div
         style={{
           position: "relative",
           zIndex: 1,
@@ -1865,10 +1951,13 @@ function ServiceModal({
               overflow: "hidden",
             }}
           >
-            <img
+            <Image
               src={service.imageUrl}
               alt={service.illustrationLabel}
-              style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
+              fill
+              sizes="(max-width: 1080px) 100vw, 46vw"
+              unoptimized
+              style={{ objectFit: "contain", padding: 18 }}
             />
             <div
               style={{
@@ -2486,7 +2575,6 @@ export default function MD2IServicesSection() {
             service={previewService}
             theme={T}
             onOpen={setSelectedService}
-            reduceMotion={reduceMotion}
           />
         </div>
 
@@ -2828,6 +2916,10 @@ export default function MD2IServicesSection() {
           outline-offset: 4px;
         }
 
+        .md2i-service-card-media {
+          aspect-ratio: 16 / 9;
+        }
+
         .md2i-product-link {
           min-width: 0;
           min-height: 52px;
@@ -2964,8 +3056,8 @@ export default function MD2IServicesSection() {
         }
 
         @keyframes md2iZoomIn {
-          from { opacity: 0; transform: translateY(16px) scale(.97); }
-          to   { opacity: 1; transform: translateY(0) scale(1); }
+          from { opacity: 0; transform: translateY(16px); }
+          to   { opacity: 1; transform: translateY(0); }
         }
 
         @media (max-width: 1080px) {
@@ -3001,6 +3093,10 @@ export default function MD2IServicesSection() {
         @media (max-width: 700px) {
           .md2i-grid {
             grid-template-columns: 1fr !important;
+          }
+
+          .md2i-service-card-media {
+            min-height: 196px !important;
           }
 
           .md2i-hero-actions,

@@ -174,7 +174,6 @@ const LINKS: FooterLink[] = [
   },
 ]
 
-
 const BOTTOM_LINKS: BasicLink[] = [
   {
     href: '/contact',
@@ -192,36 +191,6 @@ const BOTTOM_LINKS: BasicLink[] = [
     key: 'products',
   },
 ]
-
-// const SOURCE_LINKS: BasicLink[] = [
-//   {
-//     href: MD2I_WEBSITE_URL,
-//     label: 'Site officiel MD2I',
-//     key: 'officialSite',
-//     external: true,
-//     icon: <Globe2 size={14} />,
-//   },
-//   {
-//     href: GOOGLE_MAP_SEARCH_URL,
-//     label: 'Fiche Google Maps',
-//     key: 'googleMaps',
-//     external: true,
-//     icon: <MapPin size={14} />,
-//   },
-//   {
-//     href: GOOGLE_MAP_DIRECTIONS_URL,
-//     label: 'Itinéraire Google Maps',
-//     key: 'directions',
-//     external: true,
-//     icon: <Navigation size={14} />,
-//   },
-//   {
-//     href: `mailto:${MD2I_EMAIL}`,
-//     label: 'Email MD2I Madagascar',
-//     key: 'email',
-//     icon: <Mail size={14} />,
-//   },
-// ]
 
 const RAW_SOCIALS = [
   {
@@ -340,8 +309,6 @@ export default function PublicFooter() {
       })),
     [translate, currentLanguage]
   )
-
-
 
   const bottomLinks = useMemo(
     () =>
@@ -539,6 +506,14 @@ export default function PublicFooter() {
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
 
         .footer-root {
+          position: relative;
+          left: 50%;
+          right: 50%;
+          width: 100vw;
+          max-width: 100vw;
+          margin-left: -50vw;
+          margin-right: -50vw;
+          overflow-x: clip;
           background:
             radial-gradient(circle at 10% 0%, rgba(239, 159, 39, .075), transparent 28%),
             linear-gradient(180deg, var(--ft-bg), var(--ft-bg));
@@ -556,6 +531,7 @@ export default function PublicFooter() {
 
         .footer-shell {
           width: min(1480px, 100%);
+          max-width: 1480px;
           margin: 0 auto;
         }
 
@@ -568,10 +544,9 @@ export default function PublicFooter() {
         .footer-grid {
           display: grid;
           grid-template-columns:
-            minmax(320px, 1.2fr)
-            minmax(205px, .74fr)
-            minmax(245px, .84fr)
-            minmax(650px, 1.55fr);
+            minmax(300px, 0.95fr)
+            minmax(210px, 0.55fr)
+            minmax(560px, 1.65fr);
           gap: 28px;
           align-items: start;
           margin-bottom: 42px;
@@ -922,12 +897,6 @@ export default function PublicFooter() {
           font-size: 13.3px;
           font-weight: 600;
           line-height: 1.25;
-        }
-
-        .footer-source-block {
-          margin-top: 22px;
-          padding-top: 18px;
-          border-top: 1px solid var(--ft-border);
         }
 
         .footer-map-card {
@@ -1312,11 +1281,29 @@ export default function PublicFooter() {
 
         @media (max-width: 1480px) {
           .footer-grid {
-            grid-template-columns: minmax(330px, 1.25fr) repeat(2, minmax(220px, 1fr));
+            grid-template-columns:
+              minmax(300px, 0.95fr)
+              minmax(210px, 0.55fr)
+              minmax(520px, 1.5fr);
           }
 
           .footer-side {
+            grid-column: auto;
+          }
+        }
+
+        @media (max-width: 1100px) {
+          .footer-grid {
+            grid-template-columns: minmax(300px, 1fr) minmax(560px, 1.5fr);
+            gap: 26px;
+          }
+
+          .footer-brand {
             grid-column: 1 / -1;
+          }
+
+          .footer-side {
+            grid-column: auto;
           }
         }
 
@@ -1326,7 +1313,10 @@ export default function PublicFooter() {
             gap: 26px;
           }
 
-          .footer-brand,
+          .footer-brand {
+            grid-column: 1 / -1;
+          }
+
           .footer-side {
             grid-column: 1 / -1;
           }

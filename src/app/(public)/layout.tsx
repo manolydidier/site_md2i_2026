@@ -1,4 +1,5 @@
 import PublicFooter from '../components/footer/publicfooter'
+import PublicBreadcrumbs from '../components/PublicBreadcrumbs'
 import PublicNavbar from '../components/PublicNavbar'
 import PublicThemeShell from './PublicThemeShell'
 import '../../app/globals.css'
@@ -10,6 +11,7 @@ export default function PublicLayout({
   return (
     <PublicThemeShell>
       <PublicNavbar />
+      <PublicBreadcrumbs />
       {children}
       <PublicFooter />
     </PublicThemeShell>
