@@ -61,6 +61,11 @@ type GrapesStyleReceiver = {
   addStyle: (style: Record<string, string>) => void
 }
 
+type ViewerDomComponents = {
+  getType?: (type: string) => unknown
+  addType: (type: string, definition: unknown) => void
+}
+
 type EditorWithEventHandlers = Editor & {
   __eventHandlers?: CanvasEventHandlers
 }
@@ -100,6 +105,12 @@ function getUiColors(dark: boolean) {
     accent1: '#ef9f27',
     accent2: '#f7c060',
     accent3: '#d9791f',
+    accentSoft: dark ? 'rgba(239,159,39,.17)' : 'rgba(239,159,39,.10)',
+    accentBorder: dark ? 'rgba(247,192,96,.36)' : 'rgba(239,159,39,.28)',
+    accentGlow: '0 0 34px rgba(239,159,39,.16)',
+    accentGlowStrong: '0 18px 42px rgba(239,159,39,.38)',
+    primaryBg: 'linear-gradient(135deg, #d9791f, #f7c060)',
+    primaryText: '#1d0d03',
 
     neutral1: dark ? '#ead7c0' : '#64748b',
     neutral2: dark ? '#94a3b8' : '#475569',
@@ -109,6 +120,7 @@ function getUiColors(dark: boolean) {
     textMuted: dark ? 'rgba(255,247,237,.52)' : 'rgba(15,23,42,.48)',
 
     line: dark ? 'rgba(255,226,194,.13)' : 'rgba(15,23,42,.08)',
+    gridLine: dark ? 'rgba(255,226,194,.08)' : 'rgba(118,77,38,.08)',
 
     orangeSoft: dark ? 'rgba(239,159,39,.17)' : 'rgba(239,159,39,.08)',
     orangeBorder: dark ? 'rgba(247,192,96,.36)' : 'rgba(239,159,39,.28)',
@@ -118,7 +130,470 @@ function getUiColors(dark: boolean) {
       : 'linear-gradient(135deg, rgba(255,255,255,.96), rgba(248,250,252,.84))',
 
     glassBorder: dark ? 'rgba(255,226,194,.14)' : 'rgba(15,23,42,.08)',
+
+    heroBg: dark ? '#020617' : '#fff8ee',
+    heroShape: 'rgba(239,159,39,.22)',
+    heroImageFilter: `saturate(${dark ? '1.02' : '1.06'}) contrast(1.05)`,
+    heroImageOpacity: dark ? '.74' : '.86',
+    heroOverlay: dark
+      ? 'linear-gradient(90deg, rgba(2,6,23,.92), rgba(2,6,23,.66), rgba(2,6,23,.22)), linear-gradient(180deg, rgba(2,6,23,.14), rgba(2,6,23,.94))'
+      : 'linear-gradient(90deg, rgba(32,19,10,.72), rgba(32,19,10,.44), rgba(32,19,10,.10)), linear-gradient(180deg, rgba(255,248,238,.06), rgba(255,248,238,.92))',
+    ambientGlow: dark
+      ? 'radial-gradient(circle at 16% 10%, rgba(239,159,39,.20), transparent 30rem), radial-gradient(circle at 86% 18%, rgba(247,192,96,.12), transparent 34rem)'
+      : 'radial-gradient(circle at 16% 10%, rgba(239,159,39,.20), transparent 30rem), radial-gradient(circle at 86% 18%, rgba(122,92,62,.10), transparent 34rem)',
+    builderBg: dark ? '#020617' : '#ffffff',
+    galleryBg: dark ? '#0b1220' : '#fffaf3',
+    ctaBg: dark
+      ? 'radial-gradient(circle at top right, rgba(239,159,39,.24), transparent 42%), #0f172a'
+      : 'radial-gradient(circle at top right, rgba(239,159,39,.24), transparent 42%), #20130a',
+    ctaBorder: 'rgba(255,255,255,.10)',
   }
+}
+
+type UiColors = ReturnType<typeof getUiColors>
+type RgbColor = { r: number; g: number; b: number }
+
+function stringifyThemeSource(value: unknown) {
+  if (!value) return ''
+
+  if (typeof value === 'string') {
+    return value.slice(0, 30000)
+  }
+
+  try {
+    return JSON.stringify(value).slice(0, 30000)
+  } catch {
+    return ''
+  }
+}
+
+function getProductThemeSource(product: Product | null) {
+  return [
+    product?.slug,
+    product?.name,
+    product?.category?.slug,
+    product?.category?.name,
+    stringifyThemeSource(product?.gjsHtml),
+    stringifyThemeSource(product?.gjsStyles),
+    stringifyThemeSource(product?.gjsComponents),
+  ]
+    .filter(Boolean)
+    .join(' ')
+    .toLowerCase()
+}
+
+function getProductThemeKey(product: Product | null) {
+  const source = getProductThemeSource(product)
+
+  if (
+    source.includes('spm-page') ||
+    source.includes('passation') ||
+    source.includes('marches')
+  ) {
+    return 'procurement'
+  }
+
+  if (
+    source.includes('sara-page') ||
+    source.includes('sara-paie') ||
+    source.includes('sara paie')
+  ) {
+    return 'sara'
+  }
+
+  return 'default'
+}
+
+function clampChannel(value: number) {
+  return Math.max(0, Math.min(255, Math.round(value)))
+}
+
+function toRgbColor(r: number, g: number, b: number): RgbColor {
+  return {
+    r: clampChannel(r),
+    g: clampChannel(g),
+    b: clampChannel(b),
+  }
+}
+
+function expandHexColor(value: string) {
+  if (value.length === 3 || value.length === 4) {
+    return value
+      .slice(0, 3)
+      .split('')
+      .map((part) => part + part)
+      .join('')
+  }
+
+  return value.slice(0, 6)
+}
+
+function hexToRgb(value: string): RgbColor | null {
+  const normalized = expandHexColor(value.replace('#', '').trim())
+
+  if (!/^[0-9a-f]{6}$/i.test(normalized)) return null
+
+  return toRgbColor(
+    Number.parseInt(normalized.slice(0, 2), 16),
+    Number.parseInt(normalized.slice(2, 4), 16),
+    Number.parseInt(normalized.slice(4, 6), 16),
+  )
+}
+
+function channelToHex(value: number) {
+  return clampChannel(value).toString(16).padStart(2, '0')
+}
+
+function rgbToHex(color: RgbColor) {
+  return `#${channelToHex(color.r)}${channelToHex(color.g)}${channelToHex(
+    color.b,
+  )}`
+}
+
+function rgbToRgba(color: RgbColor, alpha: number) {
+  return `rgba(${color.r},${color.g},${color.b},${alpha})`
+}
+
+function mixRgb(color: RgbColor, target: RgbColor, amount: number): RgbColor {
+  return toRgbColor(
+    color.r + (target.r - color.r) * amount,
+    color.g + (target.g - color.g) * amount,
+    color.b + (target.b - color.b) * amount,
+  )
+}
+
+function getColorLuminance(color: RgbColor) {
+  const transform = (channel: number) => {
+    const value = channel / 255
+    return value <= 0.03928
+      ? value / 12.92
+      : Math.pow((value + 0.055) / 1.055, 2.4)
+  }
+
+  return (
+    transform(color.r) * 0.2126 +
+    transform(color.g) * 0.7152 +
+    transform(color.b) * 0.0722
+  )
+}
+
+function getColorSaturation(color: RgbColor) {
+  const max = Math.max(color.r, color.g, color.b)
+  const min = Math.min(color.r, color.g, color.b)
+
+  return max === 0 ? 0 : (max - min) / max
+}
+
+function isUsableAccentColor(color: RgbColor) {
+  const max = Math.max(color.r, color.g, color.b)
+  const min = Math.min(color.r, color.g, color.b)
+  const luminance = getColorLuminance(color)
+  const saturation = getColorSaturation(color)
+
+  return (
+    saturation >= 0.18 &&
+    max >= 70 &&
+    min <= 245 &&
+    luminance >= 0.045 &&
+    luminance <= 0.88
+  )
+}
+
+function addWeightedColor(
+  colors: Map<string, { color: RgbColor; score: number }>,
+  color: RgbColor | null,
+  weight: number,
+) {
+  if (!color || !isUsableAccentColor(color)) return
+
+  const saturation = getColorSaturation(color)
+  const luminance = getColorLuminance(color)
+  const balance = luminance > 0.18 && luminance < 0.74 ? 1.35 : 0.9
+  const score = weight * (1 + saturation * 3) * balance
+  const key = rgbToHex(color)
+  const current = colors.get(key)
+
+  colors.set(key, {
+    color,
+    score: (current?.score ?? 0) + score,
+  })
+}
+
+function extractProductAccentColor(product: Product | null): RgbColor | null {
+  const source = getProductThemeSource(product)
+  const colors = new Map<string, { color: RgbColor; score: number }>()
+
+  const rgbRegex =
+    /rgba?\(\s*([0-9.]+)\s*,\s*([0-9.]+)\s*,\s*([0-9.]+)(?:\s*,\s*([0-9.]+))?\s*\)/gi
+  const hexRegex = /#([0-9a-f]{3,4}|[0-9a-f]{6}|[0-9a-f]{8})\b/gi
+
+  let rgbMatch: RegExpExecArray | null
+  while ((rgbMatch = rgbRegex.exec(source))) {
+    const alpha =
+      rgbMatch[4] === undefined ? 1 : Number.parseFloat(rgbMatch[4])
+    const weight = Number.isFinite(alpha) && alpha < 0.2 ? 0.35 : 1
+
+    addWeightedColor(
+      colors,
+      toRgbColor(
+        Number.parseFloat(rgbMatch[1]),
+        Number.parseFloat(rgbMatch[2]),
+        Number.parseFloat(rgbMatch[3]),
+      ),
+      weight,
+    )
+  }
+
+  let hexMatch: RegExpExecArray | null
+  while ((hexMatch = hexRegex.exec(source))) {
+    addWeightedColor(colors, hexToRgb(hexMatch[1]), 1)
+  }
+
+  return [...colors.values()].sort((a, b) => b.score - a.score)[0]?.color ?? null
+}
+
+function buildAdaptiveUiColors(
+  base: UiColors,
+  dark: boolean,
+  accent: RgbColor,
+): UiColors {
+  const white = toRgbColor(255, 255, 255)
+  const black = toRgbColor(0, 0, 0)
+  const accentStrong = dark ? mixRgb(accent, white, 0.16) : mixRgb(accent, black, 0.08)
+  const accentBright = dark ? mixRgb(accent, white, 0.34) : mixRgb(accent, white, 0.18)
+  const accentDeep = dark ? mixRgb(accent, black, 0.32) : mixRgb(accent, black, 0.28)
+  const shellDeep = mixRgb(accent, black, dark ? 0.9 : 0.84)
+  const shellMid = mixRgb(accent, black, dark ? 0.82 : 0.7)
+  const shellLight = mixRgb(accent, white, 0.9)
+  const primaryMid = mixRgb(accent, black, dark ? 0.16 : 0.08)
+  const primaryText = getColorLuminance(primaryMid) > 0.42 ? '#0f172a' : '#ffffff'
+
+  return {
+    ...base,
+    buttonText: dark ? '#f8fafc' : '#0f172a',
+    buttonBorder: dark ? rgbToRgba(accentBright, 0.18) : rgbToRgba(accent, 0.14),
+    buttonShadow: dark
+      ? '0 24px 70px rgba(0,0,0,.42)'
+      : `0 24px 70px ${rgbToRgba(accentDeep, 0.13)}`,
+
+    panelBg: dark ? rgbToRgba(shellMid, 0.76) : 'rgba(255, 255, 255, 0.94)',
+    panelBorder: dark ? rgbToRgba(accentBright, 0.16) : rgbToRgba(accent, 0.13),
+    panelText: dark ? '#f8fafc' : '#0f172a',
+    panelMuted: dark ? rgbToHex(mixRgb(accentBright, white, 0.2)) : '#475569',
+
+    appBg: dark ? rgbToHex(shellDeep) : rgbToHex(shellLight),
+    pageBg: dark
+      ? `radial-gradient(circle at 12% 8%, ${rgbToRgba(accent, 0.18)}, transparent 28rem), radial-gradient(circle at 86% 18%, ${rgbToRgba(accentBright, 0.1)}, transparent 32rem), linear-gradient(180deg, ${rgbToHex(shellDeep)} 0%, ${rgbToHex(shellMid)} 44%, ${rgbToHex(shellDeep)} 100%)`
+      : `radial-gradient(circle at 12% 8%, ${rgbToRgba(accent, 0.12)}, transparent 26rem), radial-gradient(circle at 86% 18%, ${rgbToRgba(accentDeep, 0.08)}, transparent 30rem), linear-gradient(180deg, ${rgbToHex(shellLight)} 0%, #ffffff 52%, #f8fafc 100%)`,
+
+    cardBg: dark ? rgbToRgba(shellMid, 0.86) : 'rgba(255, 255, 255, 0.96)',
+    cardBorder: dark ? rgbToRgba(accentBright, 0.16) : rgbToRgba(accent, 0.14),
+    mutedText: dark ? rgbToHex(mixRgb(accentBright, white, 0.16)) : '#64748b',
+
+    accent1: rgbToHex(accentStrong),
+    accent2: rgbToHex(accentBright),
+    accent3: rgbToHex(accentDeep),
+    accentSoft: dark ? rgbToRgba(accent, 0.17) : rgbToRgba(accent, 0.1),
+    accentBorder: dark ? rgbToRgba(accentBright, 0.38) : rgbToRgba(accent, 0.26),
+    accentGlow: `0 0 34px ${rgbToRgba(accent, 0.16)}`,
+    accentGlowStrong: `0 18px 42px ${rgbToRgba(accentDeep, dark ? 0.36 : 0.28)}`,
+    primaryBg: `linear-gradient(135deg, ${rgbToHex(primaryMid)}, ${rgbToHex(
+      accentBright,
+    )})`,
+    primaryText,
+
+    neutral1: dark ? rgbToHex(mixRgb(accentBright, white, 0.14)) : '#64748b',
+    neutral2: dark ? rgbToHex(mixRgb(accentBright, white, 0.04)) : '#475569',
+
+    text: dark ? '#f8fafc' : '#0f172a',
+    textSoft: dark ? 'rgba(248,250,252,.76)' : 'rgba(15,23,42,.72)',
+    textMuted: dark ? 'rgba(248,250,252,.52)' : 'rgba(15,23,42,.48)',
+
+    line: dark ? rgbToRgba(accentBright, 0.16) : rgbToRgba(accent, 0.12),
+    gridLine: dark ? rgbToRgba(accentBright, 0.08) : rgbToRgba(accent, 0.08),
+
+    orangeSoft: dark ? rgbToRgba(accent, 0.17) : rgbToRgba(accent, 0.1),
+    orangeBorder: dark ? rgbToRgba(accentBright, 0.38) : rgbToRgba(accent, 0.26),
+
+    glassBg: dark
+      ? `linear-gradient(135deg, ${rgbToRgba(accentBright, 0.1)}, rgba(255,255,255,.045))`
+      : `linear-gradient(135deg, rgba(255,255,255,.96), ${rgbToRgba(
+          shellLight,
+          0.84,
+        )})`,
+    glassBorder: dark ? rgbToRgba(accentBright, 0.16) : rgbToRgba(accent, 0.12),
+
+    heroBg: dark ? rgbToHex(shellDeep) : rgbToHex(shellLight),
+    heroShape: `linear-gradient(135deg, ${rgbToRgba(accentBright, 0.3)}, ${rgbToRgba(
+      accentDeep,
+      0.16,
+    )})`,
+    heroImageFilter: `saturate(${dark ? '1.04' : '1.06'}) contrast(1.04) brightness(${dark ? '.84' : '.92'})`,
+    heroImageOpacity: dark ? '.72' : '.84',
+    heroOverlay: dark
+      ? `linear-gradient(90deg, ${rgbToRgba(shellDeep, 0.94)}, ${rgbToRgba(shellMid, 0.68)}, ${rgbToRgba(shellMid, 0.24)}), linear-gradient(180deg, ${rgbToRgba(shellDeep, 0.12)}, ${rgbToRgba(shellDeep, 0.94)})`
+      : `linear-gradient(90deg, ${rgbToRgba(shellDeep, 0.82)}, ${rgbToRgba(shellDeep, 0.52)}, ${rgbToRgba(shellDeep, 0.14)}), linear-gradient(180deg, ${rgbToRgba(shellLight, 0.04)}, ${rgbToRgba(shellLight, 0.94)})`,
+    ambientGlow: dark
+      ? `radial-gradient(circle at 16% 10%, ${rgbToRgba(accent, 0.2)}, transparent 30rem), radial-gradient(circle at 86% 18%, ${rgbToRgba(accentBright, 0.12)}, transparent 34rem)`
+      : `radial-gradient(circle at 16% 10%, ${rgbToRgba(accent, 0.18)}, transparent 30rem), radial-gradient(circle at 86% 18%, ${rgbToRgba(accentDeep, 0.1)}, transparent 34rem)`,
+    builderBg: dark ? rgbToHex(shellDeep) : rgbToHex(mixRgb(accent, white, 0.95)),
+    galleryBg: dark ? rgbToHex(shellMid) : rgbToHex(shellLight),
+    ctaBg: dark
+      ? `radial-gradient(circle at top right, ${rgbToRgba(accent, 0.22)}, transparent 42%), linear-gradient(135deg, ${rgbToHex(shellDeep)}, ${rgbToHex(shellMid)})`
+      : `radial-gradient(circle at top right, ${rgbToRgba(accent, 0.22)}, transparent 42%), linear-gradient(135deg, ${rgbToHex(shellDeep)}, ${rgbToHex(accentDeep)})`,
+    ctaBorder: dark ? rgbToRgba(accentBright, 0.16) : 'rgba(255,255,255,.14)',
+  }
+}
+
+function getProductUiColors(product: Product | null, dark: boolean): UiColors {
+  const base = getUiColors(dark)
+  const themeKey = getProductThemeKey(product)
+
+  if (themeKey === 'procurement') {
+    return {
+      ...base,
+      buttonText: dark ? '#f3fff8' : '#0f172a',
+      buttonBorder: dark ? 'rgba(220,255,235,.15)' : 'rgba(8,122,67,.12)',
+      buttonShadow: dark
+        ? '0 24px 70px rgba(0,0,0,.42)'
+        : '0 24px 70px rgba(8,122,67,.11)',
+
+      panelBg: dark ? 'rgba(6, 17, 13, 0.78)' : 'rgba(255, 255, 255, 0.94)',
+      panelBorder: dark ? 'rgba(220,255,235,.15)' : 'rgba(8,122,67,.12)',
+      panelText: dark ? '#f3fff8' : '#0f172a',
+      panelMuted: dark ? '#b7c8bd' : '#475569',
+
+      appBg: dark ? '#020f0b' : '#f4fff8',
+      pageBg: dark
+        ? 'radial-gradient(circle at 12% 8%, rgba(53,242,143,.16), transparent 28rem), radial-gradient(circle at 86% 18%, rgba(34,211,238,.10), transparent 32rem), linear-gradient(180deg, #020f0b 0%, #061711 44%, #020f0b 100%)'
+        : 'radial-gradient(circle at 12% 8%, rgba(53,242,143,.12), transparent 26rem), radial-gradient(circle at 86% 18%, rgba(8,122,67,.08), transparent 30rem), linear-gradient(180deg, #f4fff8 0%, #ffffff 52%, #f8fafc 100%)',
+
+      cardBg: dark ? 'rgba(6, 17, 13, 0.86)' : 'rgba(255, 255, 255, 0.96)',
+      cardBorder: dark ? 'rgba(220,255,235,.15)' : 'rgba(8,122,67,.14)',
+      mutedText: dark ? '#b7c8bd' : '#64748b',
+
+      accent1: '#087a43',
+      accent2: '#35f28f',
+      accent3: '#22d3ee',
+      accentSoft: dark ? 'rgba(53,242,143,.16)' : 'rgba(8,122,67,.08)',
+      accentBorder: dark ? 'rgba(53,242,143,.36)' : 'rgba(8,122,67,.22)',
+      accentGlow: '0 0 34px rgba(53,242,143,.16)',
+      accentGlowStrong: '0 18px 42px rgba(8,122,67,.30)',
+      primaryBg: 'linear-gradient(135deg, #065f46, #087a43)',
+      primaryText: '#f3fff8',
+
+      neutral1: dark ? '#dcffeb' : '#64748b',
+      neutral2: dark ? '#b7c8bd' : '#475569',
+
+      text: dark ? '#f3fff8' : '#0f172a',
+      textSoft: dark ? 'rgba(243,255,248,.76)' : 'rgba(15,23,42,.72)',
+      textMuted: dark ? 'rgba(243,255,248,.52)' : 'rgba(15,23,42,.48)',
+
+      line: dark ? 'rgba(220,255,235,.15)' : 'rgba(8,122,67,.12)',
+      gridLine: dark ? 'rgba(220,255,235,.08)' : 'rgba(8,122,67,.08)',
+
+      orangeSoft: dark ? 'rgba(53,242,143,.16)' : 'rgba(8,122,67,.08)',
+      orangeBorder: dark ? 'rgba(53,242,143,.36)' : 'rgba(8,122,67,.22)',
+
+      glassBg: dark
+        ? 'linear-gradient(135deg, rgba(220,255,235,.10), rgba(220,255,235,.045))'
+        : 'linear-gradient(135deg, rgba(255,255,255,.96), rgba(244,255,248,.84))',
+      glassBorder: dark ? 'rgba(220,255,235,.15)' : 'rgba(8,122,67,.12)',
+
+      heroBg: dark ? '#020f0b' : '#f4fff8',
+      heroShape: 'linear-gradient(135deg, rgba(53,242,143,.26), rgba(34,211,238,.16))',
+      heroImageFilter: `saturate(${dark ? '1.02' : '1.06'}) contrast(1.03)`,
+      heroImageOpacity: dark ? '.70' : '.82',
+      heroOverlay: dark
+        ? 'linear-gradient(90deg, rgba(2,15,11,.94), rgba(6,23,17,.68), rgba(6,23,17,.24)), linear-gradient(180deg, rgba(2,15,11,.12), rgba(2,15,11,.94))'
+        : 'linear-gradient(90deg, rgba(3,45,29,.88), rgba(3,45,29,.58), rgba(3,45,29,.16)), linear-gradient(180deg, rgba(244,255,248,.04), rgba(244,255,248,.94))',
+      ambientGlow: dark
+        ? 'radial-gradient(circle at 16% 10%, rgba(53,242,143,.18), transparent 30rem), radial-gradient(circle at 86% 18%, rgba(34,211,238,.12), transparent 34rem)'
+        : 'radial-gradient(circle at 16% 10%, rgba(53,242,143,.18), transparent 30rem), radial-gradient(circle at 86% 18%, rgba(8,122,67,.10), transparent 34rem)',
+      builderBg: dark ? '#020f0b' : '#f8fffb',
+      galleryBg: dark ? '#061711' : '#f4fff8',
+      ctaBg: dark
+        ? 'radial-gradient(circle at top right, rgba(53,242,143,.22), transparent 42%), linear-gradient(135deg, #03130b, #064e3b)'
+        : 'radial-gradient(circle at top right, rgba(53,242,143,.24), transparent 42%), linear-gradient(135deg, #032d1d, #087a43)',
+      ctaBorder: dark ? 'rgba(220,255,235,.14)' : 'rgba(255,255,255,.14)',
+    }
+  }
+
+  if (themeKey === 'sara') {
+    return {
+      ...base,
+      buttonText: dark ? '#fff7ed' : '#2b1606',
+      buttonBorder: dark ? 'rgba(226,201,171,.14)' : 'rgba(124,95,70,.13)',
+      buttonShadow: dark
+        ? '0 24px 70px rgba(0,0,0,.44)'
+        : '0 24px 70px rgba(124,95,70,.13)',
+
+      panelBg: dark ? 'rgba(42, 25, 12, 0.76)' : 'rgba(255, 250, 243, 0.94)',
+      panelBorder: dark ? 'rgba(226,201,171,.14)' : 'rgba(124,95,70,.13)',
+      panelText: dark ? '#fff7ed' : '#2b1606',
+      panelMuted: dark ? '#d6c2aa' : '#6b5846',
+
+      appBg: dark ? '#100a06' : '#fffaf3',
+      pageBg: dark
+        ? 'radial-gradient(circle at 12% 8%, rgba(240,179,111,.18), transparent 28rem), radial-gradient(circle at 86% 18%, rgba(210,126,38,.12), transparent 32rem), linear-gradient(180deg, #100a06 0%, #1b1008 44%, #100a06 100%)'
+        : 'radial-gradient(circle at 12% 8%, rgba(240,179,111,.15), transparent 26rem), radial-gradient(circle at 86% 18%, rgba(124,95,70,.10), transparent 30rem), linear-gradient(180deg, #fffaf3 0%, #ffffff 52%, #fff7ef 100%)',
+
+      cardBg: dark ? 'rgba(42, 25, 12, 0.86)' : 'rgba(255, 250, 243, 0.96)',
+      cardBorder: dark ? 'rgba(226,201,171,.14)' : 'rgba(124,95,70,.13)',
+      mutedText: dark ? '#d6c2aa' : '#6b5846',
+
+      accent1: '#d27e26',
+      accent2: '#f0b36f',
+      accent3: '#7c5f46',
+      accentSoft: dark ? 'rgba(240,179,111,.18)' : 'rgba(210,126,38,.10)',
+      accentBorder: dark ? 'rgba(240,179,111,.38)' : 'rgba(210,126,38,.26)',
+      accentGlow: '0 0 34px rgba(210,126,38,.18)',
+      accentGlowStrong: '0 18px 42px rgba(210,126,38,.32)',
+      primaryBg: 'linear-gradient(135deg, #d27e26, #f0b36f)',
+      primaryText: '#271305',
+
+      neutral1: dark ? '#e2c9ab' : '#6b5846',
+      neutral2: dark ? '#d6c2aa' : '#7c5f46',
+
+      text: dark ? '#fff7ed' : '#2b1606',
+      textSoft: dark ? 'rgba(255,247,237,.76)' : 'rgba(43,22,6,.72)',
+      textMuted: dark ? 'rgba(255,247,237,.52)' : 'rgba(43,22,6,.50)',
+
+      line: dark ? 'rgba(226,201,171,.14)' : 'rgba(124,95,70,.12)',
+      gridLine: dark ? 'rgba(226,201,171,.08)' : 'rgba(124,95,70,.08)',
+
+      orangeSoft: dark ? 'rgba(240,179,111,.18)' : 'rgba(210,126,38,.10)',
+      orangeBorder: dark ? 'rgba(240,179,111,.38)' : 'rgba(210,126,38,.26)',
+
+      glassBg: dark
+        ? 'linear-gradient(135deg, rgba(226,201,171,.11), rgba(226,201,171,.045))'
+        : 'linear-gradient(135deg, rgba(255,250,243,.96), rgba(255,247,239,.84))',
+      glassBorder: dark ? 'rgba(226,201,171,.15)' : 'rgba(124,95,70,.12)',
+
+      heroBg: dark ? '#100a06' : '#fff8ef',
+      heroShape: 'linear-gradient(135deg, rgba(240,179,111,.34), rgba(210,126,38,.16))',
+      heroImageFilter: `saturate(${dark ? '1.04' : '1.06'}) contrast(1.04) brightness(${dark ? '.82' : '.92'})`,
+      heroImageOpacity: dark ? '.72' : '.84',
+      heroOverlay: dark
+        ? 'linear-gradient(90deg, rgba(16,10,6,.94), rgba(59,36,18,.66), rgba(59,36,18,.20)), linear-gradient(180deg, rgba(16,10,6,.12), rgba(16,10,6,.94))'
+        : 'linear-gradient(90deg, rgba(59,36,18,.78), rgba(59,36,18,.48), rgba(59,36,18,.12)), linear-gradient(180deg, rgba(255,248,239,.06), rgba(255,248,239,.92))',
+      ambientGlow: dark
+        ? 'radial-gradient(circle at 16% 10%, rgba(240,179,111,.20), transparent 30rem), radial-gradient(circle at 86% 18%, rgba(210,126,38,.12), transparent 34rem)'
+        : 'radial-gradient(circle at 16% 10%, rgba(240,179,111,.20), transparent 30rem), radial-gradient(circle at 86% 18%, rgba(124,95,70,.10), transparent 34rem)',
+      builderBg: dark ? '#100a06' : '#fffaf5',
+      galleryBg: dark ? '#1b1008' : '#fff7ef',
+      ctaBg: dark
+        ? 'radial-gradient(circle at top right, rgba(240,179,111,.22), transparent 42%), linear-gradient(135deg, #1d0d03, #3b2412)'
+        : 'radial-gradient(circle at top right, rgba(240,179,111,.24), transparent 42%), linear-gradient(135deg, #2b1606, #7c5f46)',
+      ctaBorder: dark ? 'rgba(226,201,171,.14)' : 'rgba(255,255,255,.14)',
+    }
+  }
+
+  const extractedAccent = extractProductAccentColor(product)
+
+  return extractedAccent
+    ? buildAdaptiveUiColors(base, dark, extractedAccent)
+    : base
 }
 
 function formatPrice(value: Product['price'], locale: Locale) {
@@ -192,27 +667,73 @@ function safeImage(src?: string | null) {
   return src?.trim() || '/placeholder-reference.svg'
 }
 
-function syncEmbeddedTheme(editor: Editor, dark: boolean) {
+function registerViewerComponentTypes(editor: Editor) {
+  const domComponents = editor.DomComponents as unknown as ViewerDomComponents
+
+  const addType = (
+    type: string,
+    tagName: string,
+    options: {
+      voidTag?: boolean
+      droppable?: boolean
+      isComponent?: (el: Element) => false | { type: string }
+    } = {},
+  ) => {
+    if (domComponents.getType?.(type)) return
+
+    domComponents.addType(type, {
+      isComponent:
+        options.isComponent ??
+        ((el: Element) => {
+          return el.tagName?.toLowerCase() === tagName ? { type } : false
+        }),
+      model: {
+        defaults: {
+          tagName,
+          void: Boolean(options.voidTag),
+          droppable: options.droppable ?? !options.voidTag,
+          editable: false,
+          draggable: false,
+          selectable: false,
+          hoverable: false,
+          highlightable: false,
+          copyable: false,
+          removable: false,
+        },
+      },
+    })
+  }
+
+  addType('button', 'button')
+  addType('input', 'input', { voidTag: true, droppable: false })
+  addType('range', 'input', {
+    voidTag: true,
+    droppable: false,
+    isComponent: (el) =>
+      el.tagName?.toLowerCase() === 'input' &&
+      (el as HTMLInputElement).type === 'range'
+        ? { type: 'range' }
+        : false,
+  })
+  addType('label', 'label')
+  addType('svg', 'svg')
+  addType('svg-in', 'path', { voidTag: true, droppable: false })
+}
+
+function syncEmbeddedTheme(
+  editor: Editor,
+  dark: boolean,
+  ui: UiColors,
+) {
   const canvasDoc = editor.Canvas?.getDocument()
 
   if (!canvasDoc) return
 
-  const productPageRootSelector =
-    ':where(.project-theme, .md2i-support, .sara-page, [data-theme], [id$="-page"], body > div:first-child, body > main:first-child)'
   const productPageRootQuery =
     '.project-theme, .md2i-support, .sara-page, [data-theme], [id$="-page"], body > div:first-child, body > main:first-child'
   const theme = dark ? 'dark' : 'light'
-  const pageText = dark ? '#fff7ed' : '#20130a'
-  const softText = dark ? '#d8c3ab' : '#75563a'
-  const accent1 = '#ef9f27'
-  const accent2 = '#f7c060'
-  const line = dark ? 'rgba(255,226,194,.13)' : 'rgba(118,77,38,.13)'
-  const glass = dark
-    ? 'linear-gradient(135deg, rgba(255,255,255,.10), rgba(255,255,255,.045))'
-    : 'linear-gradient(135deg, rgba(255,255,255,.86), rgba(255,244,229,.62))'
-  const pageBackground = dark
-    ? 'radial-gradient(circle at 12% 8%, rgba(239,159,39,.18), transparent 28rem), radial-gradient(circle at 88% 12%, rgba(255,190,107,.10), transparent 32rem), linear-gradient(180deg, #020617 0%, #07101f 42%, #020617 100%)'
-    : 'radial-gradient(circle at 12% 8%, rgba(239,159,39,.18), transparent 28rem), radial-gradient(circle at 88% 12%, rgba(122,92,62,.10), transparent 32rem), linear-gradient(180deg, #fff8ee 0%, #ffffff 46%, #f8fafc 100%)'
+  const pageBg = ui.builderBg
+  const pageText = ui.text
 
   let baseStyle = canvasDoc.getElementById(
     'viewer-base-style',
@@ -225,64 +746,12 @@ function syncEmbeddedTheme(editor: Editor, dark: boolean) {
   }
 
   baseStyle.innerHTML = `
-    html,
-    body {
+    html, body {
       margin: 0 !important;
       padding: 0 !important;
-      background: ${pageBackground} !important;
+      background: ${pageBg} !important;
       color: ${pageText} !important;
       overflow-x: hidden !important;
-    }
-
-    html[data-app-theme="${theme}"],
-    body[data-app-theme="${theme}"] {
-      color-scheme: ${dark ? 'dark' : 'light'};
-    }
-
-    ${productPageRootSelector} {
-      background: ${pageBackground} !important;
-      color: ${pageText} !important;
-      min-height: 100% !important;
-    }
-
-    ${productPageRootSelector}[data-theme="${theme}"] {
-      background: ${pageBackground} !important;
-      color: ${pageText} !important;
-    }
-
-    ${productPageRootSelector} :where(h1, h2, h3, h4, strong) {
-      color: ${pageText};
-    }
-
-    ${productPageRootSelector} :where(p, span, li) {
-      border-color: ${line};
-    }
-
-    ${productPageRootSelector} p {
-      color: ${softText};
-    }
-
-    ${productPageRootSelector} :where(.glass, .card, .panel, .tabs) {
-      background: ${glass};
-      border-color: ${line};
-      backdrop-filter: blur(22px);
-      -webkit-backdrop-filter: blur(22px);
-    }
-
-    ${productPageRootSelector} :where(button, a) {
-      -webkit-tap-highlight-color: transparent;
-    }
-
-    ${productPageRootSelector} :where(.primary, .active, [data-active="true"]) {
-      border-color: rgba(239,159,39,.34);
-    }
-
-    ${productPageRootSelector} .accent {
-      color: ${accent1};
-    }
-
-    ${productPageRootSelector} .orange-gradient {
-      background: linear-gradient(135deg, ${accent1}, ${accent2});
     }
   `
 
@@ -295,16 +764,17 @@ function syncEmbeddedTheme(editor: Editor, dark: boolean) {
 
   if (themeRoot) {
     themeRoot.setAttribute('data-theme', theme)
-    themeRoot.style.background = pageBackground
-    themeRoot.style.color = pageText
     themeRoot.style.minHeight = '100%'
+    themeRoot.style.setProperty('--viewer-shell-bg', pageBg)
+    themeRoot.style.setProperty('--viewer-shell-text', pageText)
+    themeRoot.style.setProperty('--viewer-shell-accent', ui.accent2)
   }
 
   const wrapper = editor.getWrapper() as GrapesStyleReceiver | null
 
   if (wrapper) {
     wrapper.addStyle({
-      background: pageBackground,
+      'background-color': pageBg,
       color: pageText,
       'min-height': '100%',
       height: 'auto',
@@ -344,6 +814,17 @@ function measureCanvasHeight(
   }
 }
 
+function scheduleCanvasMeasurements(
+  editor: Editor,
+  setCanvasHeight: (height: number) => void,
+) {
+  ;[180, 520, 1100, 1800].forEach((delay) => {
+    setTimeout(() => {
+      measureCanvasHeight(editor, setCanvasHeight)
+    }, delay)
+  })
+}
+
 export default function ProductDetailClient() {
   const params = useParams()
   const router = useRouter()
@@ -360,7 +841,7 @@ export default function ProductDetailClient() {
   const [error, setError] = useState<string | null>(null)
   const [canvasHeight, setCanvasHeight] = useState(900)
 
-  const ui = useMemo(() => getUiColors(dark), [dark])
+  const ui = useMemo(() => getProductUiColors(product, dark), [product, dark])
 
   const gallery = useMemo(
     () => normalizeProductImages(product?.images, product?.coverImage),
@@ -502,10 +983,11 @@ export default function ProductDetailClient() {
       deviceManager: {
         disable: true,
       },
-      allowScripts: Boolean(product.gjsJs?.trim()),
+      allowScripts: true,
     } as unknown as Parameters<typeof grapesjs.init>[0])
 
     gjsRef.current = editor
+    registerViewerComponentTypes(editor)
 
     editor.on('component:selected', () => {
       editor.select(undefined)
@@ -605,6 +1087,74 @@ export default function ProductDetailClient() {
             button,
             [role="button"] {
               cursor: pointer !important;
+            }
+
+            input[type="range"] {
+              --viewer-range-accent: var(--gold, var(--accent, var(--primary, ${ui.accent2})));
+              --viewer-range-track: ${ui.line};
+              --viewer-range-thumb: #f8fafc;
+              width: 100% !important;
+              max-width: 100% !important;
+              min-height: 30px !important;
+              margin: 8px 0 0 !important;
+              display: block !important;
+              cursor: pointer !important;
+              -webkit-appearance: none !important;
+              appearance: none !important;
+              accent-color: var(--viewer-range-accent) !important;
+              background: transparent !important;
+            }
+
+            input[type="range"]:focus-visible {
+              outline: 3px solid color-mix(in srgb, var(--viewer-range-accent) 42%, transparent) !important;
+              outline-offset: 4px !important;
+              border-radius: 999px !important;
+            }
+
+            input[type="range"]::-webkit-slider-runnable-track {
+              height: 10px !important;
+              border-radius: 999px !important;
+              border: 1px solid rgba(255, 255, 255, 0.14) !important;
+              background: linear-gradient(
+                90deg,
+                color-mix(in srgb, var(--viewer-range-accent) 80%, #ffffff 0%),
+                var(--viewer-range-track)
+              ) !important;
+              box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.12) !important;
+            }
+
+            input[type="range"]::-webkit-slider-thumb {
+              -webkit-appearance: none !important;
+              appearance: none !important;
+              width: 22px !important;
+              height: 22px !important;
+              margin-top: -7px !important;
+              border-radius: 999px !important;
+              border: 3px solid var(--viewer-range-accent) !important;
+              background: var(--viewer-range-thumb) !important;
+              box-shadow: 0 8px 22px rgba(0, 0, 0, 0.28) !important;
+            }
+
+            input[type="range"]::-moz-range-track {
+              height: 10px !important;
+              border-radius: 999px !important;
+              border: 1px solid rgba(255, 255, 255, 0.14) !important;
+              background: var(--viewer-range-track) !important;
+            }
+
+            input[type="range"]::-moz-range-progress {
+              height: 10px !important;
+              border-radius: 999px !important;
+              background: var(--viewer-range-accent) !important;
+            }
+
+            input[type="range"]::-moz-range-thumb {
+              width: 18px !important;
+              height: 18px !important;
+              border-radius: 999px !important;
+              border: 3px solid var(--viewer-range-accent) !important;
+              background: var(--viewer-range-thumb) !important;
+              box-shadow: 0 8px 22px rgba(0, 0, 0, 0.28) !important;
             }
           `
 
@@ -723,11 +1273,9 @@ export default function ProductDetailClient() {
             canvasDoc.body.appendChild(script)
           }
 
-          syncEmbeddedTheme(editor, dark)
+          syncEmbeddedTheme(editor, dark, ui)
 
-          setTimeout(() => {
-            measureCanvasHeight(editor, setCanvasHeight)
-          }, 180)
+          scheduleCanvasMeasurements(editor, setCanvasHeight)
 
           editor.runCommand('preview')
         } catch (e) {
@@ -787,19 +1335,17 @@ export default function ProductDetailClient() {
         gjsRef.current = null
       }
     }
-  }, [product, dark, hasGjsContent])
+  }, [product, dark, hasGjsContent, ui])
 
   useEffect(() => {
     const editor = gjsRef.current
 
     if (!editor || !hasGjsContent) return
 
-    syncEmbeddedTheme(editor, dark)
+    syncEmbeddedTheme(editor, dark, ui)
 
-    setTimeout(() => {
-      measureCanvasHeight(editor, setCanvasHeight)
-    }, 120)
-  }, [dark, hasGjsContent])
+    scheduleCanvasMeasurements(editor, setCanvasHeight)
+  }, [dark, hasGjsContent, ui])
 
   const goBack = () => {
     if (window.history.length > 1) {
@@ -901,6 +1447,10 @@ export default function ProductDetailClient() {
         }
 
         .product-detail-page {
+          --product-accent: ${ui.accent2};
+          --product-accent-strong: ${ui.accent1};
+          --product-accent-soft: ${ui.accentSoft};
+          --product-accent-border: ${ui.accentBorder};
           min-height: 100vh;
           background: ${ui.pageBg};
           color: ${ui.text};
@@ -918,8 +1468,8 @@ export default function ProductDetailClient() {
           pointer-events: none;
           opacity: ${dark ? '.18' : '.16'};
           background-image:
-            linear-gradient(${dark ? 'rgba(255,226,194,.08)' : 'rgba(118,77,38,.08)'} 1px, transparent 1px),
-            linear-gradient(90deg, ${dark ? 'rgba(255,226,194,.08)' : 'rgba(118,77,38,.08)'} 1px, transparent 1px);
+            linear-gradient(${ui.gridLine} 1px, transparent 1px),
+            linear-gradient(90deg, ${ui.gridLine} 1px, transparent 1px);
           background-size: 92px 92px;
           mask-image: radial-gradient(circle at 50% 12%, #000 0, transparent 72%);
         }
@@ -931,9 +1481,7 @@ export default function ProductDetailClient() {
           z-index: -3;
           pointer-events: none;
           opacity: ${dark ? '.20' : '.12'};
-          background:
-            radial-gradient(circle at 16% 10%, rgba(239,159,39,.20), transparent 30rem),
-            radial-gradient(circle at 86% 18%, ${dark ? 'rgba(247,192,96,.12)' : 'rgba(122,92,62,.10)'}, transparent 34rem);
+          background: ${ui.ambientGlow};
         }
 
         .product-hero {
@@ -943,6 +1491,7 @@ export default function ProductDetailClient() {
           align-items: flex-end;
           overflow: hidden;
           isolation: isolate;
+          box-shadow: inset 0 -1px 0 ${ui.accentBorder};
         }
 
         .product-hero::before {
@@ -954,7 +1503,7 @@ export default function ProductDetailClient() {
           width: min(58vw, 760px);
           aspect-ratio: 1;
           opacity: ${dark ? '.42' : '.34'};
-          background: rgba(239,159,39,.22);
+          background: ${ui.heroShape};
           filter: blur(4px);
           clip-path: polygon(46% 0, 86% 13%, 100% 51%, 71% 92%, 24% 100%, 0 62%, 12% 18%);
           animation: productMorph 16s ease-in-out infinite alternate;
@@ -976,7 +1525,7 @@ export default function ProductDetailClient() {
           position: absolute;
           inset: 0;
           z-index: -3;
-          background: ${dark ? '#020617' : '#fff8ee'};
+          background: ${ui.heroBg};
         }
 
         .product-hero-bg img {
@@ -984,25 +1533,14 @@ export default function ProductDetailClient() {
           height: 100%;
           object-fit: cover;
           display: block;
-          filter: saturate(${dark ? '1.02' : '1.06'}) contrast(1.05);
-          opacity: ${dark ? '.74' : '.86'};
+          filter: ${ui.heroImageFilter};
+          opacity: ${ui.heroImageOpacity};
         }
 
         .product-hero-overlay {
           position: absolute;
           inset: 0;
-          background:
-            linear-gradient(
-              90deg,
-              ${dark ? 'rgba(2,6,23,.92)' : 'rgba(32,19,10,.72)'},
-              ${dark ? 'rgba(2,6,23,.66)' : 'rgba(32,19,10,.44)'},
-              ${dark ? 'rgba(2,6,23,.22)' : 'rgba(32,19,10,.10)'}
-            ),
-            linear-gradient(
-              180deg,
-              ${dark ? 'rgba(2,6,23,.14)' : 'rgba(255,248,238,.06)'},
-              ${dark ? 'rgba(2,6,23,.94)' : 'rgba(255,248,238,.92)'}
-            );
+          background: ${ui.heroOverlay};
         }
 
         .product-hero-inner {
@@ -1075,16 +1613,17 @@ export default function ProductDetailClient() {
         }
 
         .product-kicker {
-          background: rgba(239,159,39,.24);
-          border: 1px solid rgba(247,192,96,.42);
+          background: ${ui.accentSoft};
+          border: 1px solid ${ui.accentBorder};
           color: #fff;
           text-transform: uppercase;
-          box-shadow: 0 0 34px rgba(239,159,39,.16);
+          box-shadow: ${ui.accentGlow};
         }
 
         .product-chip {
-          background: rgba(255,255,255,.12);
-          border: 1px solid rgba(255,255,255,.18);
+          background:
+            linear-gradient(135deg, rgba(255,255,255,.14), ${ui.accentSoft});
+          border: 1px solid ${ui.accentBorder};
           color: rgba(255,255,255,.88);
         }
 
@@ -1092,7 +1631,7 @@ export default function ProductDetailClient() {
           margin: 0;
           font-size: clamp(38px, 6vw, 78px);
           line-height: .96;
-          letter-spacing: -.065em;
+          letter-spacing: 0;
           font-weight: 950;
           color: #fff;
           text-shadow: 0 18px 42px rgba(0,0,0,.28);
@@ -1134,10 +1673,10 @@ export default function ProductDetailClient() {
 
         .primary-action {
           border: none;
-          background: linear-gradient(135deg, ${ui.accent1}, ${ui.accent2});
-          color: ${dark ? '#1d0d03' : '#fff'};
+          background: ${ui.primaryBg};
+          color: ${ui.primaryText};
           box-shadow:
-            0 14px 30px rgba(239,159,39,.30),
+            ${ui.accentGlowStrong},
             inset 0 1px 0 rgba(255,255,255,.28);
         }
 
@@ -1156,20 +1695,21 @@ export default function ProductDetailClient() {
 
         .primary-action:hover {
           box-shadow:
-            0 18px 42px rgba(239,159,39,.38),
+            ${ui.accentGlowStrong},
             inset 0 1px 0 rgba(255,255,255,.34);
         }
 
         .secondary-action:hover {
           background: rgba(255,255,255,.18);
-          border-color: rgba(247,192,96,.30);
+          border-color: ${ui.accentBorder};
         }
 
         .product-summary-card {
           border-radius: 24px;
           padding: 22px;
-          background: rgba(255,255,255,.13);
-          border: 1px solid rgba(255,255,255,.16);
+          background:
+            linear-gradient(135deg, rgba(255,255,255,.14), ${ui.accentSoft});
+          border: 1px solid ${ui.accentBorder};
           backdrop-filter: blur(24px);
           -webkit-backdrop-filter: blur(24px);
           box-shadow: 0 26px 90px rgba(0,0,0,.28);
@@ -1184,7 +1724,7 @@ export default function ProductDetailClient() {
           pointer-events: none;
           opacity: .7;
           background:
-            radial-gradient(circle at 18% 0%, rgba(239,159,39,.24), transparent 32%),
+            radial-gradient(circle at 18% 0%, ${ui.accentSoft}, transparent 32%),
             linear-gradient(135deg, rgba(255,255,255,.14), transparent 58%);
         }
 
@@ -1257,13 +1797,12 @@ export default function ProductDetailClient() {
 
         .product-content-card {
           width: 100%;
-          overflow: hidden;
-          background: ${ui.cardBg};
-          border-top: 1px solid ${ui.cardBorder};
-          border-bottom: 1px solid ${ui.cardBorder};
-          box-shadow: ${ui.buttonShadow};
-          backdrop-filter: blur(24px);
-          -webkit-backdrop-filter: blur(24px);
+          overflow: visible;
+          background: transparent;
+          border: 0;
+          box-shadow: none;
+          backdrop-filter: none;
+          -webkit-backdrop-filter: none;
         }
 
         .product-content-head {
@@ -1290,7 +1829,7 @@ export default function ProductDetailClient() {
           margin: 0;
           font-size: clamp(26px, 3vw, 40px);
           line-height: 1.05;
-          letter-spacing: -.045em;
+          letter-spacing: 0;
           font-weight: 950;
           color: ${ui.text};
         }
@@ -1306,10 +1845,9 @@ export default function ProductDetailClient() {
         .product-builder-shell {
           width: 100%;
           min-height: 720px;
-          background: ${dark
-            ? 'radial-gradient(circle at 12% 8%, rgba(239,159,39,.12), transparent 28rem), #020617'
-            : 'radial-gradient(circle at 12% 8%, rgba(239,159,39,.10), transparent 28rem), #fffaf3'};
+          background: ${ui.builderBg};
           border-top: 1px solid ${ui.line};
+          border-bottom: 1px solid ${ui.line};
         }
 
         .product-builder-canvas {
@@ -1340,7 +1878,7 @@ export default function ProductDetailClient() {
           overflow: hidden;
           border-radius: 18px;
           border: 1px solid ${ui.cardBorder};
-          background: ${dark ? '#0b1220' : '#fffaf3'};
+          background: ${ui.galleryBg};
           box-shadow: ${ui.buttonShadow};
         }
 
@@ -1360,10 +1898,8 @@ export default function ProductDetailClient() {
         .product-bottom-cta {
           border-radius: 26px;
           padding: clamp(24px, 4vw, 34px);
-          background:
-            radial-gradient(circle at top right, rgba(239,159,39,.24), transparent 42%),
-            ${dark ? '#0f172a' : '#20130a'};
-          border: 1px solid rgba(255,255,255,.10);
+          background: ${ui.ctaBg};
+          border: 1px solid ${ui.ctaBorder};
           color: #fff;
           box-shadow: ${ui.buttonShadow};
           display: grid;
@@ -1376,7 +1912,7 @@ export default function ProductDetailClient() {
           margin: 0 0 8px;
           font-size: clamp(22px, 3vw, 34px);
           line-height: 1.05;
-          letter-spacing: -.04em;
+          letter-spacing: 0;
           font-weight: 950;
         }
 
@@ -1395,19 +1931,19 @@ export default function ProductDetailClient() {
           display: inline-flex;
           align-items: center;
           justify-content: center;
-          background: linear-gradient(135deg, ${ui.accent1}, ${ui.accent2});
-          color: ${dark ? '#1d0d03' : '#fff'};
+          background: ${ui.primaryBg};
+          color: ${ui.primaryText};
           text-decoration: none;
           font-size: 14px;
           font-weight: 900;
           white-space: nowrap;
-          box-shadow: 0 14px 30px rgba(239,159,39,.28);
+          box-shadow: ${ui.accentGlowStrong};
           transition: transform .18s ease, box-shadow .18s ease;
         }
 
         .product-bottom-cta a:hover {
           transform: translateY(-2px);
-          box-shadow: 0 18px 38px rgba(239,159,39,.34);
+          box-shadow: ${ui.accentGlowStrong};
         }
 
         .product-state-page {
@@ -1441,12 +1977,12 @@ export default function ProductDetailClient() {
           padding: 0 18px;
           border-radius: 14px;
           border: none;
-          background: linear-gradient(135deg, ${ui.accent1}, ${ui.accent2});
-          color: ${dark ? '#1d0d03' : '#fff'};
+          background: ${ui.primaryBg};
+          color: ${ui.primaryText};
           font-size: 14px;
           font-weight: 800;
           cursor: pointer;
-          box-shadow: 0 14px 30px rgba(239,159,39,.30);
+          box-shadow: ${ui.accentGlowStrong};
         }
 
         @media (max-width: 980px) {
@@ -1481,7 +2017,14 @@ export default function ProductDetailClient() {
           }
 
           .product-hero h1 {
-            font-size: 40px;
+            font-size: clamp(34px, 10vw, 40px);
+            line-height: 1.04;
+            overflow-wrap: anywhere;
+          }
+
+          .product-lead {
+            font-size: 15px;
+            line-height: 1.65;
           }
 
           .product-actions {

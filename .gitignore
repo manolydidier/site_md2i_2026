@@ -1,6 +1,7 @@
 # See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
 
 # dependencies
+
 /node_modules
 /.pnp
 .pnp.*
@@ -11,33 +12,80 @@
 !.yarn/versions
 
 # testing
+
 /coverage
 
 # next.js
+
 /.next/
 /out/
 
 # production
+
 /build
 
 # misc
+
 .DS_Store
 *.pem
 
 # debug
+
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
 
 # env files (can opt-in for committing if needed)
+
 .env*
 
 # vercel
+
 .vercel
 
 # typescript
+
 *.tsbuildinfo
 next-env.d.ts
 
+# prisma generated files
+
 /src/generated/prisma
+
+# local AI agents / assistants configs
+
+# ui-ux-pro-max
+
+/ui-ux-pro-max/
+/ui-uxpro-max/
+/agents/ui-ux-pro-max/
+/agents/ui-uxpro-max/
+.ui-ux-pro-max/
+.ui-uxpro-max/
+
+# codex-edge
+
+/codex-edge/
+/.codex-edge/
+.codex/
+.codex-edge/
+codex-edge-profile/
+.codex-edge-profile/
+
+# claude
+
+.claude/
+.claude.json
+claude/
+claude-profile/
+.claude-profile/
+
+# local agent workspaces / caches
+
+.agent/
+.agents/
+.ai/
+.ai-agents/
+.mcp/
+.mcp-cache/

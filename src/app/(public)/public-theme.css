@@ -13,9 +13,15 @@
   --public-accent-strong: #b6620e;
   --public-accent-soft: rgba(239, 159, 39, 0.11);
   --public-shadow: 0 22px 70px rgba(15, 23, 42, 0.10);
+  --public-shadow-soft: 0 12px 34px rgba(15, 23, 42, 0.07);
+  --public-shadow-hover: 0 28px 80px rgba(15, 23, 42, 0.14);
+  --public-radius-sm: 10px;
+  --public-radius-md: 14px;
+  --public-radius-lg: 18px;
+  --public-container: min(1180px, calc(100% - 40px));
   --public-page-gradient:
-    radial-gradient(circle at top left, rgba(239, 159, 39, 0.11), transparent 30%),
-    linear-gradient(180deg, #fffaf3 0%, #ffffff 44%, #f8fafc 100%);
+    linear-gradient(135deg, rgba(239, 159, 39, 0.08), transparent 28%),
+    linear-gradient(180deg, #fffaf3 0%, #ffffff 46%, #f8fafc 100%);
 
   min-height: 100vh;
   color: var(--public-text);
@@ -23,6 +29,9 @@
   color-scheme: light;
   overflow-x: clip;
   text-rendering: optimizeLegibility;
+  font-feature-settings: "kern";
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 .public-theme-shell[data-theme='dark'] {
@@ -40,12 +49,63 @@
   --public-accent-strong: #f4a62a;
   --public-accent-soft: rgba(247, 185, 85, 0.15);
   --public-shadow: 0 26px 80px rgba(0, 0, 0, 0.34);
+  --public-shadow-soft: 0 14px 40px rgba(0, 0, 0, 0.24);
+  --public-shadow-hover: 0 30px 90px rgba(0, 0, 0, 0.44);
   --public-page-gradient:
-    radial-gradient(circle at top left, rgba(239, 159, 39, 0.14), transparent 28%),
-    radial-gradient(circle at top right, rgba(59, 130, 246, 0.09), transparent 30%),
+    linear-gradient(135deg, rgba(239, 159, 39, 0.13), transparent 26%),
+    linear-gradient(225deg, rgba(59, 130, 246, 0.08), transparent 30%),
     linear-gradient(180deg, #07080b 0%, #0f1218 48%, #09090b 100%);
 
   color-scheme: dark;
+}
+
+.public-skip-link {
+  position: fixed;
+  left: 18px;
+  top: 18px;
+  z-index: 10000;
+  min-height: 44px;
+  padding: 0 16px;
+  border-radius: var(--public-radius-md);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #111827;
+  background: #ffffff;
+  border: 1px solid var(--public-border-strong);
+  box-shadow: var(--public-shadow-soft);
+  font-size: 14px;
+  font-weight: 800;
+  text-decoration: none;
+  transform: translateY(-140%);
+  transition: transform 0.18s ease;
+}
+
+.public-skip-link:focus-visible {
+  transform: translateY(0);
+}
+
+.public-main-content {
+  position: relative;
+  z-index: 1;
+  min-height: 44vh;
+}
+
+.public-theme-shell ::selection {
+  color: #111827;
+  background: color-mix(in srgb, var(--public-accent) 42%, #ffffff);
+}
+
+.public-theme-shell :where(*) {
+  box-sizing: border-box;
+}
+
+.public-theme-shell :where(img, svg, video, canvas) {
+  max-width: 100%;
+}
+
+.public-theme-shell :where(img, video) {
+  display: block;
 }
 
 .public-theme-shell :where(input, textarea, select) {
@@ -56,9 +116,61 @@
   -webkit-tap-highlight-color: transparent;
 }
 
+.public-theme-shell :where(a[href], button, [role='button']) {
+  cursor: pointer;
+}
+
+.public-theme-shell :where(button, input, textarea, select) {
+  font: inherit;
+}
+
 .public-theme-shell :where(a, button, input, textarea, select):focus-visible {
   outline: 3px solid color-mix(in srgb, var(--public-accent) 65%, transparent);
   outline-offset: 3px;
+}
+
+.public-theme-shell :where(input:not([type='checkbox']):not([type='radio']):not([type='range']), textarea, select) {
+  min-height: 44px;
+}
+
+.public-theme-shell :where([disabled], [aria-disabled='true']) {
+  cursor: not-allowed;
+}
+
+.public-theme-shell :where(.primary-action, .secondary-action, .primary-link, .secondary-link, .cc-primary-link, .md2i-product-link, .ui-icon-button) {
+  transition:
+    transform 0.18s ease,
+    box-shadow 0.18s ease,
+    border-color 0.18s ease,
+    background-color 0.18s ease,
+    color 0.18s ease;
+}
+
+.public-theme-shell :where(.primary-action, .secondary-action, .primary-link, .secondary-link, .cc-primary-link, .md2i-product-link):hover {
+  transform: translateY(-2px);
+}
+
+.public-theme-shell :where(.post-state-card, .post-bottom-cta, .reference-top-panel, .reference-command-bar, .reference-card-clean, .reference-classic-item, .article-card, .info-card, .side-panel, .cta-card, .cc-hero-card, .cc-form-card, .cc-reassurance-card, .md2i-service-card, .md2i-services-sidebar-card, .md2i-product-quick-panel) {
+  border-color: var(--public-border);
+  box-shadow: var(--public-shadow-soft);
+}
+
+.public-theme-shell :where(.reference-card-clean, .reference-classic-item, .md2i-service-card, .cc-hero-card, .cc-form-card, .cc-reassurance-card):hover {
+  box-shadow: var(--public-shadow-hover);
+}
+
+.public-theme-shell :where(.breadcrumb, .reference-breadcrumb) {
+  letter-spacing: 0;
+}
+
+@media (max-width: 720px) {
+  .public-theme-shell {
+    --public-container: min(100% - 28px, 1180px);
+  }
+
+  .public-main-content {
+    min-width: 0;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {

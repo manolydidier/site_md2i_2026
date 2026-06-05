@@ -179,7 +179,7 @@
   font-size: clamp(2.75rem, 6vw, 5.25rem);
   font-weight: 850;
   line-height: 0.98;
-  letter-spacing: -0.055em;
+  letter-spacing: 0;
   text-wrap: balance;
   animation: riseIn 0.5s 0.06s ease both;
 }
@@ -401,7 +401,7 @@
   font-size: 25px;
   line-height: 1.14;
   font-weight: 850;
-  letter-spacing: -0.035em;
+  letter-spacing: 0;
 }
 
 .heroPanelTop p {
@@ -438,7 +438,7 @@
   font-size: 33px;
   line-height: 1;
   font-weight: 850;
-  letter-spacing: -0.045em;
+  letter-spacing: 0;
 }
 
 .statU {
@@ -485,7 +485,7 @@
   font-size: clamp(2rem, 3.4vw, 3.2rem);
   line-height: 1.04;
   font-weight: 850;
-  letter-spacing: -0.045em;
+  letter-spacing: 0;
   text-wrap: balance;
 }
 
@@ -607,7 +607,7 @@
 
 .teamCard:hover .teamPhoto img,
 .teamCardHov .teamPhoto img {
-  transform: scale(1.035);
+  transform: scale(1.015);
   filter: saturate(1.02) contrast(1.04);
 }
 
@@ -650,7 +650,7 @@
   font-size: 21px;
   line-height: 1.14;
   font-weight: 850;
-  letter-spacing: -0.035em;
+  letter-spacing: 0;
 }
 
 .teamRole {
@@ -1048,7 +1048,7 @@
   color: var(--contact-text);
   font-size: 28px;
   font-weight: 850;
-  letter-spacing: -0.035em;
+  letter-spacing: 0;
 }
 
 .successBox p {
@@ -1078,7 +1078,7 @@
   font-size: 24px;
   line-height: 1.15;
   font-weight: 850;
-  letter-spacing: -0.035em;
+  letter-spacing: 0;
 }
 
 .officeList {
@@ -1132,7 +1132,7 @@
   color: var(--contact-text);
   font-size: 17px;
   font-weight: 850;
-  letter-spacing: -0.025em;
+  letter-spacing: 0;
 }
 
 .officeRole {
@@ -1258,7 +1258,7 @@
   font-size: 24px;
   line-height: 1.16;
   font-weight: 850;
-  letter-spacing: -0.04em;
+  letter-spacing: 0;
 }
 
 .nudge .btn {

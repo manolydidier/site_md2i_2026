@@ -123,7 +123,7 @@
   max-width: 900px;
   font-size: clamp(2.7rem, 6vw, 5.1rem);
   line-height: 0.96;
-  letter-spacing: -0.07em;
+  letter-spacing: 0;
   font-weight: 950;
 }
 
@@ -214,7 +214,7 @@
 .heroMetrics strong {
   display: block;
   font-size: 1.55rem;
-  letter-spacing: -0.05em;
+  letter-spacing: 0;
   line-height: 1.1;
   font-weight: 950;
 }
@@ -264,7 +264,7 @@
   margin: 14px 0 0;
   font-size: clamp(2rem, 3.4vw, 2.8rem);
   line-height: 1.04;
-  letter-spacing: -0.055em;
+  letter-spacing: 0;
   font-weight: 950;
 }
 
@@ -346,7 +346,7 @@
   font-size: clamp(2.2rem, 3.2vw, 3rem);
   font-weight: 950;
   line-height: 1;
-  letter-spacing: -0.07em;
+  letter-spacing: 0;
 }
 
 .statLabel {
@@ -412,7 +412,7 @@
 .commitmentCard h3,
 .officeCard h3 {
   margin: 0;
-  letter-spacing: -0.035em;
+  letter-spacing: 0;
   font-weight: 900;
 }
 
@@ -799,7 +799,7 @@
 .teamCard:hover .teamVisual img,
 .approachVisual:hover img,
 .officeCard:hover .officeImage img {
-  transform: scale(1.055);
+  transform: scale(1.018);
   filter: saturate(1.05) contrast(1.03);
 }
 
@@ -922,7 +922,7 @@
   margin: 16px 0 0;
   font-size: clamp(1.6rem, 3vw, 2.35rem);
   line-height: 1.06;
-  letter-spacing: -0.055em;
+  letter-spacing: 0;
   font-weight: 950;
 }
 

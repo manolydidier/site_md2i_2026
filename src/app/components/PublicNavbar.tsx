@@ -9,6 +9,7 @@ import {
   useRef,
   useCallback,
   useMemo,
+  useId,
   type KeyboardEvent as ReactKeyboardEvent,
 } from 'react'
 import { createPortal } from 'react-dom'
@@ -163,6 +164,8 @@ function ThemeSwitch({
   lightLabel: string
   darkLabel: string
 }) {
+  const switchId = useId()
+
   return (
     <>
       <style>{`
@@ -542,10 +545,177 @@ function ThemeSwitch({
             transition: none;
           }
         }
+
+        .ts {
+          --ruixen-size: 2.75rem;
+          --ruixen-radius: 999px;
+          --ruixen-accent: #ef9f27;
+          --ruixen-ink: ${dark ? '#f8fafc' : '#0f172a'};
+          --ruixen-muted: ${dark ? 'rgba(248,250,252,.52)' : 'rgba(15,23,42,.48)'};
+          font-size: 1rem;
+        }
+
+        .ts__container,
+        .ts__cb:checked + .ts__container {
+          width: var(--ruixen-size);
+          min-width: var(--ruixen-size);
+          height: var(--ruixen-size);
+          padding: 0;
+          display: grid;
+          grid-template-columns: 1fr;
+          place-items: center;
+          border-radius: var(--ruixen-radius);
+          border: 1px solid ${
+            dark ? 'rgba(255,255,255,.14)' : 'rgba(15,23,42,.10)'
+          };
+          background: ${
+            dark
+              ? 'linear-gradient(145deg, rgba(15,23,42,.96), rgba(4,8,18,.94))'
+              : 'linear-gradient(145deg, rgba(255,255,255,.98), rgba(248,250,252,.94))'
+          };
+          box-shadow: ${
+            dark
+              ? '0 16px 34px rgba(0,0,0,.28), inset 0 1px 0 rgba(255,255,255,.08)'
+              : '0 14px 30px rgba(15,23,42,.10), inset 0 1px 0 rgba(255,255,255,.92)'
+          };
+          overflow: hidden;
+          isolation: isolate;
+          transform: translateZ(0);
+          transition:
+            border-color .22s ease,
+            box-shadow .22s ease,
+            background .22s ease;
+        }
+
+        .ts__container::before,
+        .ts__cb:checked + .ts__container::before {
+          content: '';
+          position: absolute;
+          z-index: 0;
+          inset: 0;
+          width: auto;
+          border-radius: inherit;
+          pointer-events: none;
+          background: ${
+            dark
+              ? 'radial-gradient(circle at 68% 34%, rgba(239,159,39,.22), transparent 34%), radial-gradient(circle at 35% 70%, rgba(148,163,184,.16), transparent 30%)'
+              : 'radial-gradient(circle at 35% 28%, rgba(239,159,39,.30), transparent 34%), radial-gradient(circle at 78% 72%, rgba(15,23,42,.08), transparent 30%)'
+          };
+          box-shadow: inset 0 0 0 1px ${
+            dark ? 'rgba(255,255,255,.05)' : 'rgba(255,255,255,.70)'
+          };
+          opacity: 1;
+          transform: none;
+          transition: background .24s ease, opacity .24s ease;
+        }
+
+        .ts__container::after {
+          content: '';
+          position: absolute;
+          z-index: 0;
+          width: 1.52rem;
+          height: 1.52rem;
+          border-radius: 999px;
+          background: ${
+            dark
+              ? 'linear-gradient(145deg, rgba(248,250,252,.92), rgba(203,213,225,.72))'
+              : 'linear-gradient(145deg, #fff7d1, #ef9f27)'
+          };
+          box-shadow: ${
+            dark
+              ? '10px -4px 0 -4px rgba(15,23,42,.92), 0 8px 20px rgba(0,0,0,.26)'
+              : '0 0 0 6px rgba(239,159,39,.12), 0 8px 22px rgba(239,159,39,.24)'
+          };
+          transform: ${dark ? 'scale(.86) rotate(-24deg)' : 'scale(.92) rotate(0deg)'};
+          transition:
+            transform .42s cubic-bezier(.2,.9,.2,1.2),
+            background .24s ease,
+            box-shadow .24s ease;
+        }
+
+        .ts__container:hover {
+          border-color: rgba(239,159,39,.36);
+          box-shadow: ${
+            dark
+              ? '0 18px 38px rgba(0,0,0,.34), 0 0 0 4px rgba(239,159,39,.10)'
+              : '0 16px 34px rgba(15,23,42,.12), 0 0 0 4px rgba(239,159,39,.12)'
+          };
+        }
+
+        .ts__segment {
+          grid-column: 1;
+          grid-row: 1;
+          width: 100%;
+          height: 100%;
+          color: var(--ruixen-muted);
+          opacity: 0;
+          transform: rotate(-34deg) scale(.54);
+          transition:
+            opacity .22s ease,
+            color .22s ease,
+            transform .42s cubic-bezier(.2,.9,.2,1.18);
+        }
+
+        .ts__segment--active {
+          color: var(--ruixen-ink);
+          opacity: 1;
+          transform: rotate(0deg) scale(1);
+        }
+
+        .ts__cb:checked + .ts__container .ts__segment--active {
+          transform: rotate(-10deg) scale(1);
+        }
+
+        .ts__segment svg {
+          width: 1.12rem;
+          height: 1.12rem;
+          stroke-width: 2.45;
+          filter: drop-shadow(0 6px 14px rgba(0,0,0,.18));
+        }
+
+        .ts__segment-label {
+          position: absolute;
+          width: 1px;
+          height: 1px;
+          padding: 0;
+          margin: -1px;
+          overflow: hidden;
+          clip: rect(0, 0, 0, 0);
+          white-space: nowrap;
+          border: 0;
+        }
+
+        .ts__clouds,
+        .ts__stars-container,
+        .ts__circle-container {
+          display: none !important;
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+          .ts__container,
+          .ts__container::before,
+          .ts__container::after,
+          .ts__segment {
+            transition: none;
+          }
+        }
       `}</style>
 
-      <label className="ts" aria-label={ariaLabel} title={ariaLabel}>
+      <motion.label
+        htmlFor={switchId}
+        className="ts"
+        aria-label={ariaLabel}
+        title={ariaLabel}
+        onClick={(event) => {
+          event.preventDefault()
+          onToggle()
+        }}
+        whileHover={{ scale: 1.06 }}
+        whileTap={{ scale: 0.92 }}
+        transition={{ type: 'spring', stiffness: 420, damping: 20 }}
+      >
         <input
+          id={switchId}
           type="checkbox"
           className="ts__cb"
           checked={dark}
@@ -595,7 +765,7 @@ function ThemeSwitch({
             </div>
           </div>
         </div>
-      </label>
+      </motion.label>
     </>
   )
 }

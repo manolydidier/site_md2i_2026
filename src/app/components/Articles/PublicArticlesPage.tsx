@@ -202,13 +202,8 @@ function ArticleCard({
     const rect = el.getBoundingClientRect()
     const x = e.clientX - rect.left
     const y = e.clientY - rect.top
-    const cx = rect.width / 2
-    const cy = rect.height / 2
-    const rotX = ((y - cy) / cy) * -5
-    const rotY = ((x - cx) / cx) * 5
-
-    el.style.transform = `perspective(1000px) rotateX(${rotX}deg) rotateY(${rotY}deg) translateZ(6px)`
-    glow.style.background = `radial-gradient(320px circle at ${x}px ${y}px, rgba(255,255,255,0.11), transparent 60%)`
+    el.style.transform = 'translateY(-3px)'
+    glow.style.background = `radial-gradient(320px circle at ${x}px ${y}px, rgba(239,159,39,0.11), transparent 60%)`
     glow.style.opacity = '1'
   }
 

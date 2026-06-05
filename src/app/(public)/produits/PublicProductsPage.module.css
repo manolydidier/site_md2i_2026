@@ -1,10 +1,10 @@
 @import url('https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,400;1,9..144,300;1,9..144,400&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600&family=Roboto:wght@700;800;900&family=Syne:wght@700;800&display=swap');
 
 .page {
-  --acc: #EF9F27;
-  --acc-dim: rgba(239, 159, 39, 0.08);
-  --acc-bd: rgba(239, 159, 39, 0.22);
-  --acc-text: #A06200;
+  --acc: var(--public-accent, #EF9F27);
+  --acc-dim: var(--public-accent-soft, rgba(239, 159, 39, 0.08));
+  --acc-bd: var(--public-border-strong, rgba(239, 159, 39, 0.22));
+  --acc-text: var(--public-accent-strong, #A06200);
   font-family: 'DM Sans', sans-serif;
   min-height: 100vh;
   color: var(--t1);
@@ -13,16 +13,16 @@
 }
 
 .page[data-theme='light'] {
-  --bg: #F8FAFC;
-  --bg2: #EEF2F7;
-  --card: #FFFFFF;
-  --card-border: rgba(15, 23, 42, .09);
-  --card-hover-border: rgba(15, 23, 42, .16);
-  --t1: #0F172A;
-  --t2: #334155;
-  --t3: #64748B;
-  --line: rgba(15, 23, 42, .07);
-  --line2: rgba(15, 23, 42, .13);
+  --bg: var(--public-bg, #F8FAFC);
+  --bg2: var(--public-bg-soft, #EEF2F7);
+  --card: var(--public-surface-strong, #FFFFFF);
+  --card-border: var(--public-border, rgba(15, 23, 42, .09));
+  --card-hover-border: var(--public-border-strong, rgba(15, 23, 42, .16));
+  --t1: var(--public-text, #0F172A);
+  --t2: var(--public-text-soft, #334155);
+  --t3: var(--public-text-muted, #64748B);
+  --line: var(--public-border, rgba(15, 23, 42, .07));
+  --line2: var(--public-border-strong, rgba(15, 23, 42, .13));
   --sk-a: #E2E8F0;
   --sk-b: #F1F5F9;
   --sticky-bg: rgba(248, 250, 252, .96);
@@ -33,21 +33,21 @@
   --gloss-top: rgba(255, 255, 255, 0.82);
   --gloss-mid: rgba(255, 255, 255, 0.20);
   --gloss-edge: rgba(255, 255, 255, 0.50);
-  --card-sh: 0 1px 2px rgba(0, 0, 0, .04), 0 4px 16px rgba(0, 0, 0, .06);
-  --card-sh-hover: 0 2px 4px rgba(0, 0, 0, .06), 0 20px 56px rgba(0, 0, 0, .13);
+  --card-sh: var(--public-shadow-soft, 0 1px 2px rgba(0, 0, 0, .04), 0 4px 16px rgba(0, 0, 0, .06));
+  --card-sh-hover: var(--public-shadow-hover, 0 2px 4px rgba(0, 0, 0, .06), 0 20px 56px rgba(0, 0, 0, .13));
 }
 
 .page[data-theme='dark'] {
-  --bg: #09090B;
-  --bg2: #111827;
-  --card: #111827;
-  --card-border: rgba(255, 255, 255, .07);
-  --card-hover-border: rgba(255, 255, 255, .14);
-  --t1: #F8FAFC;
-  --t2: #CBD5E1;
-  --t3: #94A3B8;
-  --line: rgba(255, 255, 255, .06);
-  --line2: rgba(255, 255, 255, .12);
+  --bg: var(--public-bg, #09090B);
+  --bg2: var(--public-bg-soft, #111827);
+  --card: var(--public-surface-strong, #111827);
+  --card-border: var(--public-border, rgba(255, 255, 255, .07));
+  --card-hover-border: var(--public-border-strong, rgba(255, 255, 255, .14));
+  --t1: var(--public-text, #F8FAFC);
+  --t2: var(--public-text-soft, #CBD5E1);
+  --t3: var(--public-text-muted, #94A3B8);
+  --line: var(--public-border, rgba(255, 255, 255, .06));
+  --line2: var(--public-border-strong, rgba(255, 255, 255, .12));
   --sk-a: #1E293B;
   --sk-b: #334155;
   --sticky-bg: rgba(9, 9, 11, .97);
@@ -58,8 +58,8 @@
   --gloss-top: rgba(255, 255, 255, 0.07);
   --gloss-mid: rgba(255, 255, 255, 0.02);
   --gloss-edge: rgba(255, 255, 255, 0.04);
-  --card-sh: 0 1px 3px rgba(0, 0, 0, .24), 0 4px 16px rgba(0, 0, 0, .32);
-  --card-sh-hover: 0 2px 6px rgba(0, 0, 0, .36), 0 20px 56px rgba(0, 0, 0, .52);
+  --card-sh: var(--public-shadow-soft, 0 1px 3px rgba(0, 0, 0, .24), 0 4px 16px rgba(0, 0, 0, .32));
+  --card-sh-hover: var(--public-shadow-hover, 0 2px 6px rgba(0, 0, 0, .36), 0 20px 56px rgba(0, 0, 0, .52));
 }
 
 /* ─── Progress bar ─────────────────────────────────────────────────────────── */
@@ -421,7 +421,7 @@
 
 .searchField:focus-within svg:first-child {
   color: var(--acc);
-  transform: scale(1.05);
+  transform: scale(1.015);
 }
 
 .searchInput {
@@ -466,7 +466,7 @@
   color: var(--t1);
   background: var(--bg2);
   border-color: var(--line);
-  transform: scale(1.04);
+  transform: scale(1.015);
 }
 
 .iconBtn svg {
@@ -624,7 +624,7 @@
   color: var(--t1);
   background: var(--bg2);
   border-color: var(--line);
-  transform: scale(1.04);
+  transform: scale(1.015);
 }
 
 .dropCloseBtn svg {
@@ -862,7 +862,7 @@
 
 .chip button:hover {
   opacity: 1;
-  transform: scale(1.06);
+  transform: scale(1.02);
 }
 
 .chip button svg {
@@ -918,7 +918,7 @@
   display: flex;
   flex-direction: column;
   box-shadow: var(--card-sh);
-  transform: perspective(1000px) rotateX(0deg) rotateY(0deg) translateZ(0px);
+  transform: translateY(0);
   transition:
     transform .5s cubic-bezier(.22, .61, .36, 1),
     box-shadow .5s cubic-bezier(.22, .61, .36, 1),
@@ -978,7 +978,7 @@
 }
 
 .card:hover .img {
-  transform: scale(1.04);
+  transform: scale(1.015);
 }
 
 .imgGloss {

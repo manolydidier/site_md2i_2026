@@ -6,6 +6,7 @@ export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
 
 const ALLOW_PUBLIC_PRODUCT_SCRIPTS =
+  process.env.NODE_ENV !== 'production' ||
   process.env.ALLOW_PUBLIC_PRODUCT_SCRIPTS === 'true'
 
 function toSerializableNumber(value: unknown): number | null {

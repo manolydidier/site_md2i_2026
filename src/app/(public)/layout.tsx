@@ -10,9 +10,14 @@ export default function PublicLayout({
 }: { children: React.ReactNode }) {
   return (
     <PublicThemeShell>
+      <a className="public-skip-link" href="#public-main-content">
+        Aller au contenu
+      </a>
       <PublicNavbar />
       <PublicBreadcrumbs />
-      {children}
+      <div id="public-main-content" className="public-main-content">
+        {children}
+      </div>
       <PublicFooter />
     </PublicThemeShell>
   )
