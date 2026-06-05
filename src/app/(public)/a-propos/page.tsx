@@ -1,5 +1,6 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
+import Image from 'next/image'
 import { T } from '@/app/i18n/T'
 import { buildMetadata } from '@/app/seo'
 import styles from './apropos.module.css'
@@ -289,10 +290,12 @@ export default function AboutPage() {
 
             <aside className={styles.heroPanel}>
               <div className={styles.heroImageCard}>
-                <img
+                <Image
                   src={aboutImages.heroPanel}
                   alt=""
-                  loading="eager"
+                  fill
+                  priority
+                  sizes="(max-width: 920px) 100vw, 420px"
                 />
                 <span>
                   <T k="aboutPage.heroImageCaption">
@@ -397,7 +400,12 @@ export default function AboutPage() {
               </h2>
             </div>
             <div className={styles.editorialVisual}>
-              <img src={aboutImages.editorial} alt="" loading="lazy" />
+              <Image
+                src={aboutImages.editorial}
+                alt=""
+                fill
+                sizes="(max-width: 920px) 100vw, 520px"
+              />
               <p>
                 <T k="aboutPage.sections.positioningText">
                   MD2I privilégie une approche sobre : limiter la complexité
@@ -437,7 +445,12 @@ export default function AboutPage() {
                 <div className={styles.timelineMarker}>{index + 1}</div>
                 <div className={styles.timelineContent}>
                   <div className={styles.timelineVisual}>
-                    <img src={timelineImages[index]} alt="" loading="lazy" />
+                    <Image
+                      src={timelineImages[index]}
+                      alt=""
+                      fill
+                      sizes="(max-width: 720px) 100vw, 320px"
+                    />
                   </div>
 
                   <div className={styles.timelineYear}>
@@ -486,7 +499,12 @@ export default function AboutPage() {
             {teamMembers.map((member, index) => (
               <article key={member.name + member.role} className={styles.memberCard}>
                 <div className={styles.memberPhoto}>
-                  <img src={teamImages[index]} alt="" loading="lazy" />
+                  <Image
+                    src={teamImages[index]}
+                    alt=""
+                    fill
+                    sizes="(max-width: 720px) 100vw, 280px"
+                  />
                 </div>
 
                 <div className={styles.memberTop}>
@@ -566,7 +584,12 @@ export default function AboutPage() {
             {teamUnits.map((unit, unitIndex) => (
               <article key={unit.title} className={styles.teamCard}>
                 <div className={styles.teamVisual}>
-                  <img src={unitImages[unitIndex]} alt="" loading="lazy" />
+                  <Image
+                    src={unitImages[unitIndex]}
+                    alt=""
+                    fill
+                    sizes="(max-width: 720px) 100vw, 280px"
+                  />
                 </div>
 
                 <div className={styles.teamCardTop}>
@@ -617,7 +640,13 @@ export default function AboutPage() {
           </div>
 
           <div className={styles.approachVisual}>
-            <img src={aboutImages.approach} alt="" loading="lazy" />
+            <Image
+              src={aboutImages.approach}
+              alt=""
+              width={760}
+              height={520}
+              sizes="(max-width: 920px) 100vw, 520px"
+            />
             <div>
               <span className={styles.sectionKicker}>
                 <T k="aboutPage.sections.methodVisualKicker">Illustration</T>
@@ -672,7 +701,12 @@ export default function AboutPage() {
                 {offices.map((office, index) => (
                   <div key={office.title} className={styles.officeCard}>
                     <div className={styles.officeImage}>
-                      <img src={officeImages[index]} alt="" loading="lazy" />
+                      <Image
+                        src={officeImages[index]}
+                        alt=""
+                        fill
+                        sizes="(max-width: 720px) 100vw, 300px"
+                      />
                     </div>
 
                     <h3>{office.title}</h3>

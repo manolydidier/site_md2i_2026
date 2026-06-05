@@ -44,6 +44,7 @@ async function getPublicArticles(req: NextRequest) {
         select: {
           id: true,
           title: true,
+          slug: true,
           excerpt: true,
           coverImage: true,
           createdAt: true,

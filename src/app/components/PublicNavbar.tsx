@@ -117,8 +117,8 @@ function AnimatedLucideIcon({
   return (
     <motion.span
       className={`pro-lucide-icon ${className}`}
-      whileHover={{ scale: 1.16, rotate: 8 }}
-      whileTap={{ scale: 0.92 }}
+      whileHover={{ y: -1 }}
+      whileTap={{ y: 0 }}
       transition={{ type: 'spring', stiffness: 420, damping: 18 }}
       aria-hidden="true"
     >
@@ -598,8 +598,8 @@ function ThemeSwitch({
           pointer-events: none;
           background: ${
             dark
-              ? 'radial-gradient(circle at 68% 34%, rgba(239,159,39,.22), transparent 34%), radial-gradient(circle at 35% 70%, rgba(148,163,184,.16), transparent 30%)'
-              : 'radial-gradient(circle at 35% 28%, rgba(239,159,39,.30), transparent 34%), radial-gradient(circle at 78% 72%, rgba(15,23,42,.08), transparent 30%)'
+              ? 'linear-gradient(135deg, rgba(239,159,39,.20), rgba(239,159,39,0) 48%), linear-gradient(225deg, rgba(148,163,184,.14), rgba(148,163,184,0) 42%)'
+              : 'linear-gradient(135deg, rgba(239,159,39,.24), rgba(239,159,39,0) 48%), linear-gradient(225deg, rgba(15,23,42,.07), rgba(15,23,42,0) 42%)'
           };
           box-shadow: inset 0 0 0 1px ${
             dark ? 'rgba(255,255,255,.05)' : 'rgba(255,255,255,.70)'
@@ -626,7 +626,7 @@ function ThemeSwitch({
               ? '10px -4px 0 -4px rgba(15,23,42,.92), 0 8px 20px rgba(0,0,0,.26)'
               : '0 0 0 6px rgba(239,159,39,.12), 0 8px 22px rgba(239,159,39,.24)'
           };
-          transform: ${dark ? 'scale(.86) rotate(-24deg)' : 'scale(.92) rotate(0deg)'};
+          transform: ${dark ? 'rotate(-18deg)' : 'rotate(0deg)'};
           transition:
             transform .42s cubic-bezier(.2,.9,.2,1.2),
             background .24s ease,
@@ -649,7 +649,7 @@ function ThemeSwitch({
           height: 100%;
           color: var(--ruixen-muted);
           opacity: 0;
-          transform: rotate(-34deg) scale(.54);
+          transform: translateY(2px);
           transition:
             opacity .22s ease,
             color .22s ease,
@@ -659,11 +659,11 @@ function ThemeSwitch({
         .ts__segment--active {
           color: var(--ruixen-ink);
           opacity: 1;
-          transform: rotate(0deg) scale(1);
+          transform: translateY(0);
         }
 
         .ts__cb:checked + .ts__container .ts__segment--active {
-          transform: rotate(-10deg) scale(1);
+          transform: translateY(0);
         }
 
         .ts__segment svg {
@@ -710,8 +710,8 @@ function ThemeSwitch({
           event.preventDefault()
           onToggle()
         }}
-        whileHover={{ scale: 1.06 }}
-        whileTap={{ scale: 0.92 }}
+        whileHover={{ y: -1 }}
+        whileTap={{ y: 0 }}
         transition={{ type: 'spring', stiffness: 420, damping: 20 }}
       >
         <input
@@ -1069,8 +1069,8 @@ function SearchModal({
           inset: 0,
           zIndex: 9999,
           background: dark
-            ? 'radial-gradient(circle at top, rgba(239,159,39,.10), transparent 34%), rgba(0,0,0,.72)'
-            : 'radial-gradient(circle at top, rgba(239,159,39,.16), transparent 34%), rgba(15,23,42,.44)',
+            ? 'linear-gradient(180deg, rgba(239,159,39,.10), rgba(239,159,39,0) 34%), rgba(0,0,0,.72)'
+            : 'linear-gradient(180deg, rgba(239,159,39,.14), rgba(239,159,39,0) 34%), rgba(15,23,42,.44)',
           backdropFilter: 'blur(26px) saturate(1.12)',
           WebkitBackdropFilter: 'blur(26px) saturate(1.12)',
           display: 'flex',
@@ -1082,9 +1082,9 @@ function SearchModal({
       >
         <motion.div
           key="search-panel"
-          initial={{ opacity: 0, y: -24, scale: 0.96 }}
-          animate={{ opacity: 1, y: 0, scale: 1 }}
-          exit={{ opacity: 0, y: -16, scale: 0.98 }}
+          initial={{ opacity: 0, y: -24 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -16 }}
           transition={{
             duration: 0.24,
             ease: [0.22, 1, 0.36, 1],
@@ -1092,7 +1092,7 @@ function SearchModal({
           onMouseDown={(event) => event.stopPropagation()}
           style={{
             width: 'min(820px, calc(100vw - 24px))',
-            borderRadius: 30,
+            borderRadius: 20,
             overflow: 'hidden',
             background: dark
               ? 'linear-gradient(180deg, rgba(22,22,32,.98), rgba(9,9,14,.99))'
@@ -1401,6 +1401,7 @@ function SearchModal({
                               {item.image && (
                                 <span
                                   style={{
+                                    position: 'relative',
                                     width: 52,
                                     height: 52,
                                     borderRadius: 16,
@@ -1409,14 +1410,13 @@ function SearchModal({
                                     border: `1px solid ${t.iconBorder}`,
                                   }}
                                 >
-                                  <img
+                                  <Image
                                     src={item.image}
                                     alt=""
+                                    fill
+                                    sizes="52px"
                                     style={{
-                                      width: '100%',
-                                      height: '100%',
-                                      objectFit: 'cover',
-                                      display: 'block',
+                                      objectFit: 'contain',
                                     }}
                                   />
                                 </span>
@@ -1729,7 +1729,7 @@ export default function PublicNavbar() {
         *, *::before, *::after { box-sizing: border-box; }
 
         @keyframes navFadeIn {
-          from { opacity: 0; transform: translateY(-8px); }
+          from { opacity: 0; transform: translateY(-1px); }
           to   { opacity: 1; transform: translateY(0); }
         }
 
@@ -1739,13 +1739,13 @@ export default function PublicNavbar() {
         }
 
         @keyframes submenuIn {
-          from { opacity: 0; transform: translateY(8px) scale(.98); }
-          to   { opacity: 1; transform: translateY(0) scale(1); }
+          from { opacity: 0; transform: translateY(8px); }
+          to   { opacity: 1; transform: translateY(0); }
         }
 
         @keyframes searchPulse {
-          0%, 100% { transform: scale(1); opacity: .88; }
-          50%      { transform: scale(1.12); opacity: 1; }
+          0%, 100% { opacity: .78; }
+          50%      { opacity: 1; }
         }
 
         .pro-lucide-icon {
@@ -1811,7 +1811,7 @@ export default function PublicNavbar() {
         }
 
         .pro-submenu-link:hover .pro-submenu-arrow {
-          transform: translateX(3px);
+          transform: translateY(-1px);
           color: ${ORANGE} !important;
         }
 
@@ -1873,7 +1873,7 @@ export default function PublicNavbar() {
         <nav
           style={{
             height: navHeight,
-            borderRadius: 24,
+            borderRadius: 18,
             border: `1px solid ${t.shellBorder}`,
             background: t.shellBg,
             boxShadow: t.shellShadow,
@@ -2277,7 +2277,7 @@ export default function PublicNavbar() {
           <div
             style={{
               marginTop: 8,
-              borderRadius: 24,
+              borderRadius: 18,
               border: `1px solid ${t.shellBorder}`,
               background: t.mobileBg,
               boxShadow: dark

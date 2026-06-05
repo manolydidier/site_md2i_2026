@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 import { notFound } from "next/navigation";
 import {
   ArrowLeft,
@@ -231,7 +232,7 @@ const LEAD_PAGE_STYLES = `
     width: 100%;
     height: 100%;
     display: block;
-    object-fit: cover;
+    object-fit: contain;
     filter: saturate(1.04) contrast(1.04);
   }
 
@@ -330,7 +331,7 @@ const LEAD_PAGE_STYLES = `
     margin: 0;
     font-size: clamp(38px, 6vw, 78px);
     line-height: .96;
-    letter-spacing: -.065em;
+    letter-spacing: 0;
     font-weight: 950;
   }
 
@@ -382,11 +383,11 @@ const LEAD_PAGE_STYLES = `
 
   .primary-action:hover,
   .secondary-action:hover {
-    transform: translateY(-2px);
+    transform: translateY(-1px);
   }
 
   .lead-summary-card {
-    border-radius: 24px;
+    border-radius: 18px;
     padding: 22px;
     background: rgba(255,255,255,.13);
     border: 1px solid rgba(255,255,255,.16);
@@ -488,6 +489,7 @@ const LEAD_PAGE_STYLES = `
   }
 
   .lead-form-thumb {
+    position: relative;
     width: 44px;
     height: 44px;
     border-radius: 14px;
@@ -505,7 +507,7 @@ const LEAD_PAGE_STYLES = `
   .lead-form-thumb img {
     width: 100%;
     height: 100%;
-    object-fit: cover;
+    object-fit: contain;
     display: block;
   }
 
@@ -532,7 +534,7 @@ const LEAD_PAGE_STYLES = `
     color: var(--ink);
     font-size: clamp(28px, 4vw, 44px);
     font-weight: 950;
-    letter-spacing: -.06em;
+    letter-spacing: 0;
     line-height: 1.04;
   }
 
@@ -586,7 +588,7 @@ const LEAD_PAGE_STYLES = `
 
   .lead-step {
     padding: 22px;
-    border-radius: 24px;
+    border-radius: 18px;
     background: var(--surface);
     border: 1px solid var(--line);
     box-shadow: var(--shadow);
@@ -631,7 +633,7 @@ const LEAD_PAGE_STYLES = `
     color: var(--ink);
     font-size: 15px;
     font-weight: 900;
-    letter-spacing: -.025em;
+    letter-spacing: 0;
   }
 
   .lead-step p {
@@ -644,9 +646,9 @@ const LEAD_PAGE_STYLES = `
   .lead-footer-cta {
     margin-top: 24px;
     padding: clamp(24px, 4vw, 38px);
-    border-radius: 28px;
+    border-radius: 20px;
     background:
-      radial-gradient(circle at top right, rgba(239,159,39,.24), transparent 42%),
+      linear-gradient(135deg, rgba(239,159,39,.20), rgba(239,159,39,0) 42%),
       #111827;
     border: 1px solid rgba(255,255,255,.10);
     color: #fff;
@@ -661,7 +663,7 @@ const LEAD_PAGE_STYLES = `
     margin: 0 0 8px;
     font-size: clamp(24px, 3vw, 36px);
     line-height: 1.05;
-    letter-spacing: -.045em;
+    letter-spacing: 0;
     font-weight: 950;
   }
 
@@ -779,11 +781,12 @@ export default async function ProductLeadPage({ params }: ProductLeadPageProps) 
       <main className="lead-page">
         <section className="lead-hero">
           <div className="lead-hero-bg">
-            <img
+            <Image
               src={safeImage(product.coverImage)}
               alt=""
-              loading="eager"
-              fetchPriority="high"
+              fill
+              priority
+              sizes="100vw"
             />
             <div className="lead-hero-overlay" />
           </div>
@@ -884,7 +887,12 @@ export default async function ProductLeadPage({ params }: ProductLeadPageProps) 
               <div className="lead-form-product-row">
                 <div className="lead-form-thumb">
                   {product.coverImage ? (
-                    <img src={product.coverImage} alt="" />
+                    <Image
+                      src={product.coverImage}
+                      alt=""
+                      fill
+                      sizes="44px"
+                    />
                   ) : (
                     product.name.charAt(0).toUpperCase()
                   )}

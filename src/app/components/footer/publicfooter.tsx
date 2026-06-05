@@ -1,6 +1,7 @@
 'use client'
 
 import Link from 'next/link'
+import Image from 'next/image'
 import type { CSSProperties, ReactNode } from 'react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -515,7 +516,7 @@ export default function PublicFooter() {
           margin-right: -50vw;
           overflow-x: clip;
           background:
-            radial-gradient(circle at 10% 0%, rgba(239, 159, 39, .075), transparent 28%),
+            linear-gradient(135deg, rgba(239, 159, 39, .07), rgba(239, 159, 39, 0) 32%),
             linear-gradient(180deg, var(--ft-bg), var(--ft-bg));
           border-top: 1px solid var(--ft-border);
           padding: clamp(38px, 5vw, 62px) clamp(16px, 4vw, 64px) 26px;
@@ -585,7 +586,7 @@ export default function PublicFooter() {
           color: var(--ft-text);
           font-size: 18px;
           font-weight: 800;
-          letter-spacing: -.03em;
+          letter-spacing: 0;
           line-height: 1.05;
         }
 
@@ -651,7 +652,7 @@ export default function PublicFooter() {
         }
 
         .footer-social:hover {
-          transform: translateY(-2px);
+          transform: translateY(-1px);
           color: var(--ft-orange);
           background: var(--ft-orange-soft);
           border-color: var(--ft-orange-border);
@@ -862,7 +863,7 @@ export default function PublicFooter() {
         .footer-link:hover {
           background: var(--ft-icon);
           color: var(--ft-orange);
-          transform: translateX(2px);
+          transform: translateY(-1px);
         }
 
         .footer-link-icon {
@@ -886,7 +887,7 @@ export default function PublicFooter() {
         }
 
         .footer-link:hover .footer-link-icon {
-          transform: scale(1.06);
+          transform: translateY(-1px);
           opacity: 1;
           color: var(--item-color, var(--ft-orange));
           background: color-mix(in srgb, var(--item-color, var(--ft-orange)) 10%, transparent);
@@ -974,11 +975,10 @@ export default function PublicFooter() {
           min-height: 350px;
           border: 0;
           opacity: .96;
-          transition: transform .55s ease, filter .35s ease;
+          transition: filter .35s ease;
         }
 
         .footer-map-card:hover .footer-map-frame {
-          transform: scale(1.025);
           filter: saturate(1.04) contrast(1.02);
         }
 
@@ -1058,7 +1058,7 @@ export default function PublicFooter() {
         .footer-map-marker-pulse {
           position: absolute;
           inset: -10px;
-          border-radius: 28px;
+          border-radius: 18px;
           background: rgba(239,159,39,.16);
           animation: md2iMarkerPulse 2.4s ease-in-out infinite;
         }
@@ -1177,7 +1177,7 @@ export default function PublicFooter() {
         }
 
         .footer-contact-link:hover {
-          transform: translateX(2px);
+          transform: translateY(-1px);
         }
 
         .footer-contact-item {
@@ -1258,24 +1258,22 @@ export default function PublicFooter() {
         @keyframes footerSuccessIn {
           from {
             opacity: 0;
-            transform: translateY(8px) scale(.98);
+            transform: translateY(8px);
           }
 
           to {
             opacity: 1;
-            transform: translateY(0) scale(1);
+            transform: translateY(0);
           }
         }
 
         @keyframes md2iMarkerPulse {
           0%, 100% {
             opacity: .72;
-            transform: scale(.92);
           }
 
           50% {
             opacity: .18;
-            transform: scale(1.18);
           }
         }
 
@@ -1396,7 +1394,7 @@ export default function PublicFooter() {
             <div className="footer-brand" style={fadeStyle(0.04)}>
               <Link href="/" className="footer-brand-link">
                 <span className="footer-logo-box">
-                  <img src={MD2I_MARKER_LOGO} alt="MD2I" />
+                  <Image src={MD2I_MARKER_LOGO} alt="MD2I" width={34} height={34} />
                 </span>
 
                 <span>
@@ -1448,6 +1446,8 @@ export default function PublicFooter() {
 
                 {subscribeResult ? (
                   <div
+                    role="status"
+                    aria-live="polite"
                     className={`footer-success-card ${
                       subscribeResult.type === 'created' ? 'created' : 'updated'
                     }`}
@@ -1484,6 +1484,7 @@ export default function PublicFooter() {
                 ) : (
                   <div style={{ display: 'grid', gap: 8 }}>
                     <input
+                      name="website"
                       type="text"
                       tabIndex={-1}
                       autoComplete="off"
@@ -1494,6 +1495,8 @@ export default function PublicFooter() {
                     />
 
                     <input
+                      id="footer-newsletter-email"
+                      name="email"
                       className="footer-input"
                       type="email"
                       value={email}
@@ -1504,6 +1507,9 @@ export default function PublicFooter() {
                           handleSubscribe()
                         }
                       }}
+                      autoComplete="email"
+                      aria-label={tr('footer.newsletter.emailLabel', 'Adresse email')}
+                      aria-invalid={Boolean(subscribeError)}
                       placeholder={tr('footer.newsletter.placeholder', 'votre@email.com')}
                     />
 
@@ -1512,6 +1518,7 @@ export default function PublicFooter() {
                       className="footer-btn"
                       onClick={handleSubscribe}
                       disabled={subscribeLoading}
+                      aria-busy={subscribeLoading}
                     >
                       {subscribeLoading
                         ? tr('footer.newsletter.adding', 'Ajout en cours...')
@@ -1519,7 +1526,9 @@ export default function PublicFooter() {
                     </button>
 
                     {subscribeError && (
-                      <div className="footer-notice-error">{subscribeError}</div>
+                      <div className="footer-notice-error" role="alert">
+                        {subscribeError}
+                      </div>
                     )}
                   </div>
                 )}
@@ -1591,7 +1600,7 @@ export default function PublicFooter() {
 
                     <div className="footer-map-chip">
                       <span className="footer-map-chip-logo">
-                        <img src={MD2I_MARKER_LOGO} alt="" />
+                        <Image src={MD2I_MARKER_LOGO} alt="" width={18} height={18} />
                       </span>
                       MD2I Madagascar
                     </div>
@@ -1605,9 +1614,11 @@ export default function PublicFooter() {
                     >
                       <span className="footer-map-marker-pulse" />
 
-                      <img
+                      <Image
                         src={MD2I_MARKER_LOGO}
                         alt={tr('footer.location.logoAlt', 'MD2I Madagascar')}
+                        width={38}
+                        height={38}
                       />
                     </a>
 

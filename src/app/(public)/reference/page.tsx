@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import type {
   LeafletMouseEvent,
   Map as LeafletMap,
@@ -44,28 +45,28 @@ const ORANGE = "#EF9F27";
 
 function getTokens(dark: boolean) {
   return {
-    bg: dark ? "#09090B" : "#F7F4EE",
-    glass: dark ? "rgba(17,17,22,0.82)" : "rgba(255,255,255,0.82)",
-    glassStrong: dark ? "rgba(17,17,22,0.94)" : "rgba(255,255,255,0.94)",
-    cardBg: dark ? "#151519" : "#FFFFFF",
-    panelBg: dark ? "rgba(16,16,20,0.96)" : "rgba(255,255,255,0.96)",
-    text: dark ? "#F8F4EF" : "#111111",
-    textSoft: dark ? "rgba(248,244,239,0.68)" : "rgba(17,17,17,0.66)",
-    textMuted: dark ? "rgba(248,244,239,0.42)" : "rgba(17,17,17,0.42)",
-    border: dark ? "rgba(255,255,255,0.09)" : "rgba(17,17,17,0.08)",
-    borderStrong: dark ? "rgba(255,255,255,0.16)" : "rgba(17,17,17,0.14)",
+    bg: dark ? "#090D13" : "#F8FAFC",
+    glass: dark ? "rgba(20,26,36,0.84)" : "rgba(255,255,255,0.86)",
+    glassStrong: dark ? "rgba(20,26,36,0.94)" : "rgba(255,255,255,0.94)",
+    cardBg: dark ? "#141A24" : "#FFFFFF",
+    panelBg: dark ? "rgba(20,26,36,0.96)" : "rgba(255,255,255,0.96)",
+    text: dark ? "#F8FAFC" : "#1E293B",
+    textSoft: dark ? "rgba(248,250,252,0.74)" : "#475569",
+    textMuted: dark ? "rgba(248,250,252,0.52)" : "#64748B",
+    border: dark ? "rgba(255,255,255,0.10)" : "rgba(15,23,42,0.09)",
+    borderStrong: dark ? "rgba(255,255,255,0.18)" : "rgba(15,23,42,0.16)",
     shadow: dark
-      ? "0 26px 90px rgba(0,0,0,0.55)"
-      : "0 26px 90px rgba(17,17,17,0.13)",
+      ? "0 22px 72px rgba(0,0,0,0.46)"
+      : "0 22px 72px rgba(15,23,42,0.12)",
     shadowSoft: dark
-      ? "0 16px 46px rgba(0,0,0,0.32)"
-      : "0 16px 46px rgba(17,17,17,0.08)",
+      ? "0 14px 38px rgba(0,0,0,0.30)"
+      : "0 14px 38px rgba(15,23,42,0.08)",
     orangeSoft: dark ? "rgba(239,159,39,0.14)" : "rgba(239,159,39,0.11)",
     orangeBorder: "rgba(239,159,39,0.32)",
-    inputBg: dark ? "rgba(255,255,255,0.06)" : "rgba(17,17,17,0.04)",
+    inputBg: dark ? "rgba(255,255,255,0.06)" : "rgba(15,23,42,0.04)",
     mapOverlay: dark
-      ? "linear-gradient(180deg, rgba(9,9,11,0.50), rgba(9,9,11,0.06) 32%, rgba(9,9,11,0.22))"
-      : "linear-gradient(180deg, rgba(247,244,238,0.50), rgba(247,244,238,0.02) 32%, rgba(247,244,238,0.18))",
+      ? "linear-gradient(180deg, rgba(9,13,19,0.58), rgba(9,13,19,0.08) 34%, rgba(9,13,19,0.24))"
+      : "linear-gradient(180deg, rgba(248,250,252,0.62), rgba(248,250,252,0.08) 34%, rgba(248,250,252,0.26))",
   };
 }
 
@@ -266,7 +267,7 @@ function StatCard({
           fontSize: 15,
           lineHeight: 1,
           fontWeight: 950,
-          letterSpacing: "-0.04em",
+          letterSpacing: "0",
         }}
       >
         {value}
@@ -302,7 +303,7 @@ function MetricCard({
     <div
       style={{
         padding: 15,
-        borderRadius: 20,
+        borderRadius: 16,
         background: t.inputBg,
         border: `1px solid ${t.border}`,
         display: "flex",
@@ -736,7 +737,7 @@ function ReferenceListItem({
         gap: 28,
         alignItems: "stretch",
         padding: 22,
-        borderRadius: 28,
+        borderRadius: 20,
         background: t.cardBg,
         border: `1px solid ${t.border}`,
         boxShadow: "none",
@@ -771,7 +772,7 @@ function ReferenceListItem({
               fontSize: 25,
               lineHeight: 1.08,
               fontWeight: 950,
-              letterSpacing: "-0.055em",
+              letterSpacing: "0",
             }}
           >
             {reference.country}
@@ -783,19 +784,18 @@ function ReferenceListItem({
             position: "relative",
             height: 230,
             overflow: "hidden",
-            borderRadius: 24,
+            borderRadius: 16,
             background: t.inputBg,
             border: `1px solid ${t.border}`,
           }}
         >
-          <img
+          <Image
             src={safeImage(reference.image)}
             alt={reference.title}
-            loading="lazy"
+            fill
+            sizes="(max-width: 720px) 100vw, 420px"
             style={{
-              width: "100%",
-              height: "100%",
-              objectFit: "cover",
+              objectFit: "contain",
             }}
           />
 
@@ -874,7 +874,7 @@ function ReferenceListItem({
               fontSize: "clamp(22px, 2.4vw, 32px)",
               lineHeight: 1.08,
               fontWeight: 950,
-              letterSpacing: "-0.055em",
+              letterSpacing: "0",
             }}
           >
             {reference.country}
@@ -934,7 +934,7 @@ function ReferenceListItem({
                 color: t.text,
                 fontSize: 15,
                 fontWeight: 950,
-                letterSpacing: "-0.02em",
+                letterSpacing: "0",
               }}
             >
               {translate("referencePage.list.description")}
@@ -1127,7 +1127,7 @@ function ReferenceCardItem({
       className="reference-card-clean"
       style={{
         overflow: "hidden",
-        borderRadius: 24,
+        borderRadius: 18,
         background: t.cardBg,
         border: `1px solid ${t.border}`,
         boxShadow: "none",
@@ -1141,14 +1141,13 @@ function ReferenceCardItem({
           background: t.inputBg,
         }}
       >
-        <img
+        <Image
           src={safeImage(reference.image)}
           alt={reference.title}
-          loading="lazy"
+          fill
+          sizes="(max-width: 720px) 100vw, 360px"
           style={{
-            width: "100%",
-            height: "100%",
-            objectFit: "cover",
+            objectFit: "contain",
           }}
         />
 
@@ -1227,7 +1226,7 @@ function ReferenceCardItem({
               fontSize: 17,
               lineHeight: 1.22,
               fontWeight: 950,
-              letterSpacing: "-0.04em",
+              letterSpacing: "0",
             }}
           >
             {reference.title}
@@ -2042,18 +2041,18 @@ export default function MapReferences() {
     <>
       <style>{`
         @keyframes md2iPulse {
-          0% { transform: scale(0.82); opacity: 0.72; }
-          100% { transform: scale(1.82); opacity: 0; }
+          0% { box-shadow: 0 0 0 0 rgba(239,159,39,.28); opacity: 0.72; }
+          100% { box-shadow: 0 0 0 14px rgba(239,159,39,0); opacity: 0; }
         }
 
         @keyframes md2iTooltipIn {
-          from { opacity: 0; transform: translateY(8px) scale(0.97); }
-          to { opacity: 1; transform: translateY(0) scale(1); }
+          from { opacity: 0; transform: translateY(8px); }
+          to { opacity: 1; transform: translateY(0); }
         }
 
         @keyframes md2iModalIn {
-          from { opacity: 0; transform: scale(0.96) translateY(14px); }
-          to { opacity: 1; transform: scale(1) translateY(0); }
+          from { opacity: 0; transform: translateY(14px); }
+          to { opacity: 1; transform: translateY(0); }
         }
 
         @keyframes drawerIn {
@@ -2097,7 +2096,7 @@ export default function MapReferences() {
           width: 100%;
           height: 100%;
           border-radius: 999px;
-          object-fit: cover;
+          object-fit: contain;
           display: block;
           overflow: hidden;
         }
@@ -2248,9 +2247,16 @@ export default function MapReferences() {
 
         .reference-card-clean:hover,
         .reference-classic-item:hover {
-          transform: translateY(-2px);
+          transform: translateY(-1px);
           border-color: rgba(239,159,39,0.34) !important;
-          box-shadow: ${dark ? "0 18px 44px rgba(0,0,0,.30)" : "0 18px 44px rgba(17,17,17,.08)"} !important;
+          box-shadow: ${dark ? "0 14px 36px rgba(0,0,0,.28)" : "0 14px 36px rgba(15,23,42,.08)"} !important;
+        }
+
+        .reference-card-clean img,
+        .reference-classic-media img,
+        .reference-modal-hero img {
+          transform: none !important;
+          transition: none !important;
         }
 
         .reference-display-switch button:hover {
@@ -2452,7 +2458,7 @@ export default function MapReferences() {
               zIndex: 1000,
               width: "min(470px, calc(100vw - 44px))",
               padding: 18,
-              borderRadius: 26,
+              borderRadius: 20,
               background: t.glass,
               border: `1px solid ${t.border}`,
               boxShadow: t.shadowSoft,
@@ -2489,7 +2495,7 @@ export default function MapReferences() {
                     fontSize: 28,
                     lineHeight: 1.05,
                     fontWeight: 950,
-                    letterSpacing: "-0.055em",
+                    letterSpacing: "0",
                   }}
                 >
                   {translate("referencePage.hero.title")}
@@ -2572,8 +2578,8 @@ export default function MapReferences() {
               overflowY: "auto",
               padding: commandBarOpen ? "96px 22px 34px" : "28px 22px 34px",
               background: dark
-                ? "radial-gradient(circle at top left, rgba(239,159,39,0.08), transparent 34%), #09090B"
-                : "radial-gradient(circle at top left, rgba(239,159,39,0.09), transparent 34%), #F7F4EE",
+                ? "linear-gradient(180deg, rgba(239,159,39,0.07), rgba(239,159,39,0) 260px), #090D13"
+                : "linear-gradient(180deg, rgba(239,159,39,0.08), rgba(239,159,39,0) 260px), #F8FAFC",
               transition: "padding 0.2s ease",
               animation: "listIn 0.22s ease",
             }}
@@ -2615,7 +2621,7 @@ export default function MapReferences() {
                       fontSize: 36,
                       lineHeight: 1.02,
                       fontWeight: 950,
-                      letterSpacing: "-0.06em",
+                      letterSpacing: "0",
                     }}
                   >
                     {translate("referencePage.listHeader.title")}
@@ -2673,7 +2679,7 @@ export default function MapReferences() {
                           fontSize: 22,
                           lineHeight: 1,
                           fontWeight: 950,
-                          letterSpacing: "-0.04em",
+                          letterSpacing: "0",
                         }}
                       >
                         {filteredReferences.length}
@@ -2709,7 +2715,7 @@ export default function MapReferences() {
                           fontSize: 22,
                           lineHeight: 1,
                           fontWeight: 950,
-                          letterSpacing: "-0.04em",
+                          letterSpacing: "0",
                         }}
                       >
                         {stats.countries}
@@ -2782,7 +2788,7 @@ export default function MapReferences() {
                 <div
                   style={{
                     padding: 34,
-                    borderRadius: 26,
+                    borderRadius: 20,
                     background: t.glassStrong,
                     border: `1px solid ${t.border}`,
                     color: t.textSoft,
@@ -2843,7 +2849,7 @@ export default function MapReferences() {
               bottom: viewMode === "map" ? 22 : undefined,
               zIndex: 1500,
               padding: 9,
-              borderRadius: 22,
+              borderRadius: 18,
               background: t.glassStrong,
               border: `1px solid ${t.border}`,
               boxShadow: t.shadow,
@@ -3113,7 +3119,7 @@ export default function MapReferences() {
               maxHeight: "calc(100vh - 140px)",
               overflowY: "auto",
               padding: 18,
-              borderRadius: 26,
+              borderRadius: 20,
               background: t.panelBg,
               border: `1px solid ${t.borderStrong}`,
               boxShadow: t.shadow,
@@ -3151,7 +3157,7 @@ export default function MapReferences() {
                     color: t.text,
                     fontSize: 20,
                     fontWeight: 950,
-                    letterSpacing: "-0.04em",
+                    letterSpacing: "0",
                   }}
                 >
                   {translate("referencePage.filters.title")}
@@ -3338,20 +3344,20 @@ export default function MapReferences() {
                 style={{
                   background: t.panelBg,
                   border: `1px solid ${t.borderStrong}`,
-                  borderRadius: 24,
+                  borderRadius: 18,
                   overflow: "hidden",
                   boxShadow: t.shadow,
                   backdropFilter: "blur(18px)",
                 }}
               >
                 <div style={{ position: "relative", height: 145 }}>
-                  <img
+                  <Image
                     src={safeImage(tooltipActiveProject.image)}
                     alt={tooltipActiveProject.title}
+                    fill
+                    sizes="320px"
                     style={{
-                      width: "100%",
-                      height: "100%",
-                      objectFit: "cover",
+                      objectFit: "contain",
                     }}
                   />
 
@@ -3414,7 +3420,7 @@ export default function MapReferences() {
                       fontSize: 16,
                       fontWeight: 950,
                       lineHeight: 1.32,
-                      letterSpacing: "-0.03em",
+                      letterSpacing: "0",
                     }}
                   >
                     {tooltipActiveProject.title}
@@ -3534,7 +3540,7 @@ export default function MapReferences() {
                 style={{
                   background: t.cardBg,
                   border: `1px solid ${t.borderStrong}`,
-                  borderRadius: 30,
+                  borderRadius: 20,
                   width: "min(1120px, calc(100vw - 32px))",
                   maxHeight: "92vh",
                   overflowY: "auto",
@@ -3550,15 +3556,16 @@ export default function MapReferences() {
                     position: "relative",
                     height: 335,
                     overflow: "hidden",
+                    background: t.inputBg,
                   }}
                 >
-                  <img
+                  <Image
                     src={safeImage(modalActiveProject.image)}
                     alt={modalActiveProject.title}
+                    fill
+                    sizes="(max-width: 920px) 100vw, 1120px"
                     style={{
-                      width: "100%",
-                      height: "100%",
-                      objectFit: "cover",
+                      objectFit: "contain",
                     }}
                   />
 
@@ -3664,7 +3671,7 @@ export default function MapReferences() {
                           fontSize: 36,
                           lineHeight: 1.08,
                           fontWeight: 950,
-                          letterSpacing: "-0.055em",
+                          letterSpacing: "0",
                         }}
                       >
                         {modalActiveProject.title}
@@ -3710,7 +3717,7 @@ export default function MapReferences() {
                       <section
                         style={{
                           padding: 22,
-                          borderRadius: 24,
+                          borderRadius: 18,
                           background: t.inputBg,
                           border: `1px solid ${t.border}`,
                         }}
@@ -3737,7 +3744,7 @@ export default function MapReferences() {
                       <section
                         style={{
                           padding: 24,
-                          borderRadius: 24,
+                          borderRadius: 18,
                           background: t.panelBg,
                           border: `1px solid ${t.border}`,
                         }}
@@ -3774,7 +3781,7 @@ export default function MapReferences() {
                         <section
                           style={{
                             padding: 18,
-                            borderRadius: 24,
+                            borderRadius: 18,
                             background: t.panelBg,
                             border: `1px solid ${t.border}`,
                             display: "grid",
@@ -3933,7 +3940,7 @@ export default function MapReferences() {
                     <section
                       style={{
                         padding: 22,
-                        borderRadius: 24,
+                        borderRadius: 18,
                         background: t.panelBg,
                         border: `1px solid ${t.border}`,
                         display: "grid",
@@ -3986,7 +3993,7 @@ export default function MapReferences() {
                     <section
                       style={{
                         padding: 22,
-                        borderRadius: 24,
+                        borderRadius: 18,
                         background: t.panelBg,
                         border: `1px solid ${t.border}`,
                         display: "grid",

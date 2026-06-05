@@ -1,6 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import Image from 'next/image'
 import { useRouter } from 'next/navigation'
 import { motion, useReducedMotion } from 'framer-motion'
 import { useTranslation } from 'react-i18next'
@@ -371,7 +372,7 @@ function ProductCard({
   const leadHref = getProductLeadHref(product)
   const locale = normalizeLocale(i18n.resolvedLanguage || i18n.language)
 
-  const onMouseMove = (e: React.MouseEvent<HTMLElement>) => {
+  const onMouseMove = () => {
     if (prefersReducedMotion) return
 
     const el = cardRef.current
@@ -379,11 +380,9 @@ function ProductCard({
 
     if (!el || !glow) return
 
-    const rect = el.getBoundingClientRect()
-    const x = e.clientX - rect.left
-    const y = e.clientY - rect.top
-    el.style.transform = 'translateY(-3px)'
-    glow.style.background = `radial-gradient(320px circle at ${x}px ${y}px, rgba(239,159,39,0.11), transparent 60%)`
+    el.style.transform = 'translateY(-1px)'
+    glow.style.background =
+      'linear-gradient(135deg, rgba(239,159,39,0.10), transparent 64%)'
     glow.style.opacity = '1'
   }
 
@@ -423,8 +422,8 @@ function ProductCard({
         onNavigate(detailHref)
       }}
       aria-label={`${t('productsPage.card.viewSheet')} : ${product.name}`}
-      initial={prefersReducedMotion ? false : { opacity: 0, y: 34, scale: 0.988 }}
-      whileInView={prefersReducedMotion ? {} : { opacity: 1, y: 0, scale: 1 }}
+      initial={prefersReducedMotion ? false : { opacity: 0, y: 24 }}
+      whileInView={prefersReducedMotion ? {} : { opacity: 1, y: 0 }}
       viewport={{ once: true, amount: 0.2 }}
       transition={{
         duration: 0.65,
@@ -437,11 +436,12 @@ function ProductCard({
 
       <div className={s.media}>
         {product.coverImage ? (
-          <img
+          <Image
             src={product.coverImage}
             alt={product.name}
             className={s.img}
-            loading="lazy"
+            fill
+            sizes="(max-width: 720px) 100vw, (max-width: 1180px) 50vw, 360px"
           />
         ) : (
           <div className={s.placeholder}>
@@ -1331,7 +1331,7 @@ export default function PublicProductsPage({ router }: PublicProductsPageProps) 
             </div>
           )}
 
-          <div className={s.resultsMeta}>
+          <div className={s.resultsMeta} role="status" aria-live="polite">
             <span className={s.resultsCount}>
               {!loading
                 ? t('productsPage.resultCount', { count: totalItems })
@@ -1346,7 +1346,11 @@ export default function PublicProductsPage({ router }: PublicProductsPageProps) 
           </div>
         </div>
 
-        {error && <div className={s.error}>{error}</div>}
+        {error && (
+          <div className={s.error} role="alert">
+            {error}
+          </div>
+        )}
 
         {loading ? (
           <div className={s.grid}>
@@ -1364,7 +1368,7 @@ export default function PublicProductsPage({ router }: PublicProductsPageProps) 
             ))}
           </div>
         ) : products.length === 0 ? (
-          <div className={s.empty}>
+          <div className={s.empty} role="status">
             <div className={s.emptyIcon}>
               <IconSearch />
             </div>

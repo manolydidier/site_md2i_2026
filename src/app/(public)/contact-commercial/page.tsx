@@ -121,8 +121,8 @@ export default async function ContactCommercialPage() {
           color: var(--cc-text);
           font-family: var(--cc-font);
           background:
-            radial-gradient(circle at 8% 0%, rgba(239, 159, 39, 0.08), transparent 30%),
-            radial-gradient(circle at 95% 10%, rgba(37, 99, 235, 0.045), transparent 28%),
+            linear-gradient(135deg, rgba(239, 159, 39, 0.08), rgba(239, 159, 39, 0) 32%),
+            linear-gradient(225deg, rgba(37, 99, 235, 0.045), rgba(37, 99, 235, 0) 30%),
             linear-gradient(180deg, #ffffff 0%, #fbfcfe 42%, #f8fafc 100%);
           -webkit-font-smoothing: antialiased;
           text-rendering: optimizeLegibility;
@@ -158,6 +158,7 @@ export default async function ContactCommercialPage() {
           background: rgba(239, 159, 39, 0.11);
           filter: blur(18px);
           pointer-events: none;
+          display: none;
         }
 
         .cc-hero::after {
@@ -171,6 +172,7 @@ export default async function ContactCommercialPage() {
           background: rgba(37, 99, 235, 0.045);
           filter: blur(18px);
           pointer-events: none;
+          display: none;
         }
 
         .cc-hero-grid {
@@ -206,7 +208,7 @@ export default async function ContactCommercialPage() {
           font-size: clamp(38px, 6vw, 64px);
           line-height: 1.02;
           font-weight: 800;
-          letter-spacing: -0.06em;
+          letter-spacing: 0;
         }
 
         .cc-title span {
@@ -268,9 +270,9 @@ export default async function ContactCommercialPage() {
 
         .cc-hero-card {
           padding: 24px;
-          border-radius: 26px;
+          border-radius: 18px;
           background:
-            radial-gradient(circle at top right, rgba(239, 159, 39, 0.09), transparent 36%),
+            linear-gradient(135deg, rgba(239, 159, 39, 0.09), rgba(239, 159, 39, 0) 38%),
             linear-gradient(180deg, rgba(255, 255, 255, 0.96), #ffffff);
           border: 1px solid var(--cc-border);
           box-shadow: var(--cc-shadow-lg);
@@ -295,7 +297,7 @@ export default async function ContactCommercialPage() {
           font-size: 21px;
           line-height: 1.25;
           font-weight: 800;
-          letter-spacing: -0.03em;
+          letter-spacing: 0;
         }
 
         .cc-hero-card p {
@@ -326,7 +328,7 @@ export default async function ContactCommercialPage() {
           font-size: 22px;
           line-height: 1;
           font-weight: 800;
-          letter-spacing: -0.04em;
+          letter-spacing: 0;
         }
 
         .cc-stat span {
@@ -377,7 +379,7 @@ export default async function ContactCommercialPage() {
           color: var(--cc-text);
           font-size: 15px;
           font-weight: 800;
-          letter-spacing: -0.01em;
+          letter-spacing: 0;
         }
 
         .cc-benefit-card p {
@@ -403,9 +405,9 @@ export default async function ContactCommercialPage() {
           position: sticky;
           top: 24px;
           padding: 24px;
-          border-radius: 26px;
+          border-radius: 18px;
           background:
-            radial-gradient(circle at top right, rgba(239, 159, 39, 0.1), transparent 34%),
+            linear-gradient(135deg, rgba(239, 159, 39, 0.1), rgba(239, 159, 39, 0) 36%),
             linear-gradient(180deg, #ffffff 0%, #fbfcfe 100%);
           border: 1px solid var(--cc-border);
           box-shadow: var(--cc-shadow-md);
@@ -431,7 +433,7 @@ export default async function ContactCommercialPage() {
           font-size: 30px;
           line-height: 1.14;
           font-weight: 800;
-          letter-spacing: -0.045em;
+          letter-spacing: 0;
         }
 
         .cc-form-intro p {
@@ -466,7 +468,7 @@ export default async function ContactCommercialPage() {
 
         .cc-form-card {
           padding: clamp(16px, 2vw, 22px);
-          border-radius: 26px;
+          border-radius: 18px;
           background:
             linear-gradient(180deg, #ffffff 0%, #fbfcfe 100%);
           border: 1px solid var(--cc-border);
@@ -491,9 +493,9 @@ export default async function ContactCommercialPage() {
 
         .cc-reassurance-card {
           padding: clamp(24px, 4vw, 34px);
-          border-radius: 28px;
+          border-radius: 20px;
           background:
-            radial-gradient(circle at top right, rgba(239, 159, 39, 0.12), transparent 34%),
+            linear-gradient(135deg, rgba(239, 159, 39, 0.12), rgba(239, 159, 39, 0) 36%),
             linear-gradient(135deg, #ffffff 0%, #fbfcfe 60%, #fffaf2 100%);
           border: 1px solid var(--cc-border);
           display: grid;
@@ -518,7 +520,7 @@ export default async function ContactCommercialPage() {
           font-size: clamp(24px, 3vw, 32px);
           line-height: 1.18;
           font-weight: 800;
-          letter-spacing: -0.045em;
+          letter-spacing: 0;
         }
 
         .cc-reassurance-card p {

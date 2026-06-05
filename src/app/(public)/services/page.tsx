@@ -66,45 +66,45 @@ const SERVICE_FIXED_BG_URL = service.src;
 
 function serviceTokens(dark: boolean) {
   return {
-    bg: dark ? "#0F1116" : "#F7F5F1",
-    bgSoft: dark ? "#151922" : "#FCFBF8",
-    panel: dark ? "#171B23" : "#FFFFFF",
-    panel2: dark ? "#1C212B" : "#FCFBF8",
-    panel3: dark ? "#212733" : "#F8F3EA",
-    border: dark ? "rgba(255,255,255,.08)" : "#E6E0D3",
-    borderStrong: dark ? "rgba(255,255,255,.16)" : "#D6CAB6",
-    text: dark ? "#F5F1E8" : BRAND.charcoal,
-    textSoft: dark ? "rgba(245,241,232,.78)" : "#676C75",
-    textMute: dark ? "rgba(245,241,232,.56)" : "#8A8E97",
+    bg: dark ? "#090D13" : "#F8FAFC",
+    bgSoft: dark ? "#101620" : "#FDFEFF",
+    panel: dark ? "#141A24" : "#FFFFFF",
+    panel2: dark ? "#18202B" : "#F8FAFC",
+    panel3: dark ? "#1C2633" : "#F1F5F9",
+    border: dark ? "rgba(255,255,255,.10)" : "rgba(15,23,42,.09)",
+    borderStrong: dark ? "rgba(255,255,255,.18)" : "rgba(15,23,42,.16)",
+    text: dark ? "#F8FAFC" : "#1E293B",
+    textSoft: dark ? "rgba(248,250,252,.76)" : "#475569",
+    textMute: dark ? "rgba(248,250,252,.58)" : "#64748B",
     accent: BRAND.gold,
-    accentSoft: dark ? "rgba(225,161,44,.14)" : "#FFF6E5",
+    accentSoft: dark ? "rgba(225,161,44,.14)" : "rgba(225,161,44,.11)",
     accentSoft2: BRAND.goldSoft,
-    badgeBg: dark ? "rgba(225,161,44,.12)" : "#FFF7E9",
-    badgeBorder: dark ? "rgba(225,161,44,.22)" : "rgba(225,161,44,.28)",
-    overlay: dark ? "rgba(0,0,0,.68)" : "rgba(17,24,39,.52)",
+    badgeBg: dark ? "rgba(225,161,44,.12)" : "rgba(225,161,44,.10)",
+    badgeBorder: dark ? "rgba(225,161,44,.22)" : "rgba(225,161,44,.22)",
+    overlay: dark ? "rgba(3,7,18,.72)" : "rgba(15,23,42,.50)",
     heroGlowA: dark
-      ? "radial-gradient(circle, rgba(225,161,44,.18) 0%, transparent 68%)"
-      : "radial-gradient(circle, rgba(225,161,44,.12) 0%, transparent 68%)",
+      ? "linear-gradient(135deg, rgba(225,161,44,.16) 0%, rgba(225,161,44,0) 62%)"
+      : "linear-gradient(135deg, rgba(225,161,44,.12) 0%, rgba(225,161,44,0) 62%)",
     heroGlowB: dark
-      ? "radial-gradient(circle, rgba(255,255,255,.06) 0%, transparent 70%)"
-      : "radial-gradient(circle, rgba(47,47,49,.06) 0%, transparent 70%)",
+      ? "linear-gradient(135deg, rgba(37,99,235,.10) 0%, rgba(37,99,235,0) 68%)"
+      : "linear-gradient(135deg, rgba(37,99,235,.08) 0%, rgba(37,99,235,0) 68%)",
     cardShadow: dark
-      ? "0 10px 24px rgba(0,0,0,.22)"
-      : "0 10px 24px rgba(17,24,39,.06)",
+      ? "0 10px 28px rgba(0,0,0,.24)"
+      : "0 12px 30px rgba(15,23,42,.07)",
     cardShadowHover: dark
-      ? "0 28px 68px rgba(0,0,0,.46), 0 10px 24px rgba(0,0,0,.24)"
-      : "0 28px 68px rgba(17,24,39,.12), 0 10px 24px rgba(17,24,39,.06)",
+      ? "0 18px 46px rgba(0,0,0,.34), 0 8px 18px rgba(0,0,0,.20)"
+      : "0 18px 46px rgba(15,23,42,.11), 0 8px 18px rgba(15,23,42,.06)",
     modalShadow: dark
       ? "0 34px 110px rgba(0,0,0,.46)"
       : "0 34px 110px rgba(15,23,42,.22)",
     ctaGradient: dark
-      ? "linear-gradient(135deg, #17181C 0%, #2E3138 52%, #51545B 100%)"
-      : "linear-gradient(135deg, #2F2F31 0%, #52555B 52%, #76787F 100%)",
+      ? "linear-gradient(135deg, #0F172A 0%, #1E293B 52%, #334155 100%)"
+      : "linear-gradient(135deg, #1E293B 0%, #334155 52%, #475569 100%)",
     ctaText: "#FFFFFF",
     ctaSub: dark ? "rgba(255,255,255,.76)" : "rgba(255,255,255,.76)",
     fixedBgImage: dark
-      ? `radial-gradient(ellipse at 20% 50%, rgba(225,161,44,.06) 0%, transparent 60%), radial-gradient(ellipse at 80% 20%, rgba(255,255,255,.03) 0%, transparent 55%)`
-      : `radial-gradient(ellipse at 20% 50%, rgba(225,161,44,.07) 0%, transparent 60%), radial-gradient(ellipse at 80% 20%, rgba(47,47,49,.04) 0%, transparent 55%)`,
+      ? `linear-gradient(135deg, rgba(225,161,44,.08) 0%, transparent 45%), linear-gradient(225deg, rgba(37,99,235,.07) 0%, transparent 48%)`
+      : `linear-gradient(135deg, rgba(225,161,44,.08) 0%, transparent 44%), linear-gradient(225deg, rgba(37,99,235,.06) 0%, transparent 46%)`,
   };
 }
 
@@ -921,7 +921,7 @@ function CTAButton({
       <span
         style={{
           display: "inline-flex",
-          transform: hovered ? "translateX(3px)" : "translateX(0)",
+          transform: hovered ? "translateY(-1px)" : "translateY(0)",
           transition: "transform .28s ease",
         }}
       >
@@ -1100,11 +1100,11 @@ function FeaturedService({
         display: "grid",
         gridTemplateColumns: "1.08fr .92fr",
         gap: 0,
-        borderRadius: 28,
+        borderRadius: 20,
         overflow: "hidden",
         background: theme.panel,
         border: `1px solid ${theme.border}`,
-        boxShadow: theme.cardShadowHover,
+        boxShadow: theme.cardShadow,
       }}
     >
       <div
@@ -1284,7 +1284,7 @@ function FeaturedService({
               color: theme.text,
               fontSize: "1.55rem",
               lineHeight: 1.18,
-              letterSpacing: "-0.02em",
+              letterSpacing: "0",
               fontFamily: "'Georgia', serif",
             }}
           >
@@ -1507,8 +1507,8 @@ function ServiceCard({
         textAlign: "left",
         background: theme.panel,
         border: `1px solid ${hovered ? theme.borderStrong : theme.border}`,
-        borderRadius: 22,
-        padding: 22,
+        borderRadius: 18,
+        padding: 20,
         display: "flex",
         flexDirection: "column",
         gap: 16,
@@ -1517,14 +1517,14 @@ function ServiceCard({
           ? "none"
           : visible
           ? hovered
-            ? "translateY(-8px)"
+            ? "translateY(-1px)"
             : "translateY(0)"
-          : "translateY(26px)",
+          : "translateY(18px)",
         opacity: visible ? 1 : 0,
-        filter: visible ? "blur(0px)" : "blur(6px)",
+        filter: "none",
         transition: reduceMotion
           ? "none"
-          : "transform .55s cubic-bezier(.22,1,.36,1), opacity .55s ease, filter .55s ease, box-shadow .3s ease, border-color .25s ease",
+          : "transform .42s cubic-bezier(.22,1,.36,1), opacity .42s ease, box-shadow .24s ease, border-color .22s ease",
         transitionDelay: `${delay}ms`,
       }}
     >
@@ -1560,16 +1560,16 @@ function ServiceCard({
           position: "relative",
           zIndex: 1,
           minHeight: 168,
-          borderRadius: 20,
+          borderRadius: 16,
           overflow: "hidden",
           border: `1px solid ${hovered ? theme.borderStrong : theme.border}`,
           background: theme.panel2,
           boxShadow: hovered
-            ? "0 18px 42px rgba(17,24,39,.12)"
-            : "0 10px 24px rgba(17,24,39,.06)",
+            ? "0 14px 32px rgba(15,23,42,.10)"
+            : "0 8px 20px rgba(15,23,42,.05)",
           transition:
-            "border-color .24s ease, box-shadow .24s ease, transform .24s ease",
-          transform: hovered && !reduceMotion ? "translateY(-2px)" : "translateY(0)",
+            "border-color .22s ease, box-shadow .22s ease",
+          transform: "none",
         }}
       >
         <div
@@ -1577,7 +1577,8 @@ function ServiceCard({
             position: "absolute",
             inset: 0,
             backgroundImage: `url(${service.imageUrl})`,
-            backgroundSize: "cover",
+            backgroundSize: "contain",
+            backgroundRepeat: "no-repeat",
             backgroundPosition: "center",
             transform: "none",
             transition: "none",
@@ -1652,13 +1653,13 @@ function ServiceCard({
           style={{
             width: 54,
             height: 54,
-            borderRadius: 16,
+            borderRadius: 14,
             background: hovered ? service.accent : service.accentLight,
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
             flexShrink: 0,
-            transition: "all .28s ease",
+            transition: "background .22s ease, color .22s ease",
           }}
         >
           <Icon color={hovered ? "#FFFFFF" : service.accent} size={22} />
@@ -1703,7 +1704,7 @@ function ServiceCard({
             lineHeight: 1.34,
             fontWeight: 700,
             fontFamily: "'Georgia', serif",
-            letterSpacing: "-0.01em",
+            letterSpacing: "0",
           }}
         >
           {service.title}
@@ -1935,7 +1936,7 @@ function ServiceModal({
             width: "min(1180px, 100%)",
             maxHeight: "92vh",
             overflow: "hidden",
-            borderRadius: 28,
+            borderRadius: 20,
             border: `1px solid ${theme.border}`,
             background: theme.panel,
             boxShadow: theme.modalShadow,
@@ -2386,16 +2387,14 @@ export default function MD2IServicesSection() {
         backgroundColor: T.bg,
         backgroundImage: `${
           dark
-            ? "linear-gradient(180deg, rgba(10,14,20,.78) 0%, rgba(10,14,20,.88) 100%)"
-            : "linear-gradient(180deg, rgba(247,245,241,.74) 0%, rgba(247,245,241,.88) 100%)"
+            ? "linear-gradient(180deg, rgba(9,13,19,.86) 0%, rgba(9,13,19,.94) 100%)"
+            : "linear-gradient(180deg, rgba(248,250,252,.90) 0%, rgba(248,250,252,.97) 100%)"
         }, url(${SERVICE_FIXED_BG_URL})`,
         backgroundAttachment: "fixed, fixed",
         backgroundRepeat: "no-repeat, no-repeat",
         backgroundSize: "cover, cover",
         backgroundPosition: "center, center",
-        padding: "60px 24px 96px",
-        backdropFilter: "blur(10px)",
-        WebkitBackdropFilter: "blur(10px)",
+        padding: "clamp(48px, 6vw, 72px) 24px 96px",
       }}
     >
       <div
@@ -2459,7 +2458,7 @@ export default function MD2IServicesSection() {
                   color: T.text,
                   fontSize: "clamp(2.4rem, 4.8vw, 4rem)",
                   lineHeight: 1.05,
-                  letterSpacing: "-0.04em",
+                  letterSpacing: "0",
                   fontWeight: 800,
                   fontFamily: "'Roboto', 'Syne', sans-serif",
                   textWrap: "balance",
@@ -2488,7 +2487,7 @@ export default function MD2IServicesSection() {
                   fontSize: "1rem",
                   lineHeight: 1.88,
                   fontFamily: "'DM Sans', sans-serif",
-                  letterSpacing: "-0.01em",
+                  letterSpacing: "0",
                 }}
               >
                 {t("servicesPage.hero.subtitle", {
@@ -2722,7 +2721,7 @@ export default function MD2IServicesSection() {
           style={{
             position: "relative",
             overflow: "hidden",
-            borderRadius: 24,
+            borderRadius: 20,
             background: T.ctaGradient,
             padding: "52px 46px",
             display: "flex",
@@ -2739,24 +2738,20 @@ export default function MD2IServicesSection() {
           <div
             style={{
               position: "absolute",
-              top: -60,
-              right: -30,
-              width: 260,
-              height: 260,
-              borderRadius: "50%",
-              background: "radial-gradient(circle, rgba(225,161,44,.18) 0%, transparent 70%)",
+              inset: 0,
+              background:
+                "linear-gradient(135deg, rgba(225,161,44,.18) 0%, rgba(225,161,44,0) 42%)",
               pointerEvents: "none",
             }}
           />
           <div
             style={{
               position: "absolute",
-              left: "35%",
-              bottom: -80,
-              width: 220,
-              height: 220,
-              borderRadius: "50%",
-              background: "radial-gradient(circle, rgba(255,255,255,.05) 0%, transparent 70%)",
+              left: 0,
+              right: 0,
+              bottom: 0,
+              height: 1,
+              background: "rgba(255,255,255,.18)",
               pointerEvents: "none",
             }}
           />
@@ -2778,7 +2773,7 @@ export default function MD2IServicesSection() {
                 fontSize: "clamp(1.25rem, 2.2vw, 1.55rem)",
                 lineHeight: 1.22,
                 fontWeight: 700,
-                letterSpacing: "-0.02em",
+                letterSpacing: "0",
                 fontFamily: "'Georgia', serif",
               }}
             >
@@ -2845,8 +2840,8 @@ export default function MD2IServicesSection() {
       <style>{`
         .md2i-services-content-shell {
           display: grid;
-          grid-template-columns: minmax(0, 1fr) 280px;
-          gap: 28px;
+          grid-template-columns: minmax(0, 1fr) minmax(252px, 300px);
+          gap: 24px;
           align-items: start;
         }
 
@@ -2855,16 +2850,14 @@ export default function MD2IServicesSection() {
         }
 
         .md2i-services-sidebar {
-        position: relative;
-       
-        height: 95%;
+          position: relative;
           min-width: 0;
-          opacity: 1;
-          transform: translateY(18px);
+          opacity: 0;
+          transform: translateY(10px);
           pointer-events: none;
           transition:
             opacity .35s ease,
-            transform .45s cubic-bezier(.22,1,.36,1);
+            transform .38s cubic-bezier(.22,1,.36,1);
         }
 
         .md2i-services-sidebar.is-visible {
@@ -2882,12 +2875,12 @@ export default function MD2IServicesSection() {
           display: grid;
           gap: 16px;
           padding: 18px;
-          border-radius: 24px;
-          background: ${dark ? "rgba(19,24,33,.78)" : "rgba(255,255,255,.72)"};
-          border: 1px solid ${dark ? "rgba(255,255,255,.10)" : "rgba(47,47,49,.08)"};
-          box-shadow: ${dark ? "0 16px 48px rgba(0,0,0,.34)" : "0 16px 48px rgba(17,24,39,.10)"};
-          backdrop-filter: blur(18px) saturate(1.4);
-          -webkit-backdrop-filter: blur(18px) saturate(1.4);
+          border-radius: 18px;
+          background: ${dark ? "rgba(20,26,36,.88)" : "rgba(255,255,255,.86)"};
+          border: 1px solid ${dark ? "rgba(255,255,255,.12)" : "rgba(15,23,42,.10)"};
+          box-shadow: ${dark ? "0 14px 36px rgba(0,0,0,.30)" : "0 14px 36px rgba(15,23,42,.09)"};
+          backdrop-filter: blur(14px);
+          -webkit-backdrop-filter: blur(14px);
         }
 
         .md2i-services-sidebar-card * {
@@ -2928,7 +2921,7 @@ export default function MD2IServicesSection() {
           justify-content: center;
           gap: 10px;
           padding: 11px 14px;
-          border-radius: 14px;
+          border-radius: 12px;
           border: 1px solid var(--md2i-product-border);
           background: var(--md2i-product-bg);
           color: var(--md2i-product-text);
@@ -2943,13 +2936,13 @@ export default function MD2IServicesSection() {
         }
 
         .md2i-product-link:hover {
-          transform: translateY(-2px);
+          transform: translateY(-1px);
           border-color: var(--md2i-product-accent);
-          box-shadow: 0 18px 42px rgba(17,24,39,.12);
+          box-shadow: 0 14px 32px rgba(15,23,42,.11);
         }
 
         .md2i-product-link.is-filled:hover {
-          box-shadow: 0 18px 42px rgba(225,161,44,.28);
+          box-shadow: 0 14px 32px rgba(225,161,44,.22);
         }
 
         .md2i-product-link.is-compact {
@@ -2998,16 +2991,16 @@ export default function MD2IServicesSection() {
         }
 
         .md2i-product-link:hover .md2i-product-link-arrow {
-          transform: translateX(3px);
+          transform: translateY(-1px);
         }
 
         .md2i-sidebar-product-card {
           display: grid;
           gap: 10px;
           padding: 14px;
-          border-radius: 18px;
-          background: ${dark ? "rgba(255,255,255,.04)" : "rgba(248,243,234,.74)"};
-          border: 1px solid ${dark ? "rgba(255,255,255,.08)" : "rgba(225,161,44,.18)"};
+          border-radius: 14px;
+          background: ${dark ? "rgba(255,255,255,.04)" : "rgba(248,250,252,.90)"};
+          border: 1px solid ${dark ? "rgba(255,255,255,.09)" : "rgba(15,23,42,.08)"};
         }
 
         .md2i-modal-overlay {
@@ -3024,7 +3017,7 @@ export default function MD2IServicesSection() {
         }
 
         .md2i-modal-close:hover {
-          transform: rotate(90deg);
+          transform: translateY(-1px);
         }
 
         .md2i-modal-tabs::-webkit-scrollbar {
@@ -3034,6 +3027,7 @@ export default function MD2IServicesSection() {
         .md2i-modal-scroll {
           scrollbar-width: thin;
           scrollbar-color: ${T.accent} ${dark ? "#23262D" : "#F1EEE8"};
+          overscroll-behavior: contain;
         }
 
         .md2i-modal-scroll::-webkit-scrollbar {
@@ -3115,7 +3109,7 @@ export default function MD2IServicesSection() {
 
           .md2i-services-sidebar-card {
             padding: 14px !important;
-            border-radius: 20px !important;
+            border-radius: 18px !important;
           }
         }
 
@@ -3129,7 +3123,7 @@ export default function MD2IServicesSection() {
             width: 100% !important;
             max-width: 100% !important;
             max-height: 94vh !important;
-            border-radius: 24px !important;
+            border-radius: 20px !important;
           }
         }
 

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 import { notFound } from "next/navigation";
 import { prisma } from "@/app/lib/prisma";
 import { buildMetadata } from "@/app/seo";
@@ -157,7 +158,15 @@ export default async function ReferenceDetailPage({
     <main className="reference-detail-page">
       <section className="reference-hero">
         <div className="reference-hero-media">
-          {reference.image ? <img src={reference.image} alt="" /> : null}
+          {reference.image ? (
+            <Image
+              src={reference.image}
+              alt=""
+              fill
+              priority
+              sizes="100vw"
+            />
+          ) : null}
           <div className="reference-hero-overlay" />
         </div>
 
@@ -309,7 +318,14 @@ export default async function ReferenceDetailPage({
                 className="related-card"
               >
                 <div className="related-image">
-                  {item.image ? <img src={item.image} alt={item.title} /> : null}
+                  {item.image ? (
+                    <Image
+                      src={item.image}
+                      alt={item.title}
+                      fill
+                      sizes="(max-width: 720px) 100vw, 360px"
+                    />
+                  ) : null}
                 </div>
 
                 <div className="related-body">
@@ -329,8 +345,8 @@ export default async function ReferenceDetailPage({
         .reference-detail-page {
           min-height: 100vh;
           background:
-            radial-gradient(circle at top left, rgba(239,159,39,.10), transparent 30%),
-            linear-gradient(180deg, #fffaf3 0%, #ffffff 42%, #f7f8fb 100%);
+            linear-gradient(135deg, rgba(239,159,39,.09), rgba(239,159,39,0) 34%),
+            linear-gradient(180deg, #f8fafc 0%, #ffffff 42%, #f7f8fb 100%);
           color: #101114;
           font-family: Inter, DM Sans, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
         }
@@ -354,7 +370,7 @@ export default async function ReferenceDetailPage({
         .reference-hero-media img {
           width: 100%;
           height: 100%;
-          object-fit: cover;
+          object-fit: contain;
           display: block;
           filter: saturate(1.05) contrast(1.04);
         }
@@ -441,7 +457,7 @@ export default async function ReferenceDetailPage({
           margin: 0;
           font-size: clamp(38px, 6vw, 78px);
           line-height: .96;
-          letter-spacing: -0.065em;
+          letter-spacing: 0;
           max-width: 980px;
         }
 
@@ -484,7 +500,7 @@ export default async function ReferenceDetailPage({
         }
 
         .primary-link:hover {
-          transform: translateY(-2px);
+          transform: translateY(-1px);
           box-shadow: 0 22px 46px rgba(239,159,39,.36);
         }
 
@@ -497,11 +513,11 @@ export default async function ReferenceDetailPage({
 
         .secondary-link:hover {
           background: rgba(255,255,255,.18);
-          transform: translateY(-2px);
+          transform: translateY(-1px);
         }
 
         .reference-hero-card {
-          border-radius: 28px;
+          border-radius: 18px;
           padding: 22px;
           background: rgba(255,255,255,.12);
           border: 1px solid rgba(255,255,255,.16);
@@ -585,7 +601,7 @@ export default async function ReferenceDetailPage({
         }
 
         .article-card {
-          border-radius: 32px;
+          border-radius: 18px;
           padding: clamp(26px, 4vw, 46px);
         }
 
@@ -609,7 +625,7 @@ export default async function ReferenceDetailPage({
           margin: 0;
           font-size: clamp(26px, 3vw, 40px);
           line-height: 1.05;
-          letter-spacing: -.04em;
+          letter-spacing: 0;
         }
 
         .rich-content,
@@ -630,7 +646,7 @@ export default async function ReferenceDetailPage({
         .builder-content h3 {
           color: #101114;
           line-height: 1.18;
-          letter-spacing: -.025em;
+          letter-spacing: 0;
           margin-top: 32px;
         }
 
@@ -661,7 +677,7 @@ export default async function ReferenceDetailPage({
 
         .info-card,
         .cta-card {
-          border-radius: 24px;
+          border-radius: 18px;
           padding: 22px;
         }
 
@@ -669,7 +685,7 @@ export default async function ReferenceDetailPage({
         .cta-card h3 {
           margin: 0 0 16px;
           font-size: 18px;
-          letter-spacing: -.02em;
+          letter-spacing: 0;
         }
 
         .info-item {
@@ -719,7 +735,7 @@ export default async function ReferenceDetailPage({
 
         .cta-card {
           background:
-            radial-gradient(circle at top right, rgba(239,159,39,.22), transparent 44%),
+            linear-gradient(135deg, rgba(239,159,39,.20), rgba(239,159,39,0) 44%),
             #111827;
           color: white;
           border-color: rgba(255,255,255,.10);
@@ -762,7 +778,7 @@ export default async function ReferenceDetailPage({
 
         .related-card {
           overflow: hidden;
-          border-radius: 26px;
+          border-radius: 18px;
           background: white;
           border: 1px solid rgba(15,23,42,.08);
           color: inherit;
@@ -772,11 +788,12 @@ export default async function ReferenceDetailPage({
         }
 
         .related-card:hover {
-          transform: translateY(-4px);
+          transform: translateY(-1px);
           box-shadow: 0 24px 70px rgba(15,23,42,.12);
         }
 
         .related-image {
+          position: relative;
           aspect-ratio: 16 / 10;
           background: #e5e7eb;
           overflow: hidden;
@@ -785,13 +802,9 @@ export default async function ReferenceDetailPage({
         .related-image img {
           width: 100%;
           height: 100%;
-          object-fit: cover;
+          object-fit: contain;
           display: block;
-          transition: transform .3s ease;
-        }
-
-        .related-card:hover .related-image img {
-          transform: scale(1.04);
+          transition: none;
         }
 
         .related-body {
@@ -810,7 +823,7 @@ export default async function ReferenceDetailPage({
           margin: 8px 0 8px;
           font-size: 18px;
           line-height: 1.25;
-          letter-spacing: -.02em;
+          letter-spacing: 0;
         }
 
         .related-body p {
@@ -858,7 +871,7 @@ export default async function ReferenceDetailPage({
           }
 
           .article-card {
-            border-radius: 24px;
+            border-radius: 18px;
             padding: 22px;
           }
 

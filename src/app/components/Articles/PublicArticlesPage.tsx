@@ -1,6 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import Image from 'next/image'
 import { useRouter } from 'next/navigation'
 import { motion, useReducedMotion } from 'framer-motion'
 import { useTranslation } from 'react-i18next'
@@ -19,6 +20,7 @@ interface Category {
 interface Article {
   id: string
   title: string
+  slug?: string | null
   excerpt: string | null
   createdAt: string
   coverImage?: string | null
@@ -37,6 +39,10 @@ interface PublicArticlesPageProps {
 type SortKey = 'date-desc' | 'date-asc' | 'title-asc' | 'title-desc'
 
 const EXCERPT_LIMIT = 120
+
+function getArticleIdentifier(article: Article) {
+  return article.slug?.trim() || article.id
+}
 
 function useScroll() {
   const [prog, setProg] = useState(0)
@@ -185,25 +191,23 @@ function ArticleCard({
   article: Article
   index: number
   fmt: Intl.DateTimeFormat
-  onNavigate: (id: string) => void
+  onNavigate: (identifier: string) => void
 }) {
   const { t } = useTranslation()
   const cardRef = useRef<HTMLElement>(null)
   const glowRef = useRef<HTMLDivElement>(null)
   const prefersReducedMotion = useReducedMotion()
 
-  const onMouseMove = (e: React.MouseEvent<HTMLElement>) => {
+  const onMouseMove = () => {
     if (prefersReducedMotion) return
 
     const el = cardRef.current
     const glow = glowRef.current
     if (!el || !glow) return
 
-    const rect = el.getBoundingClientRect()
-    const x = e.clientX - rect.left
-    const y = e.clientY - rect.top
-    el.style.transform = 'translateY(-3px)'
-    glow.style.background = `radial-gradient(320px circle at ${x}px ${y}px, rgba(239,159,39,0.11), transparent 60%)`
+    el.style.transform = 'translateY(-1px)'
+    glow.style.background =
+      'linear-gradient(135deg, rgba(239,159,39,0.10), transparent 64%)'
     glow.style.opacity = '1'
   }
 
@@ -216,6 +220,7 @@ function ArticleCard({
   }
 
   const a = article
+  const articleIdentifier = getArticleIdentifier(a)
   const initial = (a.category?.name ?? a.title ?? 'A').charAt(0).toUpperCase()
 
   return (
@@ -226,15 +231,15 @@ function ArticleCard({
       tabIndex={0}
       onMouseMove={onMouseMove}
       onMouseLeave={onMouseLeave}
-      onClick={() => onNavigate(a.id)}
+      onClick={() => onNavigate(articleIdentifier)}
       onKeyDown={(e) => {
         if (e.key !== 'Enter' && e.key !== ' ') return
         e.preventDefault()
-        onNavigate(a.id)
+        onNavigate(articleIdentifier)
       }}
       aria-label={`${t('articlesPage.card.readArticle')} : ${a.title}`}
-      initial={prefersReducedMotion ? false : { opacity: 0, y: 34, scale: 0.988 }}
-      whileInView={prefersReducedMotion ? {} : { opacity: 1, y: 0, scale: 1 }}
+      initial={prefersReducedMotion ? false : { opacity: 0, y: 24 }}
+      whileInView={prefersReducedMotion ? {} : { opacity: 1, y: 0 }}
       viewport={{ once: true, amount: 0.2 }}
       transition={{
         duration: 0.65,
@@ -247,7 +252,13 @@ function ArticleCard({
 
       <div className={s.media}>
         {a.coverImage ? (
-          <img src={a.coverImage} alt={a.title} className={s.img} loading="lazy" />
+          <Image
+            src={a.coverImage}
+            alt={a.title}
+            className={s.img}
+            fill
+            sizes="(max-width: 720px) 100vw, (max-width: 1180px) 50vw, 360px"
+          />
         ) : (
           <div className={s.placeholder}>
             <span>{initial}</span>
@@ -273,7 +284,7 @@ function ArticleCard({
             className={s.readBtn}
             onClick={(e) => {
               e.stopPropagation()
-              onNavigate(a.id)
+              onNavigate(articleIdentifier)
             }}
           >
             {t('articlesPage.card.readArticle')} <IconArrow />
@@ -651,7 +662,7 @@ export default function PublicArticlesPage({ router }: PublicArticlesPageProps) 
             </div>
           )}
 
-          <div className={s.resultsMeta}>
+          <div className={s.resultsMeta} role="status" aria-live="polite">
             <span className={s.resultsCount}>
               {!loading
                 ? t('articlesPage.resultCount', { count: totalItems })
@@ -666,7 +677,11 @@ export default function PublicArticlesPage({ router }: PublicArticlesPageProps) 
           </div>
         </div>
 
-        {error && <div className={s.error}>{error}</div>}
+        {error && (
+          <div className={s.error} role="alert">
+            {error}
+          </div>
+        )}
 
         {loading ? (
           <div className={s.grid}>
@@ -683,7 +698,7 @@ export default function PublicArticlesPage({ router }: PublicArticlesPageProps) 
             ))}
           </div>
         ) : articles.length === 0 ? (
-          <div className={s.empty}>
+          <div className={s.empty} role="status">
             <div className={s.emptyIcon}>
               <IconSearch />
             </div>
@@ -704,7 +719,7 @@ export default function PublicArticlesPage({ router }: PublicArticlesPageProps) 
                   article={a}
                   index={i}
                   fmt={fmt}
-                  onNavigate={(id) => nav.push(`/articles/${id}`)}
+                  onNavigate={(identifier) => nav.push(`/articles/${identifier}`)}
                 />
               ))}
             </div>

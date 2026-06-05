@@ -3,6 +3,7 @@
 import type { CSSProperties, FormEvent, ReactNode } from 'react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import Link from 'next/link'
+import Image from 'next/image'
 import { useTranslation } from 'react-i18next'
 import styles from './contact.module.css'
 import { useTheme } from '@/app/context/ThemeContext'
@@ -859,11 +860,11 @@ function TeamPhoto({
   return (
     <div className={styles.teamPhoto}>
       {!imageError ? (
-        <img
+        <Image
           src={src}
           alt={alt}
-          loading="lazy"
-          decoding="async"
+          fill
+          sizes="(max-width: 720px) 100vw, (max-width: 1180px) 50vw, 280px"
           onError={() => setImageError(true)}
         />
       ) : (
@@ -896,6 +897,7 @@ function F({
 
         {error ? (
           <span
+            role="alert"
             style={{
               color: '#EF4444',
               fontSize: 11,

@@ -145,10 +145,10 @@ export default function PublicBreadcrumbs() {
         }
 
         .public-breadcrumbs__list {
-          width: 200px;
+          width: min(1180px, 100%);
           min-height: 42px;
           margin: 0 auto;
-          padding: 0 14px;
+          padding: 0 12px;
           display: flex;
           align-items: center;
           gap: 8px;
@@ -157,7 +157,12 @@ export default function PublicBreadcrumbs() {
           overscroll-behavior-x: contain;
           scrollbar-width: none;
           pointer-events: auto;
-
+          border-radius: 14px;
+          background: rgba(255, 255, 255, 0.78);
+          border: 1px solid rgba(15, 23, 42, 0.08);
+          box-shadow: 0 10px 28px rgba(15, 23, 42, 0.07);
+          backdrop-filter: blur(12px);
+          -webkit-backdrop-filter: blur(12px);
         }
 
         .public-breadcrumbs__list::-webkit-scrollbar {
@@ -217,8 +222,8 @@ export default function PublicBreadcrumbs() {
 
         .public-breadcrumbs[data-theme='dark'] .public-breadcrumbs__list {
           border-color: rgba(255, 255, 255, 0.12);
- 
-          box-shadow: 0 16px 38px rgba(0, 0, 0, 0.28);
+          background: rgba(15, 23, 42, 0.76);
+          box-shadow: 0 12px 32px rgba(0, 0, 0, 0.26);
         }
 
         .public-breadcrumbs[data-theme='dark'] .public-breadcrumbs__item,
@@ -249,7 +254,7 @@ export default function PublicBreadcrumbs() {
           .public-breadcrumbs__list {
             min-height: 38px;
             padding-inline: 10px;
-            border-radius: 20px;
+            border-radius: 14px;
           }
 
           .public-breadcrumbs__item {

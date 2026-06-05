@@ -16,7 +16,7 @@
   min-height: 100vh;
   background: var(
     --public-page-gradient,
-    radial-gradient(circle at top left, rgba(239, 159, 39, 0.10), transparent 30%),
+    linear-gradient(135deg, rgba(239, 159, 39, 0.09), rgba(239, 159, 39, 0) 34%),
     linear-gradient(180deg, #fffaf3 0%, #ffffff 44%, #f8fafc 100%)
   );
   color: var(--ink);
@@ -41,8 +41,8 @@
   inset: 0;
   z-index: -2;
   background:
-    radial-gradient(circle at 12% 8%, rgba(239, 159, 39, 0.18), transparent 28%),
-    radial-gradient(circle at 88% 18%, rgba(247, 192, 96, 0.16), transparent 30%);
+    linear-gradient(135deg, rgba(239, 159, 39, 0.14), rgba(239, 159, 39, 0) 30%),
+    linear-gradient(225deg, rgba(247, 192, 96, 0.12), rgba(247, 192, 96, 0) 32%);
 }
 
 .hero::after {
@@ -60,9 +60,9 @@
   gap: 34px;
   align-items: end;
   padding: clamp(28px, 5vw, 48px);
-  border-radius: 34px;
+  border-radius: 20px;
   background:
-    radial-gradient(circle at top right, rgba(239, 159, 39, 0.14), transparent 36%),
+    linear-gradient(135deg, rgba(239, 159, 39, 0.12), rgba(239, 159, 39, 0) 38%),
     var(--surface-strong);
   border: 1px solid rgba(255, 255, 255, 0.78);
   box-shadow: var(--shadow-strong);
@@ -161,7 +161,7 @@
 }
 
 .btn:hover {
-  transform: translateY(-2px);
+  transform: translateY(-1px);
 }
 
 .btnPrimary {
@@ -186,7 +186,7 @@
   display: grid;
   gap: 18px;
   padding: 22px;
-  border-radius: 26px;
+  border-radius: 18px;
   background: rgba(255, 255, 255, 0.72);
   border: 1px solid rgba(15, 23, 42, 0.08);
   box-shadow: var(--shadow);
@@ -243,7 +243,7 @@
   height: calc(100% - 34px);
   z-index: 0;
   background:
-    radial-gradient(circle at top left, rgba(239, 159, 39, 0.08), transparent 26%),
+    linear-gradient(135deg, rgba(239, 159, 39, 0.07), rgba(239, 159, 39, 0) 28%),
     rgba(15, 23, 42, 0.025);
 }
 
@@ -310,7 +310,7 @@
   display: grid;
   grid-template-columns: minmax(0, 1.1fr) minmax(280px, 0.9fr);
   gap: 28px;
-  border-radius: 30px;
+  border-radius: 18px;
   padding: clamp(24px, 4vw, 34px);
 }
 
@@ -327,7 +327,7 @@
 .statCard {
   position: relative;
   overflow: hidden;
-  border-radius: 26px;
+  border-radius: 18px;
   padding: 26px 22px;
 }
 
@@ -392,7 +392,7 @@
 }
 
 .timelineContent {
-  border-radius: 26px;
+  border-radius: 18px;
   padding: 24px;
 }
 
@@ -442,7 +442,7 @@
 }
 
 .memberCard {
-  border-radius: 28px;
+  border-radius: 18px;
   padding: 26px;
 }
 
@@ -539,7 +539,7 @@
 .panel,
 .officeCard,
 .ctaCard {
-  border-radius: 28px;
+  border-radius: 18px;
 }
 
 .teamCard,
@@ -640,7 +640,7 @@
 .ctaCard {
   padding: clamp(28px, 4vw, 42px);
   background:
-    radial-gradient(circle at top right, rgba(239, 159, 39, 0.16), transparent 36%),
+    linear-gradient(135deg, rgba(239, 159, 39, 0.14), rgba(239, 159, 39, 0) 38%),
     #111827;
   color: #ffffff;
   border-color: rgba(255, 255, 255, 0.10);
@@ -705,7 +705,7 @@
   .panel,
   .ctaCard,
   .editorialBand {
-    border-radius: 24px;
+    border-radius: 18px;
   }
 
   .heroShell {
@@ -765,6 +765,7 @@
 
 
 /* Illustrations ajoutées */
+/* Illustrations ajoutées */
 .heroImageCard,
 .editorialVisual,
 .timelineVisual,
@@ -775,6 +776,7 @@
   overflow: hidden;
   position: relative;
   isolation: isolate;
+  background: #111827;
 }
 
 .heroImageCard img,
@@ -788,8 +790,11 @@
   height: 100%;
   display: block;
   object-fit: cover;
+  object-position: center;
   transform: scale(1.01);
-  transition: transform 0.35s ease, filter 0.35s ease;
+  transition:
+    transform 0.35s ease,
+    filter 0.35s ease;
 }
 
 .heroImageCard:hover img,
@@ -799,13 +804,14 @@
 .teamCard:hover .teamVisual img,
 .approachVisual:hover img,
 .officeCard:hover .officeImage img {
-  transform: scale(1.018);
+  transform: none;
   filter: saturate(1.05) contrast(1.03);
 }
 
 .heroImageCard {
-  min-height: 210px;
-  border-radius: 22px;
+  height: 240px;
+  min-height: 240px;
+  border-radius: 18px;
   background: #111827;
   border: 1px solid rgba(15, 23, 42, 0.08);
   box-shadow: 0 14px 34px rgba(15, 23, 42, 0.10);
@@ -820,7 +826,7 @@
   pointer-events: none;
   background:
     linear-gradient(180deg, rgba(2, 6, 23, 0.06), rgba(2, 6, 23, 0.52)),
-    radial-gradient(circle at top right, rgba(239, 159, 39, 0.28), transparent 34%);
+    linear-gradient(135deg, rgba(239, 159, 39, 0.22), rgba(239, 159, 39, 0) 36%);
 }
 
 .heroImageCard span {
@@ -837,8 +843,9 @@
 }
 
 .editorialVisual {
-  min-height: 300px;
-  border-radius: 24px;
+  height: 100%;
+  min-height: 340px;
+  border-radius: 18px;
   background: #111827;
   border: 1px solid var(--line);
   box-shadow: 0 14px 34px rgba(15, 23, 42, 0.08);
@@ -863,24 +870,24 @@
 }
 
 .timelineVisual {
-  height: 210px;
+  height: 240px;
   margin: -24px -24px 22px;
   background: #e5e7eb;
   border-bottom: 1px solid var(--line);
 }
 
 .memberPhoto {
-  height: 190px;
+  height: 230px;
   margin: -26px -26px 22px;
-  border-radius: 28px 28px 0 0;
+  border-radius: 18px 18px 0 0;
   background: #e5e7eb;
   border-bottom: 1px solid var(--line);
 }
 
 .teamVisual {
-  height: 170px;
+  height: 220px;
   margin: -26px -26px 22px;
-  border-radius: 28px 28px 0 0;
+  border-radius: 18px 18px 0 0;
   background: #e5e7eb;
   border-bottom: 1px solid var(--line);
 }
@@ -891,14 +898,18 @@
   gap: 28px;
   align-items: stretch;
   margin-bottom: 18px;
-  border-radius: 30px;
+  border-radius: 18px;
   background: #111827;
   border: 1px solid var(--line);
   box-shadow: var(--shadow);
 }
 
 .approachVisual img {
-  min-height: 320px;
+  width: 100%;
+  height: 100%;
+  min-height: 360px;
+  object-fit: cover;
+  object-position: center;
 }
 
 .approachVisual > div {
@@ -934,9 +945,9 @@
 }
 
 .officeImage {
-  height: 180px;
+  height: 220px;
   margin: -20px -20px 18px;
-  border-radius: 28px 28px 0 0;
+  border-radius: 18px 18px 0 0;
   background: #e5e7eb;
   border-bottom: 1px solid var(--line);
 }
@@ -947,27 +958,37 @@
   }
 
   .approachVisual img {
-    min-height: 260px;
+    min-height: 300px;
   }
 }
 
 @media (max-width: 720px) {
+  .heroImageCard {
+    height: 220px;
+    min-height: 220px;
+  }
+
   .editorialVisual {
-    min-height: 360px;
+    min-height: 380px;
   }
 
   .timelineVisual {
-    height: 190px;
+    height: 210px;
     margin: -22px -22px 20px;
   }
 
   .memberPhoto,
   .teamVisual {
+    height: 210px;
     margin: -22px -22px 20px;
   }
 
   .approachVisual {
-    border-radius: 24px;
+    border-radius: 18px;
+  }
+
+  .approachVisual img {
+    min-height: 260px;
   }
 
   .approachVisual > div {
@@ -975,6 +996,7 @@
   }
 
   .officeImage {
+    height: 200px;
     margin: -22px -22px 18px;
   }
 }

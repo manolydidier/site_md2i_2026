@@ -314,7 +314,7 @@
 
 .searchField:focus-within svg:first-child {
   color: var(--acc);
-  transform: scale(1.015);
+  transform: translateY(-1px);
 }
 
 .searchInput {
@@ -363,7 +363,7 @@
   color: var(--t1);
   background: var(--bg2);
   border-color: var(--line);
-  transform: scale(1.015);
+  transform: translateY(-1px);
 }
 
 .iconBtn svg {
@@ -459,7 +459,7 @@
   border-radius: 16px;
   box-shadow: var(--drop-sh);
   opacity: 0;
-  transform: translateY(-8px) scale(.96);
+  transform: translateY(-1px);
   pointer-events: none;
   transition:
     opacity .22s cubic-bezier(.22, .61, .36, 1),
@@ -476,7 +476,7 @@
 
 .dropPanelOpen {
   opacity: 1;
-  transform: translateY(0) scale(1);
+  transform: translateY(0);
   pointer-events: auto;
 }
 
@@ -635,7 +635,7 @@
 
 .chip button:hover {
   opacity: 1;
-  transform: scale(1.02);
+  transform: translateY(-1px);
 }
 
 .chip button svg {
@@ -751,13 +751,13 @@
 .img {
   width: 100%;
   height: 100%;
-  object-fit: cover;
+  object-fit: contain;
   display: block;
-  transition: transform .6s cubic-bezier(.22, .61, .36, 1);
+  transition: none;
 }
 
 .card:hover .img {
-  transform: scale(1.015);
+  transform: none;
 }
 
 .imgGloss {
@@ -963,7 +963,7 @@
 }
 
 .readBtn:hover svg {
-  transform: translateX(3px);
+  transform: translateY(-1px);
 }
 
 /* ─────────────────────────────────────────
@@ -1173,7 +1173,7 @@
   justify-content: center;
   cursor: pointer;
   opacity: 0;
-  transform: translateY(10px) scale(.88);
+  transform: translateY(10px);
   pointer-events: none;
   transition: all .32s cubic-bezier(.34, 1.26, .64, 1);
   box-shadow: var(--card-sh);
@@ -1186,7 +1186,7 @@
 
 .scrollTopShow {
   opacity: 1;
-  transform: translateY(0) scale(1);
+  transform: translateY(0);
   pointer-events: auto;
 }
 
@@ -1194,7 +1194,7 @@
   background: var(--acc);
   color: #fff;
   border-color: var(--acc);
-  transform: translateY(-2px) scale(1);
+  transform: translateY(-1px);
   box-shadow: 0 6px 20px rgba(239, 159, 39, .35);
 }
 
