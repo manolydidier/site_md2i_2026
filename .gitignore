@@ -28,6 +28,24 @@
 
 .DS_Store
 *.pem
+*.key
+*.crt
+*.cer
+*.p12
+*.pfx
+*.jks
+*.keystore
+
+# secrets / local credentials
+
+secrets/
+secrets.*
+*.secret
+*.secret.*
+*credentials*.json
+*service-account*.json
+google-services.json
+GoogleService-Info.plist
 
 # debug
 
@@ -69,9 +87,14 @@ next-env.d.ts
 /codex-edge/
 /.codex-edge/
 .codex/
+.codex-*/
+.codex*.log
+.codex*.png
 .codex-edge/
 codex-edge-profile/
+codex-edge-profile*/
 .codex-edge-profile/
+.codex-edge-profile*/
 
 # claude
 
@@ -85,6 +108,7 @@ claude-profile/
 
 .agent/
 .agents/
+agents/skills/
 .ai/
 .ai-agents/
 .mcp/

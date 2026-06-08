@@ -1,5 +1,6 @@
 import PostDetailClient from "./PostDetailClient";
 import type { Metadata } from "next";
+import { permanentRedirect } from "next/navigation";
 import { prisma } from "@/app/lib/prisma";
 import { buildMetadata } from "@/app/seo";
 
@@ -27,35 +28,21 @@ function stripHtml(value?: string | null) {
   return (value || "").replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim();
 }
 
-export async function generateMetadata({
-  params,
-}: ArticlePageProps): Promise<Metadata> {
-  const { articleId: rawArticleId } = await params;
-  const articleId = decodeIdentifier(rawArticleId);
-
-  if (!articleId) {
-    return buildMetadata({
-      title: "Article introuvable",
-      description: "Cet article MD2I est introuvable ou non publié.",
-      path: "/articles",
-      noIndex: true,
-    });
-  }
-
-  const post = await prisma.post.findFirst({
+async function getPublishedPostByIdentifier(identifier: string) {
+  return prisma.post.findFirst({
     where: {
       status: "PUBLISHED",
       OR: [
         {
           slug: {
-            equals: articleId,
+            equals: identifier,
             mode: "insensitive",
           },
         },
-        ...(isUuid(articleId)
+        ...(isUuid(identifier)
           ? [
               {
-                id: articleId,
+                id: identifier,
               },
             ]
           : []),
@@ -74,6 +61,24 @@ export async function generateMetadata({
       },
     },
   });
+}
+
+export async function generateMetadata({
+  params,
+}: ArticlePageProps): Promise<Metadata> {
+  const { articleId: rawArticleId } = await params;
+  const articleId = decodeIdentifier(rawArticleId);
+
+  if (!articleId) {
+    return buildMetadata({
+      title: "Article introuvable",
+      description: "Cet article MD2I est introuvable ou non publié.",
+      path: "/articles",
+      noIndex: true,
+    });
+  }
+
+  const post = await getPublishedPostByIdentifier(articleId);
 
   if (!post) {
     return buildMetadata({
@@ -104,6 +109,14 @@ export async function generateMetadata({
 }
 
 
-export default function Page() {
+export default async function Page({ params }: ArticlePageProps) {
+  const { articleId: rawArticleId } = await params;
+  const articleId = decodeIdentifier(rawArticleId);
+  const post = articleId ? await getPublishedPostByIdentifier(articleId) : null;
+
+  if (post?.slug && post.slug !== articleId) {
+    permanentRedirect(`/articles/${encodeURIComponent(post.slug)}`);
+  }
+
   return <PostDetailClient />
 }
