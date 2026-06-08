@@ -1,7 +1,15 @@
 'use client'
 // src/context/SidebarContext.tsx
 
-import { createContext, useContext, useState, useEffect, ReactNode } from 'react'
+import {
+  createContext,
+  useContext,
+  useState,
+  useEffect,
+  type Dispatch,
+  type ReactNode,
+  type SetStateAction,
+} from 'react'
 
 export const SIDEBAR_W         = 272
 export const SIDEBAR_COLLAPSED = 68
@@ -9,10 +17,10 @@ export const MOBILE_BREAKPOINT = 980
 
 type SidebarCtx = {
   collapsed:     boolean
-  setCollapsed:  (v: boolean) => void
+  setCollapsed:  Dispatch<SetStateAction<boolean>>
   isMobile:      boolean
   mobileOpen:    boolean
-  setMobileOpen: (v: boolean) => void
+  setMobileOpen: Dispatch<SetStateAction<boolean>>
   sidebarWidth:  number
 }
 

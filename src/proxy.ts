@@ -1,5 +1,6 @@
 import { auth } from '@/auth'
 import { NextRequest, NextResponse } from 'next/server'
+import type { NextFetchEvent, NextMiddleware } from 'next/server'
 
 const ARTICLE_UUID_PATH_RE =
   /^\/articles\/([0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})\/?$/i
@@ -85,14 +86,14 @@ const adminAuthProxy = auth((req) => {
   }
 
   return NextResponse.next()
-})
+}) as unknown as NextMiddleware
 
-export async function proxy(request: NextRequest) {
+export async function proxy(request: NextRequest, event: NextFetchEvent) {
   if (request.nextUrl.pathname.startsWith('/articles/')) {
     return (await redirectArticleIdToSlug(request)) ?? NextResponse.next()
   }
 
-  return adminAuthProxy(request)
+  return adminAuthProxy(request, event)
 }
 
 export const config = {

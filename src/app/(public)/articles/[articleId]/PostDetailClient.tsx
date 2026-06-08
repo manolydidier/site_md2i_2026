@@ -1,7 +1,6 @@
 'use client'
 
 import Link from 'next/link'
-import Image from 'next/image'
 import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { useTranslation } from 'react-i18next'
@@ -62,525 +61,27 @@ type EditorWithEventHandlers = Editor & {
 
 function getUiColors(dark: boolean) {
   return {
-    buttonBg: dark ? 'rgba(15, 23, 42, 0.78)' : 'rgba(255, 255, 255, 0.96)',
-    buttonBgHover: dark ? 'rgba(15, 23, 42, 0.96)' : 'rgba(255, 255, 255, 1)',
-    buttonText: dark ? '#fff7ed' : '#111827',
-    buttonBorder: dark ? 'rgba(255, 226, 194, 0.13)' : 'rgba(15, 23, 42, 0.08)',
-    buttonShadow: dark
-      ? '0 24px 70px rgba(0,0,0,.42)'
-      : '0 24px 70px rgba(15,23,42,.10)',
-
-    panelBg: dark ? 'rgba(15, 23, 42, 0.72)' : 'rgba(255, 255, 255, 0.94)',
-    panelBorder: dark ? 'rgba(255, 226, 194, 0.13)' : 'rgba(15, 23, 42, 0.08)',
-    panelText: dark ? '#fff7ed' : '#111827',
-    panelMuted: dark ? '#d8c3ab' : '#475569',
-
-    appBg: dark ? '#020617' : '#f8fafc',
-
     pageBg: dark
-      ? 'linear-gradient(135deg, rgba(239,159,39,.14), rgba(239,159,39,0) 38%), linear-gradient(225deg, rgba(59,130,246,.08), rgba(59,130,246,0) 34%), linear-gradient(180deg, #020617 0%, #07101f 42%, #020617 100%)'
-      : 'linear-gradient(135deg, rgba(239,159,39,.09), rgba(239,159,39,0) 36%), linear-gradient(225deg, rgba(15,23,42,.04), rgba(15,23,42,0) 34%), linear-gradient(180deg, #ffffff 0%, #f8fafc 52%, #ffffff 100%)',
-
-    cardBg: dark ? 'rgba(15, 23, 42, 0.86)' : 'rgba(255, 255, 255, 0.96)',
-    cardBorder: dark ? 'rgba(255, 226, 194, 0.13)' : 'rgba(15, 23, 42, 0.08)',
-
-    mutedText: dark ? '#d8c3ab' : '#64748b',
-
+      ? 'radial-gradient(circle at top left, rgba(239,159,39,.10), transparent 30%), linear-gradient(180deg, #020617 0%, #080b13 42%, #020617 100%)'
+      : 'radial-gradient(circle at top left, rgba(239,159,39,.10), transparent 30%), linear-gradient(180deg, #fffaf3 0%, #ffffff 44%, #f8fafc 100%)',
+    appBg: dark ? '#020617' : '#f8fafc',
+    cardBg: dark ? 'rgba(15,23,42,.94)' : 'rgba(255,255,255,.96)',
+    cardBorder: dark ? 'rgba(255,255,255,.10)' : 'rgba(15,23,42,.08)',
+    buttonBg: dark ? 'rgba(15,23,42,.82)' : 'rgba(255,255,255,.92)',
+    buttonBgHover: dark ? 'rgba(15,23,42,.96)' : 'rgba(255,255,255,1)',
+    buttonBorder: dark ? 'rgba(255,255,255,.08)' : 'rgba(15,23,42,.08)',
+    buttonText: dark ? '#f8fafc' : '#18181b',
+    buttonShadow: dark
+      ? '0 14px 34px rgba(0,0,0,.38)'
+      : '0 14px 34px rgba(15,23,42,.14)',
+    text: dark ? '#f8fafc' : '#18181b',
+    textSoft: dark ? 'rgba(248,250,252,.72)' : 'rgba(24,24,27,.72)',
+    textMuted: dark ? 'rgba(248,250,252,.46)' : 'rgba(24,24,27,.46)',
+    mutedText: dark ? '#94a3b8' : '#6b7280',
+    line: dark ? 'rgba(255,255,255,.10)' : 'rgba(15,23,42,.08)',
     accent1: '#ef9f27',
     accent2: '#f7c060',
-    accent3: '#d9791f',
-    accentSoft: dark ? 'rgba(239,159,39,.17)' : 'rgba(239,159,39,.10)',
-    accentBorder: dark ? 'rgba(247,192,96,.36)' : 'rgba(239,159,39,.28)',
-    accentGlow: '0 0 34px rgba(239,159,39,.16)',
-    accentGlowStrong: '0 18px 42px rgba(239,159,39,.38)',
-    primaryBg: 'linear-gradient(135deg, #d9791f, #f7c060)',
-    primaryText: '#1d0d03',
-
-    neutral1: dark ? '#ead7c0' : '#64748b',
-    neutral2: dark ? '#94a3b8' : '#475569',
-
-    text: dark ? '#fff7ed' : '#0f172a',
-    textSoft: dark ? 'rgba(255,247,237,.76)' : 'rgba(15,23,42,.72)',
-    textMuted: dark ? 'rgba(255,247,237,.52)' : 'rgba(15,23,42,.48)',
-
-    line: dark ? 'rgba(255,226,194,.13)' : 'rgba(15,23,42,.08)',
-    gridLine: dark ? 'rgba(255,226,194,.08)' : 'rgba(118,77,38,.08)',
-
-    orangeSoft: dark ? 'rgba(239,159,39,.17)' : 'rgba(239,159,39,.08)',
-    orangeBorder: dark ? 'rgba(247,192,96,.36)' : 'rgba(239,159,39,.28)',
-
-    glassBg: dark
-      ? 'linear-gradient(135deg, rgba(255,255,255,.10), rgba(255,255,255,.045))'
-      : 'linear-gradient(135deg, rgba(255,255,255,.96), rgba(248,250,252,.84))',
-
-    glassBorder: dark ? 'rgba(255,226,194,.14)' : 'rgba(15,23,42,.08)',
-
-    heroBg: dark ? '#020617' : '#fff8ee',
-    heroShape: 'rgba(239,159,39,.22)',
-    heroImageFilter: `saturate(${dark ? '1.02' : '1.06'}) contrast(1.05)`,
-    heroImageOpacity: dark ? '.74' : '.86',
-    heroOverlay: dark
-      ? 'linear-gradient(90deg, rgba(2,6,23,.92), rgba(2,6,23,.66), rgba(2,6,23,.22)), linear-gradient(180deg, rgba(2,6,23,.14), rgba(2,6,23,.94))'
-      : 'linear-gradient(90deg, rgba(32,19,10,.72), rgba(32,19,10,.44), rgba(32,19,10,.10)), linear-gradient(180deg, rgba(255,248,238,.06), rgba(255,248,238,.92))',
-    ambientGlow: dark
-      ? 'linear-gradient(135deg, rgba(239,159,39,.16), rgba(239,159,39,0) 42%), linear-gradient(225deg, rgba(247,192,96,.10), rgba(247,192,96,0) 40%)'
-      : 'linear-gradient(135deg, rgba(239,159,39,.14), rgba(239,159,39,0) 42%), linear-gradient(225deg, rgba(122,92,62,.08), rgba(122,92,62,0) 40%)',
-    builderBg: dark ? '#020617' : '#ffffff',
-    galleryBg: dark ? '#0b1220' : '#fffaf3',
-    ctaBg: dark
-      ? 'linear-gradient(135deg, rgba(239,159,39,.22), rgba(239,159,39,0) 42%), #0f172a'
-      : 'linear-gradient(135deg, rgba(239,159,39,.24), rgba(239,159,39,0) 42%), #20130a',
-    ctaBorder: 'rgba(255,255,255,.10)',
   }
-}
-
-type UiColors = ReturnType<typeof getUiColors>
-type RgbColor = { r: number; g: number; b: number }
-
-function stringifyThemeSource(value: unknown) {
-  if (!value) return ''
-
-  if (typeof value === 'string') {
-    return value.slice(0, 30000)
-  }
-
-  try {
-    return JSON.stringify(value).slice(0, 30000)
-  } catch {
-    return ''
-  }
-}
-
-function getPostThemeSource(post: Post | null) {
-  return [
-    post?.slug,
-    post?.title,
-    post?.excerpt,
-    stringifyThemeSource(post?.gjsHtml),
-    stringifyThemeSource(post?.gjsCss),
-    stringifyThemeSource(post?.gjsStyles),
-    stringifyThemeSource(post?.gjsComponents),
-  ]
-    .filter(Boolean)
-    .join(' ')
-    .toLowerCase()
-}
-
-function getPostThemeKey(post: Post | null) {
-  const source = getPostThemeSource(post)
-
-  if (
-    source.includes('spm-page') ||
-    source.includes('passation') ||
-    source.includes('marches') ||
-    source.includes('marchés') ||
-    source.includes('procurement')
-  ) {
-    return 'procurement'
-  }
-
-  if (
-    source.includes('sara-page') ||
-    source.includes('sara-paie') ||
-    source.includes('sara paie') ||
-    source.includes('sara')
-  ) {
-    return 'sara'
-  }
-
-  return 'default'
-}
-
-function clampChannel(value: number) {
-  return Math.max(0, Math.min(255, Math.round(value)))
-}
-
-function toRgbColor(r: number, g: number, b: number): RgbColor {
-  return {
-    r: clampChannel(r),
-    g: clampChannel(g),
-    b: clampChannel(b),
-  }
-}
-
-function expandHexColor(value: string) {
-  if (value.length === 3 || value.length === 4) {
-    return value
-      .slice(0, 3)
-      .split('')
-      .map((part) => part + part)
-      .join('')
-  }
-
-  return value.slice(0, 6)
-}
-
-function hexToRgb(value: string): RgbColor | null {
-  const normalized = expandHexColor(value.replace('#', '').trim())
-
-  if (!/^[0-9a-f]{6}$/i.test(normalized)) return null
-
-  return toRgbColor(
-    Number.parseInt(normalized.slice(0, 2), 16),
-    Number.parseInt(normalized.slice(2, 4), 16),
-    Number.parseInt(normalized.slice(4, 6), 16),
-  )
-}
-
-function channelToHex(value: number) {
-  return clampChannel(value).toString(16).padStart(2, '0')
-}
-
-function rgbToHex(color: RgbColor) {
-  return `#${channelToHex(color.r)}${channelToHex(color.g)}${channelToHex(
-    color.b,
-  )}`
-}
-
-function rgbToRgba(color: RgbColor, alpha: number) {
-  return `rgba(${color.r},${color.g},${color.b},${alpha})`
-}
-
-function mixRgb(color: RgbColor, target: RgbColor, amount: number): RgbColor {
-  return toRgbColor(
-    color.r + (target.r - color.r) * amount,
-    color.g + (target.g - color.g) * amount,
-    color.b + (target.b - color.b) * amount,
-  )
-}
-
-function getColorLuminance(color: RgbColor) {
-  const transform = (channel: number) => {
-    const value = channel / 255
-    return value <= 0.03928
-      ? value / 12.92
-      : Math.pow((value + 0.055) / 1.055, 2.4)
-  }
-
-  return (
-    transform(color.r) * 0.2126 +
-    transform(color.g) * 0.7152 +
-    transform(color.b) * 0.0722
-  )
-}
-
-function getColorSaturation(color: RgbColor) {
-  const max = Math.max(color.r, color.g, color.b)
-  const min = Math.min(color.r, color.g, color.b)
-
-  return max === 0 ? 0 : (max - min) / max
-}
-
-function isUsableAccentColor(color: RgbColor) {
-  const max = Math.max(color.r, color.g, color.b)
-  const min = Math.min(color.r, color.g, color.b)
-  const luminance = getColorLuminance(color)
-  const saturation = getColorSaturation(color)
-
-  return (
-    saturation >= 0.18 &&
-    max >= 70 &&
-    min <= 245 &&
-    luminance >= 0.045 &&
-    luminance <= 0.88
-  )
-}
-
-function addWeightedColor(
-  colors: Map<string, { color: RgbColor; score: number }>,
-  color: RgbColor | null,
-  weight: number,
-) {
-  if (!color || !isUsableAccentColor(color)) return
-
-  const saturation = getColorSaturation(color)
-  const luminance = getColorLuminance(color)
-  const balance = luminance > 0.18 && luminance < 0.74 ? 1.35 : 0.9
-  const score = weight * (1 + saturation * 3) * balance
-  const key = rgbToHex(color)
-  const current = colors.get(key)
-
-  colors.set(key, {
-    color,
-    score: (current?.score ?? 0) + score,
-  })
-}
-
-function extractPostAccentColor(post: Post | null): RgbColor | null {
-  const source = getPostThemeSource(post)
-  const colors = new Map<string, { color: RgbColor; score: number }>()
-
-  const rgbRegex =
-    /rgba?\(\s*([0-9.]+)\s*,\s*([0-9.]+)\s*,\s*([0-9.]+)(?:\s*,\s*([0-9.]+))?\s*\)/gi
-  const hexRegex = /#([0-9a-f]{3,4}|[0-9a-f]{6}|[0-9a-f]{8})\b/gi
-
-  let rgbMatch: RegExpExecArray | null
-  while ((rgbMatch = rgbRegex.exec(source))) {
-    const alpha =
-      rgbMatch[4] === undefined ? 1 : Number.parseFloat(rgbMatch[4])
-    const weight = Number.isFinite(alpha) && alpha < 0.2 ? 0.35 : 1
-
-    addWeightedColor(
-      colors,
-      toRgbColor(
-        Number.parseFloat(rgbMatch[1]),
-        Number.parseFloat(rgbMatch[2]),
-        Number.parseFloat(rgbMatch[3]),
-      ),
-      weight,
-    )
-  }
-
-  let hexMatch: RegExpExecArray | null
-  while ((hexMatch = hexRegex.exec(source))) {
-    addWeightedColor(colors, hexToRgb(hexMatch[1]), 1)
-  }
-
-  return [...colors.values()].sort((a, b) => b.score - a.score)[0]?.color ?? null
-}
-
-function buildAdaptiveUiColors(
-  base: UiColors,
-  dark: boolean,
-  accent: RgbColor,
-): UiColors {
-  const white = toRgbColor(255, 255, 255)
-  const black = toRgbColor(0, 0, 0)
-  const accentStrong = dark ? mixRgb(accent, white, 0.16) : mixRgb(accent, black, 0.08)
-  const accentBright = dark ? mixRgb(accent, white, 0.34) : mixRgb(accent, white, 0.18)
-  const accentDeep = dark ? mixRgb(accent, black, 0.32) : mixRgb(accent, black, 0.28)
-  const shellDeep = mixRgb(accent, black, dark ? 0.9 : 0.84)
-  const shellMid = mixRgb(accent, black, dark ? 0.82 : 0.7)
-  const shellLight = mixRgb(accent, white, 0.9)
-  const primaryMid = mixRgb(accent, black, dark ? 0.16 : 0.08)
-  const primaryText = getColorLuminance(primaryMid) > 0.42 ? '#0f172a' : '#ffffff'
-
-  return {
-    ...base,
-    buttonText: dark ? '#f8fafc' : '#0f172a',
-    buttonBorder: dark ? rgbToRgba(accentBright, 0.18) : rgbToRgba(accent, 0.14),
-    buttonShadow: dark
-      ? '0 24px 70px rgba(0,0,0,.42)'
-      : `0 24px 70px ${rgbToRgba(accentDeep, 0.13)}`,
-
-    panelBg: dark ? rgbToRgba(shellMid, 0.76) : 'rgba(255, 255, 255, 0.94)',
-    panelBorder: dark ? rgbToRgba(accentBright, 0.16) : rgbToRgba(accent, 0.13),
-    panelText: dark ? '#f8fafc' : '#0f172a',
-    panelMuted: dark ? rgbToHex(mixRgb(accentBright, white, 0.2)) : '#475569',
-
-    appBg: dark ? rgbToHex(shellDeep) : rgbToHex(shellLight),
-    pageBg: dark
-      ? `linear-gradient(135deg, ${rgbToRgba(accent, 0.16)}, rgba(0,0,0,0) 38%), linear-gradient(225deg, ${rgbToRgba(accentBright, 0.08)}, rgba(0,0,0,0) 34%), linear-gradient(180deg, ${rgbToHex(shellDeep)} 0%, ${rgbToHex(shellMid)} 44%, ${rgbToHex(shellDeep)} 100%)`
-      : `linear-gradient(135deg, ${rgbToRgba(accent, 0.1)}, rgba(255,255,255,0) 36%), linear-gradient(225deg, ${rgbToRgba(accentDeep, 0.07)}, rgba(255,255,255,0) 34%), linear-gradient(180deg, ${rgbToHex(shellLight)} 0%, #ffffff 52%, #f8fafc 100%)`,
-
-    cardBg: dark ? rgbToRgba(shellMid, 0.86) : 'rgba(255, 255, 255, 0.96)',
-    cardBorder: dark ? rgbToRgba(accentBright, 0.16) : rgbToRgba(accent, 0.14),
-    mutedText: dark ? rgbToHex(mixRgb(accentBright, white, 0.16)) : '#64748b',
-
-    accent1: rgbToHex(accentStrong),
-    accent2: rgbToHex(accentBright),
-    accent3: rgbToHex(accentDeep),
-    accentSoft: dark ? rgbToRgba(accent, 0.17) : rgbToRgba(accent, 0.1),
-    accentBorder: dark ? rgbToRgba(accentBright, 0.38) : rgbToRgba(accent, 0.26),
-    accentGlow: `0 0 34px ${rgbToRgba(accent, 0.16)}`,
-    accentGlowStrong: `0 18px 42px ${rgbToRgba(accentDeep, dark ? 0.36 : 0.28)}`,
-    primaryBg: `linear-gradient(135deg, ${rgbToHex(primaryMid)}, ${rgbToHex(
-      accentBright,
-    )})`,
-    primaryText,
-
-    neutral1: dark ? rgbToHex(mixRgb(accentBright, white, 0.14)) : '#64748b',
-    neutral2: dark ? rgbToHex(mixRgb(accentBright, white, 0.04)) : '#475569',
-
-    text: dark ? '#f8fafc' : '#0f172a',
-    textSoft: dark ? 'rgba(248,250,252,.76)' : 'rgba(15,23,42,.72)',
-    textMuted: dark ? 'rgba(248,250,252,.52)' : 'rgba(15,23,42,.48)',
-
-    line: dark ? rgbToRgba(accentBright, 0.16) : rgbToRgba(accent, 0.12),
-    gridLine: dark ? rgbToRgba(accentBright, 0.08) : rgbToRgba(accent, 0.08),
-
-    orangeSoft: dark ? rgbToRgba(accent, 0.17) : rgbToRgba(accent, 0.1),
-    orangeBorder: dark ? rgbToRgba(accentBright, 0.38) : rgbToRgba(accent, 0.26),
-
-    glassBg: dark
-      ? `linear-gradient(135deg, ${rgbToRgba(accentBright, 0.1)}, rgba(255,255,255,.045))`
-      : `linear-gradient(135deg, rgba(255,255,255,.96), ${rgbToRgba(
-          shellLight,
-          0.84,
-        )})`,
-    glassBorder: dark ? rgbToRgba(accentBright, 0.16) : rgbToRgba(accent, 0.12),
-
-    heroBg: dark ? rgbToHex(shellDeep) : rgbToHex(shellLight),
-    heroShape: `linear-gradient(135deg, ${rgbToRgba(accentBright, 0.3)}, ${rgbToRgba(
-      accentDeep,
-      0.16,
-    )})`,
-    heroImageFilter: `saturate(${dark ? '1.04' : '1.06'}) contrast(1.04) brightness(${dark ? '.84' : '.92'})`,
-    heroImageOpacity: dark ? '.72' : '.84',
-    heroOverlay: dark
-      ? `linear-gradient(90deg, ${rgbToRgba(shellDeep, 0.94)}, ${rgbToRgba(shellMid, 0.68)}, ${rgbToRgba(shellMid, 0.24)}), linear-gradient(180deg, ${rgbToRgba(shellDeep, 0.12)}, ${rgbToRgba(shellDeep, 0.94)})`
-      : `linear-gradient(90deg, ${rgbToRgba(shellDeep, 0.82)}, ${rgbToRgba(shellDeep, 0.52)}, ${rgbToRgba(shellDeep, 0.14)}), linear-gradient(180deg, ${rgbToRgba(shellLight, 0.04)}, ${rgbToRgba(shellLight, 0.94)})`,
-    ambientGlow: dark
-      ? `linear-gradient(135deg, ${rgbToRgba(accent, 0.17)}, rgba(0,0,0,0) 42%), linear-gradient(225deg, ${rgbToRgba(accentBright, 0.1)}, rgba(0,0,0,0) 40%)`
-      : `linear-gradient(135deg, ${rgbToRgba(accent, 0.14)}, rgba(255,255,255,0) 42%), linear-gradient(225deg, ${rgbToRgba(accentDeep, 0.08)}, rgba(255,255,255,0) 40%)`,
-    builderBg: dark ? rgbToHex(shellDeep) : rgbToHex(mixRgb(accent, white, 0.95)),
-    galleryBg: dark ? rgbToHex(shellMid) : rgbToHex(shellLight),
-    ctaBg: dark
-      ? `linear-gradient(135deg, ${rgbToRgba(accent, 0.2)}, rgba(0,0,0,0) 42%), linear-gradient(135deg, ${rgbToHex(shellDeep)}, ${rgbToHex(shellMid)})`
-      : `linear-gradient(135deg, ${rgbToRgba(accent, 0.2)}, rgba(255,255,255,0) 42%), linear-gradient(135deg, ${rgbToHex(shellDeep)}, ${rgbToHex(accentDeep)})`,
-    ctaBorder: dark ? rgbToRgba(accentBright, 0.16) : 'rgba(255,255,255,.14)',
-  }
-}
-
-function getPostUiColors(post: Post | null, dark: boolean): UiColors {
-  const base = getUiColors(dark)
-  const themeKey = getPostThemeKey(post)
-
-  if (themeKey === 'procurement') {
-    return {
-      ...base,
-      buttonText: dark ? '#f3fff8' : '#0f172a',
-      buttonBorder: dark ? 'rgba(220,255,235,.15)' : 'rgba(8,122,67,.12)',
-      buttonShadow: dark
-        ? '0 24px 70px rgba(0,0,0,.42)'
-        : '0 24px 70px rgba(8,122,67,.11)',
-
-      panelBg: dark ? 'rgba(6, 17, 13, 0.78)' : 'rgba(255, 255, 255, 0.94)',
-      panelBorder: dark ? 'rgba(220,255,235,.15)' : 'rgba(8,122,67,.12)',
-      panelText: dark ? '#f3fff8' : '#0f172a',
-      panelMuted: dark ? '#b7c8bd' : '#475569',
-
-      appBg: dark ? '#020f0b' : '#f4fff8',
-      pageBg: dark
-        ? 'linear-gradient(135deg, rgba(53,242,143,.14), rgba(53,242,143,0) 38%), linear-gradient(225deg, rgba(34,211,238,.08), rgba(34,211,238,0) 34%), linear-gradient(180deg, #020f0b 0%, #061711 44%, #020f0b 100%)'
-        : 'linear-gradient(135deg, rgba(53,242,143,.10), rgba(53,242,143,0) 36%), linear-gradient(225deg, rgba(8,122,67,.07), rgba(8,122,67,0) 34%), linear-gradient(180deg, #f4fff8 0%, #ffffff 52%, #f8fafc 100%)',
-
-      cardBg: dark ? 'rgba(6, 17, 13, 0.86)' : 'rgba(255, 255, 255, 0.96)',
-      cardBorder: dark ? 'rgba(220,255,235,.15)' : 'rgba(8,122,67,.14)',
-      mutedText: dark ? '#b7c8bd' : '#64748b',
-
-      accent1: '#087a43',
-      accent2: '#35f28f',
-      accent3: '#22d3ee',
-      accentSoft: dark ? 'rgba(53,242,143,.16)' : 'rgba(8,122,67,.08)',
-      accentBorder: dark ? 'rgba(53,242,143,.36)' : 'rgba(8,122,67,.22)',
-      accentGlow: '0 0 34px rgba(53,242,143,.16)',
-      accentGlowStrong: '0 18px 42px rgba(8,122,67,.30)',
-      primaryBg: 'linear-gradient(135deg, #065f46, #087a43)',
-      primaryText: '#f3fff8',
-
-      neutral1: dark ? '#dcffeb' : '#64748b',
-      neutral2: dark ? '#b7c8bd' : '#475569',
-
-      text: dark ? '#f3fff8' : '#0f172a',
-      textSoft: dark ? 'rgba(243,255,248,.76)' : 'rgba(15,23,42,.72)',
-      textMuted: dark ? 'rgba(243,255,248,.52)' : 'rgba(15,23,42,.48)',
-
-      line: dark ? 'rgba(220,255,235,.15)' : 'rgba(8,122,67,.12)',
-      gridLine: dark ? 'rgba(220,255,235,.08)' : 'rgba(8,122,67,.08)',
-
-      orangeSoft: dark ? 'rgba(53,242,143,.16)' : 'rgba(8,122,67,.08)',
-      orangeBorder: dark ? 'rgba(53,242,143,.36)' : 'rgba(8,122,67,.22)',
-
-      glassBg: dark
-        ? 'linear-gradient(135deg, rgba(220,255,235,.10), rgba(220,255,235,.045))'
-        : 'linear-gradient(135deg, rgba(255,255,255,.96), rgba(244,255,248,.84))',
-      glassBorder: dark ? 'rgba(220,255,235,.15)' : 'rgba(8,122,67,.12)',
-
-      heroBg: dark ? '#020f0b' : '#f4fff8',
-      heroShape: 'linear-gradient(135deg, rgba(53,242,143,.26), rgba(34,211,238,.16))',
-      heroImageFilter: `saturate(${dark ? '1.02' : '1.06'}) contrast(1.03)`,
-      heroImageOpacity: dark ? '.70' : '.82',
-      heroOverlay: dark
-        ? 'linear-gradient(90deg, rgba(2,15,11,.94), rgba(6,23,17,.68), rgba(6,23,17,.24)), linear-gradient(180deg, rgba(2,15,11,.12), rgba(2,15,11,.94))'
-        : 'linear-gradient(90deg, rgba(3,45,29,.88), rgba(3,45,29,.58), rgba(3,45,29,.16)), linear-gradient(180deg, rgba(244,255,248,.04), rgba(244,255,248,.94))',
-      ambientGlow: dark
-        ? 'linear-gradient(135deg, rgba(53,242,143,.14), rgba(53,242,143,0) 42%), linear-gradient(225deg, rgba(34,211,238,.10), rgba(34,211,238,0) 40%)'
-        : 'linear-gradient(135deg, rgba(53,242,143,.12), rgba(53,242,143,0) 42%), linear-gradient(225deg, rgba(8,122,67,.08), rgba(8,122,67,0) 40%)',
-      builderBg: dark ? '#020f0b' : '#f8fffb',
-      galleryBg: dark ? '#061711' : '#f4fff8',
-      ctaBg: dark
-        ? 'linear-gradient(135deg, rgba(53,242,143,.20), rgba(53,242,143,0) 42%), linear-gradient(135deg, #03130b, #064e3b)'
-        : 'linear-gradient(135deg, rgba(53,242,143,.20), rgba(53,242,143,0) 42%), linear-gradient(135deg, #032d1d, #087a43)',
-      ctaBorder: dark ? 'rgba(220,255,235,.14)' : 'rgba(255,255,255,.14)',
-    }
-  }
-
-  if (themeKey === 'sara') {
-    return {
-      ...base,
-      buttonText: dark ? '#fff7ed' : '#2b1606',
-      buttonBorder: dark ? 'rgba(226,201,171,.14)' : 'rgba(124,95,70,.13)',
-      buttonShadow: dark
-        ? '0 24px 70px rgba(0,0,0,.44)'
-        : '0 24px 70px rgba(124,95,70,.13)',
-
-      panelBg: dark ? 'rgba(42, 25, 12, 0.76)' : 'rgba(255, 250, 243, 0.94)',
-      panelBorder: dark ? 'rgba(226,201,171,.14)' : 'rgba(124,95,70,.13)',
-      panelText: dark ? '#fff7ed' : '#2b1606',
-      panelMuted: dark ? '#d6c2aa' : '#6b5846',
-
-      appBg: dark ? '#100a06' : '#fffaf3',
-      pageBg: dark
-        ? 'linear-gradient(135deg, rgba(240,179,111,.16), rgba(240,179,111,0) 38%), linear-gradient(225deg, rgba(210,126,38,.10), rgba(210,126,38,0) 34%), linear-gradient(180deg, #100a06 0%, #1b1008 44%, #100a06 100%)'
-        : 'linear-gradient(135deg, rgba(240,179,111,.12), rgba(240,179,111,0) 36%), linear-gradient(225deg, rgba(124,95,70,.08), rgba(124,95,70,0) 34%), linear-gradient(180deg, #fffaf3 0%, #ffffff 52%, #fff7ef 100%)',
-
-      cardBg: dark ? 'rgba(42, 25, 12, 0.86)' : 'rgba(255, 250, 243, 0.96)',
-      cardBorder: dark ? 'rgba(226,201,171,.14)' : 'rgba(124,95,70,.13)',
-      mutedText: dark ? '#d6c2aa' : '#6b5846',
-
-      accent1: '#d27e26',
-      accent2: '#f0b36f',
-      accent3: '#7c5f46',
-      accentSoft: dark ? 'rgba(240,179,111,.18)' : 'rgba(210,126,38,.10)',
-      accentBorder: dark ? 'rgba(240,179,111,.38)' : 'rgba(210,126,38,.26)',
-      accentGlow: '0 0 34px rgba(210,126,38,.18)',
-      accentGlowStrong: '0 18px 42px rgba(210,126,38,.32)',
-      primaryBg: 'linear-gradient(135deg, #d27e26, #f0b36f)',
-      primaryText: '#271305',
-
-      neutral1: dark ? '#e2c9ab' : '#6b5846',
-      neutral2: dark ? '#d6c2aa' : '#7c5f46',
-
-      text: dark ? '#fff7ed' : '#2b1606',
-      textSoft: dark ? 'rgba(255,247,237,.76)' : 'rgba(43,22,6,.72)',
-      textMuted: dark ? 'rgba(255,247,237,.52)' : 'rgba(43,22,6,.50)',
-
-      line: dark ? 'rgba(226,201,171,.14)' : 'rgba(124,95,70,.12)',
-      gridLine: dark ? 'rgba(226,201,171,.08)' : 'rgba(124,95,70,.08)',
-
-      orangeSoft: dark ? 'rgba(240,179,111,.18)' : 'rgba(210,126,38,.10)',
-      orangeBorder: dark ? 'rgba(240,179,111,.38)' : 'rgba(210,126,38,.26)',
-
-      glassBg: dark
-        ? 'linear-gradient(135deg, rgba(226,201,171,.11), rgba(226,201,171,.045))'
-        : 'linear-gradient(135deg, rgba(255,250,243,.96), rgba(255,247,239,.84))',
-      glassBorder: dark ? 'rgba(226,201,171,.15)' : 'rgba(124,95,70,.12)',
-
-      heroBg: dark ? '#100a06' : '#fff8ef',
-      heroShape: 'linear-gradient(135deg, rgba(240,179,111,.34), rgba(210,126,38,.16))',
-      heroImageFilter: `saturate(${dark ? '1.04' : '1.06'}) contrast(1.04) brightness(${dark ? '.82' : '.92'})`,
-      heroImageOpacity: dark ? '.72' : '.84',
-      heroOverlay: dark
-        ? 'linear-gradient(90deg, rgba(16,10,6,.94), rgba(59,36,18,.66), rgba(59,36,18,.20)), linear-gradient(180deg, rgba(16,10,6,.12), rgba(16,10,6,.94))'
-        : 'linear-gradient(90deg, rgba(59,36,18,.78), rgba(59,36,18,.48), rgba(59,36,18,.12)), linear-gradient(180deg, rgba(255,248,239,.06), rgba(255,248,239,.92))',
-      ambientGlow: dark
-        ? 'linear-gradient(135deg, rgba(240,179,111,.16), rgba(240,179,111,0) 42%), linear-gradient(225deg, rgba(210,126,38,.10), rgba(210,126,38,0) 40%)'
-        : 'linear-gradient(135deg, rgba(240,179,111,.14), rgba(240,179,111,0) 42%), linear-gradient(225deg, rgba(124,95,70,.08), rgba(124,95,70,0) 40%)',
-      builderBg: dark ? '#100a06' : '#fffaf5',
-      galleryBg: dark ? '#1b1008' : '#fff7ef',
-      ctaBg: dark
-        ? 'linear-gradient(135deg, rgba(240,179,111,.20), rgba(240,179,111,0) 42%), linear-gradient(135deg, #1d0d03, #3b2412)'
-        : 'linear-gradient(135deg, rgba(240,179,111,.20), rgba(240,179,111,0) 42%), linear-gradient(135deg, #2b1606, #7c5f46)',
-      ctaBorder: dark ? 'rgba(226,201,171,.14)' : 'rgba(255,255,255,.14)',
-    }
-  }
-
-  const extractedAccent = extractPostAccentColor(post)
-
-  return extractedAccent
-    ? buildAdaptiveUiColors(base, dark, extractedAccent)
-    : base
 }
 
 function formatDate(value: string | null | undefined, locale: string) {
@@ -601,28 +102,17 @@ function safeImage(src?: string | null) {
   return src?.trim() || '/placeholder-reference.svg'
 }
 
-function safeDecodeIdentifier(value: string) {
-  try {
-    return decodeURIComponent(value).trim()
-  } catch {
-    return value.trim()
-  }
-}
-
 function stripHtml(value?: string | null) {
   return (value || '').replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim()
 }
 
-function syncEmbeddedTheme(editor: Editor, dark: boolean, ui: UiColors) {
+function syncEmbeddedTheme(editor: Editor, dark: boolean) {
   const canvasDoc = editor.Canvas?.getDocument()
-
   if (!canvasDoc) return
 
-  const articlePageRootQuery =
-    '.project-theme, .md2i-support, .sara-page, [data-theme], [id$="-page"], body > div:first-child, body > main:first-child'
   const theme = dark ? 'dark' : 'light'
-  const pageBg = ui.builderBg
-  const pageText = ui.text
+  const pageBg = dark ? '#020617' : '#ffffff'
+  const pageText = dark ? '#f5f7fb' : '#181818'
 
   let baseStyle = canvasDoc.getElementById(
     'viewer-base-style',
@@ -647,16 +137,17 @@ function syncEmbeddedTheme(editor: Editor, dark: boolean, ui: UiColors) {
   canvasDoc.documentElement.setAttribute('data-app-theme', theme)
   canvasDoc.body.setAttribute('data-app-theme', theme)
 
-  const themeRoot = canvasDoc.querySelector(
-    articlePageRootQuery,
+  const themeRoot = (
+    canvasDoc.querySelector('.project-theme') ||
+    canvasDoc.querySelector('.md2i-support') ||
+    canvasDoc.querySelector('[data-theme]')
   ) as HTMLElement | null
 
   if (themeRoot) {
     themeRoot.setAttribute('data-theme', theme)
+    themeRoot.style.background = pageBg
+    themeRoot.style.color = pageText
     themeRoot.style.minHeight = '100%'
-    themeRoot.style.setProperty('--viewer-shell-bg', pageBg)
-    themeRoot.style.setProperty('--viewer-shell-text', pageText)
-    themeRoot.style.setProperty('--viewer-shell-accent', ui.accent2)
   }
 
   const wrapper = editor.getWrapper() as GrapesStyleReceiver | null
@@ -673,17 +164,6 @@ function syncEmbeddedTheme(editor: Editor, dark: boolean, ui: UiColors) {
   }
 
   editor.refresh()
-}
-
-function scheduleCanvasMeasurements(
-  editor: Editor,
-  setCanvasHeight: (height: number) => void,
-) {
-  ;[180, 520, 1100, 1800].forEach((delay) => {
-    setTimeout(() => {
-      measureCanvasHeight(editor, setCanvasHeight)
-    }, delay)
-  })
 }
 
 function measureCanvasHeight(
@@ -730,7 +210,7 @@ export default function PostDetailClient() {
   const [error, setError] = useState<string | null>(null)
   const [canvasHeight, setCanvasHeight] = useState(900)
 
-  const ui = useMemo(() => getPostUiColors(post, dark), [post, dark])
+  const ui = useMemo(() => getUiColors(dark), [dark])
   const hasGjsContent = Boolean(post?.gjsComponents || post?.gjsHtml)
   const heroImage = safeImage(post?.coverImage)
 
@@ -744,9 +224,7 @@ export default function PostDetailClient() {
         setLoading(true)
         setError(null)
 
-        const res = await api.get<Post>(
-          `/api/articles/${encodeURIComponent(articleId)}`,
-        )
+        const res = await api.get<Post>(`/api/posts/${articleId}`)
 
         const [translatedPost] = await translateDynamicItems<Post>(
           [res.data],
@@ -755,14 +233,6 @@ export default function PostDetailClient() {
         )
 
         const nextPost = translatedPost ?? res.data
-        const currentIdentifier = safeDecodeIdentifier(articleId)
-
-        if (
-          nextPost.slug &&
-          currentIdentifier.toLowerCase() !== nextPost.slug.toLowerCase()
-        ) {
-          router.replace(`/articles/${encodeURIComponent(nextPost.slug)}`)
-        }
 
         const [translatedComponents, translatedHtml] = await Promise.all([
           nextPost.gjsComponents
@@ -794,7 +264,7 @@ export default function PostDetailClient() {
     return () => {
       cancelled = true
     }
-  }, [articleId, locale, router, t])
+  }, [articleId, locale, t])
 
   useEffect(() => {
     if (!mountRef.current || !post || !hasGjsContent) return
@@ -818,53 +288,49 @@ export default function PostDetailClient() {
         ],
       },
       protectedCss: '',
-      editable: false,
-      components: {
-        defaults: {
-          editable: false,
-          draggable: false,
-          selectable: false,
-          hoverable: false,
-          highlightable: false,
-          copyable: false,
-          removable: false,
-        },
+      showToolbar: false,
+      multipleSelection: false,
+      domComponents: {
+        draggableComponents: false,
       },
       commands: {
-        defaults: [
-          { id: 'core:component:delete', run: () => {} },
-          { id: 'core:component:copy', run: () => {} },
-          { id: 'core:component:paste', run: () => {} },
-          { id: 'core:component:duplicate', run: () => {} },
-          { id: 'core:component:move', run: () => {} },
-          { id: 'core:component:select', run: () => {} },
-          { id: 'core:component:style', run: () => {} },
-          { id: 'core:component:enter', run: () => {} },
-          { id: 'core:component:exit', run: () => {} },
-          { id: 'core:component:remove', run: () => {} },
-          { id: 'core:component:create', run: () => {} },
-          { id: 'core:component:add', run: () => {} },
-          { id: 'core:component:clone', run: () => {} },
-        ],
+        defaults: {
+          'core:component:delete': { run: () => {} },
+          'core:component:copy': { run: () => {} },
+          'core:component:paste': { run: () => {} },
+          'core:component:duplicate': { run: () => {} },
+          'core:component:move': { run: () => {} },
+          'core:component:select': { run: () => {} },
+          'core:component:style': { run: () => {} },
+          'core:component:enter': { run: () => {} },
+          'core:component:exit': { run: () => {} },
+          'core:component:remove': { run: () => {} },
+          'core:component:create': { run: () => {} },
+          'core:component:add': { run: () => {} },
+          'core:component:clone': { run: () => {} },
+        },
       },
-      dragManager: { disable: true },
-      selectorManager: { disable: true },
-      traitManager: { disable: true },
-      styleManager: { disable: true },
-      layerManager: { disable: true },
-      blockManager: { disable: true },
-      deviceManager: { disable: true },
-      allowScripts: true,
+      selectorManager: { appendTo: '' },
+      traitManager: { appendTo: '', custom: true },
+      styleManager: { appendTo: '', sectors: [] },
+      layerManager: { appendTo: '', sortable: false, hidable: false },
+      blockManager: { appendTo: '', blocks: [] },
+      deviceManager: { devices: [] },
+      parser: {
+        optionsHtml: {
+          allowScripts: true,
+        },
+      },
     })
 
     gjsRef.current = editor
 
     editor.on('component:selected', () => {
-      editor.select(null)
+      editor.select()
     })
 
     editor.on('component:mouseover', () => {
-      editor.getHighlighter().remove()
+      editor.Canvas.getHighlighter()?.remove()
     })
 
     editor.on('load', () => {
@@ -911,7 +377,7 @@ export default function PostDetailClient() {
         }
       }
 
-      allComponents.forEach((component) =>
+      allComponents.forEach((component: unknown) =>
         disableComponent(component as unknown as GrapesComponentNode),
       )
 
@@ -1072,9 +538,11 @@ export default function PostDetailClient() {
             canvasDoc.body.appendChild(script)
           }
 
-          syncEmbeddedTheme(editor, dark, ui)
+          syncEmbeddedTheme(editor, dark)
 
-          scheduleCanvasMeasurements(editor, setCanvasHeight)
+          setTimeout(() => {
+            measureCanvasHeight(editor, setCanvasHeight)
+          }, 180)
 
           editor.runCommand('preview')
         } catch (e) {
@@ -1122,50 +590,30 @@ export default function PostDetailClient() {
         gjsRef.current = null
       }
     }
-  }, [post, dark, hasGjsContent, ui])
+  }, [post, dark, hasGjsContent])
 
   useEffect(() => {
     const editor = gjsRef.current
 
     if (!editor || !hasGjsContent) return
 
-    syncEmbeddedTheme(editor, dark, ui)
+    syncEmbeddedTheme(editor, dark)
 
     setTimeout(() => {
       measureCanvasHeight(editor, setCanvasHeight)
     }, 120)
-  }, [dark, hasGjsContent, ui])
+  }, [dark, hasGjsContent])
 
   if (loading) {
     return (
       <div
         className="post-state-page"
         style={{
-          minHeight: '100vh',
-          display: 'grid',
-          placeItems: 'center',
-          padding: 24,
           background: ui.pageBg,
           color: ui.text,
-          fontFamily: 'Inter, Arial, Helvetica, sans-serif',
         }}
       >
-        <div
-          className="post-state-card"
-          style={{
-            width: 'min(460px, 100%)',
-            padding: 28,
-            borderRadius: 18,
-            background: ui.cardBg,
-            border: `1px solid ${ui.cardBorder}`,
-            boxShadow: ui.buttonShadow,
-            color: ui.textSoft,
-            textAlign: 'center',
-            fontSize: 14,
-          }}
-        >
-          {t('postDetail.loading')}
-        </div>
+        <div className="post-state-card">{t('postDetail.loading')}</div>
       </div>
     )
   }
@@ -1175,50 +623,14 @@ export default function PostDetailClient() {
       <div
         className="post-state-page"
         style={{
-          minHeight: '100vh',
-          display: 'grid',
-          placeItems: 'center',
-          padding: 24,
           background: ui.pageBg,
           color: ui.text,
-          fontFamily: 'Inter, Arial, Helvetica, sans-serif',
         }}
       >
-        <div
-          className="post-state-card"
-          style={{
-            width: 'min(460px, 100%)',
-            padding: 28,
-            borderRadius: 18,
-            background: ui.cardBg,
-            border: `1px solid ${ui.cardBorder}`,
-            boxShadow: ui.buttonShadow,
-            color: ui.textSoft,
-            textAlign: 'center',
-            fontSize: 14,
-          }}
-        >
-          <p style={{ margin: '0 0 18px' }}>
-            {error || t('postDetail.notFound')}
-          </p>
+        <div className="post-state-card">
+          <p>{error || t('postDetail.notFound')}</p>
 
-          <button
-            onClick={() => router.back()}
-            style={{
-              height: 44,
-              padding: '0 18px',
-              borderRadius: 14,
-              border: 'none',
-              background: ui.primaryBg,
-              color: ui.primaryText,
-              fontSize: 14,
-              fontWeight: 850,
-              cursor: 'pointer',
-              boxShadow: ui.accentGlowStrong,
-            }}
-          >
-            {t('postDetail.back')}
-          </button>
+          <button onClick={() => router.back()}>{t('postDetail.back')}</button>
         </div>
       </div>
     )
@@ -1286,101 +698,42 @@ export default function PostDetailClient() {
         }
 
         .post-detail-page {
-          --post-accent: ${ui.accent2};
-          --post-accent-strong: ${ui.accent1};
-          --post-accent-soft: ${ui.accentSoft};
-          --post-accent-border: ${ui.accentBorder};
           min-height: 100vh;
           background: ${ui.pageBg};
           color: ${ui.text};
           font-family: Inter, Arial, Helvetica, sans-serif;
-          position: relative;
-          isolation: isolate;
-          overflow-x: hidden;
-        }
-
-        .post-detail-page::before {
-          content: '';
-          position: fixed;
-          inset: 0;
-          z-index: -2;
-          pointer-events: none;
-          opacity: ${dark ? '.18' : '.16'};
-          background-image:
-            linear-gradient(${ui.gridLine} 1px, transparent 1px),
-            linear-gradient(90deg, ${ui.gridLine} 1px, transparent 1px);
-          background-size: 92px 92px;
-          mask-image: linear-gradient(180deg, #000 0, transparent 72%);
-        }
-
-        .post-detail-page::after {
-          content: '';
-          position: fixed;
-          inset: 0;
-          z-index: -3;
-          pointer-events: none;
-          opacity: ${dark ? '.20' : '.12'};
-          background: ${ui.ambientGlow};
         }
 
         .post-hero {
           position: relative;
-          min-height: 680px;
+          min-height: 640px;
           display: flex;
           align-items: flex-end;
           overflow: hidden;
           isolation: isolate;
-          box-shadow: inset 0 -1px 0 ${ui.accentBorder};
-        }
-
-        .post-hero::before {
-          content: '';
-          position: absolute;
-          right: -14%;
-          top: 10%;
-          z-index: -1;
-          width: min(58vw, 760px);
-          aspect-ratio: 1;
-          opacity: ${dark ? '.42' : '.34'};
-          background: ${ui.heroShape};
-          filter: blur(4px);
-          display: none;
-        }
-
-        @keyframes postMorph {
-          0% {
-            clip-path: polygon(46% 0, 86% 13%, 100% 51%, 71% 92%, 24% 100%, 0 62%, 12% 18%);
-            transform: translate3d(0, 0, 0) rotate(0deg);
-          }
-
-          100% {
-            clip-path: polygon(58% 3%, 100% 30%, 82% 82%, 48% 100%, 8% 76%, 0 29%, 25% 7%);
-            transform: translate3d(-4%, 3%, 0) rotate(8deg);
-          }
         }
 
         .post-hero-bg {
           position: absolute;
           inset: 0;
-          z-index: -3;
-          background: ${ui.heroBg};
+          z-index: -2;
+          background: #020617;
         }
 
         .post-hero-bg img {
           width: 100%;
           height: 100%;
-          object-fit: contain;
-          object-position: center;
+          object-fit: cover;
           display: block;
-          filter: ${ui.heroImageFilter};
-          opacity: ${ui.heroImageOpacity};
-          transform: none;
+          filter: saturate(1.04) contrast(1.04);
         }
 
         .post-hero-overlay {
           position: absolute;
           inset: 0;
-          background: ${ui.heroOverlay};
+          background:
+            linear-gradient(90deg, rgba(2,6,23,.86), rgba(2,6,23,.54), rgba(2,6,23,.20)),
+            linear-gradient(180deg, rgba(2,6,23,.10), rgba(2,6,23,.88));
         }
 
         .post-hero-inner {
@@ -1398,7 +751,7 @@ export default function PostDetailClient() {
           margin-bottom: 34px;
           color: rgba(255,255,255,.68);
           font-size: 13px;
-          font-weight: 700;
+          font-weight: 650;
         }
 
         .breadcrumb a {
@@ -1408,7 +761,7 @@ export default function PostDetailClient() {
         }
 
         .breadcrumb a:hover {
-          color: ${ui.accent2};
+          color: ${ui.accent1};
         }
 
         .breadcrumb strong {
@@ -1417,7 +770,7 @@ export default function PostDetailClient() {
           text-overflow: ellipsis;
           white-space: nowrap;
           color: rgba(255,255,255,.94);
-          font-weight: 850;
+          font-weight: 800;
         }
 
         .post-kicker-row {
@@ -1442,11 +795,10 @@ export default function PostDetailClient() {
         }
 
         .post-kicker {
-          background: ${ui.accentSoft};
-          border: 1px solid ${ui.accentBorder};
-          color: #ffffff;
+          background: rgba(239,159,39,.24);
+          border: 1px solid rgba(239,159,39,.42);
+          color: #fff;
           text-transform: uppercase;
-          box-shadow: ${ui.accentGlow};
         }
 
         .post-chip {
@@ -1463,9 +815,8 @@ export default function PostDetailClient() {
           margin: 0;
           font-size: clamp(38px, 6vw, 78px);
           line-height: .96;
-          letter-spacing: 0;
+          letter-spacing: -.065em;
           font-weight: 950;
-          text-wrap: balance;
         }
 
         .post-lead {
@@ -1495,18 +846,14 @@ export default function PostDetailClient() {
           text-decoration: none;
           font-size: 14px;
           font-weight: 850;
-          transition:
-            transform .18s ease,
-            box-shadow .18s ease,
-            background .18s ease,
-            border-color .18s ease;
+          transition: transform .18s ease, box-shadow .18s ease, background .18s ease;
         }
 
         .primary-action {
           border: none;
-          background: ${ui.primaryBg};
-          color: ${ui.primaryText};
-          box-shadow: ${ui.accentGlowStrong};
+          background: linear-gradient(135deg, ${ui.accent1}, ${ui.accent2});
+          color: #fff;
+          box-shadow: 0 14px 30px rgba(239,159,39,.30);
         }
 
         .secondary-action {
@@ -1519,12 +866,7 @@ export default function PostDetailClient() {
 
         .primary-action:hover,
         .secondary-action:hover {
-          transform: translateY(-1px);
-        }
-
-        .secondary-action:hover {
-          background: rgba(255,255,255,.18);
-          border-color: rgba(255,255,255,.28);
+          transform: translateY(-2px);
         }
 
         .post-body {
@@ -1537,12 +879,10 @@ export default function PostDetailClient() {
           width: min(1180px, calc(100% - 40px));
           margin: 0 auto 28px;
           padding: clamp(24px, 4vw, 36px);
-          border-radius: 22px;
-          background: ${ui.glassBg};
-          border: 1px solid ${ui.glassBorder};
+          border-radius: 26px;
+          background: ${ui.cardBg};
+          border: 1px solid ${ui.cardBorder};
           box-shadow: ${ui.buttonShadow};
-          backdrop-filter: blur(18px);
-          -webkit-backdrop-filter: blur(18px);
         }
 
         .section-title {
@@ -1563,7 +903,7 @@ export default function PostDetailClient() {
           margin: 0;
           font-size: clamp(26px, 3vw, 40px);
           line-height: 1.05;
-          letter-spacing: 0;
+          letter-spacing: -.045em;
           font-weight: 950;
           color: ${ui.text};
         }
@@ -1577,10 +917,9 @@ export default function PostDetailClient() {
 
         .post-builder-shell {
           width: 100%;
-          background: ${ui.builderBg};
+          background: ${dark ? '#020617' : '#ffffff'};
           border-top: 1px solid ${ui.line};
           border-bottom: 1px solid ${ui.line};
-          box-shadow: inset 0 1px 0 ${ui.accentBorder};
         }
 
         .post-builder-canvas {
@@ -1591,53 +930,37 @@ export default function PostDetailClient() {
           width: min(1180px, calc(100% - 40px));
           margin: 0 auto;
           padding: clamp(24px, 4vw, 36px);
-          border-radius: 22px;
-          background: ${ui.glassBg};
-          border: 1px solid ${ui.glassBorder};
+          border-radius: 26px;
+          background: ${ui.cardBg};
+          border: 1px solid ${ui.cardBorder};
           box-shadow: ${ui.buttonShadow};
           color: ${ui.textSoft};
           line-height: 1.8;
-          backdrop-filter: blur(18px);
-          -webkit-backdrop-filter: blur(18px);
         }
 
         .post-bottom-cta {
           width: min(1180px, calc(100% - 40px));
           margin: 54px auto 84px;
           padding: clamp(24px, 4vw, 38px);
-          border-radius: 24px;
-          background: ${ui.ctaBg};
-          border: 1px solid ${ui.ctaBorder};
+          border-radius: 28px;
+          background:
+            radial-gradient(circle at top right, rgba(239,159,39,.24), transparent 42%),
+            ${dark ? '#0f172a' : '#111827'};
+          border: 1px solid rgba(255,255,255,.10);
           box-shadow: ${ui.buttonShadow};
           color: #fff;
           display: grid;
           grid-template-columns: minmax(0, 1fr) auto;
           gap: 22px;
           align-items: center;
-          overflow: hidden;
-          position: relative;
-        }
-
-        .post-bottom-cta::before {
-          content: '';
-          position: absolute;
-          inset: -40% auto auto -8%;
-          width: 280px;
-          aspect-ratio: 1;
-          border-radius: 999px;
-          background: ${ui.accentSoft};
-          box-shadow: ${ui.accentGlow};
-          opacity: .9;
-          pointer-events: none;
         }
 
         .post-bottom-cta h2 {
           margin: 0 0 8px;
           font-size: clamp(24px, 3vw, 36px);
           line-height: 1.05;
-          letter-spacing: 0;
+          letter-spacing: -.045em;
           font-weight: 950;
-          position: relative;
         }
 
         .post-bottom-cta p {
@@ -1645,7 +968,6 @@ export default function PostDetailClient() {
           color: rgba(255,255,255,.68);
           line-height: 1.7;
           font-size: 15px;
-          position: relative;
         }
 
         .post-bottom-cta a {
@@ -1655,14 +977,13 @@ export default function PostDetailClient() {
           display: inline-flex;
           align-items: center;
           justify-content: center;
-          background: ${ui.primaryBg};
-          color: ${ui.primaryText};
+          background: linear-gradient(135deg, ${ui.accent1}, ${ui.accent2});
+          color: #fff;
           text-decoration: none;
           font-size: 14px;
           font-weight: 850;
           white-space: nowrap;
-          box-shadow: ${ui.accentGlowStrong};
-          position: relative;
+          box-shadow: 0 14px 30px rgba(239,159,39,.28);
         }
 
         .post-state-page {
@@ -1676,7 +997,7 @@ export default function PostDetailClient() {
         .post-state-card {
           width: min(460px, 100%);
           padding: 28px;
-          border-radius: 18px;
+          border-radius: 24px;
           background: ${ui.cardBg};
           border: 1px solid ${ui.cardBorder};
           box-shadow: ${ui.buttonShadow};
@@ -1694,12 +1015,12 @@ export default function PostDetailClient() {
           padding: 0 18px;
           border-radius: 14px;
           border: none;
-          background: ${ui.primaryBg};
-          color: ${ui.primaryText};
+          background: linear-gradient(135deg, ${ui.accent1}, ${ui.accent2});
+          color: #fff;
           font-size: 14px;
-          font-weight: 850;
+          font-weight: 800;
           cursor: pointer;
-          box-shadow: ${ui.accentGlowStrong};
+          box-shadow: 0 14px 30px rgba(239,159,39,.30);
         }
 
         @media (max-width: 980px) {
@@ -1750,13 +1071,7 @@ export default function PostDetailClient() {
       <main className="post-detail-page">
         <section className="post-hero">
           <div className="post-hero-bg">
-            <Image
-              src={heroImage}
-              alt=""
-              fill
-              priority
-              sizes="100vw"
-            />
+            <img src={heroImage} alt="" />
             <div className="post-hero-overlay" />
           </div>
 

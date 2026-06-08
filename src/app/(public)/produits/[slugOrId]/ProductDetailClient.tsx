@@ -1,7 +1,6 @@
 'use client'
 
 import Link from 'next/link'
-import Image from 'next/image'
 import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { useTranslation } from 'react-i18next'
@@ -95,8 +94,8 @@ function getUiColors(dark: boolean) {
     appBg: dark ? '#020617' : '#f8fafc',
 
     pageBg: dark
-      ? 'linear-gradient(135deg, rgba(239,159,39,.14), rgba(239,159,39,0) 38%), linear-gradient(225deg, rgba(59,130,246,.08), rgba(59,130,246,0) 34%), linear-gradient(180deg, #020617 0%, #07101f 42%, #020617 100%)'
-      : 'linear-gradient(135deg, rgba(239,159,39,.09), rgba(239,159,39,0) 36%), linear-gradient(225deg, rgba(15,23,42,.04), rgba(15,23,42,0) 34%), linear-gradient(180deg, #ffffff 0%, #f8fafc 52%, #ffffff 100%)',
+      ? 'radial-gradient(circle at 12% 8%, rgba(239,159,39,.18), transparent 28rem), radial-gradient(circle at 88% 12%, rgba(255,190,107,.10), transparent 32rem), linear-gradient(180deg, #020617 0%, #07101f 42%, #020617 100%)'
+      : 'radial-gradient(circle at 12% 8%, rgba(239,159,39,.10), transparent 26rem), radial-gradient(circle at 88% 12%, rgba(15,23,42,.04), transparent 30rem), linear-gradient(180deg, #ffffff 0%, #f8fafc 52%, #ffffff 100%)',
 
     cardBg: dark ? 'rgba(15, 23, 42, 0.86)' : 'rgba(255, 255, 255, 0.96)',
     cardBorder: dark ? 'rgba(255, 226, 194, 0.13)' : 'rgba(15, 23, 42, 0.08)',
@@ -140,13 +139,13 @@ function getUiColors(dark: boolean) {
       ? 'linear-gradient(90deg, rgba(2,6,23,.92), rgba(2,6,23,.66), rgba(2,6,23,.22)), linear-gradient(180deg, rgba(2,6,23,.14), rgba(2,6,23,.94))'
       : 'linear-gradient(90deg, rgba(32,19,10,.72), rgba(32,19,10,.44), rgba(32,19,10,.10)), linear-gradient(180deg, rgba(255,248,238,.06), rgba(255,248,238,.92))',
     ambientGlow: dark
-      ? 'linear-gradient(135deg, rgba(239,159,39,.16), rgba(239,159,39,0) 42%), linear-gradient(225deg, rgba(247,192,96,.10), rgba(247,192,96,0) 40%)'
-      : 'linear-gradient(135deg, rgba(239,159,39,.14), rgba(239,159,39,0) 42%), linear-gradient(225deg, rgba(122,92,62,.08), rgba(122,92,62,0) 40%)',
+      ? 'radial-gradient(circle at 16% 10%, rgba(239,159,39,.20), transparent 30rem), radial-gradient(circle at 86% 18%, rgba(247,192,96,.12), transparent 34rem)'
+      : 'radial-gradient(circle at 16% 10%, rgba(239,159,39,.20), transparent 30rem), radial-gradient(circle at 86% 18%, rgba(122,92,62,.10), transparent 34rem)',
     builderBg: dark ? '#020617' : '#ffffff',
     galleryBg: dark ? '#0b1220' : '#fffaf3',
     ctaBg: dark
-      ? 'linear-gradient(135deg, rgba(239,159,39,.22), rgba(239,159,39,0) 42%), #0f172a'
-      : 'linear-gradient(135deg, rgba(239,159,39,.24), rgba(239,159,39,0) 42%), #20130a',
+      ? 'radial-gradient(circle at top right, rgba(239,159,39,.24), transparent 42%), #0f172a'
+      : 'radial-gradient(circle at top right, rgba(239,159,39,.24), transparent 42%), #20130a',
     ctaBorder: 'rgba(255,255,255,.10)',
   }
 }
@@ -384,8 +383,8 @@ function buildAdaptiveUiColors(
 
     appBg: dark ? rgbToHex(shellDeep) : rgbToHex(shellLight),
     pageBg: dark
-      ? `linear-gradient(135deg, ${rgbToRgba(accent, 0.16)}, rgba(0,0,0,0) 38%), linear-gradient(225deg, ${rgbToRgba(accentBright, 0.08)}, rgba(0,0,0,0) 34%), linear-gradient(180deg, ${rgbToHex(shellDeep)} 0%, ${rgbToHex(shellMid)} 44%, ${rgbToHex(shellDeep)} 100%)`
-      : `linear-gradient(135deg, ${rgbToRgba(accent, 0.1)}, rgba(255,255,255,0) 36%), linear-gradient(225deg, ${rgbToRgba(accentDeep, 0.07)}, rgba(255,255,255,0) 34%), linear-gradient(180deg, ${rgbToHex(shellLight)} 0%, #ffffff 52%, #f8fafc 100%)`,
+      ? `radial-gradient(circle at 12% 8%, ${rgbToRgba(accent, 0.18)}, transparent 28rem), radial-gradient(circle at 86% 18%, ${rgbToRgba(accentBright, 0.1)}, transparent 32rem), linear-gradient(180deg, ${rgbToHex(shellDeep)} 0%, ${rgbToHex(shellMid)} 44%, ${rgbToHex(shellDeep)} 100%)`
+      : `radial-gradient(circle at 12% 8%, ${rgbToRgba(accent, 0.12)}, transparent 26rem), radial-gradient(circle at 86% 18%, ${rgbToRgba(accentDeep, 0.08)}, transparent 30rem), linear-gradient(180deg, ${rgbToHex(shellLight)} 0%, #ffffff 52%, #f8fafc 100%)`,
 
     cardBg: dark ? rgbToRgba(shellMid, 0.86) : 'rgba(255, 255, 255, 0.96)',
     cardBorder: dark ? rgbToRgba(accentBright, 0.16) : rgbToRgba(accent, 0.14),
@@ -435,13 +434,13 @@ function buildAdaptiveUiColors(
       ? `linear-gradient(90deg, ${rgbToRgba(shellDeep, 0.94)}, ${rgbToRgba(shellMid, 0.68)}, ${rgbToRgba(shellMid, 0.24)}), linear-gradient(180deg, ${rgbToRgba(shellDeep, 0.12)}, ${rgbToRgba(shellDeep, 0.94)})`
       : `linear-gradient(90deg, ${rgbToRgba(shellDeep, 0.82)}, ${rgbToRgba(shellDeep, 0.52)}, ${rgbToRgba(shellDeep, 0.14)}), linear-gradient(180deg, ${rgbToRgba(shellLight, 0.04)}, ${rgbToRgba(shellLight, 0.94)})`,
     ambientGlow: dark
-      ? `linear-gradient(135deg, ${rgbToRgba(accent, 0.17)}, rgba(0,0,0,0) 42%), linear-gradient(225deg, ${rgbToRgba(accentBright, 0.1)}, rgba(0,0,0,0) 40%)`
-      : `linear-gradient(135deg, ${rgbToRgba(accent, 0.14)}, rgba(255,255,255,0) 42%), linear-gradient(225deg, ${rgbToRgba(accentDeep, 0.08)}, rgba(255,255,255,0) 40%)`,
+      ? `radial-gradient(circle at 16% 10%, ${rgbToRgba(accent, 0.2)}, transparent 30rem), radial-gradient(circle at 86% 18%, ${rgbToRgba(accentBright, 0.12)}, transparent 34rem)`
+      : `radial-gradient(circle at 16% 10%, ${rgbToRgba(accent, 0.18)}, transparent 30rem), radial-gradient(circle at 86% 18%, ${rgbToRgba(accentDeep, 0.1)}, transparent 34rem)`,
     builderBg: dark ? rgbToHex(shellDeep) : rgbToHex(mixRgb(accent, white, 0.95)),
     galleryBg: dark ? rgbToHex(shellMid) : rgbToHex(shellLight),
     ctaBg: dark
-      ? `linear-gradient(135deg, ${rgbToRgba(accent, 0.2)}, rgba(0,0,0,0) 42%), linear-gradient(135deg, ${rgbToHex(shellDeep)}, ${rgbToHex(shellMid)})`
-      : `linear-gradient(135deg, ${rgbToRgba(accent, 0.2)}, rgba(255,255,255,0) 42%), linear-gradient(135deg, ${rgbToHex(shellDeep)}, ${rgbToHex(accentDeep)})`,
+      ? `radial-gradient(circle at top right, ${rgbToRgba(accent, 0.22)}, transparent 42%), linear-gradient(135deg, ${rgbToHex(shellDeep)}, ${rgbToHex(shellMid)})`
+      : `radial-gradient(circle at top right, ${rgbToRgba(accent, 0.22)}, transparent 42%), linear-gradient(135deg, ${rgbToHex(shellDeep)}, ${rgbToHex(accentDeep)})`,
     ctaBorder: dark ? rgbToRgba(accentBright, 0.16) : 'rgba(255,255,255,.14)',
   }
 }
@@ -466,8 +465,8 @@ function getProductUiColors(product: Product | null, dark: boolean): UiColors {
 
       appBg: dark ? '#020f0b' : '#f4fff8',
       pageBg: dark
-        ? 'linear-gradient(135deg, rgba(53,242,143,.14), rgba(53,242,143,0) 38%), linear-gradient(225deg, rgba(34,211,238,.08), rgba(34,211,238,0) 34%), linear-gradient(180deg, #020f0b 0%, #061711 44%, #020f0b 100%)'
-        : 'linear-gradient(135deg, rgba(53,242,143,.10), rgba(53,242,143,0) 36%), linear-gradient(225deg, rgba(8,122,67,.07), rgba(8,122,67,0) 34%), linear-gradient(180deg, #f4fff8 0%, #ffffff 52%, #f8fafc 100%)',
+        ? 'radial-gradient(circle at 12% 8%, rgba(53,242,143,.16), transparent 28rem), radial-gradient(circle at 86% 18%, rgba(34,211,238,.10), transparent 32rem), linear-gradient(180deg, #020f0b 0%, #061711 44%, #020f0b 100%)'
+        : 'radial-gradient(circle at 12% 8%, rgba(53,242,143,.12), transparent 26rem), radial-gradient(circle at 86% 18%, rgba(8,122,67,.08), transparent 30rem), linear-gradient(180deg, #f4fff8 0%, #ffffff 52%, #f8fafc 100%)',
 
       cardBg: dark ? 'rgba(6, 17, 13, 0.86)' : 'rgba(255, 255, 255, 0.96)',
       cardBorder: dark ? 'rgba(220,255,235,.15)' : 'rgba(8,122,67,.14)',
@@ -509,13 +508,13 @@ function getProductUiColors(product: Product | null, dark: boolean): UiColors {
         ? 'linear-gradient(90deg, rgba(2,15,11,.94), rgba(6,23,17,.68), rgba(6,23,17,.24)), linear-gradient(180deg, rgba(2,15,11,.12), rgba(2,15,11,.94))'
         : 'linear-gradient(90deg, rgba(3,45,29,.88), rgba(3,45,29,.58), rgba(3,45,29,.16)), linear-gradient(180deg, rgba(244,255,248,.04), rgba(244,255,248,.94))',
       ambientGlow: dark
-        ? 'linear-gradient(135deg, rgba(53,242,143,.14), rgba(53,242,143,0) 42%), linear-gradient(225deg, rgba(34,211,238,.10), rgba(34,211,238,0) 40%)'
-        : 'linear-gradient(135deg, rgba(53,242,143,.12), rgba(53,242,143,0) 42%), linear-gradient(225deg, rgba(8,122,67,.08), rgba(8,122,67,0) 40%)',
+        ? 'radial-gradient(circle at 16% 10%, rgba(53,242,143,.18), transparent 30rem), radial-gradient(circle at 86% 18%, rgba(34,211,238,.12), transparent 34rem)'
+        : 'radial-gradient(circle at 16% 10%, rgba(53,242,143,.18), transparent 30rem), radial-gradient(circle at 86% 18%, rgba(8,122,67,.10), transparent 34rem)',
       builderBg: dark ? '#020f0b' : '#f8fffb',
       galleryBg: dark ? '#061711' : '#f4fff8',
       ctaBg: dark
-        ? 'linear-gradient(135deg, rgba(53,242,143,.20), rgba(53,242,143,0) 42%), linear-gradient(135deg, #03130b, #064e3b)'
-        : 'linear-gradient(135deg, rgba(53,242,143,.20), rgba(53,242,143,0) 42%), linear-gradient(135deg, #032d1d, #087a43)',
+        ? 'radial-gradient(circle at top right, rgba(53,242,143,.22), transparent 42%), linear-gradient(135deg, #03130b, #064e3b)'
+        : 'radial-gradient(circle at top right, rgba(53,242,143,.24), transparent 42%), linear-gradient(135deg, #032d1d, #087a43)',
       ctaBorder: dark ? 'rgba(220,255,235,.14)' : 'rgba(255,255,255,.14)',
     }
   }
@@ -536,8 +535,8 @@ function getProductUiColors(product: Product | null, dark: boolean): UiColors {
 
       appBg: dark ? '#100a06' : '#fffaf3',
       pageBg: dark
-        ? 'linear-gradient(135deg, rgba(240,179,111,.16), rgba(240,179,111,0) 38%), linear-gradient(225deg, rgba(210,126,38,.10), rgba(210,126,38,0) 34%), linear-gradient(180deg, #100a06 0%, #1b1008 44%, #100a06 100%)'
-        : 'linear-gradient(135deg, rgba(240,179,111,.12), rgba(240,179,111,0) 36%), linear-gradient(225deg, rgba(124,95,70,.08), rgba(124,95,70,0) 34%), linear-gradient(180deg, #fffaf3 0%, #ffffff 52%, #fff7ef 100%)',
+        ? 'radial-gradient(circle at 12% 8%, rgba(240,179,111,.18), transparent 28rem), radial-gradient(circle at 86% 18%, rgba(210,126,38,.12), transparent 32rem), linear-gradient(180deg, #100a06 0%, #1b1008 44%, #100a06 100%)'
+        : 'radial-gradient(circle at 12% 8%, rgba(240,179,111,.15), transparent 26rem), radial-gradient(circle at 86% 18%, rgba(124,95,70,.10), transparent 30rem), linear-gradient(180deg, #fffaf3 0%, #ffffff 52%, #fff7ef 100%)',
 
       cardBg: dark ? 'rgba(42, 25, 12, 0.86)' : 'rgba(255, 250, 243, 0.96)',
       cardBorder: dark ? 'rgba(226,201,171,.14)' : 'rgba(124,95,70,.13)',
@@ -579,13 +578,13 @@ function getProductUiColors(product: Product | null, dark: boolean): UiColors {
         ? 'linear-gradient(90deg, rgba(16,10,6,.94), rgba(59,36,18,.66), rgba(59,36,18,.20)), linear-gradient(180deg, rgba(16,10,6,.12), rgba(16,10,6,.94))'
         : 'linear-gradient(90deg, rgba(59,36,18,.78), rgba(59,36,18,.48), rgba(59,36,18,.12)), linear-gradient(180deg, rgba(255,248,239,.06), rgba(255,248,239,.92))',
       ambientGlow: dark
-        ? 'linear-gradient(135deg, rgba(240,179,111,.16), rgba(240,179,111,0) 42%), linear-gradient(225deg, rgba(210,126,38,.10), rgba(210,126,38,0) 40%)'
-        : 'linear-gradient(135deg, rgba(240,179,111,.14), rgba(240,179,111,0) 42%), linear-gradient(225deg, rgba(124,95,70,.08), rgba(124,95,70,0) 40%)',
+        ? 'radial-gradient(circle at 16% 10%, rgba(240,179,111,.20), transparent 30rem), radial-gradient(circle at 86% 18%, rgba(210,126,38,.12), transparent 34rem)'
+        : 'radial-gradient(circle at 16% 10%, rgba(240,179,111,.20), transparent 30rem), radial-gradient(circle at 86% 18%, rgba(124,95,70,.10), transparent 34rem)',
       builderBg: dark ? '#100a06' : '#fffaf5',
       galleryBg: dark ? '#1b1008' : '#fff7ef',
       ctaBg: dark
-        ? 'linear-gradient(135deg, rgba(240,179,111,.20), rgba(240,179,111,0) 42%), linear-gradient(135deg, #1d0d03, #3b2412)'
-        : 'linear-gradient(135deg, rgba(240,179,111,.20), rgba(240,179,111,0) 42%), linear-gradient(135deg, #2b1606, #7c5f46)',
+        ? 'radial-gradient(circle at top right, rgba(240,179,111,.22), transparent 42%), linear-gradient(135deg, #1d0d03, #3b2412)'
+        : 'radial-gradient(circle at top right, rgba(240,179,111,.24), transparent 42%), linear-gradient(135deg, #2b1606, #7c5f46)',
       ctaBorder: dark ? 'rgba(226,201,171,.14)' : 'rgba(255,255,255,.14)',
     }
   }
@@ -1472,7 +1471,7 @@ export default function ProductDetailClient() {
             linear-gradient(${ui.gridLine} 1px, transparent 1px),
             linear-gradient(90deg, ${ui.gridLine} 1px, transparent 1px);
           background-size: 92px 92px;
-          mask-image: linear-gradient(180deg, #000 0, transparent 72%);
+          mask-image: radial-gradient(circle at 50% 12%, #000 0, transparent 72%);
         }
 
         .product-detail-page::after {
@@ -1506,7 +1505,8 @@ export default function ProductDetailClient() {
           opacity: ${dark ? '.42' : '.34'};
           background: ${ui.heroShape};
           filter: blur(4px);
-          display: none;
+          clip-path: polygon(46% 0, 86% 13%, 100% 51%, 71% 92%, 24% 100%, 0 62%, 12% 18%);
+          animation: productMorph 16s ease-in-out infinite alternate;
         }
 
         @keyframes productMorph {
@@ -1531,7 +1531,7 @@ export default function ProductDetailClient() {
         .product-hero-bg img {
           width: 100%;
           height: 100%;
-          object-fit: contain;
+          object-fit: cover;
           display: block;
           filter: ${ui.heroImageFilter};
           opacity: ${ui.heroImageOpacity};
@@ -1690,7 +1690,7 @@ export default function ProductDetailClient() {
 
         .primary-action:hover,
         .secondary-action:hover {
-          transform: translateY(-1px);
+          transform: translateY(-2px);
         }
 
         .primary-action:hover {
@@ -1705,7 +1705,7 @@ export default function ProductDetailClient() {
         }
 
         .product-summary-card {
-          border-radius: 18px;
+          border-radius: 24px;
           padding: 22px;
           background:
             linear-gradient(135deg, rgba(255,255,255,.14), ${ui.accentSoft});
@@ -1724,7 +1724,7 @@ export default function ProductDetailClient() {
           pointer-events: none;
           opacity: .7;
           background:
-            linear-gradient(135deg, ${ui.accentSoft}, transparent 42%),
+            radial-gradient(circle at 18% 0%, ${ui.accentSoft}, transparent 32%),
             linear-gradient(135deg, rgba(255,255,255,.14), transparent 58%);
         }
 
@@ -1885,7 +1885,7 @@ export default function ProductDetailClient() {
         .product-gallery-item img {
           width: 100%;
           height: 160px;
-          object-fit: contain;
+          object-fit: cover;
           display: block;
         }
 
@@ -1896,7 +1896,7 @@ export default function ProductDetailClient() {
         }
 
         .product-bottom-cta {
-          border-radius: 20px;
+          border-radius: 26px;
           padding: clamp(24px, 4vw, 34px);
           background: ${ui.ctaBg};
           border: 1px solid ${ui.ctaBorder};
@@ -1942,7 +1942,7 @@ export default function ProductDetailClient() {
         }
 
         .product-bottom-cta a:hover {
-          transform: translateY(-1px);
+          transform: translateY(-2px);
           box-shadow: ${ui.accentGlowStrong};
         }
 
@@ -1957,7 +1957,7 @@ export default function ProductDetailClient() {
         .product-state-card {
           width: min(460px, 100%);
           padding: 28px;
-          border-radius: 18px;
+          border-radius: 24px;
           background: ${ui.cardBg};
           border: 1px solid ${ui.cardBorder};
           box-shadow: ${ui.buttonShadow};
@@ -2050,13 +2050,7 @@ export default function ProductDetailClient() {
       <main className="product-detail-page" data-theme={dark ? 'dark' : 'light'}>
         <section className="product-hero">
           <div className="product-hero-bg">
-            <Image
-              src={heroImage}
-              alt=""
-              fill
-              priority
-              sizes="100vw"
-            />
+            <img src={heroImage} alt="" />
             <div className="product-hero-overlay" />
           </div>
 

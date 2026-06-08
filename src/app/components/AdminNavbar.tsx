@@ -35,16 +35,6 @@ const MENU_SECTIONS = [
         ),
       },
       {
-        href: '/admin/pages',
-        label: 'Pages',
-        icon: (
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
-            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-            <polyline points="14 2 14 8 20 8" />
-          </svg>
-        ),
-      },
-      {
         href: '/admin/posts',
         label: 'Blog',
         addHref: '/admin/posts/new',
@@ -57,33 +47,21 @@ const MENU_SECTIONS = [
         children: [
           { href: '/admin/posts', label: 'Tous les articles', exact: true },
           { href: '/admin/posts/new', label: 'Nouvel article' },
-          { href: '/admin/categories', label: 'Catégories blog' },
-          { href: '/admin/tags', label: 'Tags' },
         ],
       },
       {
         href: '/admin/references',
         label: 'Références',
+        addHref: '/admin/references/new',
         icon: (
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
             <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" />
             <path d="M4 4.5A2.5 2.5 0 0 1 6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5z" />
           </svg>
         ),
-      },
-      {
-        href: '/admin/projects',
-        label: 'Portfolio',
-        addHref: '/admin/projects/new',
-        icon: (
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
-            <rect x="2" y="7" width="20" height="14" rx="2" />
-            <path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2" />
-          </svg>
-        ),
         children: [
-          { href: '/admin/projects', label: 'Tous les projets', exact: true },
-          { href: '/admin/projects/new', label: 'Nouveau projet' },
+          { href: '/admin/references', label: 'Toutes les références', exact: true },
+          { href: '/admin/references/new', label: 'Nouvelle référence' },
         ],
       },
     ],
@@ -106,32 +84,9 @@ const MENU_SECTIONS = [
           { href: '/admin/products', label: 'Tous les produits', exact: true },
           { href: '/admin/products/new', label: 'Nouveau produit' },
           { href: '/admin/product-categories', label: 'Catégories produits' },
-          { href: '/admin/produits', label: 'Produits FR' },
+          { href: '/admin/product-categories/new', label: 'Nouvelle catégorie' },
           { href: '/produits', label: 'Catalogue public' },
         ],
-      },
-      {
-        href: '/admin/product-categories',
-        label: 'Catégories produits',
-        icon: (
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
-            <path d="M4 4h7v7H4z" />
-            <path d="M13 4h7v7h-7z" />
-            <path d="M4 13h7v7H4z" />
-            <path d="M13 13h7v7h-7z" />
-          </svg>
-        ),
-      },
-      {
-        href: '/admin/produits',
-        label: 'Produits FR',
-        icon: (
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
-            <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" />
-            <path d="M3.27 6.96 12 12.01l8.73-5.05" />
-            <path d="M12 22.08V12" />
-          </svg>
-        ),
       },
     ],
   },
@@ -153,6 +108,7 @@ const MENU_SECTIONS = [
           { href: '/admin/crm/contacts', label: 'Contacts CRM' },
           { href: '/admin/crm/opportunities', label: 'Opportunités' },
           { href: '/admin/crm/tasks', label: 'Tâches & relances' },
+          { href: '/admin/crm/campaigns', label: 'Campagnes CRM' },
         ],
       },
     ],
@@ -172,11 +128,13 @@ const MENU_SECTIONS = [
         children: [
           { href: '/admin/email-marketing', label: 'Tableau marketing', exact: true },
           { href: '/admin/email-marketing/automations', label: 'Automations', exact: true },
+          { href: '/admin/email-marketing/welcome-email', label: 'Email de bienvenue' },
+          { href: '/admin/email-marketing/prospect-email', label: 'Email prospect' },
         ],
       },
       {
-        href: '/admin/contact-comm',
-        label: 'Contact communication',
+        href: '/admin/contact-commercial',
+        label: 'Contacts commerciaux',
         icon: (
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
             <path d="M21 15a2 2 0 0 1-2 2H8l-5 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
@@ -200,7 +158,6 @@ const MENU_SECTIONS = [
       {
         href: '/admin/users',
         label: 'Utilisateurs',
-        addHref: '/admin/users/new',
         icon: (
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
             <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
@@ -211,7 +168,6 @@ const MENU_SECTIONS = [
         ),
         children: [
           { href: '/admin/users', label: 'Tous les utilisateurs', exact: true },
-          { href: '/admin/users/new', label: 'Nouvel utilisateur' },
           { href: '/admin/roles', label: 'Rôles' },
           { href: '/admin/permissions', label: 'Permissions' },
         ],
@@ -238,20 +194,6 @@ const MENU_SECTIONS = [
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
             <rect x="3" y="11" width="18" height="10" rx="2" />
             <path d="M7 11V7a5 5 0 0 1 10 0v4" />
-          </svg>
-        ),
-      },
-    ],
-  },
-  {
-    title: 'Système',
-    items: [
-      {
-        href: '/admin/audit',
-        label: 'Audit',
-        icon: (
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
-            <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />
           </svg>
         ),
       },
@@ -401,14 +343,11 @@ function NavItem({
       ch.exact ? pathname === ch.href : pathname.startsWith(ch.href)
     )
 
-  const [open, setOpen] = useState(childActive || isActive)
+  const [manualOpen, setManualOpen] = useState(false)
   const [hovered, setHovered] = useState(false)
 
-  useEffect(() => {
-    if (childActive || isActive) setOpen(true)
-  }, [pathname, childActive, isActive])
-
   const highlighted = isActive || childActive
+  const open = manualOpen || highlighted
 
   const dynamicMessagesBadge =
     tab.href === '/admin/messages'
@@ -433,7 +372,7 @@ function NavItem({
           href={tab.href}
           onClick={() => {
             setMobileOpen(false)
-            if (hasChildren) setOpen((v) => !v)
+            if (hasChildren) setManualOpen((v) => !v)
           }}
           className="adm-link"
           style={{
@@ -714,8 +653,12 @@ export default function AdminSidebar() {
   }, [setMobileOpen])
 
   useEffect(() => {
-    setMobileOpen(false)
-    setDdOpen(false)
+    const id = window.setTimeout(() => {
+      setMobileOpen(false)
+      setDdOpen(false)
+    }, 0)
+
+    return () => window.clearTimeout(id)
   }, [pathname, setMobileOpen])
 
   useEffect(() => {
@@ -1349,52 +1292,6 @@ export default function AdminSidebar() {
                 animation: 'adm-drop-in .18s cubic-bezier(.22,1,.36,1)',
               }}
             >
-              {[
-                {
-                  href: '/admin/profile',
-                  label: 'Mon profil',
-                  icon: (
-                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                      <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
-                      <circle cx="12" cy="7" r="4" />
-                    </svg>
-                  ),
-                },
-                {
-                  href: '/admin/settings',
-                  label: 'Paramètres',
-                  icon: (
-                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                      <circle cx="12" cy="12" r="3" />
-                      <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33h.01a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51h.01a1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82v.01a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
-                    </svg>
-                  ),
-                },
-              ].map((item) => (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  className="adm-dd-item"
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 10,
-                    padding: '9px 10px',
-                    borderRadius: 10,
-                    textDecoration: 'none',
-                    color: c.text,
-                    fontSize: 13,
-                  }}
-                >
-                  <span style={{ color: c.textMute, display: 'flex' }}>
-                    {item.icon}
-                  </span>
-                  {item.label}
-                </Link>
-              ))}
-
-              <div style={{ height: 1, margin: '5px 4px', background: c.ddBorder }} />
-
               <button
                 onClick={() => signOut({ callbackUrl: '/login' })}
                 className="adm-dd-item"
