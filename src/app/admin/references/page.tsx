@@ -5,17 +5,10 @@ import Link from 'next/link'
 import Image from 'next/image'
 import { useTheme } from '@/app/context/ThemeContext'
 import api from '@/app/lib/axios'
-import dynamic from 'next/dynamic'
-
-// Chargement dynamique de l'éditeur riche pour éviter les erreurs SSR
-const RichTextEditor = dynamic(
-  () => import('@/app/components/rtextrich/RichTextEditor'),
-  { ssr: false, loading: () => <div style={{ height: 200, background: '#1a1a1a', borderRadius: 12 }} /> }
-)
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 type ReferenceStatus = 'DRAFT' | 'PUBLISHED' | 'ARCHIVED'
-type SortField = 'title' | 'client' | 'country' | 'date' | 'category' | 'createdAt'
+type SortField = 'title' | 'client' | 'country' | 'date' | 'category' | 'status' | 'createdAt'
 type SortDir = 'asc' | 'desc'
 
 interface Reference {
@@ -85,6 +78,7 @@ const SORT_LABELS: Record<SortField, string> = {
   country: 'Pays',
   date: 'Année',
   category: 'Catégorie',
+  status: 'Statut',
   createdAt: 'Date création',
 }
 
@@ -345,7 +339,7 @@ export default function ReferencesPage() {
       setReferences(res.data.data)
       setPagination(res.data.pagination)
       setSelected(new Set())
-    } catch (e) { showToast('Erreur lors du chargement', 'err') }
+    } catch { showToast('Erreur lors du chargement', 'err') }
     finally { setLoading(false) }
   }, [page, limit, search, status, category, sortBy, sortDir])
 
@@ -366,14 +360,19 @@ export default function ReferencesPage() {
       : <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke={ORANGE} strokeWidth="2.5"><line x1="12" y1="5" x2="12" y2="19" /><polyline points="19 12 12 19 5 12" /></svg>
   }
 
-  const toggleSelect = (id: string) => setSelected(s => { const n = new Set(s); n.has(id) ? n.delete(id) : n.add(id); return n })
+  const toggleSelect = (id: string) => setSelected(s => {
+    const n = new Set(s)
+    if (n.has(id)) n.delete(id)
+    else n.add(id)
+    return n
+  })
   const toggleAll = () => setSelected(s => s.size === references.length ? new Set() : new Set(references.map(r => r.id)))
   const allSelected = references.length > 0 && selected.size === references.length
   const someSelected = selected.size > 0
 
   async function performDelete(ids: string[]) {
     try { await Promise.all(ids.map(id => api.delete(`/api/references/${id}`))); showToast(ids.length > 1 ? `${ids.length} référence(s) supprimée(s)` : 'Référence supprimée'); setDetailReference(null); fetchReferences() }
-    catch (e) { showToast('Erreur lors de la suppression', 'err') }
+    catch { showToast('Erreur lors de la suppression', 'err') }
   }
 
   function handleDelete(ref: Reference) {

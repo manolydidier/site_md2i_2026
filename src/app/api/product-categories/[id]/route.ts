@@ -8,13 +8,23 @@ const updateSchema = z.object({
   description: z.string().optional().nullable(),
 })
 
-type Params = { params: { id: string } }
+type Params = { params: Promise<{ id: string }> }
+
+function isPrismaNotFound(error: unknown) {
+  return (
+    typeof error === 'object' &&
+    error !== null &&
+    'code' in error &&
+    (error as { code?: unknown }).code === 'P2025'
+  )
+}
 
 // ── GET /api/product-categories/:id ─────────────────────────────────────────
 export async function GET(_req: NextRequest, { params }: Params) {
   try {
+    const { id } = await params
     const category = await prisma.productCategory.findUnique({
-      where: { id: params.id },
+      where: { id },
       include: {
         _count: { select: { products: true } },
         products: {
@@ -40,6 +50,7 @@ export async function GET(_req: NextRequest, { params }: Params) {
 // ── PATCH /api/product-categories/:id ───────────────────────────────────────
 export async function PATCH(req: NextRequest, { params }: Params) {
   try {
+    const { id } = await params
     const body   = await req.json()
     const parsed = updateSchema.safeParse(body)
 
@@ -53,7 +64,7 @@ export async function PATCH(req: NextRequest, { params }: Params) {
     // Check slug uniqueness if being changed
     if (parsed.data.slug) {
       const conflict = await prisma.productCategory.findFirst({
-        where: { slug: parsed.data.slug, NOT: { id: params.id } },
+        where: { slug: parsed.data.slug, NOT: { id } },
       })
       if (conflict) {
         return NextResponse.json({ error: 'Slug already in use' }, { status: 409 })
@@ -61,13 +72,13 @@ export async function PATCH(req: NextRequest, { params }: Params) {
     }
 
     const category = await prisma.productCategory.update({
-      where: { id: params.id },
+      where: { id },
       data:  parsed.data,
     })
 
     return NextResponse.json({ data: category })
-  } catch (error: any) {
-    if (error?.code === 'P2025') {
+  } catch (error: unknown) {
+    if (isPrismaNotFound(error)) {
       return NextResponse.json({ error: 'Category not found' }, { status: 404 })
     }
     console.error('[PATCH /api/product-categories/:id]', error)
@@ -78,17 +89,18 @@ export async function PATCH(req: NextRequest, { params }: Params) {
 // ── DELETE /api/product-categories/:id ──────────────────────────────────────
 export async function DELETE(_req: NextRequest, { params }: Params) {
   try {
+    const { id } = await params
     // Reassign linked products to null before deleting
     await prisma.product.updateMany({
-      where: { categoryId: params.id },
+      where: { categoryId: id },
       data:  { categoryId: null },
     })
 
-    await prisma.productCategory.delete({ where: { id: params.id } })
+    await prisma.productCategory.delete({ where: { id } })
 
     return new NextResponse(null, { status: 204 })
-  } catch (error: any) {
-    if (error?.code === 'P2025') {
+  } catch (error: unknown) {
+    if (isPrismaNotFound(error)) {
       return NextResponse.json({ error: 'Category not found' }, { status: 404 })
     }
     console.error('[DELETE /api/product-categories/:id]', error)

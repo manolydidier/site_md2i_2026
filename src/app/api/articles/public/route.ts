@@ -1,6 +1,6 @@
 import { NextRequest } from 'next/server'
 import { prisma } from '@/app/lib/prisma'
-import { PostStatus } from '@/generated/prisma/enums'
+import { PostStatus, Prisma } from '@/generated/prisma/client'
 
 async function getPublicArticles(req: NextRequest) {
   const { searchParams } = new URL(req.url)
@@ -12,8 +12,8 @@ async function getPublicArticles(req: NextRequest) {
   const category = (searchParams.get('category') ?? '').trim()
   const sort = (searchParams.get('sort') ?? 'date-desc').trim()
 
-  const where: Parameters<typeof prisma.post.findMany>[0]['where'] = {
-    status: 'PUBLISHED',
+  const where: Prisma.PostWhereInput = {
+    status: PostStatus.PUBLISHED,
     ...(search && {
       OR: [
         { title: { contains: search, mode: 'insensitive' } },
@@ -25,7 +25,7 @@ async function getPublicArticles(req: NextRequest) {
     }),
   }
 
-  const orderBy: Parameters<typeof prisma.post.findMany>[0]['orderBy'] =
+  const orderBy: Prisma.PostOrderByWithRelationInput =
     sort === 'date-asc'
       ? { createdAt: 'asc' }
       : sort === 'title-asc'
@@ -92,7 +92,7 @@ async function getBackofficeArticles(req: NextRequest) {
   const sortBy = (searchParams.get('sortBy') ?? 'createdAt').trim()
   const sortDir = (searchParams.get('sortDir') ?? 'desc').trim() === 'asc' ? 'asc' : 'desc'
 
-  const where: Parameters<typeof prisma.post.findMany>[0]['where'] = {
+  const where: Prisma.PostWhereInput = {
     ...(status !== 'all' && {
       status: status as PostStatus,
     }),
@@ -111,7 +111,7 @@ async function getBackofficeArticles(req: NextRequest) {
     }),
   }
 
-  const orderBy: Parameters<typeof prisma.post.findMany>[0]['orderBy'] =
+  const orderBy: Prisma.PostOrderByWithRelationInput =
     sortBy === 'title'
       ? { title: sortDir }
       : sortBy === 'status'

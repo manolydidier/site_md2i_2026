@@ -1,6 +1,5 @@
-import { PrismaClient } from '@prisma/client'
-
-const prisma = new PrismaClient()
+import { prisma } from '../src/app/lib/prisma'
+import { ReferenceStatus } from '../src/generated/prisma/client'
 
 // ─── Références MD2I à créer ─────────────────────────────────────────────────
 const REFERENCES = [
@@ -25,7 +24,7 @@ const REFERENCES = [
     team: "12 consultants",
     duration: "18 mois",
     budget: "2.4M€",
-    status: "PUBLISHED",
+    status: ReferenceStatus.PUBLISHED,
     publishedAt: new Date(),
   },
   // France - Projet 2
@@ -49,7 +48,7 @@ const REFERENCES = [
     team: "8 data scientists",
     duration: "24 mois",
     budget: "3.1M€",
-    status: "PUBLISHED",
+    status: ReferenceStatus.PUBLISHED,
     publishedAt: new Date(),
   },
   // France - Projet 3
@@ -73,7 +72,7 @@ const REFERENCES = [
     team: "6 ingénieurs",
     duration: "14 mois",
     budget: "1.8M€",
-    status: "PUBLISHED",
+    status: ReferenceStatus.PUBLISHED,
     publishedAt: new Date(),
   },
   // Allemagne - Projet 1
@@ -97,7 +96,7 @@ const REFERENCES = [
     team: "15 experts",
     duration: "20 mois",
     budget: "4.2M€",
-    status: "PUBLISHED",
+    status: ReferenceStatus.PUBLISHED,
     publishedAt: new Date(),
   },
   // Allemagne - Projet 2
@@ -121,7 +120,7 @@ const REFERENCES = [
     team: "10 ingénieurs sécurité",
     duration: "16 mois",
     budget: "2.9M€",
-    status: "PUBLISHED",
+    status: ReferenceStatus.PUBLISHED,
     publishedAt: new Date(),
   },
   // États-Unis - Projet 1
@@ -145,7 +144,7 @@ const REFERENCES = [
     team: "14 chercheurs",
     duration: "22 mois",
     budget: "5.5M$",
-    status: "PUBLISHED",
+    status: ReferenceStatus.PUBLISHED,
     publishedAt: new Date(),
   },
   // États-Unis - Projet 2
@@ -169,7 +168,7 @@ const REFERENCES = [
     team: "9 quants",
     duration: "15 mois",
     budget: "3.8M$",
-    status: "PUBLISHED",
+    status: ReferenceStatus.PUBLISHED,
     publishedAt: new Date(),
   },
   // États-Unis - Projet 3
@@ -193,7 +192,7 @@ const REFERENCES = [
     team: "20 DevOps",
     duration: "18 mois",
     budget: "6.2M$",
-    status: "PUBLISHED",
+    status: ReferenceStatus.PUBLISHED,
     publishedAt: new Date(),
   },
   // Espagne
@@ -217,7 +216,7 @@ const REFERENCES = [
     team: "25 experts",
     duration: "30 mois",
     budget: "7.5M€",
-    status: "PUBLISHED",
+    status: ReferenceStatus.PUBLISHED,
     publishedAt: new Date(),
   },
   // Italie
@@ -241,7 +240,7 @@ const REFERENCES = [
     team: "8 développeurs",
     duration: "12 mois",
     budget: "1.5M€",
-    status: "PUBLISHED",
+    status: ReferenceStatus.PUBLISHED,
     publishedAt: new Date(),
   },
   // Royaume-Uni
@@ -265,7 +264,7 @@ const REFERENCES = [
     team: "18 consultants",
     duration: "14 mois",
     budget: "4.2M£",
-    status: "PUBLISHED",
+    status: ReferenceStatus.PUBLISHED,
     publishedAt: new Date(),
   },
   // Japon
@@ -289,7 +288,7 @@ const REFERENCES = [
     team: "12 roboticiens",
     duration: "20 mois",
     budget: "5.8M$",
-    status: "PUBLISHED",
+    status: ReferenceStatus.PUBLISHED,
     publishedAt: new Date(),
   },
   // Chine
@@ -313,7 +312,7 @@ const REFERENCES = [
     team: "16 data scientists",
     duration: "24 mois",
     budget: "9.5M$",
-    status: "PUBLISHED",
+    status: ReferenceStatus.PUBLISHED,
     publishedAt: new Date(),
   },
   // Brésil
@@ -337,7 +336,7 @@ const REFERENCES = [
     team: "22 développeurs",
     duration: "16 mois",
     budget: "3.2M$",
-    status: "PUBLISHED",
+    status: ReferenceStatus.PUBLISHED,
     publishedAt: new Date(),
   },
   // Afrique du Sud - Projet 1
@@ -361,7 +360,7 @@ const REFERENCES = [
     team: "11 ingénieurs",
     duration: "28 mois",
     budget: "6.5M$",
-    status: "PUBLISHED",
+    status: ReferenceStatus.PUBLISHED,
     publishedAt: new Date(),
   },
   // Afrique du Sud - Projet 2
@@ -385,7 +384,7 @@ const REFERENCES = [
     team: "14 experts fintech",
     duration: "15 mois",
     budget: "2.8M$",
-    status: "PUBLISHED",
+    status: ReferenceStatus.PUBLISHED,
     publishedAt: new Date(),
   },
 ]

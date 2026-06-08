@@ -219,7 +219,7 @@ export type ContactFormData = ContactInput;
 
 export interface GroupFormData {
   name: string;
-  description?: string;
+  description?: string | null;
 }
 
 export interface CampaignFormData {
@@ -228,12 +228,12 @@ export interface CampaignFormData {
   htmlContent: string;
   fromName: string;
   fromEmail: string;
-  replyTo?: string;
+  replyTo?: string | null;
 
   /**
    * Ancien champ conservé pour compatibilité.
    */
-  groupId?: string;
+  groupId?: string | null;
 
   /**
    * Nouveau champ pour sélectionner plusieurs groupes.

@@ -40,14 +40,14 @@ function labelForPath(
   const routeLabels: Record<string, string> = {
     '/services': t('navbar.links.services', { defaultValue: 'Services' }),
     '/reference': t('navbar.links.references', {
-      defaultValue: 'R\u00e9f\u00e9rences',
+      defaultValue: 'Références',
     }),
     '/produits': t('navbar.links.products', { defaultValue: 'Produits' }),
     '/articles': t('navbar.search.categories.articles', {
       defaultValue: 'Articles',
     }),
     '/a-propos': t('navbar.links.about', {
-      defaultValue: '\u00c0 propos',
+      defaultValue: 'À propos',
     }),
     '/contact': t('navbar.links.contact', { defaultValue: 'Contact' }),
     '/contact-commercial': t('navbar.links.contactCommercial', {
@@ -64,7 +64,7 @@ function buildBreadcrumbs(
 ): BreadcrumbItem[] {
   const currentPath = normalizePathname(pathname)
 
-  if (ROUTES_WITH_LOCAL_BREADCRUMBS.some(pattern => pattern.test(currentPath))) {
+  if (ROUTES_WITH_LOCAL_BREADCRUMBS.some((pattern) => pattern.test(currentPath))) {
     return []
   }
 
@@ -80,8 +80,10 @@ function buildBreadcrumbs(
   ]
 
   let href = ''
+
   segments.forEach((segment, index) => {
     href += `/${segment}`
+
     breadcrumbs.push({
       href,
       label: labelForPath(href, segment, t),
@@ -119,6 +121,7 @@ export default function PublicBreadcrumbs() {
                   /
                 </span>
               )}
+
               {item.current ? (
                 <span className="public-breadcrumbs__current" aria-current="page">
                   {item.label}
@@ -136,33 +139,39 @@ export default function PublicBreadcrumbs() {
       <style jsx global>{`
         .public-breadcrumbs {
           position: absolute;
-          top: 86px;
+          top: 82px;
           left: 0;
           right: 0;
-          z-index: 105;
+          z-index: 80;
           pointer-events: none;
-          padding: 0 clamp(14px, 3vw, 32px);
+          padding: 0 clamp(16px, 3vw, 32px);
         }
 
         .public-breadcrumbs__list {
           width: min(1180px, 100%);
-          min-height: 42px;
+          min-height: 30px;
           margin: 0 auto;
-          padding: 0 12px;
+          padding: 0;
           display: flex;
           align-items: center;
-          gap: 8px;
+          gap: 6px;
           list-style: none;
           overflow-x: auto;
           overscroll-behavior-x: contain;
           scrollbar-width: none;
           pointer-events: auto;
-          border-radius: 14px;
-          background: rgba(255, 255, 255, 0.78);
-          border: 1px solid rgba(15, 23, 42, 0.08);
-          box-shadow: 0 10px 28px rgba(15, 23, 42, 0.07);
-          backdrop-filter: blur(12px);
-          -webkit-backdrop-filter: blur(12px);
+          background: transparent;
+          border: none;
+          box-shadow: none;
+          backdrop-filter: none;
+          -webkit-backdrop-filter: none;
+          opacity: 0.78;
+          transition: opacity 180ms ease;
+        }
+
+        .public-breadcrumbs:hover .public-breadcrumbs__list,
+        .public-breadcrumbs:focus-within .public-breadcrumbs__list {
+          opacity: 1;
         }
 
         .public-breadcrumbs__list::-webkit-scrollbar {
@@ -172,11 +181,11 @@ export default function PublicBreadcrumbs() {
         .public-breadcrumbs__item {
           display: inline-flex;
           align-items: center;
-          gap: 8px;
+          gap: 6px;
           flex: 0 0 auto;
-          color: #64748b;
-          font-size: 0.82rem;
-          font-weight: 700;
+          color: rgba(100, 116, 139, 0.8);
+          font-size: 0.76rem;
+          font-weight: 650;
           line-height: 1;
           white-space: nowrap;
         }
@@ -185,89 +194,106 @@ export default function PublicBreadcrumbs() {
         .public-breadcrumbs__current {
           display: inline-flex;
           align-items: center;
-          min-height: 34px;
+          min-height: 26px;
           border-radius: 999px;
           text-decoration: none;
           transition:
             color 180ms ease,
             background 180ms ease,
-            box-shadow 180ms ease;
+            opacity 180ms ease;
         }
 
         .public-breadcrumbs__link {
-          padding: 0 8px;
-          color: #475569;
+          padding: 0 5px;
+          color: rgba(71, 85, 105, 0.78);
         }
 
         .public-breadcrumbs__link:hover {
           color: #0f172a;
-          background: rgba(239, 159, 39, 0.14);
+          background: rgba(239, 159, 39, 0.1);
         }
 
         .public-breadcrumbs__link:focus-visible {
-          outline: 3px solid rgba(239, 159, 39, 0.42);
+          outline: 2px solid rgba(239, 159, 39, 0.35);
           outline-offset: 2px;
         }
 
         .public-breadcrumbs__current {
-          padding: 0 11px;
-          color: #0f172a;
-          background: rgba(15, 23, 42, 0.06);
+          max-width: 420px;
+          padding: 0 8px;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          color: rgba(15, 23, 42, 0.84);
+          background: rgba(15, 23, 42, 0.045);
+          font-weight: 750;
         }
 
         .public-breadcrumbs__separator {
-          color: rgba(100, 116, 139, 0.7);
-          font-weight: 800;
-        }
-
-        .public-breadcrumbs[data-theme='dark'] .public-breadcrumbs__list {
-          border-color: rgba(255, 255, 255, 0.12);
-          background: rgba(15, 23, 42, 0.76);
-          box-shadow: 0 12px 32px rgba(0, 0, 0, 0.26);
+          color: rgba(100, 116, 139, 0.42);
+          font-weight: 700;
         }
 
         .public-breadcrumbs[data-theme='dark'] .public-breadcrumbs__item,
         .public-breadcrumbs[data-theme='dark'] .public-breadcrumbs__separator {
-          color: rgba(232, 230, 240, 0.62);
+          color: rgba(232, 230, 240, 0.48);
         }
 
         .public-breadcrumbs[data-theme='dark'] .public-breadcrumbs__link {
-          color: rgba(232, 230, 240, 0.78);
+          color: rgba(232, 230, 240, 0.64);
         }
 
         .public-breadcrumbs[data-theme='dark'] .public-breadcrumbs__link:hover {
           color: #ffffff;
-          background: rgba(239, 159, 39, 0.2);
+          background: rgba(239, 159, 39, 0.16);
         }
 
         .public-breadcrumbs[data-theme='dark'] .public-breadcrumbs__current {
-          color: #ffffff;
-          background: rgba(255, 255, 255, 0.1);
+          color: rgba(255, 255, 255, 0.82);
+          background: rgba(255, 255, 255, 0.075);
         }
 
         @media (max-width: 768px) {
           .public-breadcrumbs {
-            top: 76px;
-            padding-inline: 12px;
+            top: 72px;
+            padding-inline: 14px;
           }
 
           .public-breadcrumbs__list {
-            min-height: 38px;
-            padding-inline: 10px;
-            border-radius: 14px;
+            min-height: 28px;
+            opacity: 0.72;
           }
 
           .public-breadcrumbs__item {
-            font-size: 0.76rem;
+            font-size: 0.72rem;
+            gap: 5px;
           }
 
           .public-breadcrumbs__link,
           .public-breadcrumbs__current {
-            min-height: 30px;
+            min-height: 24px;
+          }
+
+          .public-breadcrumbs__current {
+            max-width: 240px;
+          }
+        }
+
+        @media (max-width: 480px) {
+          .public-breadcrumbs {
+            top: 68px;
+          }
+
+          .public-breadcrumbs__list {
+            opacity: 0.68;
+          }
+
+          .public-breadcrumbs__current {
+            max-width: 180px;
           }
         }
 
         @media (prefers-reduced-motion: reduce) {
+          .public-breadcrumbs__list,
           .public-breadcrumbs__link,
           .public-breadcrumbs__current {
             transition: none;

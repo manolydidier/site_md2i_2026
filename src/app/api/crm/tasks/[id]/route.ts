@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 
 import { prisma } from "@/app/lib/prisma";
 import { getCrmOwnerUserId } from "@/app/lib/crm-owner";
+import type { CrmTaskPriority, CrmTaskStatus } from "@/generated/prisma/client";
 
 const ALLOWED_STATUS = ["TODO", "IN_PROGRESS", "DONE", "CANCELLED"] as const;
 const ALLOWED_PRIORITY = ["LOW", "MEDIUM", "HIGH", "URGENT"] as const;
@@ -16,8 +17,8 @@ export async function PATCH(
     const body = await request.json();
 
     const data: {
-      status?: string;
-      priority?: string;
+      status?: CrmTaskStatus;
+      priority?: CrmTaskPriority;
       dueDate?: Date | null;
     } = {};
 
@@ -29,7 +30,7 @@ export async function PATCH(
         );
       }
 
-      data.status = body.status;
+      data.status = body.status as CrmTaskStatus;
     }
 
     if (body.priority) {
@@ -40,7 +41,7 @@ export async function PATCH(
         );
       }
 
-      data.priority = body.priority;
+      data.priority = body.priority as CrmTaskPriority;
     }
 
     if ("dueDate" in body) {

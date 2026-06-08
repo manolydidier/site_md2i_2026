@@ -3,10 +3,12 @@ import { NextRequest } from 'next/server'
 import { auth } from '@/auth'
 import { prisma } from '@/app/lib/prisma'
 
+type RoleParams = { params: Promise<{ id: string }> }
+
 // ── GET /api/roles/[id] — détail + utilisateurs assignés ─────────────────────
-export async function GET(_: NextRequest, { params }: { params: { id: string } }) {
+export async function GET(_: NextRequest, { params }: RoleParams) {
   const session = await auth()
-   const { id } = await params
+  const { id } = await params
   if (!session) return Response.json({ error: 'Non authentifié' }, { status: 401 })
 
   const role = await prisma.role.findFirst({
@@ -47,7 +49,7 @@ export async function GET(_: NextRequest, { params }: { params: { id: string } }
 }
 
 // ── PATCH /api/roles/[id] — modifier ─────────────────────────────────────────
-export async function PATCH(req: NextRequest, { params }: { params: { id: string } }) {
+export async function PATCH(req: NextRequest, { params }: RoleParams) {
   const session = await auth()
   const { id } = await params
   if (!session) return Response.json({ error: 'Non authentifié' }, { status: 401 })
@@ -61,7 +63,7 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
   const conflict = await prisma.role.findFirst({
     where: {
       AND: [
-        { id: { not: params.id } },
+        { id: { not: id } },
         { OR: [{ name }, { code }] },
       ],
     },
@@ -69,7 +71,7 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
   if (conflict) return Response.json({ error: 'Nom ou code déjà utilisé' }, { status: 400 })
 
   const role = await prisma.role.update({
-    where: { id: params.id },
+    where: { id },
     data: {
       ...(name        && { name }),
       ...(code        && { code: code.toUpperCase() }),
@@ -82,7 +84,7 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
 }
 
 // ── DELETE /api/roles/[id] — supprimer ────────────────────────────────────────
-export async function DELETE(_: NextRequest, { params }: { params: { id: string } }) {
+export async function DELETE(_: NextRequest, { params }: RoleParams) {
   const session = await auth()
   const { id } = await params
   if (!session) return Response.json({ error: 'Non authentifié' }, { status: 401 })

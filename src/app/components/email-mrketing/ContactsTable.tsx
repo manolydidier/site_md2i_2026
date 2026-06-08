@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import {
   ChevronLeft,
   ChevronRight,
@@ -12,6 +12,7 @@ import {
   Plus,
   Search,
   Trash2,
+  Upload,
   UserRound,
   Users,
   X,
@@ -112,6 +113,8 @@ function getSourceLabel(value?: string | null) {
 }
 
 export function ContactsTable() {
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+
   const { groups } = useGroups();
   const { statuses, loading: statusesLoading } = useCrmStatuses();
 
@@ -121,6 +124,10 @@ export function ContactsTable() {
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [editingContact, setEditingContact] = useState<Contact | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
+  const [exporting, setExporting] = useState(false);
+  const [importing, setImporting] = useState(false);
+  const [actionMessage, setActionMessage] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
 
   const {
     contacts,
@@ -247,10 +254,148 @@ export function ContactsTable() {
       isActive: contact.isActive,
       unsubscribed: contact.unsubscribed,
     });
+
+    await refetch();
+  };
+
+  const buildExportUrl = (format: "csv" | "xlsx") => {
+    const params = new URLSearchParams();
+
+    params.set("format", format);
+
+    if (groupId) {
+      params.set("groupId", groupId);
+    }
+
+    if (crmStatusOptionId) {
+      params.set("crmStatusOptionId", crmStatusOptionId);
+    }
+
+    if (crmSource) {
+      params.set("crmSource", crmSource);
+    }
+
+    return `/api/contacts/export?${params.toString()}`;
+  };
+
+  const handleExport = async (format: "csv" | "xlsx") => {
+    try {
+      setExporting(true);
+      setActionError(null);
+      setActionMessage(null);
+
+      const response = await fetch(buildExportUrl(format), {
+        method: "GET",
+        credentials: "include",
+      });
+
+      if (!response.ok) {
+        const data = await response.json().catch(() => null);
+        throw new Error(data?.error || "Export impossible.");
+      }
+
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+
+      const today = new Date().toISOString().split("T")[0];
+      const extension = format === "xlsx" ? "xlsx" : "csv";
+
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `contacts-${today}.${extension}`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+
+      window.URL.revokeObjectURL(url);
+
+      setActionMessage(
+        format === "xlsx"
+          ? "Export Excel téléchargé avec succès."
+          : "Export CSV téléchargé avec succès."
+      );
+    } catch (err) {
+      console.error(err);
+      setActionError(
+        err instanceof Error ? err.message : "Erreur pendant l’export."
+      );
+    } finally {
+      setExporting(false);
+    }
+  };
+
+  const openImportPicker = () => {
+    setActionError(null);
+    setActionMessage(null);
+    fileInputRef.current?.click();
+  };
+
+  const handleImportFile = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+
+    event.target.value = "";
+
+    if (!file) return;
+
+    try {
+      setImporting(true);
+      setActionError(null);
+      setActionMessage(null);
+
+      const formData = new FormData();
+      formData.append("file", file);
+
+      if (groupId) {
+        formData.append("groupId", groupId);
+      }
+
+      const response = await fetch("/api/contacts/import", {
+        method: "POST",
+        body: formData,
+        credentials: "include",
+      });
+
+      const data = await response.json().catch(() => null);
+
+      if (!response.ok) {
+        throw new Error(data?.error || "Import impossible.");
+      }
+
+      await refetch();
+
+      const imported =
+        data?.created ??
+        data?.imported ??
+        data?.success ??
+        data?.inserted ??
+        0;
+
+      const updated = data?.updated ?? 0;
+      const skipped = data?.skipped ?? data?.duplicates ?? 0;
+
+      setActionMessage(
+        `Import terminé. Ajoutés : ${imported}. Mis à jour : ${updated}. Ignorés : ${skipped}.`
+      );
+    } catch (err) {
+      console.error(err);
+      setActionError(
+        err instanceof Error ? err.message : "Erreur pendant l’import."
+      );
+    } finally {
+      setImporting(false);
+    }
   };
 
   return (
     <section className={styles.contactsTable}>
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept=".csv,.xlsx,.xls,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel"
+        onChange={handleImportFile}
+        style={{ display: "none" }}
+      />
+
       <header className={styles.contactsHead}>
         <div>
           <div className={styles.sectionLabel}>Contacts</div>
@@ -261,15 +406,42 @@ export function ContactsTable() {
         </div>
 
         <div className={styles.actions}>
+          <button
+            type="button"
+            onClick={openImportPicker}
+            disabled={importing}
+            className={`${styles.btn} ${styles.btnSecondary}`}
+          >
+            {importing ? <Loader2 size={15} /> : <Upload size={15} />}
+            {importing ? "Import..." : "Importer"}
+          </button>
+
           <div className={styles.exportWrap}>
-            <button type="button" className={`${styles.btn} ${styles.btnSecondary}`}>
-              <Download size={15} />
-              Exporter
+            <button
+              type="button"
+              disabled={exporting}
+              className={`${styles.btn} ${styles.btnSecondary}`}
+            >
+              {exporting ? <Loader2 size={15} /> : <Download size={15} />}
+              {exporting ? "Export..." : "Exporter"}
             </button>
 
             <div className={styles.exportMenu}>
-              <button type="button">CSV</button>
-              <button type="button">Excel</button>
+              <button
+                type="button"
+                disabled={exporting}
+                onClick={() => handleExport("csv")}
+              >
+                CSV
+              </button>
+
+              <button
+                type="button"
+                disabled={exporting}
+                onClick={() => handleExport("xlsx")}
+              >
+                Excel
+              </button>
             </div>
           </div>
 
@@ -319,6 +491,7 @@ export function ContactsTable() {
             <option value="">
               {statusesLoading ? "Chargement..." : "Tous les statuts"}
             </option>
+
             {activeStatuses.map((status) => (
               <option key={status.id} value={status.id}>
                 {status.label}
@@ -334,6 +507,7 @@ export function ContactsTable() {
             onChange={(event) => setCrmSource(event.target.value)}
           >
             <option value="">Toutes les sources</option>
+
             {CRM_SOURCES.map((source) => (
               <option key={source.value} value={source.value}>
                 {source.label}
@@ -361,6 +535,18 @@ export function ContactsTable() {
             <Trash2 size={15} />
             Supprimer
           </button>
+        </div>
+      )}
+
+      {actionMessage && (
+        <div className={styles.selectionBar}>
+          <span>{actionMessage}</span>
+        </div>
+      )}
+
+      {actionError && (
+        <div className={`${styles.selectionBar} ${styles.errorBar}`}>
+          <span>{actionError}</span>
         </div>
       )}
 
@@ -475,7 +661,11 @@ export function ContactsTable() {
 
                         <div className={styles.quickStatusWrap}>
                           <select
-                            value={contact.crmStatusOptionId || contact.crmStatusOption?.id || ""}
+                            value={
+                              contact.crmStatusOptionId ||
+                              contact.crmStatusOption?.id ||
+                              ""
+                            }
                             className={styles.quickStatusSelect}
                             onChange={(event) =>
                               handleQuickStatusChange(contact, event.target.value)
@@ -483,6 +673,7 @@ export function ContactsTable() {
                             disabled={statusesLoading}
                           >
                             <option value="">Changer</option>
+
                             {activeStatuses.map((status) => (
                               <option key={status.id} value={status.id}>
                                 {status.label}

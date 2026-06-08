@@ -1,4 +1,5 @@
 // components/email-marketing/CampaignForm.tsx
+/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -8,6 +9,7 @@ import "grapesjs/dist/css/grapes.min.css";
 import {
   useForm,
   type FieldErrors,
+  type Resolver,
   type UseFormRegister,
   type UseFormSetValue,
 } from "react-hook-form";
@@ -415,7 +417,7 @@ export function CampaignForm({
     clearErrors,
     formState: { errors },
   } = useForm<CampaignFormData>({
-    resolver: zodResolver(campaignSchema),
+    resolver: zodResolver(campaignSchema) as Resolver<CampaignFormData>,
     mode: "onChange",
     reValidateMode: "onChange",
     defaultValues: {

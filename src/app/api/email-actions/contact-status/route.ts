@@ -136,7 +136,7 @@ export async function GET(req: NextRequest) {
     },
     data: {
       crmStatus: status,
-      crmSource: contact.crmStatus === status ? undefined : "EMAIL",
+      crmSource: contact.crmStatus === status ? undefined : "EMAIL_CAMPAIGN",
     },
     select: {
       id: true,

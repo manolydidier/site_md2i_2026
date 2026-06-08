@@ -1,4 +1,5 @@
 import prisma from '@/app/lib/prisma'
+import type { Prisma } from '@/generated/prisma/client'
 
 export type ServiceSort = 'date-desc' | 'date-asc' | 'title-asc' | 'title-desc'
 
@@ -9,17 +10,17 @@ export function normalizeServiceSort(value?: string): ServiceSort {
   return 'date-desc'
 }
 
-function getOrderBy(sort: ServiceSort) {
+function getOrderBy(sort: ServiceSort): Prisma.ProductOrderByWithRelationInput[] {
   switch (sort) {
     case 'date-asc':
-      return [{ publishedAt: 'asc' }, { createdAt: 'asc' }] as const
+      return [{ publishedAt: 'asc' }, { createdAt: 'asc' }]
     case 'title-asc':
-      return [{ name: 'asc' }] as const
+      return [{ name: 'asc' }]
     case 'title-desc':
-      return [{ name: 'desc' }] as const
+      return [{ name: 'desc' }]
     case 'date-desc':
     default:
-      return [{ publishedAt: 'desc' }, { createdAt: 'desc' }] as const
+      return [{ publishedAt: 'desc' }, { createdAt: 'desc' }]
   }
 }
 

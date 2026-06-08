@@ -2,7 +2,7 @@
 "use client";
 
 import { useState } from "react";
-import { useForm } from "react-hook-form";
+import { useForm, type Resolver } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { groupSchema } from "@/app/lib/email/schemas";
 import { useGroups } from "@/app/hooks/useEmailMarketing";
@@ -160,7 +160,7 @@ function GroupForm({
     handleSubmit,
     formState: { errors, isSubmitting },
   } = useForm<GroupFormData>({
-    resolver: zodResolver(groupSchema),
+    resolver: zodResolver(groupSchema) as Resolver<GroupFormData>,
     defaultValues: {
       name: initial?.name || "",
       description: initial?.description || "",
