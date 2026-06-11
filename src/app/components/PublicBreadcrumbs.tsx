@@ -53,6 +53,7 @@ function labelForPath(
     '/contact-commercial': t('navbar.links.contactCommercial', {
       defaultValue: 'Contact commercial',
     }),
+    
   }
 
   return routeLabels[href] ?? humanizeSegment(segment)

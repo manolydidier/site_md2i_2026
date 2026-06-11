@@ -6,10 +6,28 @@ type Params = {
   params: Promise<{ id: string }>;
 };
 
+function isUuid(value: string) {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
+    value,
+  );
+}
+
+function postNotFoundResponse() {
+  return NextResponse.json({ error: "Post not found" }, { status: 404 });
+}
+
+function invalidPostIdResponse() {
+  return NextResponse.json({ error: "Invalid post id" }, { status: 400 });
+}
+
 // GET /api/posts/[id]
 export async function GET(_req: NextRequest, { params }: Params) {
   try {
     const { id } = await params;
+
+    if (!isUuid(id)) {
+      return postNotFoundResponse();
+    }
 
     const post = await prisma.post.findUnique({
       where: { id },
@@ -42,10 +60,7 @@ export async function GET(_req: NextRequest, { params }: Params) {
     });
 
     if (!post) {
-      return NextResponse.json(
-        { error: "Post not found" },
-        { status: 404 }
-      );
+      return postNotFoundResponse();
     }
 
     return NextResponse.json(post);
@@ -62,6 +77,11 @@ export async function GET(_req: NextRequest, { params }: Params) {
 export async function PUT(request: NextRequest, { params }: Params) {
   try {
     const { id } = await params;
+
+    if (!isUuid(id)) {
+      return invalidPostIdResponse();
+    }
+
     const body = await request.json();
 
     const {
@@ -84,10 +104,7 @@ export async function PUT(request: NextRequest, { params }: Params) {
     });
 
     if (!existing) {
-      return NextResponse.json(
-        { error: "Post not found" },
-        { status: 404 }
-      );
+      return postNotFoundResponse();
     }
 
     if (slug && slug !== existing.slug) {
@@ -177,6 +194,11 @@ export async function PUT(request: NextRequest, { params }: Params) {
 export async function PATCH(request: NextRequest, { params }: Params) {
   try {
     const { id } = await params;
+
+    if (!isUuid(id)) {
+      return invalidPostIdResponse();
+    }
+
     const body = await request.json();
 
     const existing = await prisma.post.findUnique({
@@ -184,10 +206,7 @@ export async function PATCH(request: NextRequest, { params }: Params) {
     });
 
     if (!existing) {
-      return NextResponse.json(
-        { error: "Post not found" },
-        { status: 404 }
-      );
+      return postNotFoundResponse();
     }
 
     if (body.slug !== undefined && body.slug !== existing.slug) {
@@ -261,15 +280,16 @@ export async function DELETE(_req: NextRequest, { params }: Params) {
   try {
     const { id } = await params;
 
+    if (!isUuid(id)) {
+      return invalidPostIdResponse();
+    }
+
     const existing = await prisma.post.findUnique({
       where: { id },
     });
 
     if (!existing) {
-      return NextResponse.json(
-        { error: "Post not found" },
-        { status: 404 }
-      );
+      return postNotFoundResponse();
     }
 
     await prisma.postTag.deleteMany({

@@ -224,7 +224,9 @@ export default function PostDetailClient() {
         setLoading(true)
         setError(null)
 
-        const res = await api.get<Post>(`/api/posts/${articleId}`)
+        const res = await api.get<Post>(
+          `/api/articles/${encodeURIComponent(articleId)}`,
+        )
 
         const [translatedPost] = await translateDynamicItems<Post>(
           [res.data],

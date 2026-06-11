@@ -14,31 +14,52 @@ export async function GET() {
       return NextResponse.json(
         {
           ok: false,
+          authenticated: false,
           count: 0,
         },
-        { status: 401 }
+        {
+          status: 200,
+          headers: {
+            "Cache-Control": "no-store",
+          },
+        }
       );
     }
 
     const count = await prisma.contactMessage.count({
       where: {
-        status: "NEW" as ContactStatus,
+        status: ContactStatus.NEW,
       },
     });
 
-    return NextResponse.json({
-      ok: true,
-      count,
-    });
+    return NextResponse.json(
+      {
+        ok: true,
+        authenticated: true,
+        count,
+      },
+      {
+        status: 200,
+        headers: {
+          "Cache-Control": "no-store",
+        },
+      }
+    );
   } catch (error) {
     console.error("[messages/new-count]", error);
 
     return NextResponse.json(
       {
         ok: false,
+        authenticated: false,
         count: 0,
       },
-      { status: 500 }
+      {
+        status: 200,
+        headers: {
+          "Cache-Control": "no-store",
+        },
+      }
     );
   }
 }
