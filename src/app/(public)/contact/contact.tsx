@@ -32,8 +32,8 @@ type ContactApiResponse = {
 const contactCardDefs = [
   {
     image: '/team/direction.jpg',
-    fallback: 'DG',
-    name: 'Responsable direction générale',
+    fallback: 'Gérant',
+    name: 'Gérant de la société',
     key: 'direction',
     email: 'direction@md2i.com',
     phone: '+261 34 00 000 00',

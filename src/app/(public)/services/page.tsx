@@ -2850,7 +2850,8 @@ export default function MD2IServicesSection() {
         }
 
         .md2i-services-sidebar {
-          position: relative;
+           position: sticky;
+          top: 96px;
           min-width: 0;
           opacity: 0;
           transform: translateY(10px);
