@@ -2,6 +2,7 @@
 
 import Link from 'next/link'
 import Image from 'next/image'
+import Script from 'next/script'
 import { usePathname, useRouter } from 'next/navigation'
 import {
   useState,
@@ -10,13 +11,13 @@ import {
   useCallback,
   useMemo,
   useId,
+  createElement,
   type KeyboardEvent as ReactKeyboardEvent,
 } from 'react'
 import { createPortal } from 'react-dom'
 import { AnimatePresence, motion } from 'framer-motion'
 import { useTranslation } from 'react-i18next'
 import {
-  Search,
   X,
   Moon,
   Sun,
@@ -127,9 +128,19 @@ function AnimatedLucideIcon({
   )
 }
 
-const SearchIcon = () => (
-  <AnimatedLucideIcon icon={Search} className="pro-lucide-search" />
-)
+function LordiconSearch({ size = 26 }: { size?: number }) {
+  return createElement('lord-icon', {
+    src: 'https://cdn.lordicon.com/wjyqkiew.json',
+    trigger: 'hover',
+    colors: 'primary:#121331,secondary:#e88c30',
+    style: {
+      width: `${size}px`,
+      height: `${size}px`,
+      display: 'block',
+    },
+    'aria-hidden': 'true',
+  })
+}
 
 const CloseIcon = () => (
   <AnimatedLucideIcon icon={X} className="pro-lucide-close" size={20} />
@@ -1129,7 +1140,7 @@ function SearchModal({
                 boxShadow: '0 10px 24px rgba(239,159,39,.16)',
               }}
             >
-              <SearchIcon />
+              <LordiconSearch size={28} />
             </span>
 
             <input
@@ -1723,6 +1734,11 @@ export default function PublicNavbar() {
 
   return (
     <>
+      <Script
+        src="https://cdn.lordicon.com/lordicon.js"
+        strategy="afterInteractive"
+      />
+
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=Inter:wght@400;500;600;700;800&display=swap');
 
@@ -2147,7 +2163,7 @@ export default function PublicNavbar() {
                 border: '1px solid rgba(239,159,39,.30)',
               }}
             >
-              <SearchIcon />
+              <LordiconSearch size={27} />
             </button>
 
             <ThemeSwitch

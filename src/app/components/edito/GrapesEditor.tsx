@@ -129,6 +129,8 @@ export default function GrapesEditor({ mode, postId }: GrapesEditorProps) {
   const mountRef = useRef<HTMLDivElement>(null);
   const gjsRef = useRef<Editor | null>(null);
   const mediaInputRef = useRef<HTMLInputElement | null>(null);
+  const linksEnabledRef = useRef(false);
+  const guardedCanvasDocumentsRef = useRef<WeakSet<Document>>(new WeakSet());
   const { dark } = useTheme();
 
   const [activeTab, setActiveTab] = useState<PanelTab | null>(null);
@@ -138,6 +140,7 @@ export default function GrapesEditor({ mode, postId }: GrapesEditorProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [isReady, setIsReady] = useState(false);
   const [selectedName, setSelectedName] = useState("Aucun élément");
+  const [linksEnabled, setLinksEnabled] = useState(false);
 
   const [codeHtml, setCodeHtml] = useState("");
   const [codeCss, setCodeCss] = useState("");
@@ -719,6 +722,74 @@ export default function GrapesEditor({ mode, postId }: GrapesEditorProps) {
     },
     [appendBaseBlocksCss]
   );
+
+  // Active ou bloque uniquement la navigation dans l'iframe GrapesJS.
+  // Les attributs href, target, rel et download des composants ne sont jamais modifiés.
+  const installCanvasLinkGuard = useCallback((editor: Editor, frameWindow?: Window | null) => {
+    const win = frameWindow ?? editor.Canvas.getWindow();
+    const doc = win?.document ?? editor.Canvas.getDocument();
+    if (!doc || guardedCanvasDocumentsRef.current.has(doc)) return;
+
+    guardedCanvasDocumentsRef.current.add(doc);
+
+    const guardStyle = doc.createElement("style");
+    guardStyle.setAttribute("data-md2i-link-guard", "true");
+    guardStyle.textContent = `
+      html.md2i-links-disabled a[href],
+      html.md2i-links-disabled [role="link"],
+      html.md2i-links-disabled button {
+        cursor: default !important;
+      }
+    `;
+    doc.head?.appendChild(guardStyle);
+
+    const syncDocumentMode = () => {
+      doc.documentElement.classList.toggle("md2i-links-disabled", !linksEnabledRef.current);
+      doc.documentElement.classList.toggle("md2i-links-enabled", linksEnabledRef.current);
+    };
+
+    const getLinkElement = (target: EventTarget | null): Element | null => {
+      const element = target instanceof Element ? target : null;
+      return element?.closest('a[href], [role="link"], button') ?? null;
+    };
+
+    const blockMouseActivation = (event: MouseEvent) => {
+      if (linksEnabledRef.current || !getLinkElement(event.target)) return;
+
+      if (event.cancelable) event.preventDefault();
+      event.stopImmediatePropagation();
+    };
+
+    const blockKeyboardActivation = (event: KeyboardEvent) => {
+      if (linksEnabledRef.current || event.key !== "Enter" || !getLinkElement(event.target)) return;
+
+      if (event.cancelable) event.preventDefault();
+      event.stopImmediatePropagation();
+    };
+
+    syncDocumentMode();
+
+    // Capture = le blocage intervient avant le onclick du lien ou du bouton.
+    // Le mousedown reste libre afin que GrapesJS puisse sélectionner l'élément.
+    doc.addEventListener("click", blockMouseActivation, true);
+    doc.addEventListener("auxclick", blockMouseActivation, true);
+    doc.addEventListener("keydown", blockKeyboardActivation, true);
+  }, []);
+
+  const setCanvasLinksMode = useCallback((enabled: boolean) => {
+    linksEnabledRef.current = enabled;
+    setLinksEnabled(enabled);
+
+    const doc = gjsRef.current?.Canvas.getDocument();
+    if (!doc) return;
+
+    doc.documentElement.classList.toggle("md2i-links-disabled", !enabled);
+    doc.documentElement.classList.toggle("md2i-links-enabled", enabled);
+  }, []);
+
+  const toggleCanvasLinks = useCallback(() => {
+    setCanvasLinksMode(!linksEnabledRef.current);
+  }, [setCanvasLinksMode]);
 
   useEffect(() => {
     if (!mountRef.current || gjsRef.current) return;
@@ -1445,6 +1516,7 @@ export default function GrapesEditor({ mode, postId }: GrapesEditorProps) {
       };
 
       editor.on("load", async () => {
+        installCanvasLinkGuard(editor);
         setIsReady(true);
         if (mode === "edit") {
           await loadPost(editor);
@@ -1459,6 +1531,16 @@ export default function GrapesEditor({ mode, postId }: GrapesEditorProps) {
         updateSelectedLabel();
       });
 
+      editor.on("canvas:frame:load", ({ window }: { window?: Window }) => {
+        installCanvasLinkGuard(editor, window);
+      });
+      editor.on("canvas:frame:load:body", ({ window }: { window?: Window }) => {
+        installCanvasLinkGuard(editor, window);
+      });
+
+      // Couvre aussi le cas où l'événement du frame a déjà été émis.
+      setTimeout(() => installCanvasLinkGuard(editor), 0);
+
       editor.on("component:selected", updateSelectedLabel);
       editor.on("component:deselected", updateSelectedLabel);
       editor.on("component:update", updateSelectedLabel);
@@ -1472,7 +1554,7 @@ export default function GrapesEditor({ mode, postId }: GrapesEditorProps) {
       gjsRef.current?.destroy();
       gjsRef.current = null;
     };
-  }, [appendBaseBlocksCss, loadPost, mode, readPageStyles, registerCustomBlocks, syncLinkConfigFromSelection, syncQuickStyleFromSelection]);
+  }, [appendBaseBlocksCss, installCanvasLinkGuard, loadPost, mode, readPageStyles, registerCustomBlocks, syncLinkConfigFromSelection, syncQuickStyleFromSelection]);
 
   useEffect(() => {
     if (activeTab === "media" && mediaItems.length === 0 && !mediaLoading) {
@@ -1789,6 +1871,30 @@ export default function GrapesEditor({ mode, postId }: GrapesEditorProps) {
           <button className="ed-icon-btn" onClick={undo} title="Annuler"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 7v6h6" /><path d="M3.51 15A9 9 0 101.77 9.23L3 13" /></svg></button>
           <button className="ed-icon-btn" onClick={redo} title="Rétablir"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 7v6h-6" /><path d="M20.49 15A9 9 0 1122.23 9.23L21 13" /></svg></button>
           <div className="ed-divider" />
+          <button
+            type="button"
+            className={`ed-link-toggle ${linksEnabled ? "is-enabled" : "is-disabled"}`}
+            onClick={toggleCanvasLinks}
+            aria-pressed={linksEnabled}
+            title={linksEnabled
+              ? "Désactiver les liens dans le canvas"
+              : "Réactiver les liens dans le canvas"}
+          >
+            {linksEnabled ? (
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71" />
+                <path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71" />
+              </svg>
+            ) : (
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M9.88 9.88a3 3 0 004.24 4.24" />
+                <path d="M10.73 5.08l.84-.84a5 5 0 017.07 7.07l-1.71 1.71" />
+                <path d="M13.27 18.92l-.84.84a5 5 0 01-7.07-7.07l1.71-1.71" />
+                <path d="M3 3l18 18" />
+              </svg>
+            )}
+            <span>{linksEnabled ? "Liens actifs" : "Liens bloqués"}</span>
+          </button>
           <button className="ed-icon-btn" onClick={preview} title="Aperçu"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" /><circle cx="12" cy="12" r="3" /></svg></button>
           <button className="ed-icon-btn" onClick={fullscr} title="Plein écran"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M8 3H5a2 2 0 00-2 2v3m18 0V5a2 2 0 00-2-2h-3m0 18h3a2 2 0 002-2v-3M3 16v3a2 2 0 002 2h3" /></svg></button>
           <button className="ed-icon-btn" onClick={cleanHtml} title="Vider"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="3 6 5 6 21 6" /><path d="M19 6l-1 14H6L5 6m5 0V4h4v2" /></svg></button>
@@ -2374,6 +2480,30 @@ export default function GrapesEditor({ mode, postId }: GrapesEditorProps) {
         .ed-device-btn.is-active { color: var(--ed-accent); background: var(--ed-accent-soft); box-shadow: inset 0 0 0 1px var(--ed-accent-soft-border); }
 
         .ed-divider { width: 1px; height: 20px; background: var(--ed-border); margin: 0 4px; }
+
+        .ed-link-toggle {
+          display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+          min-width: 34px; height: 30px; padding: 0 9px; border-radius: 8px;
+          border: 1px solid var(--ed-border);
+          font-family: var(--font); font-size: 11px; font-weight: 700; white-space: nowrap;
+          cursor: pointer; transition: all 0.15s ease; flex-shrink: 0;
+        }
+        .ed-link-toggle.is-disabled {
+          color: var(--ed-warning);
+          border-color: rgba(251,146,60,.32);
+          background: rgba(251,146,60,.12);
+        }
+        .ed-link-toggle.is-enabled {
+          color: var(--ed-success);
+          border-color: rgba(34,197,94,.30);
+          background: rgba(34,197,94,.12);
+        }
+        .ed-link-toggle:hover { transform: translateY(-1px); filter: brightness(1.04); }
+
+        @media (max-width: 1280px) {
+          .ed-link-toggle { width: 34px; padding: 0; }
+          .ed-link-toggle span { display: none; }
+        }
 
         .ed-save-tag { font-size: 11px; font-weight: 600; padding: 5px 10px; border-radius: 999px; white-space: nowrap; }
         .ed-save-tag--saving { color: var(--ed-text-soft); background: var(--ed-shell-soft); }

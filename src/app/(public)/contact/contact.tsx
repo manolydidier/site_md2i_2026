@@ -359,13 +359,16 @@ export default function ContactPage() {
       className={styles.page}
       data-theme={dark ? 'dark' : 'light'}
     >
+   
+
       <section className={styles.hero}>
         <div className={styles.heroNoise} aria-hidden />
         <div className={styles.blobWrap} aria-hidden>
           <div className={styles.blob} ref={blobRef} />
           <div className={styles.blobSecondary} />
         </div>
-
+<div>
+</div>
         <div className={styles.container}>
           <div className={styles.heroGrid}>
             <div className={styles.heroText}>
