@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import ExcelJS from 'exceljs'
 import { prisma } from '@/app/lib/prisma'
+import { withPermission } from '@/(permisionGuard)/lib/permissions'
 import {
   mergeExcelSettings,
   toArgb,
@@ -578,6 +579,9 @@ function toPreview(reference: MatchedReference) {
 }
 
 export async function POST(request: NextRequest) {
+  const guard = await withPermission(request, { resource: 'references', action: 'canExport' })
+  if (!guard.ok) return guard.response
+
   try {
     const body = await request.json().catch(() => ({}))
     const mode = String(body.mode || '') as ExportMode

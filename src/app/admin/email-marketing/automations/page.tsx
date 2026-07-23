@@ -4,6 +4,7 @@
 import type { CSSProperties } from "react";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
+import { usePermissions } from "@/(permisionGuard)/context/PermissionsContext";
 import {
   AlertCircle,
   ArrowLeft,
@@ -609,6 +610,11 @@ async function readJsonSafe<T = unknown>(res: Response): Promise<T | null> {
 }
 
 export default function EmailAutomationsPage() {
+  const { can } = usePermissions();
+  const canCreate = can("email_automations", "canCreate");
+  const canUpdate = can("email_automations", "canUpdate");
+  const canDelete = can("email_automations", "canDelete");
+
   const [automations, setAutomations] = useState<Automation[]>([]);
   const [draftCampaigns, setDraftCampaigns] = useState<DraftCampaign[]>([]);
   const [groups, setGroups] = useState<ContactGroup[]>([]);
@@ -1267,19 +1273,21 @@ export default function EmailAutomationsPage() {
             Recharger
           </button>
 
-          <button
-            type="button"
-            onClick={openCreateModal}
-            disabled={saving}
-            style={{
-              ...s.button,
-              ...s.primaryButton,
-              opacity: saving ? 0.5 : 1,
-            }}
-          >
-            <Plus size={16} />
-            Nouvelle automatisation
-          </button>
+          {canCreate && (
+            <button
+              type="button"
+              onClick={openCreateModal}
+              disabled={saving}
+              style={{
+                ...s.button,
+                ...s.primaryButton,
+                opacity: saving ? 0.5 : 1,
+              }}
+            >
+              <Plus size={16} />
+              Nouvelle automatisation
+            </button>
+          )}
         </div>
       </header>
 
@@ -1413,7 +1421,7 @@ export default function EmailAutomationsPage() {
                       <button
                         type="button"
                         onClick={() => handleQuickToggle(automation)}
-                        disabled={saving}
+                        disabled={saving || !canUpdate}
                         aria-label={
                           automation.isActive
                             ? `Désactiver ${automation.name}`
@@ -1454,32 +1462,36 @@ export default function EmailAutomationsPage() {
                     <td style={s.td}>{formatDate(automation.updatedAt)}</td>
 
                     <td style={s.tdRight}>
-                      <button
-                        type="button"
-                        onClick={() => openEditModal(automation)}
-                        disabled={saving}
-                        style={{
-                          ...s.tableButton,
-                          opacity: saving ? 0.5 : 1,
-                        }}
-                      >
-                        <Edit3 size={14} />
-                        Modifier
-                      </button>
+                      {canUpdate && (
+                        <button
+                          type="button"
+                          onClick={() => openEditModal(automation)}
+                          disabled={saving}
+                          style={{
+                            ...s.tableButton,
+                            opacity: saving ? 0.5 : 1,
+                          }}
+                        >
+                          <Edit3 size={14} />
+                          Modifier
+                        </button>
+                      )}
 
-                      <button
-                        type="button"
-                        onClick={() => handleDelete(automation)}
-                        disabled={saving}
-                        style={{
-                          ...s.tableButton,
-                          ...s.dangerButton,
-                          opacity: saving ? 0.5 : 1,
-                        }}
-                      >
-                        <Trash2 size={14} />
-                        Supprimer
-                      </button>
+                      {canDelete && (
+                        <button
+                          type="button"
+                          onClick={() => handleDelete(automation)}
+                          disabled={saving}
+                          style={{
+                            ...s.tableButton,
+                            ...s.dangerButton,
+                            opacity: saving ? 0.5 : 1,
+                          }}
+                        >
+                          <Trash2 size={14} />
+                          Supprimer
+                        </button>
+                      )}
                     </td>
                   </tr>
                 ))}
@@ -1537,7 +1549,12 @@ export default function EmailAutomationsPage() {
                 <button
                   type="button"
                   onClick={handleSubmit}
-                  disabled={!hasChanges || saving || Boolean(formError)}
+                  disabled={
+                    (isEditing ? !canUpdate : !canCreate) ||
+                    !hasChanges ||
+                    saving ||
+                    Boolean(formError)
+                  }
                   style={{
                     ...s.button,
                     ...s.primaryButton,

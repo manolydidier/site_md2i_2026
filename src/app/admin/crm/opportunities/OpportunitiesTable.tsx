@@ -65,6 +65,7 @@ type OpportunityRow = {
 type OpportunitiesTableProps = {
   opportunities: OpportunityRow[];
   stageOptions: StageOption[];
+  canUpdate: boolean;
 };
 
 type ModalForm = {
@@ -235,6 +236,7 @@ function clampProbability(value: number) {
 export default function OpportunitiesTable({
   opportunities,
   stageOptions,
+  canUpdate,
 }: OpportunitiesTableProps) {
   const router = useRouter();
 
@@ -601,14 +603,16 @@ export default function OpportunitiesTable({
                       <td style={s.td}>{formatDate(opportunity.createdAt)}</td>
 
                       <td style={s.tdRight}>
-                        <button
-                          type="button"
-                          style={s.manageButton}
-                          onClick={() => openModal(opportunity)}
-                        >
-                          <Pencil size={14} />
-                          Gérer
-                        </button>
+                        {canUpdate && (
+                          <button
+                            type="button"
+                            style={s.manageButton}
+                            onClick={() => openModal(opportunity)}
+                          >
+                            <Pencil size={14} />
+                            Gérer
+                          </button>
+                        )}
                       </td>
                     </tr>
                   );

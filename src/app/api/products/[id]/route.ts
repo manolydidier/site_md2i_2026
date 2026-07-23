@@ -1,13 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/app/lib/prisma'
 import { ProductStatus } from '@/generated/prisma/client'
+import { withPermission } from '@/(permisionGuard)/lib/permissions'
 
 interface RouteContext {
   params: Promise<{ id: string }>
 }
 
 // GET /api/products/[id]
-export async function GET(_request: NextRequest, { params }: RouteContext) {
+export async function GET(request: NextRequest, { params }: RouteContext) {
+  const guard = await withPermission(request, { resource: 'products', action: 'canRead' })
+  if (!guard.ok) return guard.response
+
   try {
     const { id } = await params
 
@@ -52,6 +56,9 @@ export async function GET(_request: NextRequest, { params }: RouteContext) {
 
 // PATCH /api/products/[id]
 export async function PATCH(request: NextRequest, { params }: RouteContext) {
+  const guard = await withPermission(request, { resource: 'products', action: 'canUpdate' })
+  if (!guard.ok) return guard.response
+
   try {
     const { id } = await params
     const body = await request.json()
@@ -172,7 +179,10 @@ export async function PATCH(request: NextRequest, { params }: RouteContext) {
 }
 
 // DELETE /api/products/[id]
-export async function DELETE(_request: NextRequest, { params }: RouteContext) {
+export async function DELETE(request: NextRequest, { params }: RouteContext) {
+  const guard = await withPermission(request, { resource: 'products', action: 'canDelete' })
+  if (!guard.ok) return guard.response
+
   try {
     const { id } = await params
 

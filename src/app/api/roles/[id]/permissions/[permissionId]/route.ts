@@ -13,9 +13,26 @@ const PERMISSION_SELECT = {
   canExport: true,
   canApprove: true,
   canManage: true,
+  canImport: true,
+  canPrint: true,
+  canValidate: true,
+  canCancel: true,
+  canArchive: true,
+  canRestore: true,
+  canDownload: true,
+  canUpload: true,
+  canExecute: true,
   specialPermission: true,
   resource: { select: { id: true, name: true, code: true } },
 } as const
+
+const ALLOWED_FIELDS = [
+  'canRead', 'canCreate', 'canUpdate', 'canDelete',
+  'canList', 'canExport', 'canApprove', 'canManage',
+  'canImport', 'canPrint', 'canValidate', 'canCancel',
+  'canArchive', 'canRestore', 'canDownload', 'canUpload', 'canExecute',
+  'specialPermission',
+] as const
 
 export async function PATCH(
   req: NextRequest,
@@ -35,13 +52,8 @@ export async function PATCH(
   if (!existing) return Response.json({ error: 'Permission introuvable' }, { status: 404 })
 
   const body = await req.json()
-  const ALLOWED = [
-    'canRead', 'canCreate', 'canUpdate', 'canDelete',
-    'canList', 'canExport', 'canApprove', 'canManage',
-    'specialPermission',
-  ]
   const data: Record<string, unknown> = {}
-  for (const field of ALLOWED) {
+  for (const field of ALLOWED_FIELDS) {
     if (field in body) data[field] = body[field]
   }
 

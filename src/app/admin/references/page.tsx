@@ -5,6 +5,7 @@ import type { CSSProperties } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
 import api from '@/app/lib/axios'
+import { usePermissions } from '@/(permisionGuard)/context/PermissionsContext'
 import { mergeExcelSettings } from '@/app/lib/referenceExcelSettings'
 
 import {
@@ -73,6 +74,7 @@ function slugText(value: string) {
 
 export default function ReferencesPage() {
   const t = useTokens()
+  const { can, loading: permLoading } = usePermissions()
 
   const [references, setReferences] = useState<Reference[]>([])
   const [pagination, setPagination] = useState<Pagination>({ page: 1, limit: 20, total: 0, totalPages: 1 })
@@ -392,6 +394,16 @@ export default function ReferencesPage() {
   const btn = (bg = ORANGE, clr = '#fff', extra?: CSSProperties): CSSProperties => ({ padding: '8px 14px', borderRadius: 9, border: 'none', cursor: 'pointer', fontSize: 12.5, fontWeight: 600, fontFamily: 'inherit', background: bg, color: clr, display: 'flex', alignItems: 'center', gap: 6, ...extra })
   const th: CSSProperties = { padding: '12px 14px', textAlign: 'left', fontSize: 10, fontWeight: 700, letterSpacing: '1px', textTransform: 'uppercase', color: t.TEXT_DIM, whiteSpace: 'nowrap', userSelect: 'none' }
 
+  if (!permLoading && !can('references', 'canRead') && !can('references', 'canList')) {
+    return (
+      <div style={{ padding: '4rem', textAlign: 'center' }}>
+        <div style={{ fontSize: 42, marginBottom: 14 }}>🔒</div>
+        <p style={{ fontSize: 15, fontWeight: 600, color: t.TEXT_MAIN, margin: '0 0 8px' }}>Accès refusé</p>
+        <p style={{ fontSize: 13, color: t.TEXT_MUTED, margin: 0 }}>Vous n'avez pas la permission de consulter les références.</p>
+      </div>
+    )
+  }
+
   return (
     <>
       <style>{`
@@ -437,7 +449,9 @@ export default function ReferencesPage() {
               <button type="button" onClick={() => setExcelSettingsOpen(true)} style={{ ...btn(t.BG_BTN, t.TEXT_MUTED), border: `1px solid ${t.BORDER}` }}>Paramètres Excel</button>
             </div>
 
-            <Link href="/admin/references/new" style={{ ...btn(`linear-gradient(135deg,${ORANGE},${ORANGE_DARK})`, '#fff'), textDecoration: 'none' }}>+ Nouvelle référence</Link>
+            {can('references', 'canCreate') && (
+              <Link href="/admin/references/new" style={{ ...btn(`linear-gradient(135deg,${ORANGE},${ORANGE_DARK})`, '#fff'), textDecoration: 'none' }}>+ Nouvelle référence</Link>
+            )}
           </div>
         </div>
 
@@ -482,8 +496,12 @@ export default function ReferencesPage() {
           {someSelected && (
             <div style={{ marginTop: '0.75rem', paddingTop: '0.75rem', borderTop: `1px solid ${t.DIVIDER}`, display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
               <span style={{ fontSize: 12.5, color: ORANGE, fontWeight: 600 }}>{selected.size} sélectionné{selected.size > 1 ? 's' : ''}</span>
-              <button onClick={() => downloadOfferExport('selection')} disabled={exporting !== null} style={{ ...btn('rgba(29,158,117,.12)', '#1D9E75'), border: '1px solid rgba(29,158,117,.28)', opacity: exporting ? 0.72 : 1 }}>{exporting === 'selection' ? 'Export...' : 'Exporter sélection .xlsx'}</button>
-              <button onClick={handleBulkDelete} style={{ ...btn('rgba(226,75,74,.1)', '#e24b4a'), border: '1px solid rgba(226,75,74,.25)' }}>Supprimer</button>
+              {can('references', 'canExport') && (
+                <button onClick={() => downloadOfferExport('selection')} disabled={exporting !== null} style={{ ...btn('rgba(29,158,117,.12)', '#1D9E75'), border: '1px solid rgba(29,158,117,.28)', opacity: exporting ? 0.72 : 1 }}>{exporting === 'selection' ? 'Export...' : 'Exporter sélection .xlsx'}</button>
+              )}
+              {can('references', 'canDelete') && (
+                <button onClick={handleBulkDelete} style={{ ...btn('rgba(226,75,74,.1)', '#e24b4a'), border: '1px solid rgba(226,75,74,.25)' }}>Supprimer</button>
+              )}
               <button onClick={() => setSelected(new Set())} style={{ ...btn('none', t.TEXT_MUTED), marginLeft: 'auto' }}>Désélectionner tout</button>
             </div>
           )}
@@ -570,8 +588,12 @@ export default function ReferencesPage() {
                           <td style={{ padding: '13px 14px' }} onClick={(e) => e.stopPropagation()}>
                             <div style={{ display: 'flex', gap: 5, justifyContent: 'flex-end' }}>
                               <button className="abtn" onClick={() => setDetailReference(ref)} title="Voir les détails" style={{ ...btn(t.BG_BTN, t.BTN_TEXT), border: `1px solid ${t.BTN_BORDER}`, padding: '6px 9px' }}>Voir</button>
-                              <Link href={`/admin/references/${ref.id}`} className="abtn" title="Modifier" style={{ ...btn(t.BG_BTN, t.BTN_TEXT), border: `1px solid ${t.BTN_BORDER}`, padding: '6px 9px', textDecoration: 'none' }}>Modifier</Link>
-                              <button className="abtn" onClick={() => handleDelete(ref)} title="Supprimer" style={{ ...btn('rgba(226,75,74,.08)', '#e24b4a'), border: '1px solid rgba(226,75,74,.2)', padding: '6px 9px' }}>Suppr.</button>
+                              {can('references', 'canUpdate') && (
+                                <Link href={`/admin/references/${ref.id}`} className="abtn" title="Modifier" style={{ ...btn(t.BG_BTN, t.BTN_TEXT), border: `1px solid ${t.BTN_BORDER}`, padding: '6px 9px', textDecoration: 'none' }}>Modifier</Link>
+                              )}
+                              {can('references', 'canDelete') && (
+                                <button className="abtn" onClick={() => handleDelete(ref)} title="Supprimer" style={{ ...btn('rgba(226,75,74,.08)', '#e24b4a'), border: '1px solid rgba(226,75,74,.2)', padding: '6px 9px' }}>Suppr.</button>
+                              )}
                             </div>
                           </td>
                         )}

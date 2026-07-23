@@ -2,18 +2,16 @@
 // POST multipart/form-data → import CSV ou Excel
 
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@/auth";
+import { withPermission } from "@/(permisionGuard)/lib/permissions";
 import {
   parseContactFile,
   importContactsToDB,
 } from "@/app/lib/email/import-export";
 
 export async function POST(req: NextRequest) {
-  const session = await auth();
-
-  if (!session?.user?.id) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+  const guard = await withPermission(req, { resource: "contacts", action: "canImport" });
+  if (!guard.ok) return guard.response;
+  const session = guard.session;
 
   const formData = await req.formData();
   const file = formData.get("file") as File | null;

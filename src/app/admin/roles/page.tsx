@@ -5,6 +5,8 @@ import { useState, useEffect, useCallback, useRef } from 'react'
 import { useTheme } from '@/app/context/ThemeContext'
 import api from '@/app/lib/axios'
 import { useSearchParams, useRouter } from 'next/navigation'
+import PermissionsEditorModal from './_components/PermissionsEditorModal'
+import { usePermissions } from '@/(permisionGuard)/context/PermissionsContext'
 // ─── Types ────────────────────────────────────────────────────────────────────
 type SpecialPermission = 'NONE' | 'FULL_ACCESS'
 
@@ -43,13 +45,6 @@ type SortDir    = 'asc' | 'desc'
 // ─── Constantes ───────────────────────────────────────────────────────────────
 const ORANGE      = '#EF9F27'
 const ORANGE_DARK = '#c97d15'
-
-const PERM_LABELS: Record<string, string> = {
-  canRead: 'Lire', canCreate: 'Créer', canUpdate: 'Modifier',
-  canDelete: 'Supprimer', canList: 'Lister', canExport: 'Exporter',
-  canApprove: 'Approuver', canManage: 'Gérer',
-}
-const PERM_KEYS = Object.keys(PERM_LABELS) as (keyof typeof PERM_LABELS)[]
 
 const SORT_LABELS: Record<SortField, string> = {
   name: 'Nom', code: 'Code', createdAt: 'Date création', updatedAt: 'Dernière modif.',
@@ -222,15 +217,16 @@ function RoleModal({ role, onSave, onClose }: {
 }
 
 // ─── Drawer Détail Rôle ────────────────────────────────────────────────────────
-function RoleDrawer({ roleId, onClose, onEdit, onDelete }: {
+function RoleDrawer({ roleId, onClose, onEdit, onDelete, onManagePermissions }: {
   roleId: string; onClose: () => void
   onEdit: (r: Role) => void; onDelete: (r: Role) => void
+  onManagePermissions: (r: Role) => void
 }) {
   const t = useTokens()
+  const { can } = usePermissions()
   const [role,    setRole]    = useState<RoleDetail | null>(null)
   const [loading, setLoading] = useState(true)
-    const [error,   setError]   = useState<403 | 401 | 500 | null>(null) 
-  const [tab,     setTab]     = useState<'permissions' | 'users'>('permissions')
+    const [error,   setError]   = useState<403 | 401 | 500 | null>(null)
 
   useEffect(() => {
     setLoading(true)
@@ -269,108 +265,75 @@ function RoleDrawer({ roleId, onClose, onEdit, onDelete }: {
           <button onClick={onClose} style={{ width: 30, height: 30, borderRadius: 8, border: `1px solid ${t.BORDER_INP}`, background: 'none', color: t.TEXT_MUTED, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>×</button>
         </div>
 
-        {/* Stats */}
+        {/* Stats — cliquables pour ouvrir l'éditeur de permissions */}
         {!loading && role && (
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, padding: '1rem 1.5rem', borderBottom: `1px solid ${t.DIVIDER}` }}>
-            {[
-              { label: 'Permissions', value: permCount, icon: '🔐' },
-              { label: 'Utilisateurs', value: userCount, icon: '👥' },
-            ].map(({ label, value, icon }) => (
-              <div key={label} style={{ padding: '12px 14px', borderRadius: 12, background: t.BG_CARD, border: `1px solid ${t.BORDER}`, textAlign: 'center' }}>
-                <div style={{ fontSize: 18 }}>{icon}</div>
-                <div style={{ fontSize: 22, fontWeight: 800, color: t.TEXT_MAIN, margin: '4px 0 2px' }}>{value}</div>
-                <div style={{ fontSize: 11, color: t.TEXT_DIM }}>{label}</div>
-              </div>
-            ))}
+            <button
+              onClick={() => can('permissions', 'canList') && onManagePermissions(role)}
+              title="Gérer les permissions"
+              style={{ padding: '12px 14px', borderRadius: 12, background: t.BG_CARD, border: `1px solid ${t.BORDER}`, textAlign: 'center', cursor: can('permissions', 'canList') ? 'pointer' : 'default', fontFamily: 'inherit' }}
+            >
+              <div style={{ fontSize: 18 }}>🔐</div>
+              <div style={{ fontSize: 22, fontWeight: 800, color: t.TEXT_MAIN, margin: '4px 0 2px' }}>{permCount}</div>
+              <div style={{ fontSize: 11, color: t.TEXT_DIM }}>Permissions</div>
+            </button>
+            <div style={{ padding: '12px 14px', borderRadius: 12, background: t.BG_CARD, border: `1px solid ${t.BORDER}`, textAlign: 'center' }}>
+              <div style={{ fontSize: 18 }}>👥</div>
+              <div style={{ fontSize: 22, fontWeight: 800, color: t.TEXT_MAIN, margin: '4px 0 2px' }}>{userCount}</div>
+              <div style={{ fontSize: 11, color: t.TEXT_DIM }}>Utilisateurs</div>
+            </div>
           </div>
         )}
 
-        {/* Tabs */}
-        <div style={{ display: 'flex', borderBottom: `1px solid ${t.DIVIDER}`, padding: '0 1.5rem' }}>
-          {(['permissions', 'users'] as const).map(k => (
-            <button key={k} onClick={() => setTab(k)} style={{ padding: '12px 0', marginRight: 20, fontSize: 13, fontWeight: 600, fontFamily: 'inherit', background: 'none', border: 'none', cursor: 'pointer', color: tab === k ? ORANGE : t.TEXT_DIM, borderBottom: `2px solid ${tab === k ? ORANGE : 'transparent'}`, transition: 'all .15s' }}>
-              {k === 'permissions' ? 'Permissions' : 'Utilisateurs'}
+        {/* Bouton principal — action la plus utilisée */}
+        {!loading && role && can('permissions', 'canList') && (
+          <div style={{ padding: '1rem 1.5rem 0' }}>
+            <button onClick={() => onManagePermissions(role)} style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, padding: '12px 14px', borderRadius: 12, border: 'none', background: `linear-gradient(135deg,${ORANGE},${ORANGE_DARK})`, color: '#fff', cursor: 'pointer', fontSize: 13.5, fontFamily: 'inherit', fontWeight: 600, boxShadow: '0 4px 14px rgba(239,159,39,.28)' }}>
+              🔐 Gérer les permissions
             </button>
-          ))}
-        </div>
+          </div>
+        )}
 
-        {/* Contenu */}
-        {/* Contenu */}
-<div style={{ flex: 1, padding: '1.25rem 1.5rem', overflowY: 'auto' }}>
-  {loading ? (
-    <Spinner track={t.SPIN_TRACK} />
-  ) : error === 403 ? (
-    <div style={{ textAlign: 'center', padding: '2rem 0' }}>
-      <div style={{ fontSize: 36, marginBottom: 12 }}>🔒</div>
-      <p style={{ fontSize: 14, fontWeight: 600, color: t.TEXT_MAIN, margin: '0 0 6px' }}>Accès refusé</p>
-      <p style={{ fontSize: 12.5, color: t.TEXT_MUTED, margin: 0 }}>Permission insuffisante.</p>
-    </div>
-  ) : error ? (
-    <div style={{ textAlign: 'center', padding: '2rem 0', color: t.TEXT_DIM }}>
-      <p style={{ fontSize: 13 }}>Erreur lors du chargement</p>
-    </div>
-  ) : tab === 'permissions' ? (
-    <PermissionsTab role={role!} t={t} />
-  ) : (
-    <UsersTab role={role!} t={t} />
-  )}
-</div>
+        {/* Contenu — utilisateurs assignés */}
+        <div style={{ padding: '1.25rem 1.5rem' }}>
+          <h4 style={{ fontSize: 11, fontWeight: 700, letterSpacing: '1px', textTransform: 'uppercase', color: t.TEXT_DIM, margin: '0 0 12px' }}>Utilisateurs assignés</h4>
+        </div>
+        <div style={{ flex: 1, padding: '0 1.5rem 1.25rem', overflowY: 'auto' }}>
+          {loading ? (
+            <Spinner track={t.SPIN_TRACK} />
+          ) : error === 403 ? (
+            <div style={{ textAlign: 'center', padding: '2rem 0' }}>
+              <div style={{ fontSize: 36, marginBottom: 12 }}>🔒</div>
+              <p style={{ fontSize: 14, fontWeight: 600, color: t.TEXT_MAIN, margin: '0 0 6px' }}>Accès refusé</p>
+              <p style={{ fontSize: 12.5, color: t.TEXT_MUTED, margin: 0 }}>Permission insuffisante.</p>
+            </div>
+          ) : error ? (
+            <div style={{ textAlign: 'center', padding: '2rem 0', color: t.TEXT_DIM }}>
+              <p style={{ fontSize: 13 }}>Erreur lors du chargement</p>
+            </div>
+          ) : (
+            <UsersTab role={role!} t={t} />
+          )}
+        </div>
 
         {/* Actions */}
         {!loading && role && !role.isSystem && (
           <div style={{ padding: '1.25rem 1.5rem', borderTop: `1px solid ${t.DIVIDER}`, display: 'flex', gap: 8 }}>
-            <button onClick={() => onEdit(role)} style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, padding: '11px 14px', borderRadius: 12, border: `1px solid ${t.BORDER_INP}`, background: t.BG_BTN, color: t.TEXT_MAIN, cursor: 'pointer', fontSize: 13.5, fontFamily: 'inherit', fontWeight: 500 }}>
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-              Modifier
-            </button>
-            <button onClick={() => onDelete(role)} style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, padding: '11px 14px', borderRadius: 12, border: '1px solid rgba(226,75,74,.22)', background: 'rgba(226,75,74,.07)', color: '#e24b4a', cursor: 'pointer', fontSize: 13.5, fontFamily: 'inherit', fontWeight: 500 }}>
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg>
-              Supprimer
-            </button>
+            {can('roles', 'canUpdate') && (
+              <button onClick={() => onEdit(role)} style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, padding: '11px 14px', borderRadius: 12, border: `1px solid ${t.BORDER_INP}`, background: t.BG_BTN, color: t.TEXT_MAIN, cursor: 'pointer', fontSize: 13.5, fontFamily: 'inherit', fontWeight: 500 }}>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                Modifier
+              </button>
+            )}
+            {can('roles', 'canDelete') && (
+              <button onClick={() => onDelete(role)} style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, padding: '11px 14px', borderRadius: 12, border: '1px solid rgba(226,75,74,.22)', background: 'rgba(226,75,74,.07)', color: '#e24b4a', cursor: 'pointer', fontSize: 13.5, fontFamily: 'inherit', fontWeight: 500 }}>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg>
+                Supprimer
+              </button>
+            )}
           </div>
         )}
       </div>
-    </div>
-  )
-}
-
-function PermissionsTab({ role, t }: { role: RoleDetail; t: ReturnType<typeof useTokens> }) {
-  if (!role.rolePermissions.length) {
-    return (
-      <div style={{ textAlign: 'center', padding: '2rem 0', color: t.TEXT_DIM }}>
-        <div style={{ fontSize: 32, marginBottom: 10 }}>🔐</div>
-        <p style={{ fontSize: 13, margin: 0 }}>Aucune permission configurée</p>
-      </div>
-    )
-  }
-  return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-      {role.rolePermissions.map(p => {
-        const active = PERM_KEYS.filter(k => p[k as keyof RolePermission] === true)
-        const isFullAccess = p.specialPermission === 'FULL_ACCESS'
-        return (
-          <div key={p.id} style={{ padding: '12px 14px', borderRadius: 12, background: t.BG_PERM, border: `1px solid ${t.BORDER}` }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-              <div>
-                <span style={{ fontSize: 13, fontWeight: 600, color: t.TEXT_MAIN }}>{p.resource.name}</span>
-                <code style={{ marginLeft: 8, fontSize: 10, color: t.TEXT_DIM, background: t.BG_BTN, padding: '1px 6px', borderRadius: 4 }}>{p.resource.code}</code>
-              </div>
-              {isFullAccess && (
-                <span style={{ fontSize: 10, padding: '2px 7px', borderRadius: 20, background: 'rgba(239,159,39,.12)', color: ORANGE, fontWeight: 700 }}>FULL ACCESS</span>
-              )}
-            </div>
-            {!isFullAccess && (
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5 }}>
-                {PERM_KEYS.map(k => (
-                  <span key={k} style={{ fontSize: 10.5, padding: '3px 8px', borderRadius: 20, fontWeight: 600, background: active.includes(k) ? 'rgba(29,158,117,.12)' : t.BG_BTN, color: active.includes(k) ? '#1D9E75' : t.TEXT_DIM, border: `1px solid ${active.includes(k) ? 'rgba(29,158,117,.2)' : t.BORDER}` }}>
-                    {active.includes(k) ? '✓ ' : ''}{PERM_LABELS[k]}
-                  </span>
-                ))}
-              </div>
-            )}
-          </div>
-        )
-      })}
     </div>
   )
 }
@@ -410,6 +373,7 @@ function UsersTab({ role, t }: { role: RoleDetail; t: ReturnType<typeof useToken
 // ─── Page principale ──────────────────────────────────────────────────────────
 export default function RolesPage() {
   const t = useTokens()
+  const { can } = usePermissions()
 
   const [roles,       setRoles]       = useState<Role[]>([])
   const [pagination,  setPagination]  = useState<Pagination>({ page: 1, limit: 20, total: 0, totalPages: 1 })
@@ -424,6 +388,7 @@ export default function RolesPage() {
   const [selected,    setSelected]    = useState<Set<string>>(new Set())
   const [toast,       setToast]       = useState<{ msg: string; type: 'ok' | 'err' | 'warn' } | null>(null)
   const [drawerRoleId,setDrawerRoleId]= useState<string | null>(null)
+  const [permModalRole, setPermModalRole] = useState<Role | null>(null)
   const [editRole,    setEditRole]    = useState<Role | null | 'new'>('new' as any)
   const [showModal,   setShowModal]   = useState(false)
   const [confirm,     setConfirm]     = useState<{ title?: string; message: string; danger?: boolean; confirmLabel?: string; onConfirm: () => void } | null>(null)
@@ -588,8 +553,10 @@ const router = useRouter()
             onClose={() => setDrawerRoleId(null)}
             onEdit={r => { setEditRole(r); setShowModal(true); setDrawerRoleId(null) }}
             onDelete={r => { handleDelete(r); setDrawerRoleId(null) }}
+            onManagePermissions={r => setPermModalRole(r)}
           />
         )}
+        <PermissionsEditorModal role={permModalRole} onClose={() => setPermModalRole(null)} tokens={t} />
 
         {/* ── Header ── */}
        {/* ── Header ── */}
@@ -598,9 +565,12 @@ const router = useRouter()
     <h1 style={{ fontFamily: "'Syne', sans-serif", fontSize: 26, fontWeight: 800, margin: 0, letterSpacing: '-.03em', color: t.TEXT_MAIN }}>Rôles</h1>
     <p style={{ color: t.HEADER_SUB, fontSize: 13, margin: '4px 0 0', fontWeight: 300 }}>
       {loading ? '…' : accessDenied ? 'Accès restreint' : `${pagination.total} rôle${pagination.total !== 1 ? 's' : ''} au total`}
+      {!loading && !accessDenied && can('permissions', 'canList') && (
+        <> — cliquez sur <span style={{ color: ORANGE }}>🔐</span> dans la liste pour gérer les permissions d&apos;un rôle</>
+      )}
     </p>
   </div>
-  {!accessDenied && (
+  {!accessDenied && can('roles', 'canCreate') && (
     <button onClick={() => { setEditRole(null); setShowModal(true) }} style={{ ...btn(), boxShadow: `0 4px 14px rgba(239,159,39,.3)` }}>
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
       Nouveau rôle
@@ -641,10 +611,12 @@ const router = useRouter()
           {someSelected && (
             <div style={{ marginTop: '0.75rem', paddingTop: '0.75rem', borderTop: `1px solid ${t.DIVIDER}`, display: 'flex', alignItems: 'center', gap: 10 }}>
               <span style={{ fontSize: 12.5, color: ORANGE, fontWeight: 600 }}>{selected.size} sélectionné{selected.size > 1 ? 's' : ''}</span>
-              <button onClick={handleBulkDelete} style={{ ...btn('rgba(226,75,74,.1)', '#e24b4a'), border: '1px solid rgba(226,75,74,.25)' }}>
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg>
-                Supprimer
-              </button>
+              {can('roles', 'canDelete') && (
+                <button onClick={handleBulkDelete} style={{ ...btn('rgba(226,75,74,.1)', '#e24b4a'), border: '1px solid rgba(226,75,74,.25)' }}>
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg>
+                  Supprimer
+                </button>
+              )}
               <button onClick={() => setSelected(new Set())} style={{ ...btn('none', t.TEXT_MUTED), marginLeft: 'auto' }}>Désélectionner</button>
             </div>
           )}
@@ -735,8 +707,8 @@ const router = useRouter()
                 </td>
 
                 {/* Permissions */}
-                <td style={{ padding: '13px 14px' }} onClick={() => setDrawerRoleId(role.id)}>
-                  <span style={{ fontSize: 12.5, fontWeight: 600, color: role.rolePermissions.length ? t.TEXT_MAIN : t.TEXT_DIM }}>
+                <td style={{ padding: '13px 14px' }} onClick={() => can('permissions', 'canList') ? setPermModalRole(role) : setDrawerRoleId(role.id)}>
+                  <span style={{ fontSize: 12.5, fontWeight: 600, color: role.rolePermissions.length ? t.TEXT_MAIN : t.TEXT_DIM, textDecoration: can('permissions', 'canList') ? 'underline' : 'none', textDecorationColor: t.BORDER, textUnderlineOffset: 3 }}>
                     {role.rolePermissions.length > 0 ? `${role.rolePermissions.length} ressource${role.rolePermissions.length > 1 ? 's' : ''}` : '—'}
                   </span>
                 </td>
@@ -756,21 +728,27 @@ const router = useRouter()
                 {/* Actions */}
                 <td style={{ padding: '13px 14px' }} onClick={e => e.stopPropagation()}>
                   <div style={{ display: 'flex', gap: 5, justifyContent: 'flex-end' }}>
+                    {can('permissions', 'canList') && (
+                      <button className="abtn" onClick={() => setPermModalRole(role)} title="Gérer les permissions"
+                        style={{ ...btn('rgba(239,159,39,.1)', ORANGE), border: '1px solid rgba(239,159,39,.25)', padding: '6px 9px' }}>
+                        🔐
+                      </button>
+                    )}
                     <button className="abtn" onClick={() => setDrawerRoleId(role.id)} title="Voir les détails"
                       style={{ ...btn(t.BG_BTN, t.BTN_TEXT), border: `1px solid ${t.BTN_BORDER}`, padding: '6px 9px' }}>
                       <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
                     </button>
-                    {!role.isSystem && (
-                      <>
-                        <button className="abtn" onClick={() => { setEditRole(role); setShowModal(true) }} title="Modifier"
-                          style={{ ...btn(t.BG_BTN, t.BTN_TEXT), border: `1px solid ${t.BTN_BORDER}`, padding: '6px 9px' }}>
-                          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-                        </button>
-                        <button className="abtn" onClick={() => handleDelete(role)} title="Supprimer"
-                          style={{ ...btn('rgba(226,75,74,.08)', '#e24b4a'), border: '1px solid rgba(226,75,74,.2)', padding: '6px 9px' }}>
-                          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg>
-                        </button>
-                      </>
+                    {!role.isSystem && can('roles', 'canUpdate') && (
+                      <button className="abtn" onClick={() => { setEditRole(role); setShowModal(true) }} title="Modifier"
+                        style={{ ...btn(t.BG_BTN, t.BTN_TEXT), border: `1px solid ${t.BTN_BORDER}`, padding: '6px 9px' }}>
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                      </button>
+                    )}
+                    {!role.isSystem && can('roles', 'canDelete') && (
+                      <button className="abtn" onClick={() => handleDelete(role)} title="Supprimer"
+                        style={{ ...btn('rgba(226,75,74,.08)', '#e24b4a'), border: '1px solid rgba(226,75,74,.2)', padding: '6px 9px' }}>
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg>
+                      </button>
                     )}
                   </div>
                 </td>

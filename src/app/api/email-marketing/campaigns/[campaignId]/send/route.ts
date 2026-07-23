@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@/auth";
 import { prisma } from "@/app/lib/prisma";
+import { withPermission } from "@/(permisionGuard)/lib/permissions";
 import { ensureCampaignRecipients } from "@/app/lib/email-marketing/campaign-recipients";
 import { sendResendCampaignEmail } from "@/app/lib/email-marketing/resend-campaign-sender";
 
@@ -214,11 +214,9 @@ export async function POST(
   const startedAt = new Date();
 
   try {
-    const session = await auth();
-
-    if (!session?.user?.id) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    const guard = await withPermission(req, { resource: "campaigns", action: "canExecute" });
+    if (!guard.ok) return guard.response;
+    const session = guard.session;
 
     const userId = session.user.id;
     const campaignId = await getCampaignId(params);

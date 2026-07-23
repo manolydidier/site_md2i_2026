@@ -3,8 +3,8 @@
 // Compatible ancien groupId + nouveau multi-groupes CampaignGroup
 
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@/auth";
 import { prisma } from "@/app/lib/prisma";
+import { withPermission } from "@/(permisionGuard)/lib/permissions";
 import { campaignSchema } from "@/app/lib/email/schemas";
 
 type CampaignWithOptionalGroups = Awaited<
@@ -92,11 +92,9 @@ async function attachCampaignGroups<T extends { id: string }>(
 
 export async function GET(req: NextRequest) {
   try {
-    const session = await auth();
-
-    if (!session?.user?.id) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    const guard = await withPermission(req, { resource: "campaigns", action: "canList" });
+    if (!guard.ok) return guard.response;
+    const session = guard.session;
 
     const { searchParams } = req.nextUrl;
 
@@ -161,11 +159,9 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   try {
-    const session = await auth();
-
-    if (!session?.user?.id) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    const guard = await withPermission(req, { resource: "campaigns", action: "canCreate" });
+    if (!guard.ok) return guard.response;
+    const session = guard.session;
 
     const body = await req.json();
 

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 
 import { prisma } from "@/app/lib/prisma";
 import { getCrmOwnerUserId } from "@/app/lib/crm-owner";
+import { withPermission } from "@/(permisionGuard)/lib/permissions";
 import type { CrmTaskPriority, CrmTaskStatus } from "@/generated/prisma/client";
 
 const ALLOWED_STATUS = ["TODO", "IN_PROGRESS", "DONE", "CANCELLED"] as const;
@@ -12,6 +13,9 @@ export async function PATCH(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const guard = await withPermission(request, { resource: "crm_tasks", action: "canUpdate" });
+    if (!guard.ok) return guard.response;
+
     const userId = await getCrmOwnerUserId();
     const { id } = await params;
     const body = await request.json();

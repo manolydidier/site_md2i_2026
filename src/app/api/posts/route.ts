@@ -1,9 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/app/lib/prisma";
 import { PostStatus } from "@/generated/prisma/client";
+import { withPermission } from "@/(permisionGuard)/lib/permissions";
 
 // GET /api/posts - List all posts
 export async function GET(request: NextRequest) {
+  const guard = await withPermission(request, { resource: "posts", action: "canList" });
+  if (!guard.ok) return guard.response;
+
   try {
     const { searchParams } = new URL(request.url);
     const status = searchParams.get("status") as PostStatus | null;
@@ -49,6 +53,9 @@ export async function GET(request: NextRequest) {
 
 // POST /api/posts - Create a new post
 export async function POST(request: NextRequest) {
+  const guard = await withPermission(request, { resource: "posts", action: "canCreate" });
+  if (!guard.ok) return guard.response;
+
   try {
     const body = await request.json();
 

@@ -24,6 +24,7 @@ import {
   useGroups,
 } from "@/app/hooks/useEmailMarketing";
 import type { Contact } from "@/app/types/email-marketing";
+import { usePermissions } from "@/(permisionGuard)/context/PermissionsContext";
 import { ContactModal } from "./ContactModal";
 import styles from "./ContactsTable.module.css";
 
@@ -113,6 +114,13 @@ function getSourceLabel(value?: string | null) {
 }
 
 export function ContactsTable() {
+  const { can } = usePermissions();
+  const canCreate = can("contacts", "canCreate");
+  const canUpdate = can("contacts", "canUpdate");
+  const canDelete = can("contacts", "canDelete");
+  const canImport = can("contacts", "canImport");
+  const canExport = can("contacts", "canExport");
+
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   const { groups } = useGroups();
@@ -406,53 +414,59 @@ export function ContactsTable() {
         </div>
 
         <div className={styles.actions}>
-          <button
-            type="button"
-            onClick={openImportPicker}
-            disabled={importing}
-            className={`${styles.btn} ${styles.btnSecondary}`}
-          >
-            {importing ? <Loader2 size={15} /> : <Upload size={15} />}
-            {importing ? "Import..." : "Importer"}
-          </button>
-
-          <div className={styles.exportWrap}>
+          {canImport && (
             <button
               type="button"
-              disabled={exporting}
+              onClick={openImportPicker}
+              disabled={importing}
               className={`${styles.btn} ${styles.btnSecondary}`}
             >
-              {exporting ? <Loader2 size={15} /> : <Download size={15} />}
-              {exporting ? "Export..." : "Exporter"}
+              {importing ? <Loader2 size={15} /> : <Upload size={15} />}
+              {importing ? "Import..." : "Importer"}
             </button>
+          )}
 
-            <div className={styles.exportMenu}>
+          {canExport && (
+            <div className={styles.exportWrap}>
               <button
                 type="button"
                 disabled={exporting}
-                onClick={() => handleExport("csv")}
+                className={`${styles.btn} ${styles.btnSecondary}`}
               >
-                CSV
+                {exporting ? <Loader2 size={15} /> : <Download size={15} />}
+                {exporting ? "Export..." : "Exporter"}
               </button>
 
-              <button
-                type="button"
-                disabled={exporting}
-                onClick={() => handleExport("xlsx")}
-              >
-                Excel
-              </button>
+              <div className={styles.exportMenu}>
+                <button
+                  type="button"
+                  disabled={exporting}
+                  onClick={() => handleExport("csv")}
+                >
+                  CSV
+                </button>
+
+                <button
+                  type="button"
+                  disabled={exporting}
+                  onClick={() => handleExport("xlsx")}
+                >
+                  Excel
+                </button>
+              </div>
             </div>
-          </div>
+          )}
 
-          <button
-            type="button"
-            onClick={openCreateModal}
-            className={`${styles.btn} ${styles.btnPrimary}`}
-          >
-            <Plus size={15} />
-            Ajouter
-          </button>
+          {canCreate && (
+            <button
+              type="button"
+              onClick={openCreateModal}
+              className={`${styles.btn} ${styles.btnPrimary}`}
+            >
+              <Plus size={15} />
+              Ajouter
+            </button>
+          )}
         </div>
       </header>
 
@@ -531,10 +545,12 @@ export function ContactsTable() {
         <div className={styles.selectionBar}>
           <span>{selectedIds.length} contact(s) sélectionné(s)</span>
 
-          <button type="button" onClick={handleDeleteSelected}>
-            <Trash2 size={15} />
-            Supprimer
-          </button>
+          {canDelete && (
+            <button type="button" onClick={handleDeleteSelected}>
+              <Trash2 size={15} />
+              Supprimer
+            </button>
+          )}
         </div>
       )}
 
@@ -737,22 +753,26 @@ export function ContactsTable() {
 
                     <td>
                       <div className={styles.rowActions}>
-                        <button
-                          type="button"
-                          onClick={() => openEditModal(contact)}
-                          title="Modifier"
-                        >
-                          <Edit3 size={15} />
-                        </button>
+                        {canUpdate && (
+                          <button
+                            type="button"
+                            onClick={() => openEditModal(contact)}
+                            title="Modifier"
+                          >
+                            <Edit3 size={15} />
+                          </button>
+                        )}
 
-                        <button
-                          type="button"
-                          onClick={() => handleDeleteOne(contact)}
-                          title="Supprimer"
-                          className={styles.danger}
-                        >
-                          <Trash2 size={15} />
-                        </button>
+                        {canDelete && (
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteOne(contact)}
+                            title="Supprimer"
+                            className={styles.danger}
+                          >
+                            <Trash2 size={15} />
+                          </button>
+                        )}
                       </div>
                     </td>
                   </tr>

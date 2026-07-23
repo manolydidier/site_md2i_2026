@@ -5,6 +5,7 @@ import { useEffect }  from 'react'
 import AdminSidebar   from '../components/AdminNavbar'
 import { SidebarProvider, useSidebar } from '../context/SidebarContext'
 import { useTheme } from '../context/ThemeContext'  // ← ajouter
+import { PermissionsProvider } from '@/(permisionGuard)/context/PermissionsContext'
 
 function AdminContent({ children }: { children: React.ReactNode }) {
   const { sidebarWidth } = useSidebar()
@@ -46,9 +47,11 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   if (!session) return null
 
   return (
-    <SidebarProvider>
-      <AdminSidebar />
-      <AdminContent>{children}</AdminContent>
-    </SidebarProvider>
+    <PermissionsProvider>
+      <SidebarProvider>
+        <AdminSidebar />
+        <AdminContent>{children}</AdminContent>
+      </SidebarProvider>
+    </PermissionsProvider>
   )
 }

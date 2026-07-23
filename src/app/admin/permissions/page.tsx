@@ -1,697 +1,341 @@
 'use client'
+// app/admin/permissions/page.tsx
+// Catalogue des modules/tables de l'application (PermissionResource). Ajouter
+// un module ici le rend immédiatement disponible dans la matrice de
+// permissions de chaque rôle (page /admin/roles) — sans aucune modification
+// de code. C'est ce qui rend le système évolutif.
+
 import { useState, useEffect, useCallback } from 'react'
+import { isAxiosError } from 'axios'
 import { useTheme } from '@/app/context/ThemeContext'
 import api from '@/app/lib/axios'
 
-// ─── Types alignés sur le vrai schema ──────────────────────────────────────────
+function apiErrorMessage(e: unknown, fallback: string) {
+  if (isAxiosError(e) && typeof e.response?.data?.error === 'string') return e.response.data.error
+  return fallback
+}
 
-type PermissionResource = {
+type Resource = {
   id: string
   name: string
   code: string
-  description?: string
+  category: string | null
+  description: string | null
+  isActive: boolean
+  _count: { rolePermissions: number }
 }
 
-type Role = {
-  id: string
-  name: string
-  code: string
-  description?: string
-  isSystem: boolean
-  _count?: { rolePermissions: number; userRoles: number }
-}
+const ORANGE      = '#EF9F27'
+const ORANGE_DARK = '#c97d15'
 
-type RolePermission = {
-  id: string
-  canRead: boolean
-  canCreate: boolean
-  canUpdate: boolean
-  canDelete: boolean
-  canList: boolean
-  canExport: boolean
-  canApprove: boolean
-  canManage: boolean
-  specialPermission: 'NONE' | 'FULL_ACCESS'
-  resource: PermissionResource
-}
-
-// ─── Config des colonnes d'actions ─────────────────────────────────────────────
-
-const ACTION_COLS: { key: keyof RolePermission; label: string; short: string }[] = [
-  { key: 'canList',    label: 'Lister',    short: 'LIST'  },
-  { key: 'canRead',    label: 'Lire',      short: 'READ'  },
-  { key: 'canCreate',  label: 'Créer',     short: 'POST'  },
-  { key: 'canUpdate',  label: 'Modifier',  short: 'PATCH' },
-  { key: 'canDelete',  label: 'Supprimer', short: 'DEL'   },
-  { key: 'canExport',  label: 'Exporter',  short: 'EXP'   },
-  { key: 'canApprove', label: 'Approuver', short: 'APR'   },
-  { key: 'canManage',  label: 'Gérer',     short: 'MGT'   },
-]
-
-type FormState = {
-  resourceId: string
-  canRead: boolean
-  canCreate: boolean
-  canUpdate: boolean
-  canDelete: boolean
-  canList: boolean
-  canExport: boolean
-  canApprove: boolean
-  canManage: boolean
-  specialPermission: 'NONE' | 'FULL_ACCESS'
-}
-
-const EMPTY_FORM = (): FormState => ({
-  resourceId: '',
-  canRead: false, canCreate: false, canUpdate: false, canDelete: false,
-  canList: false, canExport: false, canApprove: false, canManage: false,
-  specialPermission: 'NONE',
-})
-
-// ─── Composant Toggle ──────────────────────────────────────────────────────────
-
-function Toggle({
-  checked,
-  onChange,
-  disabled,
-}: {
-  checked: boolean
-  onChange: () => void
-  disabled?: boolean
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onChange}
-      disabled={disabled}
-      style={{
-        width: 32, height: 32, borderRadius: 8, border: 'none',
-        cursor: disabled ? 'not-allowed' : 'pointer',
-        display: 'flex', alignItems: 'center', justifyContent: 'center',
-        fontSize: 14, opacity: disabled ? 0.4 : 1,
-        background: checked ? 'rgba(34,197,94,0.15)' : 'rgba(148,163,184,0.12)',
-        color: checked ? '#16a34a' : '#94a3b8',
-        transition: 'all .15s',
-      }}
-    >
-      {checked ? '✓' : '·'}
-    </button>
-  )
-}
-
-// ─── Page principale ───────────────────────────────────────────────────────────
-
-export default function PermissionsPage() {
+function useTokens() {
   const { dark } = useTheme()
-
-  // Data
-  const [roles, setRoles]                 = useState<Role[]>([])
-  const [selectedRole, setSelectedRole]   = useState<Role | null>(null)
-  const [permissions, setPermissions]     = useState<RolePermission[]>([])
-  const [resources, setResources]         = useState<PermissionResource[]>([])
-
-  // UI state
-  const [loading, setLoading]             = useState(false)
-  const [saving, setSaving]               = useState<string | null>(null)
-  const [error, setError]                 = useState<string | null>(null)
-  const [showForm, setShowForm]           = useState(false)
-  const [form, setForm]                   = useState<FormState>(EMPTY_FORM())
-  const [formError, setFormError]         = useState<string | null>(null)
-  const [formLoading, setFormLoading]     = useState(false)
-
-  // Tokens CSS adaptatifs
-  const c = {
-    bg:       dark ? '#0f172a' : '#f8fafc',
-    surface:  dark ? '#1e293b' : '#ffffff',
-    surface2: dark ? '#0f172a' : '#f1f5f9',
-    border:   dark ? '#334155' : '#e2e8f0',
-    text:     dark ? '#f1f5f9' : '#0f172a',
-    muted:    dark ? '#94a3b8' : '#64748b',
-    accent:   '#6366f1',
+  return {
+    dark,
+    BG_CARD:    dark ? 'rgba(255,255,255,.025)' : 'rgba(0,0,0,.03)',
+    BG_MODAL:   dark ? '#111116'               : '#ffffff',
+    BG_INPUT:   dark ? 'rgba(255,255,255,.04)' : 'rgba(0,0,0,.04)',
+    BG_BTN:     dark ? 'rgba(255,255,255,.06)' : 'rgba(0,0,0,.05)',
+    BORDER:     dark ? 'rgba(255,255,255,.07)' : 'rgba(0,0,0,.09)',
+    BORDER_INP: dark ? 'rgba(255,255,255,.1)'  : 'rgba(0,0,0,.12)',
+    BORDER_MOD: dark ? 'rgba(255,255,255,.1)'  : 'rgba(0,0,0,.1)',
+    TEXT_MAIN:  dark ? '#f0ede8'               : '#1a1918',
+    TEXT_MUTED: dark ? 'rgba(255,255,255,.42)' : 'rgba(0,0,0,.45)',
+    TEXT_DIM:   dark ? 'rgba(255,255,255,.26)' : 'rgba(0,0,0,.3)',
+    DIVIDER:    dark ? 'rgba(255,255,255,.05)' : 'rgba(0,0,0,.06)',
+    CANCEL_CLR: dark ? 'rgba(255,255,255,.5)'  : 'rgba(0,0,0,.45)',
   }
+}
 
-  // ── Chargement initial ───────────────────────────────────────────────────────
+const CATEGORY_COLORS: Record<string, string> = {
+  Contenu:        '#4fa3e0',
+  Catalogue:      '#1D9E75',
+  CRM:            '#a970e0',
+  Marketing:      '#e05ba0',
+  Administration: ORANGE,
+}
+function categoryColor(cat: string | null) {
+  return (cat && CATEGORY_COLORS[cat]) || '#8a8a8a'
+}
+
+function slugifyCode(value: string) {
+  return value
+    .normalize('NFD')
+    .replace(/[̀-ͯ]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '_')
+    .replace(/^_+|_+$/g, '')
+    .slice(0, 100)
+}
+
+type FormState = { name: string; code: string; category: string; description: string; isActive: boolean }
+const EMPTY_FORM = (): FormState => ({ name: '', code: '', category: '', description: '', isActive: true })
+
+function ResourceModal({ resource, onSave, onClose }: {
+  resource: Resource | null
+  onSave: (data: FormState) => Promise<void>
+  onClose: () => void
+}) {
+  const t = useTokens()
+  const [form, setForm] = useState<FormState>(
+    resource
+      ? { name: resource.name, code: resource.code, category: resource.category ?? '', description: resource.description ?? '', isActive: resource.isActive }
+      : EMPTY_FORM()
+  )
+  const [codeEdited, setCodeEdited] = useState(!!resource)
+  const [saving, setSaving] = useState(false)
+  const [error, setError]   = useState<string | null>(null)
 
   useEffect(() => {
-    Promise.all([
-      api.get('/api/roles'),
-      api.get('/api/permission-resources'),
-    ])
-      .then(([rolesRes, resourcesRes]) => {
-        setRoles(rolesRes.data.data ?? [])
-        setResources(resourcesRes.data.data ?? [])
-        
-        
-      })
-      .catch(() => setError('Impossible de charger les données initiales.'))
-  }, [])
+    if (!resource && !codeEdited) {
+      setForm(f => ({ ...f, code: slugifyCode(f.name) }))
+    }
+  }, [form.name, resource, codeEdited])
 
-  // ── Chargement des permissions quand le rôle change ──────────────────────────
-
-  const loadPermissions = useCallback(async (role: Role) => {
-    setLoading(true)
+  async function handleSave() {
+    if (!form.name.trim()) { setError('Le nom est requis'); return }
+    if (!form.code.trim()) { setError('Le code est requis'); return }
     setError(null)
-    setPermissions([])
-    setShowForm(false)
-    setForm(EMPTY_FORM())
+    setSaving(true)
     try {
-      const res = await api.get(`/api/roles/${role.id}/permissions`)
-      setPermissions(res.data.data ?? [])
-      console.log(res, role.id, );
-      
-    } catch {
-      setError('Impossible de charger les permissions.')
+      await onSave(form)
+    } catch (e: unknown) {
+      setError(apiErrorMessage(e, 'Erreur lors de l\'enregistrement'))
     } finally {
-      setLoading(false)
-    }
-  }, [])
-
-  const handleRoleSelect = (roleId: string) => {
-    const role = roles.find(r => r.id === roleId) ?? null
-    setSelectedRole(role)
-    if (role) loadPermissions(role)
-    else setPermissions([])
-  }
-
-  // ── Toggle d'un flag booléen (optimistic update) ─────────────────────────────
-
-  const handleToggle = async (perm: RolePermission, key: keyof RolePermission) => {
-    if (!selectedRole) return
-    const patched = { ...perm, [key]: !perm[key] }
-
-    // Optimistic : on met à jour l'UI immédiatement
-    setPermissions(prev => prev.map(p => p.id === perm.id ? patched : p))
-    setSaving(perm.id)
-
-    try {
-      await api.patch(
-        `/api/roles/${selectedRole.id}/permissions/${perm.id}`,
-        { [key]: patched[key] }   // mise à jour partielle — seul le champ changé
-      )
-    } catch {
-      // Rollback si erreur
-      setPermissions(prev => prev.map(p => p.id === perm.id ? perm : p))
-      setError('Erreur lors de la mise à jour.')
-    } finally {
-      setSaving(null)
+      setSaving(false)
     }
   }
 
-  // ── Changement de specialPermission ──────────────────────────────────────────
-
-  const handleSpecial = async (perm: RolePermission, value: 'NONE' | 'FULL_ACCESS') => {
-    if (!selectedRole) return
-    const patched = { ...perm, specialPermission: value }
-    setPermissions(prev => prev.map(p => p.id === perm.id ? patched : p))
-    setSaving(perm.id)
-    try {
-      await api.patch(
-        `/api/roles/${selectedRole.id}/permissions/${perm.id}`,
-        { specialPermission: value }
-      )
-    } catch {
-      setPermissions(prev => prev.map(p => p.id === perm.id ? perm : p))
-      setError('Erreur lors de la mise à jour.')
-    } finally {
-      setSaving(null) }
+  const inp: React.CSSProperties = {
+    width: '100%', padding: '10px 13px', borderRadius: 10,
+    border: `1px solid ${t.BORDER_INP}`, background: t.BG_INPUT,
+    color: t.TEXT_MAIN, fontSize: 13.5, fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box',
   }
-
-  // ── Suppression ───────────────────────────────────────────────────────────────
-
-  const handleDelete = async (perm: RolePermission) => {
-    if (!selectedRole) return
-    if (!confirm(`Supprimer la permission sur "${perm.resource.name}" ?`)) return
-    try {
-      await api.delete(`/api/roles/${selectedRole.id}/permissions/${perm.id}`)
-      setPermissions(prev => prev.filter(p => p.id !== perm.id))
-    } catch {
-      setError('Erreur lors de la suppression.')
-    }
+  const lbl: React.CSSProperties = {
+    display: 'block', fontSize: 10, fontWeight: 700, letterSpacing: '1.3px',
+    textTransform: 'uppercase', color: t.TEXT_DIM, marginBottom: 6,
   }
-
-  // ── Création d'une nouvelle permission ────────────────────────────────────────
-
-  const handleCreate = async () => {
-    if (!selectedRole) return
-    setFormError(null)
-    if (!form.resourceId) { setFormError('Sélectionnez une ressource.'); return }
-
-    setFormLoading(true)
-    try {
-      const res = await api.post(`/api/roles/${selectedRole.id}/permissions`, form)
-      setPermissions(prev => [...prev, res.data])
-      setShowForm(false)
-      setForm(EMPTY_FORM())
-    } catch (e: any) {
-      const msg = e?.response?.data?.error ?? 'Erreur lors de la création.'
-      setFormError(msg)
-    } finally {
-      setFormLoading(false)
-    }
-  }
-
-  // ── Ressources disponibles (pas encore assignées à ce rôle) ──────────────────
-
-  const availableResources = resources.filter(
-    r => !permissions.some(p => p.resource.id === r.id)
-  )
-
-  // ── Permissions spéciales (FULL_ACCESS) ──────────────────────────────────────
-
-  const specialPerms = permissions.filter(p => p.specialPermission === 'FULL_ACCESS')
-
-  // ─── Render ──────────────────────────────────────────────────────────────────
 
   return (
-    <div style={{
-      minHeight: '100vh', background: c.bg, color: c.text,
-      fontFamily: "'Inter', system-ui, sans-serif",
-      padding: '28px 20px', maxWidth: 1200, margin: '0 auto',
-    }}>
-
-      {/* ── En-tête ── */}
-      <div style={{ marginBottom: 28 }}>
-        <h1 style={{ margin: '0 0 4px', fontSize: 20, fontWeight: 700, letterSpacing: '-.02em' }}>
-          Gestion des permissions
-        </h1>
-        <p style={{ margin: 0, fontSize: 13, color: c.muted }}>
-          Définissez les droits d'accès par rôle et par ressource.
-        </p>
-      </div>
-
-      {/* ── Sélecteur de rôle ── */}
-      <div style={{
-        background: c.surface, border: `1px solid ${c.border}`,
-        borderRadius: 12, padding: '16px 20px', marginBottom: 20,
-        display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap',
-      }}>
-        <div style={{ fontSize: 12, fontWeight: 600, color: c.muted, textTransform: 'uppercase', letterSpacing: '.06em', flexShrink: 0 }}>
-          Rôle
+    <div style={{ position: 'fixed', inset: 0, zIndex: 300, background: 'rgba(0,0,0,.65)', backdropFilter: 'blur(6px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }}>
+      <div style={{ background: t.BG_MODAL, border: `1px solid ${t.BORDER_MOD}`, borderRadius: 22, padding: '2rem', width: '100%', maxWidth: 480, boxShadow: '0 32px 64px rgba(0,0,0,.4)' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+          <h3 style={{ color: t.TEXT_MAIN, fontSize: 18, fontWeight: 700, margin: 0 }}>
+            {resource ? 'Modifier le module' : 'Nouveau module'}
+          </h3>
+          <button onClick={onClose} style={{ width: 32, height: 32, borderRadius: 9, border: `1px solid ${t.BORDER_INP}`, background: 'none', color: t.TEXT_MUTED, cursor: 'pointer', fontSize: 18 }}>×</button>
         </div>
-        <select
-          value={selectedRole?.id ?? ''}
-          onChange={e => handleRoleSelect(e.target.value)}
-          style={{
-            flex: '1 1 200px', maxWidth: 300,
-            padding: '8px 12px', borderRadius: 8, border: `1px solid ${c.border}`,
-            background: c.bg, color: c.text, fontSize: 14, outline: 'none', cursor: 'pointer',
-          }}
-        >
-          <option value="">— Sélectionner un rôle —</option>
-          {roles.map(r => (
-            <option key={r.id} value={r.id}>
-              {r.name}{r.isSystem ? ' (système)' : ''}
-            </option>
-          ))}
-        </select>
 
-        {selectedRole && (
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <span style={{
-              padding: '3px 10px', borderRadius: 20, fontSize: 12, fontWeight: 600,
-              background: `${c.accent}15`, color: c.accent, border: `1px solid ${c.accent}30`,
-            }}>
-              {selectedRole.name}
-            </span>
-            {selectedRole.isSystem && (
-              <span style={{
-                padding: '3px 10px', borderRadius: 20, fontSize: 11, fontWeight: 600,
-                background: 'rgba(234,179,8,0.1)', color: '#ca8a04', border: '1px solid rgba(234,179,8,0.2)',
-              }}>
-                système
-              </span>
-            )}
-            {selectedRole._count && (
-              <span style={{ fontSize: 12, color: c.muted }}>
-                {selectedRole._count.userRoles} utilisateur{selectedRole._count.userRoles !== 1 ? 's' : ''}
-              </span>
-            )}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+          <div>
+            <label style={lbl}>Nom</label>
+            <input style={inp} value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} placeholder="ex: Devis" />
           </div>
-        )}
-      </div>
+          <div>
+            <label style={lbl}>Code</label>
+            <input style={{ ...inp, fontFamily: 'monospace' }} value={form.code}
+              onChange={e => { setCodeEdited(true); setForm(f => ({ ...f, code: slugifyCode(e.target.value) })) }}
+              placeholder="ex: devis" />
+            <p style={{ color: t.TEXT_DIM, fontSize: 11, margin: '4px 0 0' }}>Doit correspondre au segment d&apos;URL de l&apos;API (ex. /api/devis → devis)</p>
+          </div>
+          <div>
+            <label style={lbl}>Catégorie</label>
+            <input style={inp} list="category-options" value={form.category} onChange={e => setForm(f => ({ ...f, category: e.target.value }))} placeholder="ex: Catalogue" />
+            <datalist id="category-options">
+              {Object.keys(CATEGORY_COLORS).map(c => <option key={c} value={c} />)}
+            </datalist>
+          </div>
+          <div>
+            <label style={lbl}>Description <span style={{ fontWeight: 400, textTransform: 'none', letterSpacing: 0 }}>(optionnel)</span></label>
+            <textarea style={{ ...inp, height: 70, resize: 'vertical' }} value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} />
+          </div>
+          <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: t.TEXT_MAIN, cursor: 'pointer' }}>
+            <input type="checkbox" checked={form.isActive} onChange={e => setForm(f => ({ ...f, isActive: e.target.checked }))} />
+            Module actif
+          </label>
+        </div>
 
-      {/* ── Bannière d'erreur ── */}
-      {error && (
-        <div style={{
-          background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.3)',
-          borderRadius: 10, padding: '10px 16px', marginBottom: 16,
-          color: '#ef4444', fontSize: 13,
-          display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-        }}>
-          <span>⚠ {error}</span>
-          <button
-            onClick={() => setError(null)}
-            style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#ef4444', fontSize: 18, lineHeight: 1 }}
-          >
-            ×
+        {error && <p style={{ color: '#e24b4a', fontSize: 12.5, margin: '12px 0 0' }}>⚠ {error}</p>}
+
+        <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: '1.5rem' }}>
+          <button onClick={onClose} style={{ padding: '10px 22px', borderRadius: 11, border: `1px solid ${t.BORDER_INP}`, background: 'none', color: t.CANCEL_CLR, cursor: 'pointer', fontSize: 13, fontFamily: 'inherit' }}>Annuler</button>
+          <button onClick={handleSave} disabled={saving} style={{ padding: '10px 28px', borderRadius: 11, border: 'none', background: `linear-gradient(135deg,${ORANGE},${ORANGE_DARK})`, color: '#fff', cursor: saving ? 'not-allowed' : 'pointer', fontSize: 13, fontWeight: 600, fontFamily: 'inherit', opacity: saving ? .7 : 1 }}>
+            {saving ? 'Enregistrement…' : resource ? 'Enregistrer' : 'Créer le module'}
           </button>
         </div>
-      )}
-
-      {/* ── État : aucun rôle sélectionné ── */}
-      {!selectedRole && (
-        <div style={{
-          background: c.surface, border: `1px solid ${c.border}`, borderRadius: 12,
-          padding: '56px 24px', textAlign: 'center', color: c.muted,
-        }}>
-          <div style={{ fontSize: 36, marginBottom: 10 }}>🔐</div>
-          <p style={{ margin: 0, fontSize: 14 }}>
-            Sélectionnez un rôle pour voir et modifier ses permissions.
-          </p>
-        </div>
-      )}
-
-      {/* ── Chargement ── */}
-      {selectedRole && loading && (
-        <div style={{ textAlign: 'center', padding: '56px 24px', color: c.muted }}>
-          <p style={{ margin: 0, fontSize: 14 }}>Chargement…</p>
-        </div>
-      )}
-
-      {/* ── Contenu principal ── */}
-      {selectedRole && !loading && (
-        <>
-          {/* Barre d'actions */}
-          <div style={{
-            display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-            marginBottom: 12, flexWrap: 'wrap', gap: 8,
-          }}>
-            <span style={{ fontSize: 13, color: c.muted }}>
-              <strong style={{ color: c.text }}>{permissions.length}</strong>{' '}
-              ressource{permissions.length !== 1 ? 's' : ''} configurée{permissions.length !== 1 ? 's' : ''}
-            </span>
-            {availableResources.length > 0 && (
-              <button
-                onClick={() => { setShowForm(v => !v); setFormError(null) }}
-                style={{
-                  padding: '7px 16px', borderRadius: 8, border: 'none', cursor: 'pointer',
-                  background: showForm ? c.border : c.accent,
-                  color: showForm ? c.text : '#fff',
-                  fontSize: 13, fontWeight: 600,
-                }}
-              >
-                {showForm ? '✕ Annuler' : '+ Ajouter une permission'}
-              </button>
-            )}
-          </div>
-
-          {/* ── Formulaire d'ajout ── */}
-          {showForm && (
-            <div style={{
-              background: c.surface, border: `1px solid ${c.accent}50`,
-              borderRadius: 12, padding: '18px 20px', marginBottom: 16,
-            }}>
-              <div style={{ fontSize: 13, fontWeight: 700, color: c.accent, marginBottom: 14 }}>
-                Nouvelle permission — {selectedRole.name}
-              </div>
-
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, alignItems: 'flex-end' }}>
-                {/* Sélection de la ressource */}
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                  <label style={{ fontSize: 11, fontWeight: 600, color: c.muted, textTransform: 'uppercase' }}>
-                    Ressource *
-                  </label>
-                  <select
-                    value={form.resourceId}
-                    onChange={e => setForm(f => ({ ...f, resourceId: e.target.value }))}
-                    style={{
-                      padding: '7px 12px', borderRadius: 7, border: `1px solid ${c.border}`,
-                      background: c.bg, color: c.text, fontSize: 13, minWidth: 180,
-                    }}
-                  >
-                    <option value="">— Choisir —</option>
-                    {availableResources.map(r => (
-                      <option key={r.id} value={r.id}>{r.name}</option>
-                    ))}
-                  </select>
-                </div>
-
-                {/* Toggles des actions */}
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-                  {ACTION_COLS.map(({ key, label }) => (
-                    <label key={key} style={{
-                      display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3,
-                      fontSize: 10, fontWeight: 600, color: c.muted, cursor: 'pointer',
-                      textTransform: 'uppercase', letterSpacing: '.04em',
-                    }}>
-                      {label}
-                      <Toggle
-                        checked={form[key as keyof typeof form] as boolean}
-                        onChange={() => setForm(f => ({ ...f, [key]: !f[key as keyof typeof f] }))}
-                      />
-                    </label>
-                  ))}
-                </div>
-
-                {/* Permission spéciale */}
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                  <label style={{ fontSize: 11, fontWeight: 600, color: c.muted, textTransform: 'uppercase' }}>
-                    Spéciale
-                  </label>
-                  <select
-                    value={form.specialPermission}
-                    onChange={e => setForm(f => ({ ...f, specialPermission: e.target.value as 'NONE' | 'FULL_ACCESS' }))}
-                    style={{
-                      padding: '7px 12px', borderRadius: 7, border: `1px solid ${c.border}`,
-                      background: c.bg, color: c.text, fontSize: 13,
-                    }}
-                  >
-                    <option value="NONE">Aucune</option>
-                    <option value="FULL_ACCESS">Full Access</option>
-                  </select>
-                </div>
-
-                {/* Bouton soumettre */}
-                <button
-                  onClick={handleCreate}
-                  disabled={formLoading}
-                  style={{
-                    padding: '8px 20px', borderRadius: 8, border: 'none', cursor: formLoading ? 'not-allowed' : 'pointer',
-                    background: '#22c55e', color: '#fff', fontWeight: 700, fontSize: 13,
-                    opacity: formLoading ? 0.6 : 1, alignSelf: 'flex-end',
-                  }}
-                >
-                  {formLoading ? '…' : '✓ Créer'}
-                </button>
-              </div>
-
-              {formError && (
-                <p style={{ color: '#ef4444', fontSize: 12, margin: '10px 0 0' }}>⚠ {formError}</p>
-              )}
-            </div>
-          )}
-
-          {/* ── État vide ── */}
-          {permissions.length === 0 && (
-            <div style={{
-              background: c.surface, border: `1px solid ${c.border}`, borderRadius: 12,
-              padding: '48px 24px', textAlign: 'center', color: c.muted,
-            }}>
-              <div style={{ fontSize: 32, marginBottom: 10 }}>📋</div>
-              <p style={{ margin: '0 0 16px', fontSize: 14 }}>
-                Aucune permission configurée pour <strong>{selectedRole.name}</strong>.
-              </p>
-              {availableResources.length > 0 && (
-                <button
-                  onClick={() => setShowForm(true)}
-                  style={{
-                    padding: '9px 22px', borderRadius: 8, border: 'none', cursor: 'pointer',
-                    background: c.accent, color: '#fff', fontWeight: 600, fontSize: 13,
-                  }}
-                >
-                  + Créer la première permission
-                </button>
-              )}
-            </div>
-          )}
-
-          {/* ── Tableau des permissions ── */}
-          {permissions.length > 0 && (
-            <div style={{
-              background: c.surface, border: `1px solid ${c.border}`,
-              borderRadius: 12, overflow: 'hidden',
-            }}>
-              <div style={{ overflowX: 'auto' }}>
-                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13, minWidth: 860 }}>
-                  <thead>
-                    <tr style={{ background: c.surface2 }}>
-                      <th style={thStyle(c)}>Ressource</th>
-                      {ACTION_COLS.map(col => (
-                        <th key={col.key} style={{ ...thStyle(c), textAlign: 'center', minWidth: 54 }}>
-                          <span title={col.label}>{col.short}</span>
-                        </th>
-                      ))}
-                      <th style={{ ...thStyle(c), textAlign: 'center' }}>Spéciale</th>
-                      <th style={{ ...thStyle(c), textAlign: 'center' }}>Action</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {permissions.map((perm, i) => {
-                      const isSaving = saving === perm.id
-                      const isFullAccess = perm.specialPermission === 'FULL_ACCESS'
-                      return (
-                        <tr
-                          key={perm.id}
-                          style={{
-                            background: i % 2 === 0 ? c.surface : c.surface2,
-                            opacity: isSaving ? 0.55 : 1,
-                            transition: 'opacity .1s',
-                          }}
-                        >
-                          {/* Nom de la ressource */}
-                          <td style={{ padding: '10px 16px', borderBottom: `1px solid ${c.border}` }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                              <div style={{
-                                width: 30, height: 30, borderRadius: 8, flexShrink: 0,
-                                background: `${c.accent}15`, color: c.accent,
-                                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                fontWeight: 800, fontSize: 13,
-                              }}>
-                                {perm.resource.name.charAt(0).toUpperCase()}
-                              </div>
-                              <div>
-                                <div style={{ fontWeight: 600, fontSize: 13 }}>{perm.resource.name}</div>
-                                <div style={{ fontSize: 10, color: c.muted, fontFamily: 'monospace' }}>
-                                  {perm.resource.code}
-                                </div>
-                              </div>
-                              {isFullAccess && (
-                                <span style={{
-                                  padding: '1px 7px', borderRadius: 20, fontSize: 10, fontWeight: 700,
-                                  background: 'rgba(234,179,8,0.12)', color: '#ca8a04',
-                                  border: '1px solid rgba(234,179,8,0.25)',
-                                }}>
-                                  FULL
-                                </span>
-                              )}
-                            </div>
-                          </td>
-
-                          {/* Toggles des actions */}
-                          {ACTION_COLS.map(({ key }) => (
-                            <td key={key} style={{ padding: '10px 6px', borderBottom: `1px solid ${c.border}`, textAlign: 'center' }}>
-                              <div style={{ display: 'flex', justifyContent: 'center' }}>
-                                <Toggle
-                                  checked={isFullAccess ? true : (perm[key] as boolean)}
-                                  onChange={() => handleToggle(perm, key)}
-                                  disabled={isSaving || isFullAccess}
-                                />
-                              </div>
-                            </td>
-                          ))}
-
-                          {/* Permission spéciale */}
-                          <td style={{ padding: '10px 12px', borderBottom: `1px solid ${c.border}`, textAlign: 'center' }}>
-                            <select
-                              value={perm.specialPermission}
-                              onChange={e => handleSpecial(perm, e.target.value as 'NONE' | 'FULL_ACCESS')}
-                              disabled={isSaving}
-                              style={{
-                                padding: '4px 8px', borderRadius: 6, fontSize: 11, fontWeight: 600,
-                                border: `1px solid ${isFullAccess ? 'rgba(234,179,8,0.4)' : c.border}`,
-                                background: isFullAccess ? 'rgba(234,179,8,0.08)' : c.bg,
-                                color: isFullAccess ? '#ca8a04' : c.muted,
-                                cursor: isSaving ? 'not-allowed' : 'pointer',
-                                textTransform: 'uppercase', letterSpacing: '.04em',
-                              }}
-                            >
-                              <option value="NONE">Aucune</option>
-                              <option value="FULL_ACCESS">Full Access</option>
-                            </select>
-                          </td>
-
-                          {/* Supprimer */}
-                          <td style={{ padding: '10px 12px', borderBottom: `1px solid ${c.border}`, textAlign: 'center' }}>
-                            <button
-                              onClick={() => handleDelete(perm)}
-                              disabled={isSaving}
-                              style={{
-                                padding: '5px 12px', borderRadius: 6, fontSize: 12, fontWeight: 600,
-                                border: '1px solid rgba(239,68,68,0.3)',
-                                background: 'rgba(239,68,68,0.08)', color: '#ef4444',
-                                cursor: isSaving ? 'not-allowed' : 'pointer',
-                                opacity: isSaving ? 0.5 : 1,
-                              }}
-                            >
-                              Supprimer
-                            </button>
-                          </td>
-                        </tr>
-                      )
-                    })}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          )}
-
-          {/* ── Section permissions spéciales (résumé en bas) ── */}
-          {specialPerms.length > 0 && (
-            <div style={{
-              marginTop: 24,
-              background: dark ? '#1c1400' : '#fffbeb',
-              border: '1px solid rgba(234,179,8,0.3)',
-              borderRadius: 12, padding: '18px 20px',
-            }}>
-              <div style={{
-                fontSize: 11, fontWeight: 700, color: '#ca8a04',
-                textTransform: 'uppercase', letterSpacing: '.07em', marginBottom: 12,
-              }}>
-                ⚡ Permissions spéciales — {specialPerms.length} ressource{specialPerms.length > 1 ? 's' : ''} en Full Access
-              </div>
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-                {specialPerms.map(perm => (
-                  <div
-                    key={perm.id}
-                    style={{
-                      display: 'flex', alignItems: 'center', gap: 8,
-                      background: 'rgba(234,179,8,0.08)',
-                      border: '1px solid rgba(234,179,8,0.25)',
-                      borderRadius: 10, padding: '8px 14px',
-                    }}
-                  >
-                    <div style={{
-                      width: 28, height: 28, borderRadius: 6, flexShrink: 0,
-                      background: 'rgba(234,179,8,0.15)', color: '#ca8a04',
-                      display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      fontWeight: 800, fontSize: 12,
-                    }}>
-                      {perm.resource.name.charAt(0).toUpperCase()}
-                    </div>
-                    <div>
-                      <div style={{ fontSize: 12, fontWeight: 700, color: dark ? '#fef08a' : '#92400e' }}>
-                        {perm.resource.name}
-                      </div>
-                      <div style={{ fontSize: 10, fontFamily: 'monospace', color: '#ca8a04' }}>
-                        {perm.resource.code}
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-              <p style={{ margin: '10px 0 0', fontSize: 11, color: '#ca8a04', opacity: 0.8 }}>
-                Les ressources en Full Access ignorent les toggles individuels — toutes les actions sont autorisées.
-              </p>
-            </div>
-          )}
-        </>
-      )}
+      </div>
     </div>
   )
 }
 
-// ── Helper style en-tête tableau ───────────────────────────────────────────────
+export default function PermissionsCatalogPage() {
+  const t = useTokens()
 
-function thStyle(c: { border: string; muted: string }) {
-  return {
-    padding: '10px 12px',
-    textAlign: 'left' as const,
-    fontWeight: 600,
-    fontSize: 10,
-    color: c.muted,
-    textTransform: 'uppercase' as const,
-    letterSpacing: '.07em',
-    borderBottom: `1px solid ${c.border}`,
-    whiteSpace: 'nowrap' as const,
+  const [resources, setResources] = useState<Resource[]>([])
+  const [loading, setLoading]     = useState(true)
+  const [search, setSearch]       = useState('')
+  const [categoryFilter, setCategoryFilter] = useState('')
+  const [showInactive, setShowInactive] = useState(false)
+  const [editing, setEditing]     = useState<Resource | null | 'new'>(null)
+  const [toast, setToast]         = useState<{ msg: string; type: 'ok' | 'err' } | null>(null)
+
+  const fetchResources = useCallback(async () => {
+    setLoading(true)
+    try {
+      const res = await api.get('/api/permission-resources', {
+        params: { limit: 200, includeInactive: showInactive ? 'true' : undefined, search: search || undefined },
+      })
+      setResources(res.data.data ?? [])
+    } catch {
+      showToast('Impossible de charger les modules', 'err')
+    } finally {
+      setLoading(false)
+    }
+  }, [search, showInactive])
+
+  useEffect(() => { fetchResources() }, [fetchResources])
+
+  function showToast(msg: string, type: 'ok' | 'err' = 'ok') {
+    setToast({ msg, type })
+    setTimeout(() => setToast(null), 3500)
   }
+
+  async function handleSave(data: FormState) {
+    if (editing && typeof editing === 'object') {
+      await api.patch(`/api/permission-resources/${editing.id}`, data)
+      showToast('Module mis à jour')
+    } else {
+      await api.post('/api/permission-resources', data)
+      showToast('Module créé — disponible immédiatement dans la matrice des rôles')
+    }
+    setEditing(null)
+    fetchResources()
+  }
+
+  async function handleToggleActive(r: Resource) {
+    try {
+      await api.patch(`/api/permission-resources/${r.id}`, { isActive: !r.isActive })
+      showToast(r.isActive ? 'Module désactivé' : 'Module réactivé')
+      fetchResources()
+    } catch {
+      showToast('Erreur lors de la mise à jour', 'err')
+    }
+  }
+
+  async function handleDelete(r: Resource) {
+    if (!confirm(`Supprimer définitivement le module "${r.name}" ?`)) return
+    try {
+      await api.delete(`/api/permission-resources/${r.id}`)
+      showToast('Module supprimé')
+      fetchResources()
+    } catch (e: unknown) {
+      if (isAxiosError(e) && e.response?.status === 409) {
+        showToast('Utilisé par des rôles — désactivez-le plutôt que de le supprimer', 'err')
+      } else {
+        showToast('Erreur lors de la suppression', 'err')
+      }
+    }
+  }
+
+  const categories = Array.from(new Set(resources.map(r => r.category).filter(Boolean))) as string[]
+  const filtered = categoryFilter ? resources.filter(r => r.category === categoryFilter) : resources
+
+  const card: React.CSSProperties = { background: t.BG_CARD, border: `1px solid ${t.BORDER}`, borderRadius: 18, overflow: 'hidden' }
+  const inp:  React.CSSProperties = { padding: '9px 13px', borderRadius: 11, border: `1px solid ${t.BORDER_INP}`, background: t.BG_INPUT, color: t.TEXT_MAIN, fontSize: 13, fontFamily: 'inherit', outline: 'none' }
+  const th:   React.CSSProperties = { padding: '12px 14px', textAlign: 'left', fontSize: 10, fontWeight: 700, letterSpacing: '1px', textTransform: 'uppercase', color: t.TEXT_DIM, whiteSpace: 'nowrap' }
+
+  return (
+    <div style={{ fontFamily: "'DM Sans', sans-serif", color: t.TEXT_MAIN }}>
+      {toast && (
+        <div style={{ position: 'fixed', bottom: 24, right: 24, zIndex: 400, padding: '12px 20px', borderRadius: 12, fontSize: 13, fontWeight: 500, background: toast.type === 'ok' ? 'rgba(29,158,117,.95)' : 'rgba(226,75,74,.95)', color: '#fff', boxShadow: '0 8px 32px rgba(0,0,0,.35)' }}>
+          {toast.type === 'ok' ? '✓ ' : '✕ '}{toast.msg}
+        </div>
+      )}
+      {editing && (
+        <ResourceModal resource={editing === 'new' ? null : editing} onSave={handleSave} onClose={() => setEditing(null)} />
+      )}
+
+      <div style={{ marginBottom: '1.5rem', display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}>
+        <div>
+          <h1 style={{ fontFamily: "'Syne', sans-serif", fontSize: 26, fontWeight: 800, margin: 0, letterSpacing: '-.03em' }}>Modules &amp; ressources</h1>
+          <p style={{ color: t.TEXT_MUTED, fontSize: 13, margin: '4px 0 0', fontWeight: 300 }}>
+            {loading ? '…' : `${resources.length} module${resources.length !== 1 ? 's' : ''}`} — le catalogue des tables disponibles pour les permissions de rôle
+          </p>
+        </div>
+        <button onClick={() => setEditing('new')} style={{ padding: '8px 16px', borderRadius: 9, border: 'none', cursor: 'pointer', fontSize: 12.5, fontWeight: 600, background: ORANGE, color: '#fff', display: 'flex', alignItems: 'center', gap: 6, boxShadow: '0 4px 14px rgba(239,159,39,.3)' }}>
+          + Nouveau module
+        </button>
+      </div>
+
+      <div style={{ ...card, padding: '1rem 1.25rem', marginBottom: '1rem', display: 'flex', flexWrap: 'wrap', gap: 10, alignItems: 'center' }}>
+        <input style={{ ...inp, flex: '1 1 220px', minWidth: 180 }} placeholder="Rechercher un module…" value={search} onChange={e => setSearch(e.target.value)} />
+        <select style={inp} value={categoryFilter} onChange={e => setCategoryFilter(e.target.value)}>
+          <option value="">Toutes catégories</option>
+          {categories.map(c => <option key={c} value={c}>{c}</option>)}
+        </select>
+        <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12.5, color: t.TEXT_MUTED, cursor: 'pointer' }}>
+          <input type="checkbox" checked={showInactive} onChange={e => setShowInactive(e.target.checked)} />
+          Afficher les modules désactivés
+        </label>
+      </div>
+
+      <div style={card}>
+        {loading ? (
+          <div style={{ padding: '3rem', textAlign: 'center', color: t.TEXT_DIM, fontSize: 13 }}>Chargement…</div>
+        ) : filtered.length === 0 ? (
+          <div style={{ padding: '3rem', textAlign: 'center', color: t.TEXT_DIM, fontSize: 13 }}>Aucun module trouvé</div>
+        ) : (
+          <div style={{ overflowX: 'auto' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+              <thead>
+                <tr style={{ borderBottom: `1px solid ${t.BORDER}` }}>
+                  <th style={th}>Module</th>
+                  <th style={th}>Catégorie</th>
+                  <th style={th}>Description</th>
+                  <th style={th}>Rôles</th>
+                  <th style={th}>Statut</th>
+                  <th style={{ ...th, textAlign: 'right' }}>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filtered.map(r => (
+                  <tr key={r.id} style={{ borderBottom: `1px solid ${t.DIVIDER}`, opacity: r.isActive ? 1 : .55 }}>
+                    <td style={{ padding: '12px 14px' }}>
+                      <div style={{ fontSize: 13.5, fontWeight: 600 }}>{r.name}</div>
+                      <code style={{ fontSize: 10.5, color: ORANGE, background: 'rgba(239,159,39,.1)', padding: '1px 6px', borderRadius: 4 }}>{r.code}</code>
+                    </td>
+                    <td style={{ padding: '12px 14px' }}>
+                      {r.category && (
+                        <span style={{ fontSize: 11, padding: '3px 9px', borderRadius: 20, fontWeight: 600, background: `${categoryColor(r.category)}18`, color: categoryColor(r.category), border: `1px solid ${categoryColor(r.category)}30` }}>
+                          {r.category}
+                        </span>
+                      )}
+                    </td>
+                    <td style={{ padding: '12px 14px', fontSize: 12.5, color: t.TEXT_MUTED, maxWidth: 260 }}>
+                      {r.description ?? <span style={{ color: t.TEXT_DIM }}>—</span>}
+                    </td>
+                    <td style={{ padding: '12px 14px', fontSize: 12.5, color: t.TEXT_MUTED }}>{r._count.rolePermissions}</td>
+                    <td style={{ padding: '12px 14px' }}>
+                      <span style={{ fontSize: 11, padding: '3px 9px', borderRadius: 20, fontWeight: 600, background: r.isActive ? 'rgba(29,158,117,.1)' : 'rgba(148,148,148,.12)', color: r.isActive ? '#1D9E75' : t.TEXT_DIM }}>
+                        {r.isActive ? 'Actif' : 'Désactivé'}
+                      </span>
+                    </td>
+                    <td style={{ padding: '12px 14px' }}>
+                      <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end' }}>
+                        <button onClick={() => setEditing(r)} style={{ padding: '6px 12px', borderRadius: 8, border: `1px solid ${t.BORDER_INP}`, background: t.BG_BTN, color: t.TEXT_MAIN, cursor: 'pointer', fontSize: 12 }}>Modifier</button>
+                        <button onClick={() => handleToggleActive(r)} style={{ padding: '6px 12px', borderRadius: 8, border: `1px solid ${t.BORDER_INP}`, background: t.BG_BTN, color: t.TEXT_MAIN, cursor: 'pointer', fontSize: 12 }}>
+                          {r.isActive ? 'Désactiver' : 'Réactiver'}
+                        </button>
+                        <button onClick={() => handleDelete(r)} style={{ padding: '6px 12px', borderRadius: 8, border: '1px solid rgba(226,75,74,.2)', background: 'rgba(226,75,74,.08)', color: '#e24b4a', cursor: 'pointer', fontSize: 12 }}>Suppr.</button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+    </div>
+  )
 }

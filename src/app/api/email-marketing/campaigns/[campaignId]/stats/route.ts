@@ -1,8 +1,8 @@
 // src/app/api/email-marketing/campaigns/[campaignId]/stats/route.ts
 
 import { NextResponse } from "next/server";
-import { auth } from "@/auth";
 import { prisma } from "@/app/lib/prisma";
+import { withPermission } from "@/(permisionGuard)/lib/permissions";
 
 type RouteParams = Promise<{
   campaignId?: string;
@@ -24,15 +24,13 @@ async function getCampaignId(params: RouteParams) {
 }
 
 export async function GET(
-  _req: Request,
+  req: Request,
   { params }: { params: RouteParams }
 ) {
   try {
-    const session = await auth();
-
-    if (!session?.user?.id) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    const guard = await withPermission(req, { resource: "campaigns", action: "canRead" });
+    if (!guard.ok) return guard.response;
+    const session = guard.session;
 
     const campaignId = await getCampaignId(params);
 

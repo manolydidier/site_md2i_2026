@@ -11,6 +11,7 @@ import {
 } from "react";
 
 import { useCampaigns, useCampaignStatus } from "@/app/hooks/useEmailMarketing";
+import { usePermissions } from "@/(permisionGuard)/context/PermissionsContext";
 import type { Campaign } from "@/app/types/email-marketing";
 
 import {
@@ -249,6 +250,13 @@ async function fetchCampaignDetails(campaign: Campaign) {
 }
 
 export function CampaignsList({ onNew, onEdit }: CampaignsListProps) {
+  const { can } = usePermissions();
+  const permCanCreate = can("campaigns", "canCreate");
+  const permCanUpdate = can("campaigns", "canUpdate");
+  const permCanDelete = can("campaigns", "canDelete");
+  const permCanExecute = can("campaigns", "canExecute");
+  const permCanCancel = can("campaigns", "canCancel");
+
   const campaignState = useCampaigns();
 
   const campaigns = campaignState.campaigns;
@@ -803,10 +811,12 @@ export function CampaignsList({ onNew, onEdit }: CampaignsListProps) {
             </button>
           )}
 
-          <button type="button" onClick={onNew} className={styles.primaryButton}>
-            <Plus size={15} />
-            Nouvelle campagne
-          </button>
+          {permCanCreate && (
+            <button type="button" onClick={onNew} className={styles.primaryButton}>
+              <Plus size={15} />
+              Nouvelle campagne
+            </button>
+          )}
         </div>
       </header>
 
@@ -885,7 +895,7 @@ export function CampaignsList({ onNew, onEdit }: CampaignsListProps) {
         {loading ? (
           <LoadingState />
         ) : !hasCampaigns ? (
-          <EmptyState onNew={onNew} />
+          <EmptyState onNew={onNew} canCreate={permCanCreate} />
         ) : (
           <div className={styles.rows}>
             {campaigns.map((campaign) => {
@@ -898,6 +908,11 @@ export function CampaignsList({ onNew, onEdit }: CampaignsListProps) {
                   key={campaign.id}
                   campaign={campaign}
                   isSending={isActiveSending}
+                  permCanUpdate={permCanUpdate}
+                  permCanDelete={permCanDelete}
+                  permCanExecute={permCanExecute}
+                  permCanCancel={permCanCancel}
+                  permCanCreate={permCanCreate}
                   sendProgress={
                     activeSendingCampaign?.id === campaign.id
                       ? pollStatus
@@ -1450,7 +1465,7 @@ function LoadingState() {
   );
 }
 
-function EmptyState({ onNew }: { onNew: () => void }) {
+function EmptyState({ onNew, canCreate }: { onNew: () => void; canCreate: boolean }) {
   return (
     <div className={styles.state}>
       <div className={styles.emptyIllustration}>
@@ -1467,10 +1482,12 @@ function EmptyState({ onNew }: { onNew: () => void }) {
         contacts en quelques clics.
       </p>
 
-      <button type="button" onClick={onNew} className={styles.primaryButton}>
-        <Plus size={15} />
-        Créer ma première campagne
-      </button>
+      {canCreate && (
+        <button type="button" onClick={onNew} className={styles.primaryButton}>
+          <Plus size={15} />
+          Créer ma première campagne
+        </button>
+      )}
     </div>
   );
 }
@@ -1478,6 +1495,11 @@ function EmptyState({ onNew }: { onNew: () => void }) {
 interface CampaignRowProps {
   campaign: Campaign;
   isSending: boolean;
+  permCanUpdate: boolean;
+  permCanDelete: boolean;
+  permCanExecute: boolean;
+  permCanCancel: boolean;
+  permCanCreate: boolean;
   sendProgress: ReturnType<typeof useCampaignStatus>;
   onEdit: () => void;
   onDelete: () => void;
@@ -1492,6 +1514,11 @@ interface CampaignRowProps {
 function CampaignRow({
   campaign,
   isSending,
+  permCanUpdate,
+  permCanDelete,
+  permCanExecute,
+  permCanCancel,
+  permCanCreate,
   sendProgress,
   onEdit,
   onDelete,
@@ -1517,12 +1544,15 @@ function CampaignRow({
   const failedCount = sendProgress?.failedCount ?? campaign.failedCount ?? 0;
 
   const canEdit =
-    campaign.status === "DRAFT" ||
-    campaign.status === "FAILED" ||
-    isCancelled;
+    permCanUpdate &&
+    (campaign.status === "DRAFT" ||
+      campaign.status === "FAILED" ||
+      isCancelled);
 
-  const canSend = campaign.status === "DRAFT" || campaign.status === "FAILED";
-  const canDelete = campaign.status !== "SENDING";
+  const canSend =
+    permCanExecute &&
+    (campaign.status === "DRAFT" || campaign.status === "FAILED");
+  const canDelete = permCanDelete && campaign.status !== "SENDING";
   const canShowStats =
     campaign.status === "SENT" ||
     campaign.status === "FAILED" ||
@@ -1638,9 +1668,11 @@ function CampaignRow({
                 <Loader2 size={15} className={styles.spin} />
               </ActionButton>
 
-              <ActionButton label="Annuler l'envoi" onClick={onCancelSend} danger>
-                <Ban size={15} />
-              </ActionButton>
+              {permCanCancel && (
+                <ActionButton label="Annuler l'envoi" onClick={onCancelSend} danger>
+                  <Ban size={15} />
+                </ActionButton>
+              )}
             </>
           ) : (
             canSend && (
@@ -1654,9 +1686,11 @@ function CampaignRow({
             )
           )}
 
-          <ActionButton label="Dupliquer" onClick={onDuplicate}>
-            <Copy size={15} />
-          </ActionButton>
+          {permCanCreate && (
+            <ActionButton label="Dupliquer" onClick={onDuplicate}>
+              <Copy size={15} />
+            </ActionButton>
+          )}
 
           {canDelete && (
             <ActionButton label="Supprimer" onClick={onDelete} danger>

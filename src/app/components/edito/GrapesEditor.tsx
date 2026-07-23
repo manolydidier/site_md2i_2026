@@ -7,6 +7,9 @@ import "grapesjs/dist/css/grapes.min.css";
 import PostMetaSidebar, { PostMeta } from "./PostMetaSidebar";
 import { generateSlug } from "@/app/lib/utils/slug";
 import { useTheme } from "@/app/context/ThemeContext";
+import { ensureBaseBlocksCss, registerCommonBlocks } from "./grapes-shared/blocks";
+import { registerCommonKeymaps } from "./grapes-shared/keymaps";
+import { STYLE_MANAGER_SECTORS } from "./grapes-shared/styleManagerConfig";
 
 interface GrapesEditorProps {
   mode: "create" | "edit";
@@ -30,99 +33,6 @@ type UploadItem = {
 
 const ORANGE = "#F28C18";
 const ORANGE_DARK = "#C96A08";
-
-const BASE_BLOCKS_CSS = `
-/* MD2I_BASE_BLOCKS */
-.hero-md2i {
-  padding: 56px 24px;
-}
-
-.hero-md2i__inner {
-  max-width: 1100px;
-  margin: 0 auto;
-  padding: 40px;
-  border-radius: 28px;
-  border: 1px solid rgba(239,159,39,.18);
-  background: rgba(239,159,39,.06);
-}
-
-.hero-md2i__badge {
-  display: inline-block;
-  padding: 8px 14px;
-  border-radius: 999px;
-  background: rgba(239,159,39,.10);
-  color: #ef9f27;
-  border: 1px solid rgba(239,159,39,.18);
-  font-size: 12px;
-  font-weight: 700;
-  letter-spacing: .08em;
-  text-transform: uppercase;
-}
-
-.hero-md2i h1 {
-  margin: 16px 0 10px;
-  font-size: clamp(34px, 6vw, 62px);
-  line-height: 1.02;
-}
-
-.hero-md2i p {
-  margin: 0 0 22px;
-  max-width: 760px;
-  line-height: 1.7;
-}
-
-.hero-md2i__btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 48px;
-  padding: 0 18px;
-  border-radius: 14px;
-  background: linear-gradient(135deg, #ef9f27, #c97d15);
-  color: #fff;
-  text-decoration: none;
-  font-weight: 700;
-}
-
-.cards-md2i {
-  padding: 24px;
-}
-
-.cards-md2i__grid {
-  max-width: 1100px;
-  margin: 0 auto;
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 16px;
-}
-
-.cards-md2i__item {
-  padding: 22px;
-  border-radius: 18px;
-  border: 1px solid rgba(0,0,0,.08);
-  background: #fff;
-  box-shadow: 0 14px 34px rgba(15,23,42,.06);
-}
-
-.body-light-demo {
-  max-width: 1100px;
-  margin: 0 auto;
-  padding: 28px;
-  border-radius: 22px;
-  border: 1px dashed rgba(239,159,39,.35);
-  background: rgba(239,159,39,.06);
-}
-
-@media (max-width: 840px) {
-  .cards-md2i__grid {
-    grid-template-columns: 1fr;
-  }
-
-  .hero-md2i__inner {
-    padding: 24px;
-  }
-}
-`;
 
 export default function GrapesEditor({ mode, postId }: GrapesEditorProps) {
   const router = useRouter();
@@ -162,40 +72,6 @@ export default function GrapesEditor({ mode, postId }: GrapesEditorProps) {
   const [mediaFilter, setMediaFilter] = useState<"all" | MediaKind>("all");
   const [uploadingMedia, setUploadingMedia] = useState(false);
   const [mediaNotice, setMediaNotice] = useState("");
-
-  // ─── Quick style panel state ──────────────────────────────────────────────
-  const [quickStyle, setQuickStyle] = useState({
-    fontSize: "",
-    fontWeight: "400",
-    lineHeight: "",
-    letterSpacing: "",
-    color: "",
-    backgroundColor: "",
-    borderColor: "",
-    borderWidth: "",
-    borderRadius: "",
-    width: "",
-    height: "",
-    minWidth: "",
-    minHeight: "",
-    maxWidth: "",
-    marginTop: "",
-    marginRight: "",
-    marginBottom: "",
-    marginLeft: "",
-    paddingTop: "",
-    paddingRight: "",
-    paddingBottom: "",
-    paddingLeft: "",
-    display: "",
-    flexDirection: "",
-    justifyContent: "",
-    alignItems: "",
-    gap: "",
-    opacity: "",
-    boxShadow: "",
-    zIndex: "",
-  });
 
   const [pageSettings, setPageSettings] = useState({
     backgroundColor: dark ? "#0B0B0E" : "#FFFFFF",
@@ -238,14 +114,6 @@ export default function GrapesEditor({ mode, postId }: GrapesEditorProps) {
     accentSoft: "rgba(242,140,24,.12)",
     accentSoftBorder: "rgba(242,140,24,.28)",
   };
-
-  const quickTextColors = dark
-    ? ["#F2EFEA", "rgba(255,255,255,.72)", ORANGE, "#22c55e", "#ef4444"]
-    : ["#181818", "#475569", ORANGE, "#1D9E75", "#dc2626"];
-
-  const quickBackgroundColors = dark
-    ? ["transparent", "#1B202B", "#232936", "rgba(242,140,24,.12)", "#ffffff"]
-    : ["transparent", "#ffffff", "#f8fafc", "rgba(242,140,24,.10)", "#181818"];
 
   const detectMediaKind = useCallback((mimeType?: string, url?: string): MediaKind => {
     const mime = String(mimeType || "").toLowerCase();
@@ -449,63 +317,6 @@ export default function GrapesEditor({ mode, postId }: GrapesEditorProps) {
 
   const getSelectedComponent = () => gjsRef.current?.getSelected() as any;
 
-  // ─── Sync quickStyle from selected component ──────────────────────────────
-  const syncQuickStyleFromSelection = useCallback(() => {
-    const selected = getSelectedComponent();
-    if (!selected) {
-      setQuickStyle({
-        fontSize: "", fontWeight: "400", lineHeight: "", letterSpacing: "",
-        color: "", backgroundColor: "", borderColor: "", borderWidth: "",
-        borderRadius: "", width: "", height: "", minWidth: "", minHeight: "",
-        maxWidth: "", marginTop: "", marginRight: "", marginBottom: "",
-        marginLeft: "", paddingTop: "", paddingRight: "", paddingBottom: "",
-        paddingLeft: "", display: "", flexDirection: "", justifyContent: "",
-        alignItems: "", gap: "", opacity: "", boxShadow: "", zIndex: "",
-      });
-      return;
-    }
-    const s = (selected.getStyle?.() || {}) as Record<string, string>;
-    setQuickStyle({
-      fontSize: s["font-size"] || "",
-      fontWeight: s["font-weight"] || "400",
-      lineHeight: s["line-height"] || "",
-      letterSpacing: s["letter-spacing"] || "",
-      color: s["color"] || "",
-      backgroundColor: s["background-color"] || "",
-      borderColor: s["border-color"] || "",
-      borderWidth: s["border-width"] || "",
-      borderRadius: s["border-radius"] || "",
-      width: s["width"] || "",
-      height: s["height"] || "",
-      minWidth: s["min-width"] || "",
-      minHeight: s["min-height"] || "",
-      maxWidth: s["max-width"] || "",
-      marginTop: s["margin-top"] || "",
-      marginRight: s["margin-right"] || "",
-      marginBottom: s["margin-bottom"] || "",
-      marginLeft: s["margin-left"] || "",
-      paddingTop: s["padding-top"] || "",
-      paddingRight: s["padding-right"] || "",
-      paddingBottom: s["padding-bottom"] || "",
-      paddingLeft: s["padding-left"] || "",
-      display: s["display"] || "",
-      flexDirection: s["flex-direction"] || "",
-      justifyContent: s["justify-content"] || "",
-      alignItems: s["align-items"] || "",
-      gap: s["gap"] || "",
-      opacity: s["opacity"] || "",
-      boxShadow: s["box-shadow"] || "",
-      zIndex: s["z-index"] || "",
-    });
-  }, []);
-
-  // Apply a single CSS property to selected component
-  const applyStyleProp = useCallback((prop: string, value: string) => {
-    const selected = getSelectedComponent();
-    if (!selected) return;
-    selected.addStyle({ [prop]: value });
-  }, []);
-
   const syncLinkConfigFromSelection = useCallback(() => {
     const selected = getSelectedComponent();
 
@@ -524,12 +335,6 @@ export default function GrapesEditor({ mode, postId }: GrapesEditorProps) {
       noFollow: relValue.includes("nofollow"),
       download: typeof attrs.download !== "undefined",
     });
-  }, []);
-
-  const appendBaseBlocksCss = useCallback((editor: Editor) => {
-    const currentCss = editor.getCss() || "";
-    if (currentCss.includes("MD2I_BASE_BLOCKS")) return;
-    editor.setStyle(`${currentCss}\n\n${BASE_BLOCKS_CSS}`);
   }, []);
 
   const extractStoredJsFromHtml = (html: string) => {
@@ -601,7 +406,7 @@ export default function GrapesEditor({ mode, postId }: GrapesEditorProps) {
         else if (post.gjsHtml) editor.setComponents(post.gjsHtml);
         if (post.gjsStyles) editor.setStyle(post.gjsStyles);
         setCodeJs(post.gjsJs ?? "");
-        appendBaseBlocksCss(editor);
+        ensureBaseBlocksCss(editor);
         setTimeout(() => {
           runCanvasJs(post.gjsJs ?? "");
           syncCodeFieldsSilently();
@@ -611,7 +416,7 @@ export default function GrapesEditor({ mode, postId }: GrapesEditorProps) {
         console.error("loadPost", e);
       }
     },
-    [appendBaseBlocksCss, postId, readPageStyles, syncCodeFieldsSilently]
+    [postId, readPageStyles, syncCodeFieldsSilently]
   );
 
   const getNumberFromCss = (value: unknown, fallback: number) => {
@@ -673,55 +478,6 @@ export default function GrapesEditor({ mode, postId }: GrapesEditorProps) {
     }
   };
 
-  const registerCustomBlocks = useCallback(
-    (editor: Editor) => {
-      editor.Blocks.add("hero-md2i", {
-        label: "Hero MD2I",
-        category: "MD2I",
-        select: true,
-        content: `
-          <section class="hero-md2i">
-            <div class="hero-md2i__inner">
-              <span class="hero-md2i__badge">MD2I</span>
-              <h1>Votre titre principal</h1>
-              <p>Un texte d'introduction élégant pour présenter votre service.</p>
-              <a href="#" class="hero-md2i__btn">Découvrir</a>
-            </div>
-          </section>
-        `,
-      });
-
-      editor.Blocks.add("card-grid-md2i", {
-        label: "Cards 3 colonnes",
-        category: "MD2I",
-        select: true,
-        content: `
-          <section class="cards-md2i">
-            <div class="cards-md2i__grid">
-              <article class="cards-md2i__item"><h3>Bloc 1</h3><p>Texte de présentation.</p></article>
-              <article class="cards-md2i__item"><h3>Bloc 2</h3><p>Texte de présentation.</p></article>
-              <article class="cards-md2i__item"><h3>Bloc 3</h3><p>Texte de présentation.</p></article>
-            </div>
-          </section>
-        `,
-      });
-
-      editor.Blocks.add("body-section-light", {
-        label: "Section claire",
-        category: "MD2I",
-        select: true,
-        content: `
-          <section class="body-light-demo">
-            <h2>Section claire</h2>
-            <p>Cette section laisse mieux voir les styles globaux de la page.</p>
-          </section>
-        `,
-      });
-
-      appendBaseBlocksCss(editor);
-    },
-    [appendBaseBlocksCss]
-  );
 
   // Active ou bloque uniquement la navigation dans l'iframe GrapesJS.
   // Les attributs href, target, rel et download des composants ne sont jamais modifiés.
@@ -847,661 +603,19 @@ export default function GrapesEditor({ mode, postId }: GrapesEditorProps) {
 
         styleManager: {
           appendTo: "#ed-styles-fields",
-          sectors: [
-            {
-              id: "typography",
-              name: "Texte",
-              open: true,
-              properties: [
-                {
-                  name: "Taille police",
-                  property: "font-size",
-                  type: "integer" as any,
-                  units: ["px", "em", "rem", "%", "vw"],
-                  unit: "px",
-                  min: 1,
-                  max: 200,
-                },
-                {
-                  name: "Graisse",
-                  property: "font-weight",
-                  type: "select" as any,
-                  options: [
-                    { id: "300", label: "Light 300" },
-                    { id: "400", label: "Normal 400" },
-                    { id: "500", label: "Medium 500" },
-                    { id: "600", label: "Semibold 600" },
-                    { id: "700", label: "Bold 700" },
-                    { id: "800", label: "Extrabold 800" },
-                    { id: "900", label: "Black 900" },
-                  ],
-                },
-                {
-                  name: "Hauteur de ligne",
-                  property: "line-height",
-                  type: "integer" as any,
-                  units: ["", "px", "em"],
-                  unit: "",
-                  min: 1,
-                  max: 5,
-                  step: 0.05,
-                },
-                {
-                  name: "Espacement lettres",
-                  property: "letter-spacing",
-                  type: "integer" as any,
-                  units: ["px", "em"],
-                  unit: "px",
-                  min: -10,
-                  max: 50,
-                },
-                {
-                  name: "Couleur texte",
-                  property: "color",
-                  type: "color" as any,
-                },
-                {
-                  name: "Alignement",
-                  property: "text-align",
-                  type: "radio" as any,
-                  options: [
-                    { id: "left", label: "←" },
-                    { id: "center", label: "↔" },
-                    { id: "right", label: "→" },
-                    { id: "justify", label: "≡" },
-                  ],
-                },
-                {
-                  name: "Décoration",
-                  property: "text-decoration",
-                  type: "select" as any,
-                  options: [
-                    { id: "none", label: "Aucune" },
-                    { id: "underline", label: "Souligné" },
-                    { id: "line-through", label: "Barré" },
-                    { id: "overline", label: "Au-dessus" },
-                  ],
-                },
-                {
-                  name: "Transformation",
-                  property: "text-transform",
-                  type: "select" as any,
-                  options: [
-                    { id: "none", label: "Aucune" },
-                    { id: "uppercase", label: "MAJUSCULES" },
-                    { id: "lowercase", label: "minuscules" },
-                    { id: "capitalize", label: "Capitalize" },
-                  ],
-                },
-                {
-                  name: "Famille police",
-                  property: "font-family",
-                  type: "select" as any,
-                  options: [
-                    { id: "Inter, Arial, sans-serif", label: "Inter" },
-                    { id: "Arial, Helvetica, sans-serif", label: "Arial" },
-                    { id: "Georgia, serif", label: "Georgia" },
-                    { id: "system-ui, sans-serif", label: "System UI" },
-                    { id: "ui-monospace, monospace", label: "Monospace" },
-                  ],
-                },
-              ],
-            },
-            {
-              id: "background",
-              name: "Arrière-plan",
-              open: false,
-              properties: [
-                {
-                  name: "Couleur de fond",
-                  property: "background-color",
-                  type: "color" as any,
-                },
-                {
-                  name: "Image de fond",
-                  property: "background-image",
-                  type: "base" as any,
-                },
-                {
-                  name: "Taille fond",
-                  property: "background-size",
-                  type: "select" as any,
-                  options: [
-                    { id: "auto", label: "Auto" },
-                    { id: "cover", label: "Cover" },
-                    { id: "contain", label: "Contain" },
-                  ],
-                },
-                {
-                  name: "Position fond",
-                  property: "background-position",
-                  type: "select" as any,
-                  options: [
-                    { id: "center", label: "Centre" },
-                    { id: "top", label: "Haut" },
-                    { id: "bottom", label: "Bas" },
-                    { id: "left", label: "Gauche" },
-                    { id: "right", label: "Droite" },
-                  ],
-                },
-                {
-                  name: "Répétition fond",
-                  property: "background-repeat",
-                  type: "select" as any,
-                  options: [
-                    { id: "no-repeat", label: "Aucune" },
-                    { id: "repeat", label: "Répéter" },
-                    { id: "repeat-x", label: "Horizontal" },
-                    { id: "repeat-y", label: "Vertical" },
-                  ],
-                },
-              ],
-            },
-            {
-              id: "border",
-              name: "Bordure & coins",
-              open: false,
-              properties: [
-                {
-                  name: "Couleur bordure",
-                  property: "border-color",
-                  type: "color" as any,
-                },
-                {
-                  name: "Épaisseur bordure",
-                  property: "border-width",
-                  type: "integer" as any,
-                  units: ["px"],
-                  unit: "px",
-                  min: 0,
-                  max: 30,
-                },
-                {
-                  name: "Style bordure",
-                  property: "border-style",
-                  type: "select" as any,
-                  options: [
-                    { id: "none", label: "Aucune" },
-                    { id: "solid", label: "Solide" },
-                    { id: "dashed", label: "Tirets" },
-                    { id: "dotted", label: "Points" },
-                    { id: "double", label: "Double" },
-                  ],
-                },
-                {
-                  name: "Rayon global",
-                  property: "border-radius",
-                  type: "integer" as any,
-                  units: ["px", "%"],
-                  unit: "px",
-                  min: 0,
-                  max: 999,
-                },
-                {
-                  name: "Rayon haut-gauche",
-                  property: "border-top-left-radius",
-                  type: "integer" as any,
-                  units: ["px", "%"],
-                  unit: "px",
-                  min: 0,
-                  max: 999,
-                },
-                {
-                  name: "Rayon haut-droit",
-                  property: "border-top-right-radius",
-                  type: "integer" as any,
-                  units: ["px", "%"],
-                  unit: "px",
-                  min: 0,
-                  max: 999,
-                },
-                {
-                  name: "Rayon bas-gauche",
-                  property: "border-bottom-left-radius",
-                  type: "integer" as any,
-                  units: ["px", "%"],
-                  unit: "px",
-                  min: 0,
-                  max: 999,
-                },
-                {
-                  name: "Rayon bas-droit",
-                  property: "border-bottom-right-radius",
-                  type: "integer" as any,
-                  units: ["px", "%"],
-                  unit: "px",
-                  min: 0,
-                  max: 999,
-                },
-                {
-                  name: "Outline",
-                  property: "outline",
-                  type: "base" as any,
-                },
-              ],
-            },
-            {
-              id: "dimensions",
-              name: "Dimensions",
-              open: false,
-              properties: [
-                {
-                  name: "Largeur",
-                  property: "width",
-                  type: "integer" as any,
-                  units: ["px", "%", "vw", "em", "rem", "auto"],
-                  unit: "px",
-                  min: 0,
-                  max: 5000,
-                },
-                {
-                  name: "Hauteur",
-                  property: "height",
-                  type: "integer" as any,
-                  units: ["px", "%", "vh", "em", "rem", "auto"],
-                  unit: "px",
-                  min: 0,
-                  max: 5000,
-                },
-                {
-                  name: "Larg. min",
-                  property: "min-width",
-                  type: "integer" as any,
-                  units: ["px", "%", "vw", "em", "rem"],
-                  unit: "px",
-                  min: 0,
-                  max: 5000,
-                },
-                {
-                  name: "Haut. min",
-                  property: "min-height",
-                  type: "integer" as any,
-                  units: ["px", "%", "vh", "em", "rem"],
-                  unit: "px",
-                  min: 0,
-                  max: 5000,
-                },
-                {
-                  name: "Larg. max",
-                  property: "max-width",
-                  type: "integer" as any,
-                  units: ["px", "%", "vw", "em", "rem"],
-                  unit: "px",
-                  min: 0,
-                  max: 5000,
-                },
-                {
-                  name: "Haut. max",
-                  property: "max-height",
-                  type: "integer" as any,
-                  units: ["px", "%", "vh", "em", "rem"],
-                  unit: "px",
-                  min: 0,
-                  max: 5000,
-                },
-              ],
-            },
-            {
-              id: "spacing",
-              name: "Espacement (Margin / Padding)",
-              open: false,
-              properties: [
-                {
-                  name: "Margin haut",
-                  property: "margin-top",
-                  type: "integer" as any,
-                  units: ["px", "%", "em", "rem", "auto"],
-                  unit: "px",
-                  min: -500,
-                  max: 500,
-                },
-                {
-                  name: "Margin droite",
-                  property: "margin-right",
-                  type: "integer" as any,
-                  units: ["px", "%", "em", "rem", "auto"],
-                  unit: "px",
-                  min: -500,
-                  max: 500,
-                },
-                {
-                  name: "Margin bas",
-                  property: "margin-bottom",
-                  type: "integer" as any,
-                  units: ["px", "%", "em", "rem", "auto"],
-                  unit: "px",
-                  min: -500,
-                  max: 500,
-                },
-                {
-                  name: "Margin gauche",
-                  property: "margin-left",
-                  type: "integer" as any,
-                  units: ["px", "%", "em", "rem", "auto"],
-                  unit: "px",
-                  min: -500,
-                  max: 500,
-                },
-                {
-                  name: "Padding haut",
-                  property: "padding-top",
-                  type: "integer" as any,
-                  units: ["px", "%", "em", "rem"],
-                  unit: "px",
-                  min: 0,
-                  max: 500,
-                },
-                {
-                  name: "Padding droite",
-                  property: "padding-right",
-                  type: "integer" as any,
-                  units: ["px", "%", "em", "rem"],
-                  unit: "px",
-                  min: 0,
-                  max: 500,
-                },
-                {
-                  name: "Padding bas",
-                  property: "padding-bottom",
-                  type: "integer" as any,
-                  units: ["px", "%", "em", "rem"],
-                  unit: "px",
-                  min: 0,
-                  max: 500,
-                },
-                {
-                  name: "Padding gauche",
-                  property: "padding-left",
-                  type: "integer" as any,
-                  units: ["px", "%", "em", "rem"],
-                  unit: "px",
-                  min: 0,
-                  max: 500,
-                },
-              ],
-            },
-            {
-              id: "layout",
-              name: "Disposition",
-              open: false,
-              properties: [
-                {
-                  name: "Display",
-                  property: "display",
-                  type: "select" as any,
-                  options: [
-                    { id: "block", label: "Block" },
-                    { id: "inline-block", label: "Inline-block" },
-                    { id: "inline", label: "Inline" },
-                    { id: "flex", label: "Flex" },
-                    { id: "inline-flex", label: "Inline-flex" },
-                    { id: "grid", label: "Grid" },
-                    { id: "none", label: "Masqué (none)" },
-                  ],
-                },
-                {
-                  name: "Position",
-                  property: "position",
-                  type: "select" as any,
-                  options: [
-                    { id: "static", label: "Static" },
-                    { id: "relative", label: "Relative" },
-                    { id: "absolute", label: "Absolute" },
-                    { id: "fixed", label: "Fixed" },
-                    { id: "sticky", label: "Sticky" },
-                  ],
-                },
-                {
-                  name: "Top",
-                  property: "top",
-                  type: "integer" as any,
-                  units: ["px", "%", "em"],
-                  unit: "px",
-                },
-                {
-                  name: "Right",
-                  property: "right",
-                  type: "integer" as any,
-                  units: ["px", "%", "em"],
-                  unit: "px",
-                },
-                {
-                  name: "Bottom",
-                  property: "bottom",
-                  type: "integer" as any,
-                  units: ["px", "%", "em"],
-                  unit: "px",
-                },
-                {
-                  name: "Left",
-                  property: "left",
-                  type: "integer" as any,
-                  units: ["px", "%", "em"],
-                  unit: "px",
-                },
-                {
-                  name: "Z-index",
-                  property: "z-index",
-                  type: "integer" as any,
-                  units: [""],
-                  unit: "",
-                  min: -999,
-                  max: 9999,
-                },
-                {
-                  name: "Overflow",
-                  property: "overflow",
-                  type: "select" as any,
-                  options: [
-                    { id: "visible", label: "Visible" },
-                    { id: "hidden", label: "Caché" },
-                    { id: "scroll", label: "Scroll" },
-                    { id: "auto", label: "Auto" },
-                  ],
-                },
-              ],
-            },
-            {
-              id: "flexgrid",
-              name: "Flex / Grid",
-              open: false,
-              properties: [
-                {
-                  name: "Direction flex",
-                  property: "flex-direction",
-                  type: "select" as any,
-                  options: [
-                    { id: "row", label: "Row →" },
-                    { id: "row-reverse", label: "Row ←" },
-                    { id: "column", label: "Column ↓" },
-                    { id: "column-reverse", label: "Column ↑" },
-                  ],
-                },
-                {
-                  name: "Flex wrap",
-                  property: "flex-wrap",
-                  type: "select" as any,
-                  options: [
-                    { id: "nowrap", label: "Nowrap" },
-                    { id: "wrap", label: "Wrap" },
-                    { id: "wrap-reverse", label: "Wrap-reverse" },
-                  ],
-                },
-                {
-                  name: "Justify content",
-                  property: "justify-content",
-                  type: "select" as any,
-                  options: [
-                    { id: "flex-start", label: "Début" },
-                    { id: "center", label: "Centre" },
-                    { id: "flex-end", label: "Fin" },
-                    { id: "space-between", label: "Space-between" },
-                    { id: "space-around", label: "Space-around" },
-                    { id: "space-evenly", label: "Space-evenly" },
-                  ],
-                },
-                {
-                  name: "Align items",
-                  property: "align-items",
-                  type: "select" as any,
-                  options: [
-                    { id: "stretch", label: "Stretch" },
-                    { id: "flex-start", label: "Début" },
-                    { id: "center", label: "Centre" },
-                    { id: "flex-end", label: "Fin" },
-                    { id: "baseline", label: "Baseline" },
-                  ],
-                },
-                {
-                  name: "Align self",
-                  property: "align-self",
-                  type: "select" as any,
-                  options: [
-                    { id: "auto", label: "Auto" },
-                    { id: "stretch", label: "Stretch" },
-                    { id: "flex-start", label: "Début" },
-                    { id: "center", label: "Centre" },
-                    { id: "flex-end", label: "Fin" },
-                  ],
-                },
-                {
-                  name: "Gap",
-                  property: "gap",
-                  type: "integer" as any,
-                  units: ["px", "%", "em", "rem"],
-                  unit: "px",
-                  min: 0,
-                  max: 200,
-                },
-                {
-                  name: "Flex grow",
-                  property: "flex-grow",
-                  type: "integer" as any,
-                  units: [""],
-                  unit: "",
-                  min: 0,
-                  max: 10,
-                },
-                {
-                  name: "Flex shrink",
-                  property: "flex-shrink",
-                  type: "integer" as any,
-                  units: [""],
-                  unit: "",
-                  min: 0,
-                  max: 10,
-                },
-                {
-                  name: "Flex basis",
-                  property: "flex-basis",
-                  type: "integer" as any,
-                  units: ["px", "%", "em", "auto"],
-                  unit: "px",
-                  min: 0,
-                  max: 5000,
-                },
-                {
-                  name: "Grid colonnes",
-                  property: "grid-template-columns",
-                  type: "base" as any,
-                },
-                {
-                  name: "Grid lignes",
-                  property: "grid-template-rows",
-                  type: "base" as any,
-                },
-              ],
-            },
-            {
-              id: "effects",
-              name: "Effets",
-              open: false,
-              properties: [
-                {
-                  name: "Opacité",
-                  property: "opacity",
-                  type: "slider" as any,
-                  min: 0,
-                  max: 1,
-                  step: 0.01,
-                },
-                {
-                  name: "Ombre boîte",
-                  property: "box-shadow",
-                  type: "base" as any,
-                },
-                {
-                  name: "Filtre",
-                  property: "filter",
-                  type: "base" as any,
-                },
-                {
-                  name: "Backdrop filter",
-                  property: "backdrop-filter",
-                  type: "base" as any,
-                },
-                {
-                  name: "Blend mode",
-                  property: "mix-blend-mode",
-                  type: "select" as any,
-                  options: [
-                    { id: "normal", label: "Normal" },
-                    { id: "multiply", label: "Multiply" },
-                    { id: "screen", label: "Screen" },
-                    { id: "overlay", label: "Overlay" },
-                    { id: "darken", label: "Darken" },
-                    { id: "lighten", label: "Lighten" },
-                  ],
-                },
-              ],
-            },
-            {
-              id: "transform",
-              name: "Transformation",
-              open: false,
-              properties: [
-                { name: "Transform", property: "transform", type: "base" as any },
-                { name: "Transition", property: "transition", type: "base" as any },
-                {
-                  name: "Curseur",
-                  property: "cursor",
-                  type: "select" as any,
-                  options: [
-                    { id: "default", label: "Default" },
-                    { id: "pointer", label: "Pointer" },
-                    { id: "move", label: "Move" },
-                    { id: "text", label: "Text" },
-                    { id: "not-allowed", label: "Not-allowed" },
-                    { id: "grab", label: "Grab" },
-                  ],
-                },
-                {
-                  name: "Object fit",
-                  property: "object-fit",
-                  type: "select" as any,
-                  options: [
-                    { id: "fill", label: "Fill" },
-                    { id: "contain", label: "Contain" },
-                    { id: "cover", label: "Cover" },
-                    { id: "none", label: "None" },
-                    { id: "scale-down", label: "Scale-down" },
-                  ],
-                },
-              ],
-            },
-          ],
+          sectors: STYLE_MANAGER_SECTORS,
         },
       });
 
       gjsRef.current = editor;
-      registerCustomBlocks(editor);
+      registerCommonBlocks(editor);
+      registerCommonKeymaps(editor);
 
       const updateSelectedLabel = () => {
         const selected = editor.getSelected() as any;
         if (!selected) {
           setSelectedName("Aucun élément");
           syncLinkConfigFromSelection();
-          syncQuickStyleFromSelection();
           return;
         }
         const label =
@@ -1512,7 +626,6 @@ export default function GrapesEditor({ mode, postId }: GrapesEditorProps) {
           "Élément";
         setSelectedName(String(label));
         syncLinkConfigFromSelection();
-        syncQuickStyleFromSelection();
       };
 
       editor.on("load", async () => {
@@ -1521,7 +634,7 @@ export default function GrapesEditor({ mode, postId }: GrapesEditorProps) {
         if (mode === "edit") {
           await loadPost(editor);
         } else {
-          appendBaseBlocksCss(editor);
+          ensureBaseBlocksCss(editor);
           setTimeout(() => {
             syncCodeFieldsSilently();
             runCanvasJs(codeJs);
@@ -1544,17 +657,13 @@ export default function GrapesEditor({ mode, postId }: GrapesEditorProps) {
       editor.on("component:selected", updateSelectedLabel);
       editor.on("component:deselected", updateSelectedLabel);
       editor.on("component:update", updateSelectedLabel);
-      // Re-sync quick style when style changes on selected
-      editor.on("style:change", () => {
-        syncQuickStyleFromSelection();
-      });
     })();
 
     return () => {
       gjsRef.current?.destroy();
       gjsRef.current = null;
     };
-  }, [appendBaseBlocksCss, installCanvasLinkGuard, loadPost, mode, readPageStyles, registerCustomBlocks, syncLinkConfigFromSelection, syncQuickStyleFromSelection]);
+  }, [installCanvasLinkGuard, loadPost, mode, readPageStyles, syncLinkConfigFromSelection]);
 
   useEffect(() => {
     if (activeTab === "media" && mediaItems.length === 0 && !mediaLoading) {
@@ -1572,26 +681,6 @@ export default function GrapesEditor({ mode, postId }: GrapesEditorProps) {
     const map: Record<Device, string> = { desktop: "Desktop", tablet: "Tablet", mobile: "Mobile" };
     gjsRef.current?.setDevice(map[d]);
     setDevice(d);
-  };
-
-  const applyToSelected = (style: Record<string, string>) => {
-    const editor = gjsRef.current;
-    const selected = editor?.getSelected();
-    if (!selected) { setInspectorTab("styles"); return; }
-    selected.addStyle(style);
-    setInspectorTab("styles");
-    syncQuickStyleFromSelection();
-  };
-
-  const clearQuickStyles = () => {
-    const editor = gjsRef.current;
-    const selected = editor?.getSelected();
-    if (!selected) { setInspectorTab("styles"); return; }
-    selected.addStyle({
-      color: "", "background-color": "", border: "",
-      "border-radius": "", "box-shadow": "", padding: "",
-    });
-    syncQuickStyleFromSelection();
   };
 
   const applyLinkToSelected = () => {
@@ -1676,7 +765,7 @@ export default function GrapesEditor({ mode, postId }: GrapesEditorProps) {
           editor.setStyle(`${currentCss}\n\n${codeCss}`);
         }
       }
-      appendBaseBlocksCss(editor);
+      ensureBaseBlocksCss(editor);
       runCanvasJs(codeJs);
       setTimeout(() => { syncCodeFieldsSilently(); readPageStyles(); }, 0);
       setCodeNotice("Code importé dans l'éditeur.");
@@ -1765,77 +854,6 @@ export default function GrapesEditor({ mode, postId }: GrapesEditorProps) {
 
   const handleTitleChange = (title: string) =>
     setMeta((p) => ({ ...p, title, slug: mode === "create" ? generateSlug(title) : p.slug }));
-
-  // Helper: controlled style row for the quick style panel
-  const StyleRow = ({
-    label, prop, value, type = "text", placeholder = "",
-    options,
-  }: {
-    label: string;
-    prop: string;
-    value: string;
-    type?: "text" | "number" | "color" | "select";
-    placeholder?: string;
-    options?: { id: string; label: string }[];
-  }) => {
-    const handleChange = (v: string) => {
-      setQuickStyle((prev) => ({ ...prev, [prop.replace(/-([a-z])/g, (_, c) => c.toUpperCase())]: v }));
-      applyStyleProp(prop, v);
-    };
-
-    if (type === "select") {
-      return (
-        <div className="qs-row">
-          <label className="qs-label">{label}</label>
-          <select className="qs-input" value={value} onChange={(e) => handleChange(e.target.value)}>
-            <option value="">—</option>
-            {options?.map((o) => <option key={o.id} value={o.id}>{o.label}</option>)}
-          </select>
-        </div>
-      );
-    }
-
-    if (type === "color") {
-      return (
-        <div className="qs-row">
-          <label className="qs-label">{label}</label>
-          <div className="qs-color-wrap">
-            <input
-              type="color"
-              className="qs-color-swatch"
-              value={value && value !== "transparent" ? value : "#000000"}
-              onChange={(e) => handleChange(e.target.value)}
-            />
-            <input
-              type="text"
-              className="qs-input qs-input--color-text"
-              value={value}
-              placeholder="transparent / #hex / rgba"
-              onChange={(e) => handleChange(e.target.value)}
-              onBlur={(e) => handleChange(e.target.value)}
-            />
-          </div>
-        </div>
-      );
-    }
-
-    return (
-      <div className="qs-row">
-        <label className="qs-label">{label}</label>
-        <input
-          type={type}
-          className="qs-input"
-          value={value}
-          placeholder={placeholder}
-          onChange={(e) => {
-            setQuickStyle((prev) => ({ ...prev, [prop.replace(/-([a-z])/g, (_, c) => c.toUpperCase())]: e.target.value }));
-          }}
-          onBlur={(e) => applyStyleProp(prop, e.target.value)}
-          onKeyDown={(e) => { if (e.key === "Enter") applyStyleProp(prop, (e.target as HTMLInputElement).value); }}
-        />
-      </div>
-    );
-  };
 
   return (
     <div className="ed-root">
@@ -2199,145 +1217,6 @@ export default function GrapesEditor({ mode, postId }: GrapesEditorProps) {
                   <div id="ed-style-selectors" className="ed-style-selectors" />
                 </div>
 
-                {/* ── Quick Style Editor (replaces color chips) ── */}
-                <div className="ed-quick-card">
-                  <div className="ed-quick-head">
-                    <span>Édition rapide — Typographie</span>
-                    <button type="button" className="ed-mini-reset" onClick={clearQuickStyles}>Réinitialiser</button>
-                  </div>
-                  <div className="qs-grid">
-                    <StyleRow label="Taille police" prop="font-size" value={quickStyle.fontSize} placeholder="16px / 1rem" />
-                    <StyleRow label="Graisse" prop="font-weight" value={quickStyle.fontWeight} type="select"
-                      options={[
-                        { id: "300", label: "Light 300" }, { id: "400", label: "Normal 400" },
-                        { id: "500", label: "Medium 500" }, { id: "600", label: "Semibold 600" },
-                        { id: "700", label: "Bold 700" }, { id: "800", label: "Extrabold 800" },
-                      ]}
-                    />
-                    <StyleRow label="Hauteur ligne" prop="line-height" value={quickStyle.lineHeight} placeholder="1.5" />
-                    <StyleRow label="Espacement" prop="letter-spacing" value={quickStyle.letterSpacing} placeholder="0.04em" />
-                    <StyleRow label="Couleur texte" prop="color" value={quickStyle.color} type="color" />
-                    <StyleRow label="Alignement" prop="text-align" value={quickStyle.display} type="select"
-                      options={[
-                        { id: "left", label: "Gauche" }, { id: "center", label: "Centre" },
-                        { id: "right", label: "Droite" }, { id: "justify", label: "Justifié" },
-                      ]}
-                    />
-                  </div>
-                </div>
-
-                <div className="ed-quick-card">
-                  <div className="ed-quick-head"><span>Couleur de fond & bordure</span></div>
-                  <div className="qs-grid">
-                    <StyleRow label="Fond" prop="background-color" value={quickStyle.backgroundColor} type="color" />
-                    <StyleRow label="Couleur bordure" prop="border-color" value={quickStyle.borderColor} type="color" />
-                    <StyleRow label="Épaisseur bordure" prop="border-width" value={quickStyle.borderWidth} placeholder="1px" />
-                    <StyleRow label="Style bordure" prop="border-style" value={""} type="select"
-                      options={[
-                        { id: "none", label: "Aucune" }, { id: "solid", label: "Solide" },
-                        { id: "dashed", label: "Tirets" }, { id: "dotted", label: "Points" },
-                      ]}
-                    />
-                    <StyleRow label="Border radius" prop="border-radius" value={quickStyle.borderRadius} placeholder="8px / 999px" />
-                  </div>
-                  <div className="ed-radius-row">
-                    {["0px", "8px", "14px", "22px", "999px"].map((radius) => (
-                      <button type="button" key={radius} className="ed-radius-btn" onClick={() => applyToSelected({ "border-radius": radius })}>
-                        {radius === "999px" ? "Pill" : radius}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                <div className="ed-quick-card">
-                  <div className="ed-quick-head"><span>Dimensions</span></div>
-                  <div className="qs-grid">
-                    <StyleRow label="Largeur" prop="width" value={quickStyle.width} placeholder="auto / 100% / 320px" />
-                    <StyleRow label="Hauteur" prop="height" value={quickStyle.height} placeholder="auto / 200px" />
-                    <StyleRow label="Min-width" prop="min-width" value={quickStyle.minWidth} placeholder="0" />
-                    <StyleRow label="Min-height" prop="min-height" value={quickStyle.minHeight} placeholder="0" />
-                    <StyleRow label="Max-width" prop="max-width" value={quickStyle.maxWidth} placeholder="1200px" />
-                  </div>
-                </div>
-
-                <div className="ed-quick-card">
-                  <div className="ed-quick-head"><span>Margin</span></div>
-                  <div className="qs-grid qs-grid--4">
-                    <StyleRow label="↑ Haut" prop="margin-top" value={quickStyle.marginTop} placeholder="0" />
-                    <StyleRow label="→ Droite" prop="margin-right" value={quickStyle.marginRight} placeholder="0" />
-                    <StyleRow label="↓ Bas" prop="margin-bottom" value={quickStyle.marginBottom} placeholder="0" />
-                    <StyleRow label="← Gauche" prop="margin-left" value={quickStyle.marginLeft} placeholder="0" />
-                  </div>
-                  <div className="qs-shortcut-row">
-                    {["0px", "4px", "8px", "16px", "24px", "auto"].map((v) => (
-                      <button key={v} type="button" className="qs-shortcut-btn" onClick={() => applyToSelected({ "margin-top": v, "margin-right": v, "margin-bottom": v, "margin-left": v })}>{v}</button>
-                    ))}
-                  </div>
-                </div>
-
-                <div className="ed-quick-card">
-                  <div className="ed-quick-head"><span>Padding</span></div>
-                  <div className="qs-grid qs-grid--4">
-                    <StyleRow label="↑ Haut" prop="padding-top" value={quickStyle.paddingTop} placeholder="0" />
-                    <StyleRow label="→ Droite" prop="padding-right" value={quickStyle.paddingRight} placeholder="0" />
-                    <StyleRow label="↓ Bas" prop="padding-bottom" value={quickStyle.paddingBottom} placeholder="0" />
-                    <StyleRow label="← Gauche" prop="padding-left" value={quickStyle.paddingLeft} placeholder="0" />
-                  </div>
-                  <div className="qs-shortcut-row">
-                    {["0px", "4px", "8px", "12px", "16px", "24px"].map((v) => (
-                      <button key={v} type="button" className="qs-shortcut-btn" onClick={() => applyToSelected({ "padding-top": v, "padding-right": v, "padding-bottom": v, "padding-left": v })}>{v}</button>
-                    ))}
-                  </div>
-                </div>
-
-                <div className="ed-quick-card">
-                  <div className="ed-quick-head"><span>Layout & Effets</span></div>
-                  <div className="qs-grid">
-                    <StyleRow label="Display" prop="display" value={quickStyle.display} type="select"
-                      options={[
-                        { id: "block", label: "Block" }, { id: "inline-block", label: "Inline-block" },
-                        { id: "flex", label: "Flex" }, { id: "inline-flex", label: "Inline-flex" },
-                        { id: "grid", label: "Grid" }, { id: "none", label: "None" },
-                      ]}
-                    />
-                    <StyleRow label="Flex dir." prop="flex-direction" value={quickStyle.flexDirection} type="select"
-                      options={[
-                        { id: "row", label: "Row →" }, { id: "column", label: "Column ↓" },
-                        { id: "row-reverse", label: "Row ←" }, { id: "column-reverse", label: "Column ↑" },
-                      ]}
-                    />
-                    <StyleRow label="Justify" prop="justify-content" value={quickStyle.justifyContent} type="select"
-                      options={[
-                        { id: "flex-start", label: "Début" }, { id: "center", label: "Centre" },
-                        { id: "flex-end", label: "Fin" }, { id: "space-between", label: "Space-between" },
-                        { id: "space-around", label: "Space-around" },
-                      ]}
-                    />
-                    <StyleRow label="Align" prop="align-items" value={quickStyle.alignItems} type="select"
-                      options={[
-                        { id: "flex-start", label: "Début" }, { id: "center", label: "Centre" },
-                        { id: "flex-end", label: "Fin" }, { id: "stretch", label: "Stretch" },
-                      ]}
-                    />
-                    <StyleRow label="Gap" prop="gap" value={quickStyle.gap} placeholder="16px" />
-                    <StyleRow label="Opacité" prop="opacity" value={quickStyle.opacity} placeholder="1" />
-                    <StyleRow label="Z-index" prop="z-index" value={quickStyle.zIndex} placeholder="1" />
-                  </div>
-                </div>
-
-                {/* Presets visuels */}
-                <div className="ed-quick-card">
-                  <div className="ed-quick-head"><span>Presets visuels</span></div>
-                  <div className="ed-preset-grid">
-                    <button type="button" className="ed-preset-btn" onClick={() => applyToSelected({ "background-color": ORANGE, color: "#ffffff", border: `1px solid ${ORANGE}`, padding: "12px 18px", "border-radius": "14px" })}>Accent</button>
-                    <button type="button" className="ed-preset-btn" onClick={() => applyToSelected({ "background-color": dark ? "#131318" : "#ffffff", color: dark ? "#F2EFEA" : "#181818", border: `1px solid ${colors.borderStrong}`, padding: "12px 18px", "border-radius": "14px" })}>Carte</button>
-                    <button type="button" className="ed-preset-btn" onClick={() => applyToSelected({ "background-color": "transparent", color: ORANGE, border: `1px solid rgba(239,159,39,.28)`, padding: "12px 18px", "border-radius": "999px" })}>Outline</button>
-                    <button type="button" className="ed-preset-btn" onClick={() => applyToSelected({ "box-shadow": dark ? "0 12px 28px rgba(0,0,0,.32)" : "0 10px 22px rgba(15,23,42,.10)", "border-radius": "18px" })}>Ombre</button>
-                  </div>
-                </div>
-
-                {/* GrapesJS native style manager */}
-                <div className="ed-gjs-style-label">Propriétés avancées (GrapesJS)</div>
                 <div id="ed-styles-fields" className="ed-style-fields" />
               </div>
             </div>

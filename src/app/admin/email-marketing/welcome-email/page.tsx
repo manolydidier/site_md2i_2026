@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { usePermissions } from "@/(permisionGuard)/context/PermissionsContext";
 import {
   Mail,
   Save,
@@ -92,6 +93,9 @@ function formatDate(value?: string | null) {
 }
 
 export default function WelcomeEmailAutomationPage() {
+  const { can } = usePermissions();
+  const canUpdate = can("email_automations", "canUpdate");
+
   const [config, setConfig] = useState<WelcomeConfig>(DEFAULT_CONFIG);
   const [initialConfig, setInitialConfig] =
     useState<WelcomeConfig>(DEFAULT_CONFIG);
@@ -324,7 +328,7 @@ export default function WelcomeEmailAutomationPage() {
           <button
             type="button"
             onClick={handleSave}
-            disabled={!hasChanges || saving || isInvalidActiveConfig}
+            disabled={!canUpdate || !hasChanges || saving || isInvalidActiveConfig}
             style={{
               ...s.button,
               ...s.primaryButton,

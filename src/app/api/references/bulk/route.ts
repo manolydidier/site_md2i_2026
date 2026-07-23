@@ -1,8 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/app/lib/prisma";
+import { withPermission } from "@/(permisionGuard)/lib/permissions";
 
 // DELETE /api/references/bulk - Delete multiple references
 export async function DELETE(request: NextRequest) {
+  const guard = await withPermission(request, { resource: "references", action: "canDelete" });
+  if (!guard.ok) return guard.response;
+
   try {
     const { ids } = await request.json();
 

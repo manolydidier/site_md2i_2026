@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState, type CSSProperties } from "react";
 import { useCrmStatuses } from "@/app/hooks/useEmailMarketing";
+import { usePermissions } from "@/(permisionGuard)/context/PermissionsContext";
 import type {
   CrmStatusOption,
   CrmStatusOptionFormData,
@@ -41,6 +42,11 @@ function slugifyKey(value: string) {
 }
 
 export function CrmStatusesManager() {
+  const { can } = usePermissions();
+  const canCreate = can("crm_statuses", "canCreate");
+  const canUpdate = can("crm_statuses", "canUpdate");
+  const canDeleteStatus = can("crm_statuses", "canDelete");
+
   const {
     statuses,
     loading,
@@ -262,6 +268,7 @@ export function CrmStatusesManager() {
       )}
 
       <main style={s.grid}>
+        {(canCreate || canUpdate) && (
         <section style={s.card}>
           <div style={s.cardHeader}>
             <div>
@@ -383,7 +390,7 @@ export function CrmStatusesManager() {
             <button
               type="button"
               onClick={handleSubmit}
-              disabled={saving}
+              disabled={saving || (editing ? !canUpdate : !canCreate)}
               style={s.primaryButton}
             >
               {saving ? (
@@ -402,6 +409,7 @@ export function CrmStatusesManager() {
             </button>
           </div>
         </section>
+        )}
 
         <section style={s.card}>
           <div style={s.cardHeader}>
@@ -428,6 +436,8 @@ export function CrmStatusesManager() {
                 <StatusRow
                   key={status.id}
                   status={status}
+                  canEdit={canUpdate}
+                  canDisable={canDeleteStatus}
                   onEdit={() => setEditing(status)}
                   onDisable={() => handleDisable(status)}
                 />
@@ -445,6 +455,8 @@ export function CrmStatusesManager() {
                     key={status.id}
                     status={status}
                     muted
+                    canEdit={canUpdate}
+                    canDisable={canDeleteStatus}
                     onEdit={() => setEditing(status)}
                     onDisable={() => handleReactivate(status)}
                     disableLabel="Réactiver"
@@ -475,12 +487,16 @@ function StatusRow({
   status,
   muted,
   disableLabel = "Désactiver",
+  canEdit,
+  canDisable,
   onEdit,
   onDisable,
 }: {
   status: CrmStatusOption;
   muted?: boolean;
   disableLabel?: string;
+  canEdit: boolean;
+  canDisable: boolean;
   onEdit: () => void;
   onDisable: () => void;
 }) {
@@ -515,17 +531,21 @@ function StatusRow({
       <div style={s.statusMeta}>
         <span style={s.orderBadge}>#{status.sortOrder}</span>
 
-        <button type="button" onClick={onEdit} style={s.rowButton}>
-          <Edit3 size={14} />
-        </button>
+        {canEdit && (
+          <button type="button" onClick={onEdit} style={s.rowButton}>
+            <Edit3 size={14} />
+          </button>
+        )}
 
-        <button type="button" onClick={onDisable} style={s.dangerButton}>
-          {disableLabel === "Réactiver" ? (
-            <CheckCircle2 size={14} />
-          ) : (
-            <Trash2 size={14} />
-          )}
-        </button>
+        {canDisable && (
+          <button type="button" onClick={onDisable} style={s.dangerButton}>
+            {disableLabel === "Réactiver" ? (
+              <CheckCircle2 size={14} />
+            ) : (
+              <Trash2 size={14} />
+            )}
+          </button>
+        )}
       </div>
     </article>
   );

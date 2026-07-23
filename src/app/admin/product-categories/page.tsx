@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState, useCallback } from 'react'
+import { usePermissions } from '@/(permisionGuard)/context/PermissionsContext'
 
 // ── Types ────────────────────────────────────────────────────────────────────
 interface Category {
@@ -34,6 +35,11 @@ function formatDate(iso: string) {
 
 // ── Component ────────────────────────────────────────────────────────────────
 export default function ProductCategoriesPage() {
+  const { can } = usePermissions()
+  const canCreate = can('product_categories', 'canCreate')
+  const canUpdate = can('product_categories', 'canUpdate')
+  const canDelete = can('product_categories', 'canDelete')
+
   const [categories, setCategories] = useState<Category[]>([])
   const [loading,    setLoading]    = useState(true)
   const [search,     setSearch]     = useState('')
@@ -156,12 +162,14 @@ export default function ProductCategoriesPage() {
             <h1 className="text-2xl font-bold text-gray-900">Catégories de produits</h1>
             <p className="text-sm text-gray-500 mt-0.5">{categories.length} catégorie{categories.length !== 1 ? 's' : ''}</p>
           </div>
-          <button
-            onClick={openCreate}
-            className="px-4 py-2 text-sm font-semibold text-white bg-amber-500 rounded-lg hover:bg-amber-600 transition-colors shadow-sm"
-          >
-            + Nouvelle catégorie
-          </button>
+          {canCreate && (
+            <button
+              onClick={openCreate}
+              className="px-4 py-2 text-sm font-semibold text-white bg-amber-500 rounded-lg hover:bg-amber-600 transition-colors shadow-sm"
+            >
+              + Nouvelle catégorie
+            </button>
+          )}
         </div>
       </div>
 
@@ -184,9 +192,11 @@ export default function ProductCategoriesPage() {
           ) : categories.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-48 gap-2">
               <p className="text-gray-400 text-sm">Aucune catégorie</p>
-              <button onClick={openCreate} className="text-amber-600 text-sm font-medium hover:underline">
-                Créer la première catégorie →
-              </button>
+              {canCreate && (
+                <button onClick={openCreate} className="text-amber-600 text-sm font-medium hover:underline">
+                  Créer la première catégorie →
+                </button>
+              )}
             </div>
           ) : (
             <table className="w-full text-sm">
@@ -223,20 +233,24 @@ export default function ProductCategoriesPage() {
                     <td className="px-5 py-3 text-gray-400 text-xs">{formatDate(cat.createdAt)}</td>
                     <td className="px-5 py-3">
                       <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <button
-                          onClick={() => openEdit(cat)}
-                          className="px-3 py-1.5 text-xs font-medium text-gray-700 bg-white border border-gray-200 rounded-lg hover:border-amber-300 hover:text-amber-700 transition-colors"
-                        >
-                          Modifier
-                        </button>
-                        <button
-                          onClick={() => setDeleteId(cat.id)}
-                          disabled={cat._count.products > 0}
-                          title={cat._count.products > 0 ? 'Déplacez les produits avant de supprimer' : ''}
-                          className="px-3 py-1.5 text-xs font-medium text-red-600 bg-white border border-gray-200 rounded-lg hover:bg-red-50 hover:border-red-200 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
-                        >
-                          Supprimer
-                        </button>
+                        {canUpdate && (
+                          <button
+                            onClick={() => openEdit(cat)}
+                            className="px-3 py-1.5 text-xs font-medium text-gray-700 bg-white border border-gray-200 rounded-lg hover:border-amber-300 hover:text-amber-700 transition-colors"
+                          >
+                            Modifier
+                          </button>
+                        )}
+                        {canDelete && (
+                          <button
+                            onClick={() => setDeleteId(cat.id)}
+                            disabled={cat._count.products > 0}
+                            title={cat._count.products > 0 ? 'Déplacez les produits avant de supprimer' : ''}
+                            className="px-3 py-1.5 text-xs font-medium text-red-600 bg-white border border-gray-200 rounded-lg hover:bg-red-50 hover:border-red-200 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                          >
+                            Supprimer
+                          </button>
+                        )}
                       </div>
                     </td>
                   </tr>

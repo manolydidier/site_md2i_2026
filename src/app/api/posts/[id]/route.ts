@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/app/lib/prisma";
 import { PostStatus } from "@/generated/prisma/client";
+import { withPermission } from "@/(permisionGuard)/lib/permissions";
 
 type Params = {
   params: Promise<{ id: string }>;
@@ -21,7 +22,10 @@ function invalidPostIdResponse() {
 }
 
 // GET /api/posts/[id]
-export async function GET(_req: NextRequest, { params }: Params) {
+export async function GET(req: NextRequest, { params }: Params) {
+  const guard = await withPermission(req, { resource: "posts", action: "canRead" });
+  if (!guard.ok) return guard.response;
+
   try {
     const { id } = await params;
 
@@ -75,6 +79,9 @@ export async function GET(_req: NextRequest, { params }: Params) {
 
 // PUT /api/posts/[id] - Full update
 export async function PUT(request: NextRequest, { params }: Params) {
+  const guard = await withPermission(request, { resource: "posts", action: "canUpdate" });
+  if (!guard.ok) return guard.response;
+
   try {
     const { id } = await params;
 
@@ -192,14 +199,23 @@ export async function PUT(request: NextRequest, { params }: Params) {
 
 // PATCH /api/posts/[id] - Partial update
 export async function PATCH(request: NextRequest, { params }: Params) {
+  const body = await request.json();
+
+  // Bascule publier/dépublier (uniquement { status }) → canValidate / canCancel.
+  // Toute autre modification → canUpdate.
+  const isPublishToggle = Object.keys(body).every(k => k === "status");
+  const action = isPublishToggle
+    ? body.status === "PUBLISHED" ? "canValidate" : "canCancel"
+    : "canUpdate";
+  const guard = await withPermission(request, { resource: "posts", action });
+  if (!guard.ok) return guard.response;
+
   try {
     const { id } = await params;
 
     if (!isUuid(id)) {
       return invalidPostIdResponse();
     }
-
-    const body = await request.json();
 
     const existing = await prisma.post.findUnique({
       where: { id },
@@ -276,7 +292,10 @@ export async function PATCH(request: NextRequest, { params }: Params) {
 }
 
 // DELETE /api/posts/[id]
-export async function DELETE(_req: NextRequest, { params }: Params) {
+export async function DELETE(req: NextRequest, { params }: Params) {
+  const guard = await withPermission(req, { resource: "posts", action: "canDelete" });
+  if (!guard.ok) return guard.response;
+
   try {
     const { id } = await params;
 

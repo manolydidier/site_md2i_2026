@@ -86,6 +86,7 @@ model PermissionResource {
   name            String           @unique @db.VarChar(100)
   code            String           @unique @db.VarChar(100)
   description     String?
+  category        String?          @db.VarChar(100)
   isActive        Boolean          @default(true)
   createdAt       DateTime         @default(now())
   updatedAt       DateTime         @updatedAt
@@ -94,6 +95,7 @@ model PermissionResource {
   @@index([name])
   @@index([code])
   @@index([isActive])
+  @@index([category])
   @@map("permission_resources")
 }
 
@@ -109,6 +111,15 @@ model RolePermission {
   canExport         Boolean           @default(false)
   canApprove        Boolean           @default(false)
   canManage         Boolean           @default(false)
+  canImport         Boolean           @default(false)
+  canPrint          Boolean           @default(false)
+  canValidate       Boolean           @default(false)
+  canCancel         Boolean           @default(false)
+  canArchive        Boolean           @default(false)
+  canRestore        Boolean           @default(false)
+  canDownload       Boolean           @default(false)
+  canUpload         Boolean           @default(false)
+  canExecute        Boolean           @default(false)
   specialPermission SpecialPermission @default(NONE)
   createdAt         DateTime          @default(now())
   updatedAt         DateTime          @updatedAt

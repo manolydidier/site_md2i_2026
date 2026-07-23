@@ -2,16 +2,14 @@
 // CRUD groupes de contacts
 
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@/auth";
 import { prisma } from "@/app/lib/prisma";
+import { withPermission } from "@/(permisionGuard)/lib/permissions";
 import { groupSchema } from "@/app/lib/email/schemas";
 
 export async function GET(req: NextRequest) {
-  const session = await auth();
-
-  if (!session?.user?.id) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+  const guard = await withPermission(req, { resource: "groups", action: "canList" });
+  if (!guard.ok) return guard.response;
+  const session = guard.session;
 
   const groups = await prisma.contactGroup.findMany({
     where: {
@@ -33,11 +31,9 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
-  const session = await auth();
-
-  if (!session?.user?.id) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+  const guard = await withPermission(req, { resource: "groups", action: "canCreate" });
+  if (!guard.ok) return guard.response;
+  const session = guard.session;
 
   const body = await req.json();
 

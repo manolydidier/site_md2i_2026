@@ -4,6 +4,7 @@ import type { Prisma } from "@/generated/prisma/client";
 
 import { prisma } from "@/app/lib/prisma";
 import { getCrmOwnerUserId } from "@/app/lib/crm-owner";
+import { withPermission } from "@/(permisionGuard)/lib/permissions";
 
 const STAGE_VALUES = Object.values(CrmOpportunityStage) as string[];
 
@@ -46,6 +47,9 @@ export async function PATCH(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const guard = await withPermission(request, { resource: "crm_opportunities", action: "canUpdate" });
+    if (!guard.ok) return guard.response;
+
     const userId = await getCrmOwnerUserId();
     const { id } = await params;
     const body = await request.json();

@@ -7,11 +7,17 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { groupSchema } from "@/app/lib/email/schemas";
 import { useGroups } from "@/app/hooks/useEmailMarketing";
 import type { ContactGroup, GroupFormData } from "@/app/types/email-marketing";
+import { usePermissions } from "@/(permisionGuard)/context/PermissionsContext";
 import { Plus, Pencil, Trash2, Users, X, Check } from "lucide-react";
 
 import styles from "./GroupsManager.module.css";
 
 export function GroupsManager() {
+  const { can } = usePermissions();
+  const canCreate = can("groups", "canCreate");
+  const canUpdate = can("groups", "canUpdate");
+  const canDelete = can("groups", "canDelete");
+
   const { groups, loading, createGroup, updateGroup, deleteGroup } = useGroups();
 
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -25,14 +31,16 @@ export function GroupsManager() {
           <p>Organisez vos contacts par segments.</p>
         </div>
 
-        <button
-          type="button"
-          onClick={() => setShowAddForm(true)}
-          className={styles.primaryBtn}
-        >
-          <Plus size={16} />
-          Nouveau groupe
-        </button>
+        {canCreate && (
+          <button
+            type="button"
+            onClick={() => setShowAddForm(true)}
+            className={styles.primaryBtn}
+          >
+            <Plus size={16} />
+            Nouveau groupe
+          </button>
+        )}
       </div>
 
       {showAddForm && (
@@ -77,6 +85,8 @@ export function GroupsManager() {
               <GroupCard
                 key={group.id}
                 group={group}
+                canEdit={canUpdate}
+                canDelete={canDelete}
                 onEdit={() => setEditingId(group.id)}
                 onDelete={() => {
                   if (
@@ -98,10 +108,14 @@ export function GroupsManager() {
 
 function GroupCard({
   group,
+  canEdit,
+  canDelete,
   onEdit,
   onDelete,
 }: {
   group: ContactGroup;
+  canEdit: boolean;
+  canDelete: boolean;
   onEdit: () => void;
   onDelete: () => void;
 }) {
@@ -112,20 +126,26 @@ function GroupCard({
           <Users size={20} />
         </div>
 
-        <div className={styles.groupActions}>
-          <button type="button" onClick={onEdit} title="Modifier">
-            <Pencil size={14} />
-          </button>
+        {(canEdit || canDelete) && (
+          <div className={styles.groupActions}>
+            {canEdit && (
+              <button type="button" onClick={onEdit} title="Modifier">
+                <Pencil size={14} />
+              </button>
+            )}
 
-          <button
-            type="button"
-            onClick={onDelete}
-            title="Supprimer"
-            className={styles.danger}
-          >
-            <Trash2 size={14} />
-          </button>
-        </div>
+            {canDelete && (
+              <button
+                type="button"
+                onClick={onDelete}
+                title="Supprimer"
+                className={styles.danger}
+              >
+                <Trash2 size={14} />
+              </button>
+            )}
+          </div>
+        )}
       </div>
 
       <div className={styles.groupCardBody}>

@@ -9,8 +9,8 @@
 
 import { NextRequest, NextResponse } from "next/server";
 
-import { auth } from "@/auth";
 import { prisma } from "@/app/lib/prisma";
+import { withPermission } from "@/(permisionGuard)/lib/permissions";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -450,14 +450,11 @@ export async function GET(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const session = await auth();
-
-  if (!session?.user?.id) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+  const guard = await withPermission(req, { resource: "email_automations", action: "canRead" });
+  if (!guard.ok) return guard.response;
 
   const { id } = await params;
-  const userId = session.user.id;
+  const userId = guard.session.user.id;
 
   const automation = await prisma.emailAutomation.findFirst({
     where: {
@@ -502,14 +499,11 @@ export async function PUT(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const session = await auth();
-
-  if (!session?.user?.id) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+  const guard = await withPermission(req, { resource: "email_automations", action: "canUpdate" });
+  if (!guard.ok) return guard.response;
 
   const { id } = await params;
-  const userId = session.user.id;
+  const userId = guard.session.user.id;
   const body = await req.json();
 
   const existing = await prisma.emailAutomation.findFirst({
@@ -701,14 +695,11 @@ export async function DELETE(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const session = await auth();
-
-  if (!session?.user?.id) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+  const guard = await withPermission(req, { resource: "email_automations", action: "canDelete" });
+  if (!guard.ok) return guard.response;
 
   const { id } = await params;
-  const userId = session.user.id;
+  const userId = guard.session.user.id;
 
   const existing = await prisma.emailAutomation.findFirst({
     where: {

@@ -4,8 +4,8 @@
 
 import { NextRequest, NextResponse } from "next/server";
 
-import { auth } from "@/auth";
 import { prisma } from "@/app/lib/prisma";
+import { withPermission } from "@/(permisionGuard)/lib/permissions";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -130,14 +130,10 @@ function serializeAutomation(
   };
 }
 
-export async function GET() {
-  const session = await auth();
-
-  if (!session?.user?.id) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
-
-  const userId = session.user.id;
+export async function GET(req: NextRequest) {
+  const guard = await withPermission(req, { resource: "email_automations", action: "canRead" });
+  if (!guard.ok) return guard.response;
+  const userId = guard.session.user.id;
 
   const [automation, draftCampaigns] = await Promise.all([
     getOrCreateProspectAutomation(userId),
@@ -161,13 +157,9 @@ export async function GET() {
 }
 
 export async function PUT(req: NextRequest) {
-  const session = await auth();
-
-  if (!session?.user?.id) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
-
-  const userId = session.user.id;
+  const guard = await withPermission(req, { resource: "email_automations", action: "canUpdate" });
+  if (!guard.ok) return guard.response;
+  const userId = guard.session.user.id;
   const body = await req.json();
 
   const campaignId = body.campaignId ? String(body.campaignId) : null;

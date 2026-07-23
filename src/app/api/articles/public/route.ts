@@ -1,6 +1,7 @@
 import { NextRequest } from 'next/server'
 import { prisma } from '@/app/lib/prisma'
 import { PostStatus, Prisma } from '@/generated/prisma/client'
+import { withPermission } from '@/(permisionGuard)/lib/permissions'
 
 async function getPublicArticles(req: NextRequest) {
   const { searchParams } = new URL(req.url)
@@ -183,6 +184,8 @@ export async function GET(req: NextRequest) {
   const scope = (searchParams.get('scope') ?? '').trim()
 
   if (scope === 'backoffice') {
+    const guard = await withPermission(req, { resource: 'posts', action: 'canList' })
+    if (!guard.ok) return guard.response
     return getBackofficeArticles(req)
   }
 

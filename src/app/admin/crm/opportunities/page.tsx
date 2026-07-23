@@ -14,6 +14,7 @@ import {
 
 import { prisma } from "@/app/lib/prisma";
 import { getCrmOwnerUserId } from "@/app/lib/crm-owner";
+import { checkPermission } from "@/(permisionGuard)/lib/permissions";
 import OpportunitiesTable from "./OpportunitiesTable";
 import { CrmOpportunityStage } from "@/generated/prisma/client";
 
@@ -78,6 +79,26 @@ function parseAmount(value: unknown) {
 }
 
 export default async function CrmOpportunitiesPage() {
+  const access = await checkPermission("crm_opportunities", "canRead");
+
+  if (!access.ok) {
+    return (
+      <div style={s.page}>
+        <div style={{ ...s.statCard, maxWidth: 520 }}>
+          <p style={s.subtitle}>
+            Vous n&apos;avez pas la permission de consulter les opportunités
+            CRM.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  const canUpdate = await checkPermission(
+    "crm_opportunities",
+    "canUpdate"
+  ).then((r) => r.ok);
+
   const userId = await getCrmOwnerUserId();
 
   const opportunities = await prisma.crmOpportunity.findMany({
@@ -267,7 +288,11 @@ export default async function CrmOpportunitiesPage() {
         />
       </section>
 
-      <OpportunitiesTable opportunities={rows} stageOptions={stageOptions} />
+      <OpportunitiesTable
+        opportunities={rows}
+        stageOptions={stageOptions}
+        canUpdate={canUpdate}
+      />
     </div>
   );
 }

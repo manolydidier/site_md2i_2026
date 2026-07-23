@@ -6,8 +6,8 @@
 
 import { NextRequest, NextResponse } from "next/server";
 
-import { auth } from "@/auth";
 import { prisma } from "@/app/lib/prisma";
+import { withPermission } from "@/(permisionGuard)/lib/permissions";
 import { contactSchema } from "@/app/lib/email/schemas";
 import {
   cancelActiveAutomationsForContacts,
@@ -414,15 +414,9 @@ export async function GET(req: NextRequest) {
     url: req.nextUrl.toString(),
   });
 
-  const session = await auth();
-
-  if (!session?.user?.id) {
-    logError("GET_UNAUTHORIZED", {
-      reason: "Session manquante",
-    });
-
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+  const guard = await withPermission(req, { resource: "contacts", action: "canList" });
+  if (!guard.ok) return guard.response;
+  const session = guard.session;
 
   const { searchParams } = req.nextUrl;
 
@@ -594,15 +588,9 @@ export async function POST(req: NextRequest) {
     method: req.method,
   });
 
-  const session = await auth();
-
-  if (!session?.user?.id) {
-    logError("POST_UNAUTHORIZED", {
-      reason: "Session manquante",
-    });
-
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+  const guard = await withPermission(req, { resource: "contacts", action: "canCreate" });
+  if (!guard.ok) return guard.response;
+  const session = guard.session;
 
   let body: unknown;
 
@@ -1016,15 +1004,9 @@ export async function DELETE(req: NextRequest) {
     url: req.nextUrl.toString(),
   });
 
-  const session = await auth();
-
-  if (!session?.user?.id) {
-    logError("DELETE_UNAUTHORIZED", {
-      reason: "Session manquante",
-    });
-
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+  const guard = await withPermission(req, { resource: "contacts", action: "canDelete" });
+  if (!guard.ok) return guard.response;
+  const session = guard.session;
 
   let body: { ids?: string[] };
 

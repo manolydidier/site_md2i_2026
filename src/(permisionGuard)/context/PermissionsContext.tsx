@@ -5,7 +5,7 @@
 
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react'
 import { useSession } from 'next-auth/react'
-import { can, canAll, canAny } from '@/(permisionGuard)/lib/permissions'
+import { can, canAll, canAny } from '@/(permisionGuard)/lib/permissions.client'
 
 type PermissionsCtx = {
   permissions: string[]

@@ -1,8 +1,12 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/app/lib/prisma";
+import { withPermission } from "@/(permisionGuard)/lib/permissions";
 
 // GET /api/references/stats - Get statistics
-export async function GET() {
+export async function GET(request: NextRequest) {
+  const guard = await withPermission(request, { resource: "references", action: "canRead" });
+  if (!guard.ok) return guard.response;
+
   try {
     const [
       totalProjects,

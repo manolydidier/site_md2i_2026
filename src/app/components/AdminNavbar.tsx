@@ -47,6 +47,23 @@ const MENU_SECTIONS = [
         children: [
           { href: '/admin/posts', label: 'Tous les articles', exact: true },
           { href: '/admin/posts/new', label: 'Nouvel article' },
+          { href: '/admin/categories', label: 'Catégories' },
+          { href: '/admin/tags', label: 'Tags' },
+        ],
+      },
+      {
+        href: '/admin/projects',
+        label: 'Portfolio',
+        addHref: '/admin/projects/new',
+        icon: (
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+            <rect x="2" y="7" width="20" height="14" rx="2" />
+            <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16" />
+          </svg>
+        ),
+        children: [
+          { href: '/admin/projects', label: 'Tous les projets', exact: true },
+          { href: '/admin/projects/new', label: 'Nouveau projet' },
         ],
       },
       {
@@ -194,6 +211,18 @@ const MENU_SECTIONS = [
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
             <rect x="3" y="11" width="18" height="10" rx="2" />
             <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+          </svg>
+        ),
+      },
+      {
+        href: '/admin/audit',
+        label: 'Audit',
+        icon: (
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+            <path d="M14 2v6h6" />
+            <path d="M9 15h6" />
+            <path d="M9 11h6" />
           </svg>
         ),
       },

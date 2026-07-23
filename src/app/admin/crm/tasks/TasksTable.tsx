@@ -56,6 +56,7 @@ type TaskRow = {
 
 type TasksTableProps = {
   tasks: TaskRow[];
+  canUpdate: boolean;
 };
 
 type ModalForm = {
@@ -226,7 +227,7 @@ function getStageLabel(stage: string) {
   return labels[stage] || stage;
 }
 
-export default function TasksTable({ tasks }: TasksTableProps) {
+export default function TasksTable({ tasks, canUpdate }: TasksTableProps) {
   const router = useRouter();
 
   const [selected, setSelected] = useState<TaskRow | null>(null);
@@ -536,14 +537,16 @@ export default function TasksTable({ tasks }: TasksTableProps) {
                       </td>
 
                       <td style={s.tdRight}>
-                        <button
-                          type="button"
-                          style={s.manageButton}
-                          onClick={() => openModal(task)}
-                        >
-                          <Pencil size={14} />
-                          Gérer
-                        </button>
+                        {canUpdate && (
+                          <button
+                            type="button"
+                            style={s.manageButton}
+                            onClick={() => openModal(task)}
+                          >
+                            <Pencil size={14} />
+                            Gérer
+                          </button>
+                        )}
                       </td>
                     </tr>
                   );

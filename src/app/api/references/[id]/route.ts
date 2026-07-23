@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/app/lib/prisma'
+import { withPermission } from '@/(permisionGuard)/lib/permissions'
 
 type ReferenceStatus = 'DRAFT' | 'PUBLISHED' | 'ARCHIVED'
 type FieldErrors = Record<string, string>
@@ -60,9 +61,12 @@ function serializeReference(reference: any) {
 }
 
 export async function GET(
-  _request: NextRequest,
+  request: NextRequest,
   ctx: RouteContext<'/api/references/[id]'>
 ) {
+  const guard = await withPermission(request, { resource: 'references', action: 'canRead' })
+  if (!guard.ok) return guard.response
+
   try {
     const { id } = await ctx.params
 
@@ -96,6 +100,9 @@ export async function PATCH(
   request: NextRequest,
   ctx: RouteContext<'/api/references/[id]'>
 ) {
+  const guard = await withPermission(request, { resource: 'references', action: 'canUpdate' })
+  if (!guard.ok) return guard.response
+
   try {
     const { id } = await ctx.params
 
@@ -288,9 +295,12 @@ export async function PATCH(
 }
 
 export async function DELETE(
-  _request: NextRequest,
+  request: NextRequest,
   ctx: RouteContext<'/api/references/[id]'>
 ) {
+  const guard = await withPermission(request, { resource: 'references', action: 'canDelete' })
+  if (!guard.ok) return guard.response
+
   try {
     const { id } = await ctx.params
 

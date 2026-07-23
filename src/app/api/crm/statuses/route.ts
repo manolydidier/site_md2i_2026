@@ -1,8 +1,8 @@
 // src/app/api/crm/statuses/route.ts
 
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@/auth";
 import { prisma } from "@/app/lib/prisma";
+import { withPermission } from "@/(permisionGuard)/lib/permissions";
 import { crmStatusOptionSchema } from "@/app/lib/email/schemas";
 
 export const dynamic = "force-dynamic";
@@ -136,18 +136,9 @@ async function unsetOtherDefaultStatuses(userId: string, exceptId?: string) {
 
 export async function GET(req: NextRequest) {
   try {
-    const session = await auth();
-
-    if (!session?.user?.id) {
-      return NextResponse.json(
-        {
-          error: "Unauthorized",
-        },
-        { status: 401 }
-      );
-    }
-
-    const userId = session.user.id;
+    const guard = await withPermission(req, { resource: "crm_statuses", action: "canList" });
+    if (!guard.ok) return guard.response;
+    const userId = guard.session.user.id;
     const includeInactive =
       req.nextUrl.searchParams.get("includeInactive") === "1" ||
       req.nextUrl.searchParams.get("includeInactive") === "true";
@@ -201,18 +192,9 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   try {
-    const session = await auth();
-
-    if (!session?.user?.id) {
-      return NextResponse.json(
-        {
-          error: "Unauthorized",
-        },
-        { status: 401 }
-      );
-    }
-
-    const userId = session.user.id;
+    const guard = await withPermission(req, { resource: "crm_statuses", action: "canCreate" });
+    if (!guard.ok) return guard.response;
+    const userId = guard.session.user.id;
     const body = await req.json();
 
     const parsed = crmStatusOptionSchema.safeParse(body);

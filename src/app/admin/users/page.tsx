@@ -5,6 +5,7 @@ import { useState, useEffect, useCallback, useRef } from 'react'
 import { useSession } from 'next-auth/react'
 import { useTheme } from '@/app/context/ThemeContext'
 import api from '@/app/lib/axios'
+import { usePermissions } from '@/(permisionGuard)/context/PermissionsContext'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 type UserStatus = 'ACTIVE' | 'SUSPENDED' | 'PENDING' | 'DELETED'
@@ -366,6 +367,7 @@ function ColsDropdown({ cols, setCols }: {
 export default function UsersPage() {
   const { data: session } = useSession()
   const t = useTokens()
+  const { can } = usePermissions()
 
   // Data
   const [users,       setUsers]       = useState<User[]>([])
@@ -719,10 +721,12 @@ async function handleHardDelete(user: User) {
                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polygon points="5 3 19 12 5 21 5 3"/></svg>
                 Réactiver
               </button>
-              <button onClick={handleBulkDelete} style={{ ...btn('rgba(226,75,74,.1)', '#e24b4a'), border: '1px solid rgba(226,75,74,.25)' }}>
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg>
-                Supprimer
-              </button>
+              {can('users', 'canDelete') && (
+                <button onClick={handleBulkDelete} style={{ ...btn('rgba(226,75,74,.1)', '#e24b4a'), border: '1px solid rgba(226,75,74,.25)' }}>
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg>
+                  Supprimer
+                </button>
+              )}
               <button onClick={() => setSelected(new Set())} style={{ ...btn('none', t.TEXT_MUTED), marginLeft: 'auto' }}>
                 Désélectionner tout
               </button>
@@ -862,12 +866,14 @@ async function handleHardDelete(user: User) {
                                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
                               </button>
 
-                              <button className="abtn" onClick={() => setEditUser(user)} title="Modifier"
-                                style={{ ...btn(t.BG_BTN, t.BTN_TEXT), border: `1px solid ${t.BTN_BORDER}`, padding: '6px 9px' }}>
-                                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-                              </button>
+                              {can('users', 'canUpdate') && (
+                                <button className="abtn" onClick={() => setEditUser(user)} title="Modifier"
+                                  style={{ ...btn(t.BG_BTN, t.BTN_TEXT), border: `1px solid ${t.BTN_BORDER}`, padding: '6px 9px' }}>
+                                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                                </button>
+                              )}
 
-                              {!isSelf && user.status !== 'DELETED' && (
+                              {can('users', 'canUpdate') && !isSelf && user.status !== 'DELETED' && (
                                 <button className="abtn" onClick={() => handleStatusToggle(user)}
                                   title={user.status === 'ACTIVE' ? 'Suspendre' : 'Réactiver'}
                                   style={{ ...btn('none', user.status === 'ACTIVE' ? '#f5a623' : '#1D9E75'), border: `1px solid ${user.status === 'ACTIVE' ? 'rgba(245,166,35,.25)' : 'rgba(29,158,117,.25)'}`, background: user.status === 'ACTIVE' ? 'rgba(245,166,35,.08)' : 'rgba(29,158,117,.08)', padding: '6px 9px' }}>
@@ -878,7 +884,7 @@ async function handleHardDelete(user: User) {
                                 </button>
                               )}
 
-                              {!isSelf && (
+                              {can('users', 'canDelete') && !isSelf && (
                                 <button className="abtn" onClick={() => handleDelete(user)} title="Supprimer"
                                   style={{ ...btn('rgba(226,75,74,.08)', '#e24b4a'), border: '1px solid rgba(226,75,74,.2)', padding: '6px 9px' }}>
                                   <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg>

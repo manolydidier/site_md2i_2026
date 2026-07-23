@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useTheme } from '@/app/context/ThemeContext'
 import api from '@/app/lib/axios'
+import { usePermissions } from '@/(permisionGuard)/context/PermissionsContext'
 
 type PostStatus = 'DRAFT' | 'PUBLISHED' | 'ARCHIVED'
 type SortField = 'createdAt' | 'updatedAt' | 'title' | 'status' | 'publishedAt'
@@ -340,6 +341,7 @@ function ActionIconButton({
 export default function AdminPostsPage() {
   const router = useRouter()
   const t = useTokens()
+  const { can } = usePermissions()
 
   const [posts, setPosts] = useState<Post[]>([])
   const [categories, setCategories] = useState<Category[]>([])
@@ -689,26 +691,28 @@ export default function AdminPostsPage() {
                 </p>
               </div>
 
-              <button
-                className="hero-btn action-btn"
-                onClick={() => router.push('/admin/posts/new')}
-                style={{
-                  border: 'none',
-                  borderRadius: 14,
-                  padding: '12px 16px',
-                  color: '#fff',
-                  cursor: 'pointer',
-                  background: `linear-gradient(135deg, ${ORANGE}, ${ORANGE_DARK})`,
-                  fontWeight: 700,
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: 10,
-                  boxShadow: '0 10px 26px rgba(239,159,39,.30)',
-                }}
-              >
-                <IconPlus />
-                <span>Nouvel article</span>
-              </button>
+              {can('posts', 'canCreate') && (
+                <button
+                  className="hero-btn action-btn"
+                  onClick={() => router.push('/admin/posts/new')}
+                  style={{
+                    border: 'none',
+                    borderRadius: 14,
+                    padding: '12px 16px',
+                    color: '#fff',
+                    cursor: 'pointer',
+                    background: `linear-gradient(135deg, ${ORANGE}, ${ORANGE_DARK})`,
+                    fontWeight: 700,
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 10,
+                    boxShadow: '0 10px 26px rgba(239,159,39,.30)',
+                  }}
+                >
+                  <IconPlus />
+                  <span>Nouvel article</span>
+                </button>
+              )}
             </div>
 
             <div
@@ -1039,15 +1043,17 @@ export default function AdminPostsPage() {
                 </span>
 
                 <div style={{ display: 'flex', gap: 8 }}>
-                  <ActionIconButton
-                    title="Supprimer sélection"
-                    onClick={handleBulkDelete}
-                    fg="#e24b4a"
-                    bg="rgba(226,75,74,.12)"
-                    border="rgba(226,75,74,.24)"
-                  >
-                    <IconTrash />
-                  </ActionIconButton>
+                  {can('posts', 'canDelete') && (
+                    <ActionIconButton
+                      title="Supprimer sélection"
+                      onClick={handleBulkDelete}
+                      fg="#e24b4a"
+                      bg="rgba(226,75,74,.12)"
+                      border="rgba(226,75,74,.24)"
+                    >
+                      <IconTrash />
+                    </ActionIconButton>
+                  )}
 
                   <button
                     onClick={() => setSelected(new Set())}
@@ -1236,35 +1242,42 @@ export default function AdminPostsPage() {
 
                           <td style={{ padding: 14 }} onClick={(e) => e.stopPropagation()}>
                             <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
-                              <ActionIconButton
-                                title="Modifier"
-                                onClick={() => router.push(`/admin/posts/${post.id}/edit`)}
-                                fg={t.text}
-                                bg={t.badgeBg}
-                                border={t.border}
-                              >
-                                <IconEdit />
-                              </ActionIconButton>
+                              {can('posts', 'canUpdate') && (
+                                <ActionIconButton
+                                  title="Modifier"
+                                  onClick={() => router.push(`/admin/posts/${post.id}/edit`)}
+                                  fg={t.text}
+                                  bg={t.badgeBg}
+                                  border={t.border}
+                                >
+                                  <IconEdit />
+                                </ActionIconButton>
+                              )}
 
-                              <ActionIconButton
-                                title={post.status === 'PUBLISHED' ? 'Dépublier' : 'Publier'}
-                                onClick={() => handleTogglePublish(post)}
-                                fg={post.status === 'PUBLISHED' ? '#f59e0b' : ORANGE}
-                                bg={post.status === 'PUBLISHED' ? 'rgba(245,166,35,.12)' : 'rgba(239,159,39,.12)'}
-                                border={post.status === 'PUBLISHED' ? 'rgba(245,166,35,.24)' : 'rgba(239,159,39,.24)'}
-                              >
-                                {post.status === 'PUBLISHED' ? <IconUnpublish /> : <IconPublish />}
-                              </ActionIconButton>
+                              {/* Publier → canValidate, Dépublier → canCancel */}
+                              {can('posts', post.status === 'PUBLISHED' ? 'canCancel' : 'canValidate') && (
+                                <ActionIconButton
+                                  title={post.status === 'PUBLISHED' ? 'Dépublier' : 'Publier'}
+                                  onClick={() => handleTogglePublish(post)}
+                                  fg={post.status === 'PUBLISHED' ? '#f59e0b' : ORANGE}
+                                  bg={post.status === 'PUBLISHED' ? 'rgba(245,166,35,.12)' : 'rgba(239,159,39,.12)'}
+                                  border={post.status === 'PUBLISHED' ? 'rgba(245,166,35,.24)' : 'rgba(239,159,39,.24)'}
+                                >
+                                  {post.status === 'PUBLISHED' ? <IconUnpublish /> : <IconPublish />}
+                                </ActionIconButton>
+                              )}
 
-                              <ActionIconButton
-                                title="Supprimer"
-                                onClick={() => handleDelete(post.id, post.title)}
-                                fg="#e24b4a"
-                                bg="rgba(226,75,74,.12)"
-                                border="rgba(226,75,74,.24)"
-                              >
-                                <IconTrash />
-                              </ActionIconButton>
+                              {can('posts', 'canDelete') && (
+                                <ActionIconButton
+                                  title="Supprimer"
+                                  onClick={() => handleDelete(post.id, post.title)}
+                                  fg="#e24b4a"
+                                  bg="rgba(226,75,74,.12)"
+                                  border="rgba(226,75,74,.24)"
+                                >
+                                  <IconTrash />
+                                </ActionIconButton>
+                              )}
                             </div>
                           </td>
                         </tr>

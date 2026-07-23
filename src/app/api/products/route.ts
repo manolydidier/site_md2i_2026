@@ -3,6 +3,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/app/lib/prisma'
 import { Prisma, ProductStatus } from '@/generated/prisma/client'
+import { withPermission } from '@/(permisionGuard)/lib/permissions'
 
 export const dynamic = 'force-dynamic'
 export const runtime = 'nodejs'
@@ -503,6 +504,9 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
+  const guard = await withPermission(request, { resource: 'products', action: 'canCreate' })
+  if (!guard.ok) return guard.response
+
   try {
     const body = (await request.json().catch(() => null)) as ProductPayload | null
 

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/app/lib/prisma'
 import { z } from 'zod'
+import { withPermission } from '@/(permisionGuard)/lib/permissions'
 
 const updateSchema = z.object({
   name:        z.string().min(1).max(100).optional(),
@@ -49,6 +50,9 @@ export async function GET(_req: NextRequest, { params }: Params) {
 
 // ── PATCH /api/product-categories/:id ───────────────────────────────────────
 export async function PATCH(req: NextRequest, { params }: Params) {
+  const guard = await withPermission(req, { resource: 'product_categories', action: 'canUpdate' })
+  if (!guard.ok) return guard.response
+
   try {
     const { id } = await params
     const body   = await req.json()
@@ -87,7 +91,10 @@ export async function PATCH(req: NextRequest, { params }: Params) {
 }
 
 // ── DELETE /api/product-categories/:id ──────────────────────────────────────
-export async function DELETE(_req: NextRequest, { params }: Params) {
+export async function DELETE(req: NextRequest, { params }: Params) {
+  const guard = await withPermission(req, { resource: 'product_categories', action: 'canDelete' })
+  if (!guard.ok) return guard.response
+
   try {
     const { id } = await params
     // Reassign linked products to null before deleting

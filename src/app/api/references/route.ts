@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/app/lib/prisma';
+import { withPermission } from '@/(permisionGuard)/lib/permissions';
 
 type ReferenceStatus = 'DRAFT' | 'PUBLISHED' | 'ARCHIVED';
 type FieldErrors = Record<string, string>;
@@ -50,6 +51,9 @@ function serializeReference(reference: any) {
 }
 
 export async function GET(request: NextRequest) {
+  const guard = await withPermission(request, { resource: 'references', action: 'canList' });
+  if (!guard.ok) return guard.response;
+
   try {
     const { searchParams } = new URL(request.url);
 
@@ -121,6 +125,9 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
+  const guard = await withPermission(request, { resource: 'references', action: 'canCreate' });
+  if (!guard.ok) return guard.response;
+
   try {
     const body = await request.json();
 

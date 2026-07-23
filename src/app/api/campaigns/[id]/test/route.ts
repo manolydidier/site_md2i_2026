@@ -3,8 +3,8 @@
 // Le vrai "from" Resend est géré dans sender.ts avec process.env.EMAIL_FROM.
 
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@/auth";
 import { prisma } from "@/app/lib/prisma";
+import { withPermission } from "@/(permisionGuard)/lib/permissions";
 import { sendTestEmail } from "@/app/lib/email/sender";
 
 type TestEmailBody = {
@@ -21,11 +21,9 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const session = await auth();
-
-    if (!session?.user?.id) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    const guard = await withPermission(req, { resource: "campaigns", action: "canExecute" });
+    if (!guard.ok) return guard.response;
+    const session = guard.session;
 
     const { id } = await params;
     const body = (await req.json()) as TestEmailBody;

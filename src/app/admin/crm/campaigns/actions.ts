@@ -7,6 +7,7 @@ import { redirect } from "next/navigation";
 
 import { getCrmOwnerUserId } from "@/app/lib/crm-owner";
 import { prisma } from "@/app/lib/prisma";
+import { requirePermission } from "@/(permisionGuard)/lib/permissions";
 import { processDueCrmPublications } from "@/app/lib/crm-publication-cron";
 import { publishCrmPublication } from "@/app/lib/crm-publication-publisher";
 import {
@@ -201,6 +202,7 @@ async function createUniqueSlug(name: string, channel: string) {
 }
 
 export async function createCrmMarketingCampaign(formData: FormData) {
+  await requirePermission("crm_campaigns", "canCreate");
   const userId = await getCrmOwnerUserId();
 
   const name = readText(formData, "name");
@@ -342,6 +344,7 @@ export async function createCrmMarketingCampaign(formData: FormData) {
 }
 
 export async function publishCrmPublicationNow(formData: FormData) {
+  await requirePermission("crm_campaigns", "canExecute");
   const userId = await getCrmOwnerUserId();
   const publicationId = readText(formData, "publicationId");
 
@@ -586,6 +589,7 @@ export async function publishCrmPublicationNow(formData: FormData) {
 }
 
 export async function processCrmPublicationQueue(formData: FormData) {
+  await requirePermission("crm_campaigns", "canExecute");
   const userId = await getCrmOwnerUserId();
   const rawLimit = Number(readText(formData, "limit", "20"));
   const limit = Number.isFinite(rawLimit)
@@ -615,6 +619,7 @@ export async function processCrmPublicationQueue(formData: FormData) {
 }
 
 export async function updateCrmPublicationStatus(formData: FormData) {
+  await requirePermission("crm_campaigns", "canUpdate");
   const userId = await getCrmOwnerUserId();
   const publicationId = readText(formData, "publicationId");
   const nextStatus = toPublicationStatus(readText(formData, "status"));
@@ -709,6 +714,7 @@ export async function updateCrmPublicationStatus(formData: FormData) {
 }
 
 export async function deleteCrmMarketingCampaign(formData: FormData) {
+  await requirePermission("crm_campaigns", "canDelete");
   const userId = await getCrmOwnerUserId();
   const campaignId = readText(formData, "campaignId");
 
@@ -795,6 +801,7 @@ export async function deleteCrmMarketingCampaign(formData: FormData) {
 }
 
 export async function deleteSelectedCrmMarketingCampaigns(formData: FormData) {
+  await requirePermission("crm_campaigns", "canDelete");
   const userId = await getCrmOwnerUserId();
   const campaignIds = readIds(formData, "campaignIds");
 

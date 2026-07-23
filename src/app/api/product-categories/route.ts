@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/app/lib/prisma'
 import { z } from 'zod'
+import { withPermission } from '@/(permisionGuard)/lib/permissions'
 
 // ── Validation schemas ──────────────────────────────────────────────────────
 const createSchema = z.object({
@@ -14,6 +15,8 @@ const createSchema = z.object({
 })
 
 // ── GET /api/product-categories ─────────────────────────────────────────────
+// GET reste public (utilisé par le catalogue public /produits pour le filtre
+// par catégorie) — pas de guard ici, à l'image de /api/products.
 export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url)
@@ -53,6 +56,9 @@ export async function GET(req: NextRequest) {
 
 // ── POST /api/product-categories ────────────────────────────────────────────
 export async function POST(req: NextRequest) {
+  const guard = await withPermission(req, { resource: 'product_categories', action: 'canCreate' })
+  if (!guard.ok) return guard.response
+
   try {
     const body   = await req.json()
     const parsed = createSchema.safeParse(body)

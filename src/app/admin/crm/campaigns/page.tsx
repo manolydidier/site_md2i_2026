@@ -25,6 +25,7 @@ import {
 } from "lucide-react";
 
 import { getCrmOwnerUserId } from "@/app/lib/crm-owner";
+import { checkPermission } from "@/(permisionGuard)/lib/permissions";
 import { prisma } from "@/app/lib/prisma";
 import { getCrmPublicationPublisherReadiness } from "@/app/lib/crm-publication-publisher";
 import {
@@ -661,7 +662,7 @@ function PublicationPlatformMark({
   );
 }
 
-function StatusAction({
+async function StatusAction({
   publicationId,
   status,
   children,
@@ -672,6 +673,9 @@ function StatusAction({
   children: ReactNode;
   variant?: "primary" | "secondary" | "danger";
 }) {
+  const access = await checkPermission("crm_campaigns", "canUpdate");
+  if (!access.ok) return null;
+
   return (
     <form action={updateCrmPublicationStatus}>
       <input type="hidden" name="publicationId" value={publicationId} />
@@ -686,13 +690,16 @@ function StatusAction({
   );
 }
 
-function PublishNowAction({
+async function PublishNowAction({
   publicationId,
   label = "Publier",
 }: {
   publicationId: string;
   label?: string;
 }) {
+  const access = await checkPermission("crm_campaigns", "canExecute");
+  if (!access.ok) return null;
+
   return (
     <form action={publishCrmPublicationNow}>
       <input type="hidden" name="publicationId" value={publicationId} />
@@ -707,7 +714,10 @@ function PublishNowAction({
   );
 }
 
-function DeleteCampaignAction({ campaignId }: { campaignId: string }) {
+async function DeleteCampaignAction({ campaignId }: { campaignId: string }) {
+  const access = await checkPermission("crm_campaigns", "canDelete");
+  if (!access.ok) return null;
+
   return (
     <form action={deleteCrmMarketingCampaign}>
       <input type="hidden" name="campaignId" value={campaignId} />
@@ -781,6 +791,29 @@ function CampaignSummaryStats({ campaign }: { campaign: CampaignRow }) {
 }
 
 export default async function CrmCampaignsPage() {
+  const access = await checkPermission("crm_campaigns", "canRead");
+
+  if (!access.ok) {
+    return (
+      <section className="crm-marketing-setup">
+        <h2>Accès refusé</h2>
+        <p>
+          Vous n&apos;avez pas la permission de consulter les campagnes CRM.
+        </p>
+      </section>
+    );
+  }
+
+  const canCreate = await checkPermission("crm_campaigns", "canCreate").then(
+    (r) => r.ok
+  );
+  const canExecute = await checkPermission("crm_campaigns", "canExecute").then(
+    (r) => r.ok
+  );
+  const canDelete = await checkPermission("crm_campaigns", "canDelete").then(
+    (r) => r.ok
+  );
+
   const userId = await getCrmOwnerUserId();
   const origin = await getRequestOrigin();
   const data = await loadCampaignData(userId);
@@ -933,28 +966,32 @@ export default async function CrmCampaignsPage() {
             </div>
 
             <div className="crm-marketing-toolbar-actions">
-              <form
-                action={processCrmPublicationQueue}
-                className="crm-queue-runner"
-              >
-                <input type="hidden" name="limit" value="20" />
-                <button
-                  type="submit"
-                  className="crm-marketing-action crm-marketing-action-primary"
-                  disabled={dueQueueCount === 0}
+              {canExecute && (
+                <form
+                  action={processCrmPublicationQueue}
+                  className="crm-queue-runner"
                 >
-                  <RefreshCw size={14} />
-                  Traiter la file
-                </button>
-                <span className="crm-queue-runner-hint">
-                  {dueQueueCount.toLocaleString("fr-FR")} à traiter
-                </span>
-              </form>
+                  <input type="hidden" name="limit" value="20" />
+                  <button
+                    type="submit"
+                    className="crm-marketing-action crm-marketing-action-primary"
+                    disabled={dueQueueCount === 0}
+                  >
+                    <RefreshCw size={14} />
+                    Traiter la file
+                  </button>
+                  <span className="crm-queue-runner-hint">
+                    {dueQueueCount.toLocaleString("fr-FR")} à traiter
+                  </span>
+                </form>
+              )}
 
-              <CampaignCreateModal
-                emailCampaigns={data.emailCampaigns}
-                channels={CHANNELS}
-              />
+              {canCreate && (
+                <CampaignCreateModal
+                  emailCampaigns={data.emailCampaigns}
+                  channels={CHANNELS}
+                />
+              )}
 
               <CampaignCalendarModal
                 currentMonth={currentMonth}
@@ -1237,7 +1274,7 @@ export default async function CrmCampaignsPage() {
               </div>
 
               <div className="crm-marketing-actions">
-                {campaigns.length > 0 ? (
+                {campaigns.length > 0 && canDelete ? (
                   <button
                     type="submit"
                     form="crm-bulk-delete-campaigns"

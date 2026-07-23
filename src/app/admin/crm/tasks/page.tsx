@@ -13,6 +13,7 @@ import {
 
 import { prisma } from "@/app/lib/prisma";
 import { getCrmOwnerUserId } from "@/app/lib/crm-owner";
+import { checkPermission } from "@/(permisionGuard)/lib/permissions";
 import TasksTable from "./TasksTable";
 
 export const dynamic = "force-dynamic";
@@ -42,6 +43,24 @@ function isTaskDueToday(task: { dueDate: Date | null; status: string }) {
 }
 
 export default async function CrmTasksPage() {
+  const access = await checkPermission("crm_tasks", "canRead");
+
+  if (!access.ok) {
+    return (
+      <div style={s.page}>
+        <div style={s.card}>
+          <p style={s.subtitle}>
+            Vous n&apos;avez pas la permission de consulter les tâches CRM.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  const canUpdate = await checkPermission("crm_tasks", "canUpdate").then(
+    (r) => r.ok
+  );
+
   const userId = await getCrmOwnerUserId();
 
   const tasks = await prisma.crmTask.findMany({
@@ -200,7 +219,7 @@ export default async function CrmTasksPage() {
         />
       </section>
 
-      <TasksTable tasks={rows} />
+      <TasksTable tasks={rows} canUpdate={canUpdate} />
     </div>
   );
 }

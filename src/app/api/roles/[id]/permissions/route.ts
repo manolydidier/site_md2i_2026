@@ -13,10 +13,19 @@ const PERMISSION_SELECT = {
   canExport: true,
   canApprove: true,
   canManage: true,
+  canImport: true,
+  canPrint: true,
+  canValidate: true,
+  canCancel: true,
+  canArchive: true,
+  canRestore: true,
+  canDownload: true,
+  canUpload: true,
+  canExecute: true,
   specialPermission: true,
   createdAt: true,
   resource: {
-    select: { id: true, name: true, code: true, description: true },
+    select: { id: true, name: true, code: true, description: true, category: true },
   },
 } as const
 
@@ -69,6 +78,8 @@ export async function POST(
     resourceId,
     canRead = false, canCreate = false, canUpdate = false, canDelete = false,
     canList = false, canExport = false, canApprove = false, canManage = false,
+    canImport = false, canPrint = false, canValidate = false, canCancel = false,
+    canArchive = false, canRestore = false, canDownload = false, canUpload = false, canExecute = false,
     specialPermission = 'NONE',
   } = body
 
@@ -94,6 +105,8 @@ export async function POST(
       roleId, resourceId,
       canRead, canCreate, canUpdate, canDelete,
       canList, canExport, canApprove, canManage,
+      canImport, canPrint, canValidate, canCancel,
+      canArchive, canRestore, canDownload, canUpload, canExecute,
       specialPermission,
     },
     select: PERMISSION_SELECT,

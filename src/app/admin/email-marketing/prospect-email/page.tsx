@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { usePermissions } from "@/(permisionGuard)/context/PermissionsContext";
 import {
   Mail,
   Save,
@@ -97,6 +98,9 @@ function formatDate(value?: string | null) {
 }
 
 export default function ProspectEmailAutomationPage() {
+  const { can } = usePermissions();
+  const canUpdate = can("email_automations", "canUpdate");
+
   const [config, setConfig] = useState<ProspectConfig>(DEFAULT_CONFIG);
   const [initialConfig, setInitialConfig] =
     useState<ProspectConfig>(DEFAULT_CONFIG);
@@ -329,7 +333,7 @@ export default function ProspectEmailAutomationPage() {
           <button
             type="button"
             onClick={handleSave}
-            disabled={!hasChanges || saving || isInvalidActiveConfig}
+            disabled={!canUpdate || !hasChanges || saving || isInvalidActiveConfig}
             style={{
               ...s.button,
               ...s.primaryButton,

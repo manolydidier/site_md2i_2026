@@ -2,7 +2,7 @@
 // GET /api/contacts/export?format=csv|xlsx&groupId=...&crmStatusOptionId=...&crmSource=...
 
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@/auth";
+import { withPermission } from "@/(permisionGuard)/lib/permissions";
 import { prisma } from "@/app/lib/prisma";
 import type { CrmContactStatus, CrmLeadSource } from "@/generated/prisma/client";
 import {
@@ -13,11 +13,9 @@ import {
 export const runtime = "nodejs";
 
 export async function GET(req: NextRequest) {
-  const session = await auth();
-
-  if (!session?.user?.id) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+  const guard = await withPermission(req, { resource: "contacts", action: "canExport" });
+  if (!guard.ok) return guard.response;
+  const session = guard.session;
 
   const { searchParams } = req.nextUrl;
 

@@ -1,8 +1,8 @@
 // src/app/api/crm/statuses/[id]/route.ts
 
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@/auth";
 import { prisma } from "@/app/lib/prisma";
+import { withPermission } from "@/(permisionGuard)/lib/permissions";
 import { crmStatusOptionUpdateSchema } from "@/app/lib/email/schemas";
 
 export const dynamic = "force-dynamic";
@@ -49,18 +49,9 @@ export async function PATCH(
   { params }: { params: RouteParams }
 ) {
   try {
-    const session = await auth();
-
-    if (!session?.user?.id) {
-      return NextResponse.json(
-        {
-          error: "Unauthorized",
-        },
-        { status: 401 }
-      );
-    }
-
-    const userId = session.user.id;
+    const guard = await withPermission(req, { resource: "crm_statuses", action: "canUpdate" });
+    if (!guard.ok) return guard.response;
+    const userId = guard.session.user.id;
     const { id } = await params;
     const body = await req.json();
 
@@ -157,22 +148,13 @@ export async function PATCH(
 }
 
 export async function DELETE(
-  _req: NextRequest,
+  req: NextRequest,
   { params }: { params: RouteParams }
 ) {
   try {
-    const session = await auth();
-
-    if (!session?.user?.id) {
-      return NextResponse.json(
-        {
-          error: "Unauthorized",
-        },
-        { status: 401 }
-      );
-    }
-
-    const userId = session.user.id;
+    const guard = await withPermission(req, { resource: "crm_statuses", action: "canDelete" });
+    if (!guard.ok) return guard.response;
+    const userId = guard.session.user.id;
     const { id } = await params;
 
     const existing = await getStatusOr404(id, userId);

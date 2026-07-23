@@ -3,8 +3,8 @@
 // Compatible ancien groupId + nouveau multi-groupes CampaignGroup
 
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@/auth";
 import { prisma } from "@/app/lib/prisma";
+import { withPermission } from "@/(permisionGuard)/lib/permissions";
 import { campaignSchema } from "@/app/lib/email/schemas";
 
 async function attachCampaignGroups<T extends { id: string }>(
@@ -112,11 +112,9 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const session = await auth();
-
-    if (!session?.user?.id) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    const guard = await withPermission(req, { resource: "campaigns", action: "canRead" });
+    if (!guard.ok) return guard.response;
+    const session = guard.session;
 
     const { id } = await params;
 
@@ -181,11 +179,9 @@ export async function PUT(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const session = await auth();
-
-    if (!session?.user?.id) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    const guard = await withPermission(req, { resource: "campaigns", action: "canUpdate" });
+    if (!guard.ok) return guard.response;
+    const session = guard.session;
 
     const { id } = await params;
 
@@ -349,11 +345,9 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const session = await auth();
-
-    if (!session?.user?.id) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    const guard = await withPermission(req, { resource: "campaigns", action: "canDelete" });
+    if (!guard.ok) return guard.response;
+    const session = guard.session;
 
     const { id } = await params;
 
@@ -386,11 +380,9 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const session = await auth();
-
-    if (!session?.user?.id) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    const guard = await withPermission(req, { resource: "campaigns", action: "canCreate" });
+    if (!guard.ok) return guard.response;
+    const session = guard.session;
 
     const { id } = await params;
     const { searchParams } = req.nextUrl;
