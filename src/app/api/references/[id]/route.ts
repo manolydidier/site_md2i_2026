@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/app/lib/prisma'
 import { withPermission } from '@/(permisionGuard)/lib/permissions'
+import { logAudit } from '@/(permisionGuard)/lib/audit'
 
 type ReferenceStatus = 'DRAFT' | 'PUBLISHED' | 'ARCHIVED'
 type FieldErrors = Record<string, string>
@@ -280,6 +281,17 @@ export async function PATCH(
       data: updateData,
     })
 
+    await logAudit({
+      actorId: guard.session.user.id,
+      action: updateData.status !== undefined && updateData.status !== existing.status
+        ? (updateData.status === 'PUBLISHED' ? 'publish' : 'update')
+        : 'update',
+      entity: 'reference',
+      entityId: id,
+      metadata: { title: reference.title, slug: reference.slug, status: reference.status },
+      req: request,
+    })
+
     return NextResponse.json(serializeReference(reference))
   } catch (error) {
     console.error('[PATCH /api/references/[id]] Error:', error)
@@ -318,6 +330,15 @@ export async function DELETE(
 
     await prisma.reference.delete({
       where: { id },
+    })
+
+    await logAudit({
+      actorId: guard.session.user.id,
+      action: 'delete',
+      entity: 'reference',
+      entityId: id,
+      metadata: { title: existing.title, slug: existing.slug },
+      req: request,
     })
 
     return NextResponse.json({ success: true, id })

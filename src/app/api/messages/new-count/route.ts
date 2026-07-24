@@ -1,14 +1,15 @@
 import { ContactStatus } from "@/generated/prisma/enums";
 import { NextResponse } from "next/server";
 import { prisma } from "@/app/lib/prisma";
-import { isAdminMessagesAuthenticated } from "@/app/lib/admin-auth";
+import { checkPermission } from "@/(permisionGuard)/lib/permissions";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 export async function GET() {
   try {
-    const authenticated = await isAdminMessagesAuthenticated();
+    const access = await checkPermission("messages", "canRead");
+    const authenticated = access.ok;
 
     if (!authenticated) {
       return NextResponse.json(

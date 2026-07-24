@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/app/lib/prisma";
 import { PostStatus } from "@/generated/prisma/client";
 import { withPermission } from "@/(permisionGuard)/lib/permissions";
+import { logAudit } from "@/(permisionGuard)/lib/audit";
 
 // GET /api/posts - List all posts
 export async function GET(request: NextRequest) {
@@ -127,6 +128,15 @@ export async function POST(request: NextRequest) {
           include: { tag: { select: { id: true, name: true, slug: true } } },
         },
       },
+    });
+
+    await logAudit({
+      actorId: guard.session.user.id,
+      action: "create",
+      entity: "post",
+      entityId: post.id,
+      metadata: { title: post.title, slug: post.slug, status: post.status },
+      req: request,
     });
 
     return NextResponse.json(post, { status: 201 });

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/app/lib/prisma";
 import { withPermission } from "@/(permisionGuard)/lib/permissions";
+import { logAudit } from "@/(permisionGuard)/lib/audit";
 
 // DELETE /api/references/bulk - Delete multiple references
 export async function DELETE(request: NextRequest) {
@@ -19,6 +20,14 @@ export async function DELETE(request: NextRequest) {
 
     const result = await prisma.reference.deleteMany({
       where: { id: { in: ids } },
+    });
+
+    await logAudit({
+      actorId: guard.session.user.id,
+      action: "bulk_delete",
+      entity: "reference",
+      metadata: { ids, count: result.count },
+      req: request,
     });
 
     return NextResponse.json({

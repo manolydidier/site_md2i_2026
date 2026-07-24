@@ -16,6 +16,8 @@ type Props = {
   subject: string | null;
   listHref: string;
   statuses: StatusOption[];
+  canUpdate: boolean;
+  canDelete: boolean;
 };
 
 type ApiResult = {
@@ -78,7 +80,7 @@ async function postJson(url: string, body: Record<string, unknown>) {
    * Cas propre recommandé : l'API JSON répond 401 avec loginUrl.
    */
   if (response.status === 401 || data?.authRequired) {
-    throw new AuthRequiredError(data?.loginUrl || "/admin/messages/login");
+    throw new AuthRequiredError(data?.loginUrl || "/login");
   }
 
   if (!response.ok || !data?.ok) {
@@ -95,6 +97,8 @@ export default function MessageActions({
   subject,
   listHref,
   statuses,
+  canUpdate,
+  canDelete,
 }: Props) {
   const router = useRouter();
 
@@ -109,7 +113,7 @@ export default function MessageActions({
         ? `${window.location.pathname}${window.location.search}`
         : "/admin/messages";
 
-    const url = loginUrl || "/admin/messages/login";
+    const url = loginUrl || "/login";
 
     if (url.includes("callbackUrl=")) {
       router.replace(url);
@@ -233,41 +237,47 @@ export default function MessageActions({
           Répondre
         </a>
 
-        <button
-          type="button"
-          className={styles.secondaryAction}
-          onClick={markAsRead}
-          disabled={isPending || status === "READ"}
-        >
-          Marquer lu
-        </button>
-
-        <div className={styles.statusAction}>
-          <select
-            value={status}
-            disabled={isPending}
-            onChange={(event) => updateStatus(event.target.value)}
+        {canUpdate && (
+          <button
+            type="button"
+            className={styles.secondaryAction}
+            onClick={markAsRead}
+            disabled={isPending || status === "READ"}
           >
-            {statuses.map((item) => (
-              <option key={item.value} value={item.value}>
-                {item.label}
-              </option>
-            ))}
-          </select>
+            Marquer lu
+          </button>
+        )}
 
-          {savingLabel ? (
-            <span className={styles.statusSaved}>{savingLabel}</span>
-          ) : null}
-        </div>
+        {canUpdate && (
+          <div className={styles.statusAction}>
+            <select
+              value={status}
+              disabled={isPending}
+              onChange={(event) => updateStatus(event.target.value)}
+            >
+              {statuses.map((item) => (
+                <option key={item.value} value={item.value}>
+                  {item.label}
+                </option>
+              ))}
+            </select>
 
-        <button
-          type="button"
-          className={styles.dangerAction}
-          onClick={deleteMessage}
-          disabled={isPending}
-        >
-          Supprimer
-        </button>
+            {savingLabel ? (
+              <span className={styles.statusSaved}>{savingLabel}</span>
+            ) : null}
+          </div>
+        )}
+
+        {canDelete && (
+          <button
+            type="button"
+            className={styles.dangerAction}
+            onClick={deleteMessage}
+            disabled={isPending}
+          >
+            Supprimer
+          </button>
+        )}
       </footer>
 
       {error ? (

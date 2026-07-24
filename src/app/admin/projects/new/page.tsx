@@ -1,7 +1,7 @@
 'use client'
 
 import { usePermissions } from '@/(permisionGuard)/context/PermissionsContext'
-import ProjectForm from '../_components/ProjectForm'
+import ProjectStudio from '../_components/ProjectStudio'
 
 export default function NewProjectPage() {
   const { can, loading } = usePermissions()
@@ -16,5 +16,5 @@ export default function NewProjectPage() {
     )
   }
 
-  return <ProjectForm mode="create" canUpdate />
+  return <ProjectStudio mode="create" canUpdate />
 }

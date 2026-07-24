@@ -44,17 +44,18 @@ model User {
   emailAutomationEmails EmailAutomationEmail[]
 
   // CRM
-  crmCompanies          CrmCompany[]
-  crmOffers             CrmOffer[]
-  crmOpportunities      CrmOpportunity[]
-  crmTenders            CrmTender[]
-  crmTasks              CrmTask[]
-  crmActivities         CrmActivity[]
-  crmStatusOptions      CrmStatusOption[]
-  crmMarketingCampaigns CrmMarketingCampaign[]
-  crmPublications       CrmPublication[]
-  crmTrackedLinks       CrmTrackedLink[]
-  crmPublicationLogs    CrmPublicationLog[]
+  crmCompanies               CrmCompany[]
+  crmOffers                  CrmOffer[]
+  crmOpportunities           CrmOpportunity[]
+  crmTenders                 CrmTender[]
+  crmTasks                   CrmTask[]
+  crmActivities              CrmActivity[]
+  crmStatusOptions           CrmStatusOption[]
+  crmOpportunityStageOptions CrmOpportunityStageOption[]
+  crmMarketingCampaigns      CrmMarketingCampaign[]
+  crmPublications            CrmPublication[]
+  crmTrackedLinks            CrmTrackedLink[]
+  crmPublicationLogs         CrmPublicationLog[]
 
   @@index([email])
   @@index([username])
@@ -186,6 +187,22 @@ model AuthToken {
   @@map("auth_tokens")
 }
 
+model SiteSetting {
+  id               String   @id @default("default")
+  contactEmail     String?
+  contactPhone     String?
+  contactPhoneHref String?
+  address          String?
+  websiteUrl       String?
+  linkedinUrl      String?
+  facebookUrl      String?
+  xUrl             String?
+  maintenanceMode  Boolean  @default(false)
+  updatedAt        DateTime @updatedAt
+
+  @@map("site_settings")
+}
+
 model AuditLog {
   id        String   @id @default(uuid()) @db.Uuid
   actorId   String?  @db.Uuid
@@ -214,6 +231,7 @@ model Page {
   gjsComponents Json?
   gjsStyles     Json?
   gjsHtml       String?
+  gjsJs         String?    @db.Text
   status        PageStatus @default(DRAFT)
   publishedAt   DateTime?
   authorId      String     @db.Uuid
@@ -308,6 +326,7 @@ model Project {
   gjsComponents Json?
   gjsStyles     Json?
   gjsHtml       String?
+  gjsJs         String?       @db.Text
   createdAt     DateTime      @default(now())
   updatedAt     DateTime      @updatedAt
 
@@ -910,8 +929,8 @@ model CrmOpportunity {
   currency    String?  @default("EUR") @db.VarChar(10)
   probability Int      @default(0)
 
-  stage  CrmOpportunityStage @default(NEW)
-  source CrmLeadSource       @default(MANUAL)
+  stage  String        @default("NEW") @db.VarChar(50)
+  source CrmLeadSource @default(MANUAL)
 
   requestType    CrmRequestType @default(CONTACT)
   nextFollowUpAt DateTime?
@@ -1039,8 +1058,9 @@ model CrmTask {
   status   CrmTaskStatus   @default(TODO)
   priority CrmTaskPriority @default(MEDIUM)
 
-  dueDate     DateTime?
-  completedAt DateTime?
+  dueDate        DateTime?
+  completedAt    DateTime?
+  reminderSentAt DateTime?
 
   contactId String?
   contact   Contact? @relation(fields: [contactId], references: [id], onDelete: SetNull)
@@ -1498,17 +1518,6 @@ enum CrmOfferStatus {
   ARCHIVED
 }
 
-enum CrmOpportunityStage {
-  NEW
-  CONTACTED
-  QUALIFIED
-  DEMO_SCHEDULED
-  QUOTE_SENT
-  NEGOTIATION
-  WON
-  LOST
-}
-
 enum CrmTenderStatus {
   IDENTIFIED
   TO_ANALYZE
@@ -1614,4 +1623,29 @@ model CrmStatusOption {
   @@index([userId, sortOrder], map: "crm_status_options_user_sort_idx")
   @@index([userId, isDefault], map: "crm_status_options_user_default_idx")
   @@map("crm_status_options")
+}
+
+model CrmOpportunityStageOption {
+  id     String @id @default(cuid())
+  userId String @db.Uuid
+
+  key         String
+  label       String  @default("")
+  color       String  @default("#f97316")
+  description String? @db.Text
+
+  sortOrder Int     @default(0)
+  isDefault Boolean @default(false)
+  isActive  Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, key], map: "crm_opportunity_stage_options_user_key_unique")
+  @@index([userId], map: "crm_opportunity_stage_options_user_id_idx")
+  @@index([userId, isActive], map: "crm_opportunity_stage_options_user_active_idx")
+  @@index([userId, sortOrder], map: "crm_opportunity_stage_options_user_sort_idx")
+  @@map("crm_opportunity_stage_options")
 }

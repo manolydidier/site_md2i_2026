@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/app/lib/prisma'
 import { z } from 'zod'
 import { withPermission } from '@/(permisionGuard)/lib/permissions'
+import { isPrismaNotFound } from '@/app/lib/prisma-errors'
 
 const updateSchema = z.object({
   name:        z.string().min(1).max(100).optional(),
@@ -10,15 +11,6 @@ const updateSchema = z.object({
 })
 
 type Params = { params: Promise<{ id: string }> }
-
-function isPrismaNotFound(error: unknown) {
-  return (
-    typeof error === 'object' &&
-    error !== null &&
-    'code' in error &&
-    (error as { code?: unknown }).code === 'P2025'
-  )
-}
 
 // ── GET /api/product-categories/:id ─────────────────────────────────────────
 export async function GET(_req: NextRequest, { params }: Params) {

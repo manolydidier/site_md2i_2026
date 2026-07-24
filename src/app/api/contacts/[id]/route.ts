@@ -5,6 +5,7 @@ import { NextRequest, NextResponse } from "next/server";
 
 import { prisma } from "@/app/lib/prisma";
 import { withPermission } from "@/(permisionGuard)/lib/permissions";
+import { logAudit } from "@/(permisionGuard)/lib/audit";
 import { contactSchema } from "@/app/lib/email/schemas";
 import {
   cancelActiveAutomationsForContact,
@@ -475,6 +476,15 @@ export async function PUT(
         contactId: id,
       });
 
+      await logAudit({
+        actorId: session.user.id,
+        action: "update",
+        entity: "contact",
+        entityId: id,
+        metadata: { email: updatedContact.email },
+        req,
+      });
+
       return NextResponse.json(updatedContact);
     }
 
@@ -609,6 +619,15 @@ export async function PUT(
       });
     }
 
+    await logAudit({
+      actorId: session.user.id,
+      action: "update",
+      entity: "contact",
+      entityId: id,
+      metadata: { email: updatedContact.email },
+      req,
+    });
+
     return NextResponse.json(updatedContact);
   } catch (err: unknown) {
     if ((err as { code?: string }).code === "P2002") {
@@ -656,6 +675,14 @@ export async function DELETE(
   if (count === 0) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
+
+  await logAudit({
+    actorId: session.user.id,
+    action: "delete",
+    entity: "contact",
+    entityId: id,
+    req,
+  });
 
   return NextResponse.json({ success: true });
 }

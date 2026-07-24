@@ -1,6 +1,7 @@
 // src/app/lib/email-marketing/resend-campaign-sender.ts
 
 import { Resend } from "resend";
+import { sendResendEmail } from "@/app/lib/email/send-with-retry";
 
 type SendCampaignEmailParams = {
   fromName?: string | null;
@@ -142,7 +143,7 @@ export async function sendResendCampaignEmail({
     contactId,
   });
 
-  const { data, error } = await resend.emails.send({
+  const { data, error } = await sendResendEmail(resend, {
     from,
     to: [cleanTo],
     subject: cleanSubject,

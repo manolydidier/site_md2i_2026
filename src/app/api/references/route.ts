@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/app/lib/prisma';
 import { withPermission } from '@/(permisionGuard)/lib/permissions';
+import { logAudit } from '@/(permisionGuard)/lib/audit';
 
 type ReferenceStatus = 'DRAFT' | 'PUBLISHED' | 'ARCHIVED';
 type FieldErrors = Record<string, string>;
@@ -213,6 +214,15 @@ export async function POST(request: NextRequest) {
         status,
         publishedAt: status === 'PUBLISHED' ? new Date() : null,
       },
+    });
+
+    await logAudit({
+      actorId: guard.session.user.id,
+      action: 'create',
+      entity: 'reference',
+      entityId: reference.id,
+      metadata: { title: reference.title, slug: reference.slug, status: reference.status },
+      req: request,
     });
 
     return NextResponse.json(serializeReference(reference), { status: 201 });

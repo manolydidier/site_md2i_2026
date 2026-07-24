@@ -3,6 +3,8 @@ import path from "node:path";
 import { randomUUID } from "node:crypto";
 import { NextResponse } from "next/server";
 
+import { withFsRetry } from "@/app/lib/fs-retry";
+
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
@@ -99,8 +101,10 @@ export async function POST(request: Request) {
     const absoluteDir = path.join(process.cwd(), "public", relativeDir);
     const absolutePath = path.join(absoluteDir, fileName);
 
-    await mkdir(absoluteDir, { recursive: true });
-    await writeFile(absolutePath, buffer);
+    await withFsRetry(async () => {
+      await mkdir(absoluteDir, { recursive: true });
+      await writeFile(absolutePath, buffer);
+    });
 
     const publicUrl = `/${relativeDir.replace(/\\/g, "/")}/${fileName}`;
 

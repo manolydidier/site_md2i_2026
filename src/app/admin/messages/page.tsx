@@ -2,7 +2,7 @@ import { ContactStatus } from "@/generated/prisma/enums";
 import type { Prisma } from "@/generated/prisma/client";
 import Link from "next/link";
 import { prisma } from "@/app/lib/prisma";
-import { requireAdminMessagesAuth } from "@/app/lib/admin-auth";
+import { checkPermission } from "@/(permisionGuard)/lib/permissions";
 import MessageActions from "./MessageActions";
 import MailColumnLayout from "./MailColumnLayout";
 import styles from "./login/admin-messages.module.css";
@@ -156,7 +156,20 @@ function getMailtoHref(message: {
 }
 
 export default async function AdminMessagesPage({ searchParams }: PageProps) {
-  await requireAdminMessagesAuth();
+  const access = await checkPermission("messages", "canRead");
+
+  if (!access.ok) {
+    return (
+      <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center" }}>
+        <p style={{ color: "rgba(17,17,17,.56)", fontSize: 13 }}>
+          Vous n&apos;avez pas la permission de consulter les messages.
+        </p>
+      </div>
+    );
+  }
+
+  const canUpdate = await checkPermission("messages", "canUpdate").then((r) => r.ok);
+  const canDelete = await checkPermission("messages", "canDelete").then((r) => r.ok);
 
   const params = searchParams ? await searchParams : {};
 
@@ -306,21 +319,17 @@ export default async function AdminMessagesPage({ searchParams }: PageProps) {
           </div>
         </div>
 
-        <div className={styles.sidebarBottom}>
-          <form action="/api/messages/read-all" method="post">
-            <input type="hidden" name="returnTo" value={currentReturnTo} />
+        {canUpdate && (
+          <div className={styles.sidebarBottom}>
+            <form action="/api/messages/read-all" method="post">
+              <input type="hidden" name="returnTo" value={currentReturnTo} />
 
-            <button type="submit" className={styles.sidebarSoftButton}>
-              Tout marquer comme lu
-            </button>
-          </form>
-
-          <form action="/api/messages/logout" method="post">
-            <button type="submit" className={styles.logoutButton}>
-              Déconnexion
-            </button>
-          </form>
-        </div>
+              <button type="submit" className={styles.sidebarSoftButton}>
+                Tout marquer comme lu
+              </button>
+            </form>
+          </div>
+        )}
       </aside>
 
       <section className={styles.inboxPane}>
@@ -551,6 +560,8 @@ export default async function AdminMessagesPage({ searchParams }: PageProps) {
                 value: String(status),
                 label: labelStatus(status),
               }))}
+              canUpdate={canUpdate}
+              canDelete={canDelete}
             />
           </>
         ) : (

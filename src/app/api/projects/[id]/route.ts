@@ -1,20 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/app/lib/prisma";
 import { withPermission } from "@/(permisionGuard)/lib/permissions";
+import { logAudit } from "@/(permisionGuard)/lib/audit";
 import { ProjectStatus } from "@/generated/prisma/client";
+import { isPrismaNotFound } from "@/app/lib/prisma-errors";
 
 export const dynamic = "force-dynamic";
 
 type Params = { params: Promise<{ id: string }> };
-
-function isPrismaNotFound(error: unknown) {
-  return (
-    typeof error === "object" &&
-    error !== null &&
-    "code" in error &&
-    (error as { code?: unknown }).code === "P2025"
-  );
-}
 
 function normalizeStringArray(value: unknown): string[] {
   if (!Array.isArray(value)) return [];
@@ -90,8 +83,13 @@ export async function PATCH(req: NextRequest, { params }: Params) {
         ...(body.githubUrl !== undefined
           ? { githubUrl: typeof body.githubUrl === "string" ? body.githubUrl.trim() || null : null }
           : {}),
+        ...(body.gjsComponents !== undefined ? { gjsComponents: body.gjsComponents } : {}),
+        ...(body.gjsStyles !== undefined ? { gjsStyles: body.gjsStyles } : {}),
         ...(body.gjsHtml !== undefined
           ? { gjsHtml: typeof body.gjsHtml === "string" ? body.gjsHtml : null }
+          : {}),
+        ...(body.gjsJs !== undefined
+          ? { gjsJs: typeof body.gjsJs === "string" ? body.gjsJs : null }
           : {}),
         ...(status
           ? {
@@ -104,6 +102,15 @@ export async function PATCH(req: NextRequest, { params }: Params) {
       include: {
         author: { select: { id: true, email: true, firstName: true, lastName: true } },
       },
+    });
+
+    await logAudit({
+      actorId: guard.session.user.id,
+      action: status !== undefined ? (status === ProjectStatus.PUBLISHED ? "publish" : "update") : "update",
+      entity: "project",
+      entityId: id,
+      metadata: { title: project.title, slug: project.slug, status: project.status },
+      req,
     });
 
     return NextResponse.json({ data: project });
@@ -122,7 +129,17 @@ export async function DELETE(req: NextRequest, { params }: Params) {
 
   try {
     const { id } = await params;
+    const existing = await prisma.project.findUnique({ where: { id }, select: { title: true, slug: true } });
     await prisma.project.delete({ where: { id } });
+
+    await logAudit({
+      actorId: guard.session.user.id,
+      action: "delete",
+      entity: "project",
+      entityId: id,
+      metadata: { title: existing?.title, slug: existing?.slug },
+      req,
+    });
 
     return new NextResponse(null, { status: 204 });
   } catch (error) {

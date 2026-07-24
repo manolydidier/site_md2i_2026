@@ -2,6 +2,7 @@ import { NextRequest } from 'next/server'
 import { auth } from '@/auth'
 import { prisma } from '@/app/lib/prisma'
 import { withPermission } from '@/(permisionGuard)/lib/permissions'
+import { logAudit } from '@/(permisionGuard)/lib/audit'
 
 // ─── GET /api/permission-resources ─────────────────────────────────────────────
 // Liste toutes les ressources disponibles (pour le formulaire d'ajout de permission)
@@ -105,6 +106,15 @@ export async function POST(req: NextRequest) {
   const resource = await prisma.permissionResource.create({
     data: { name, code, category, description, isActive: true },
     select: { id: true, name: true, code: true, category: true, description: true, isActive: true, createdAt: true },
+  })
+
+  await logAudit({
+    actorId: session.user.id,
+    action: 'create',
+    entity: 'permission_resource',
+    entityId: resource.id,
+    metadata: { name: resource.name, code: resource.code },
+    req,
   })
 
   return Response.json(resource, { status: 201 })

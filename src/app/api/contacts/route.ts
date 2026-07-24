@@ -8,6 +8,7 @@ import { NextRequest, NextResponse } from "next/server";
 
 import { prisma } from "@/app/lib/prisma";
 import { withPermission } from "@/(permisionGuard)/lib/permissions";
+import { logAudit } from "@/(permisionGuard)/lib/audit";
 import { contactSchema } from "@/app/lib/email/schemas";
 import {
   cancelActiveAutomationsForContacts,
@@ -968,6 +969,15 @@ export async function POST(req: NextRequest) {
       email: maskEmail(contact.email),
     });
 
+    await logAudit({
+      actorId: session.user.id,
+      action: "create",
+      entity: "contact",
+      entityId: contact.id,
+      metadata: { email: maskEmail(contact.email), crmStatus: currentSnapshot.crmStatus },
+      req,
+    });
+
     return NextResponse.json(contact, { status: 201 });
   } catch (err: unknown) {
     if ((err as { code?: string }).code === "P2002") {
@@ -1060,6 +1070,14 @@ export async function DELETE(req: NextRequest) {
 
   logInfo("DELETE_SUCCESS", {
     deleted: count,
+  });
+
+  await logAudit({
+    actorId: session.user.id,
+    action: "bulk_delete",
+    entity: "contact",
+    metadata: { ids, count },
+    req,
   });
 
   return NextResponse.json({ deleted: count });

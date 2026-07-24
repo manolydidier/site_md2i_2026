@@ -10,7 +10,8 @@
     "seed": "dotenv -e .env -- tsx prisma/seeds.ts",
     "seed:permissions": "dotenv -e .env -- tsx prisma/seed-permissions.ts",
     "grant-role": "dotenv -e .env -- tsx prisma/grant-role.ts",
-    "email:cron": "node scripts/run-email-cron-local.js"
+    "email:cron": "node scripts/run-email-cron-local.js",
+    "crm-tasks:cron": "node scripts/run-task-reminders-cron-local.js"
   },
   "prisma": {
     "seed": "dotenv -e .env -- tsx prisma/seeds.ts"

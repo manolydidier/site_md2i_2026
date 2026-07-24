@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/app/lib/prisma";
 import { getCrmOwnerUserId } from "@/app/lib/crm-owner";
 import { withPermission } from "@/(permisionGuard)/lib/permissions";
+import { logAudit } from "@/(permisionGuard)/lib/audit";
 import type { CrmTaskPriority, CrmTaskStatus } from "@/generated/prisma/client";
 
 const ALLOWED_STATUS = ["TODO", "IN_PROGRESS", "DONE", "CANCELLED"] as const;
@@ -66,6 +67,15 @@ export async function PATCH(
         { status: 404 }
       );
     }
+
+    await logAudit({
+      actorId: guard.session.user.id,
+      action: "update",
+      entity: "crm_task",
+      entityId: id,
+      metadata: data,
+      req: request,
+    });
 
     return NextResponse.json({
       success: true,

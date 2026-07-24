@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/app/lib/prisma";
 import { withPermission } from "@/(permisionGuard)/lib/permissions";
+import { logAudit } from "@/(permisionGuard)/lib/audit";
 import { ProjectStatus } from "@/generated/prisma/client";
 
 export const dynamic = "force-dynamic";
@@ -113,7 +114,10 @@ export async function POST(req: NextRequest) {
         techStack: normalizeStringArray(body.techStack),
         projectUrl: typeof body.projectUrl === "string" ? body.projectUrl.trim() || null : null,
         githubUrl: typeof body.githubUrl === "string" ? body.githubUrl.trim() || null : null,
+        gjsComponents: body.gjsComponents ?? null,
+        gjsStyles: body.gjsStyles ?? null,
         gjsHtml: typeof body.gjsHtml === "string" ? body.gjsHtml : null,
+        gjsJs: typeof body.gjsJs === "string" ? body.gjsJs : null,
         status,
         publishedAt: status === ProjectStatus.PUBLISHED ? new Date() : null,
         authorId: guard.session.user.id,
@@ -121,6 +125,15 @@ export async function POST(req: NextRequest) {
       include: {
         author: { select: { id: true, email: true, firstName: true, lastName: true } },
       },
+    });
+
+    await logAudit({
+      actorId: guard.session.user.id,
+      action: "create",
+      entity: "project",
+      entityId: project.id,
+      metadata: { title: project.title, slug: project.slug, status: project.status },
+      req,
     });
 
     return NextResponse.json({ data: project }, { status: 201 });

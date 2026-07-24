@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/app/lib/prisma'
 import { ProductStatus } from '@/generated/prisma/client'
 import { withPermission } from '@/(permisionGuard)/lib/permissions'
+import { logAudit } from '@/(permisionGuard)/lib/audit'
 
 interface RouteContext {
   params: Promise<{ id: string }>
@@ -165,6 +166,17 @@ export async function PATCH(request: NextRequest, { params }: RouteContext) {
       },
     })
 
+    await logAudit({
+      actorId: guard.session.user.id,
+      action: status !== undefined && status !== existing.status
+        ? (nextStatus === 'PUBLISHED' ? 'publish' : 'update')
+        : 'update',
+      entity: 'product',
+      entityId: id,
+      metadata: { name: product.name, slug: product.slug, status: product.status },
+      req: request,
+    })
+
     return NextResponse.json({ data: product })
   } catch (error) {
     console.error('[PATCH /api/products/[id]]', error)
@@ -188,7 +200,7 @@ export async function DELETE(request: NextRequest, { params }: RouteContext) {
 
     const existing = await prisma.product.findUnique({
       where: { id },
-      select: { id: true },
+      select: { id: true, name: true, slug: true },
     })
 
     if (!existing) {
@@ -197,6 +209,15 @@ export async function DELETE(request: NextRequest, { params }: RouteContext) {
 
     await prisma.product.delete({
       where: { id },
+    })
+
+    await logAudit({
+      actorId: guard.session.user.id,
+      action: 'delete',
+      entity: 'product',
+      entityId: id,
+      metadata: { name: existing.name, slug: existing.slug },
+      req: request,
     })
 
     return NextResponse.json({ success: true })

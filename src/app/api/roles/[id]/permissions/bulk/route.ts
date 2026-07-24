@@ -2,6 +2,7 @@ import { NextRequest } from 'next/server'
 import { auth } from '@/auth'
 import { prisma } from '@/app/lib/prisma'
 import { withPermission } from '@/(permisionGuard)/lib/permissions'
+import { logAudit } from '@/(permisionGuard)/lib/audit'
 
 const ACTION_FIELDS = [
   'canRead', 'canCreate', 'canUpdate', 'canDelete',
@@ -64,6 +65,15 @@ export async function PUT(req: NextRequest, context: { params: Promise<{ id: str
         })
       })
   )
+
+  await logAudit({
+    actorId: session.user.id,
+    action: 'bulk_update',
+    entity: 'role_permission',
+    entityId: roleId,
+    metadata: { count: results.length, resourceIds: results.map((r) => r.resource.id) },
+    req,
+  })
 
   return Response.json({ data: results })
 }

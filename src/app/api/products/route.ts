@@ -4,6 +4,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/app/lib/prisma'
 import { Prisma, ProductStatus } from '@/generated/prisma/client'
 import { withPermission } from '@/(permisionGuard)/lib/permissions'
+import { logAudit } from '@/(permisionGuard)/lib/audit'
 
 export const dynamic = 'force-dynamic'
 export const runtime = 'nodejs'
@@ -607,6 +608,15 @@ export async function POST(request: NextRequest) {
           },
         },
       },
+    })
+
+    await logAudit({
+      actorId: guard.session.user.id,
+      action: 'create',
+      entity: 'product',
+      entityId: product.id,
+      metadata: { name: product.name, slug: product.slug, status: product.status },
+      req: request,
     })
 
     return json(

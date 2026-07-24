@@ -1,22 +1,21 @@
 import { NextRequest, NextResponse } from "next/server";
-import { CrmOpportunityStage } from "@/generated/prisma/client";
 import type { Prisma } from "@/generated/prisma/client";
 
 import { prisma } from "@/app/lib/prisma";
 import { getCrmOwnerUserId } from "@/app/lib/crm-owner";
 import { withPermission } from "@/(permisionGuard)/lib/permissions";
+import { logAudit } from "@/(permisionGuard)/lib/audit";
+import { getActiveOpportunityStages } from "@/app/lib/crm-opportunity-stages";
 
-const STAGE_VALUES = Object.values(CrmOpportunityStage) as string[];
-
-function findStage(candidates: string[]) {
-  return candidates.find((candidate) => STAGE_VALUES.includes(candidate)) || null;
+function findStage(stageValues: string[], candidates: string[]) {
+  return candidates.find((candidate) => stageValues.includes(candidate)) || null;
 }
 
-function resolveStage(value: unknown) {
+function resolveStage(stageValues: string[], value: unknown) {
   const raw = String(value || "").trim().toUpperCase();
 
-  if (STAGE_VALUES.includes(raw)) {
-    return raw as CrmOpportunityStage;
+  if (stageValues.includes(raw)) {
+    return raw;
   }
 
   const aliases: Record<string, string[]> = {
@@ -29,17 +28,15 @@ function resolveStage(value: unknown) {
     LOST: ["LOST", "CLOSED_LOST"],
   };
 
-  const resolved = findStage(aliases[raw] || []);
-
-  return resolved as CrmOpportunityStage | null;
+  return findStage(stageValues, aliases[raw] || []);
 }
 
-function getWonStage() {
-  return findStage(["WON", "CLOSED_WON"]);
+function getWonStage(stageValues: string[]) {
+  return findStage(stageValues, ["WON", "CLOSED_WON"]);
 }
 
-function getLostStage() {
-  return findStage(["LOST", "CLOSED_LOST"]);
+function getLostStage(stageValues: string[]) {
+  return findStage(stageValues, ["LOST", "CLOSED_LOST"]);
 }
 
 export async function PATCH(
@@ -57,13 +54,15 @@ export async function PATCH(
     const data: Prisma.CrmOpportunityUpdateManyMutationInput = {};
 
     if (body.stage) {
-      const stage = resolveStage(body.stage);
+      const stageOptions = await getActiveOpportunityStages(userId);
+      const stageValues = stageOptions.map((option) => option.key);
+      const stage = resolveStage(stageValues, body.stage);
 
       if (!stage) {
         return NextResponse.json(
           {
             success: false,
-            error: `Étape invalide. Valeurs acceptées : ${STAGE_VALUES.join(", ")}`,
+            error: `Étape invalide. Valeurs acceptées : ${stageValues.join(", ")}`,
           },
           { status: 400 }
         );
@@ -71,11 +70,11 @@ export async function PATCH(
 
       data.stage = stage;
 
-      if (stage === getWonStage()) {
+      if (stage === getWonStage(stageValues)) {
         data.probability = 100;
       }
 
-      if (stage === getLostStage()) {
+      if (stage === getLostStage(stageValues)) {
         data.probability = 0;
       }
     }
@@ -125,6 +124,15 @@ export async function PATCH(
         { status: 404 }
       );
     }
+
+    await logAudit({
+      actorId: guard.session.user.id,
+      action: "update",
+      entity: "crm_opportunity",
+      entityId: id,
+      metadata: data,
+      req: request,
+    });
 
     return NextResponse.json({
       success: true,

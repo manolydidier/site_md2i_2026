@@ -1,5 +1,6 @@
 import { NextRequest } from 'next/server'
 import { withPermission } from '../../../../../(permisionGuard)/lib/permissions'
+import { logAudit } from '../../../../../(permisionGuard)/lib/audit'
 import { prisma } from '@/app/lib/prisma'
 
 export async function DELETE(
@@ -35,6 +36,15 @@ export async function DELETE(
 
     await prisma.user.delete({
       where: { id: userId },
+    })
+
+    await logAudit({
+      actorId: guard.session.user.id,
+      action: 'hard_delete',
+      entity: 'user',
+      entityId: userId,
+      metadata: { email: user.email },
+      req,
     })
 
     return Response.json(

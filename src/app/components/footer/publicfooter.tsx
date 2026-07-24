@@ -193,33 +193,53 @@ const BOTTOM_LINKS: BasicLink[] = [
   },
 ]
 
-const RAW_SOCIALS = [
-  {
-    label: 'Site web',
-    href: MD2I_WEBSITE_URL,
-    icon: <Globe2 size={15} />,
-  },
-  {
-    label: 'LinkedIn',
-    href: SOCIAL_LINKEDIN_URL,
-    icon: <LinkedInIcon />,
-  },
-  {
-    label: 'Facebook',
-    href: SOCIAL_FACEBOOK_URL,
-    icon: <FacebookIcon />,
-  },
-  {
-    label: 'X',
-    href: SOCIAL_X_URL,
-    icon: <XIcon />,
-  },
-  {
-    label: 'Email',
-    href: `mailto:${MD2I_EMAIL}`,
-    icon: <Mail size={15} />,
-  },
-]
+type PublicSiteSettings = {
+  contactEmail: string | null
+  contactPhone: string | null
+  contactPhoneHref: string | null
+  address: string | null
+  websiteUrl: string | null
+  linkedinUrl: string | null
+  facebookUrl: string | null
+  xUrl: string | null
+  maintenanceMode: boolean
+}
+
+function buildRawSocials(values: {
+  websiteUrl: string
+  linkedinUrl: string
+  facebookUrl: string
+  xUrl: string
+  email: string
+}) {
+  return [
+    {
+      label: 'Site web',
+      href: values.websiteUrl,
+      icon: <Globe2 size={15} />,
+    },
+    {
+      label: 'LinkedIn',
+      href: values.linkedinUrl,
+      icon: <LinkedInIcon />,
+    },
+    {
+      label: 'Facebook',
+      href: values.facebookUrl,
+      icon: <FacebookIcon />,
+    },
+    {
+      label: 'X',
+      href: values.xUrl,
+      icon: <XIcon />,
+    },
+    {
+      label: 'Email',
+      href: `mailto:${values.email}`,
+      icon: <Mail size={15} />,
+    },
+  ]
+}
 
 function tokens(dark: boolean) {
   return {
@@ -288,6 +308,35 @@ export default function PublicFooter() {
   const { t: translate, i18n } = useTranslation()
   const currentLanguage = i18n.resolvedLanguage || i18n.language
 
+  // Paramètres du site (email, téléphone, adresse, réseaux sociaux) : chargés
+  // depuis /admin/settings. En cas d'échec ou avant le premier chargement, on
+  // retombe sur les constantes MD2I_* ci-dessus — le footer ne casse jamais.
+  const [siteSettings, setSiteSettings] = useState<PublicSiteSettings | null>(null)
+
+  useEffect(() => {
+    let cancelled = false
+
+    fetch('/api/settings/public')
+      .then((res) => (res.ok ? res.json() : null))
+      .then((json) => {
+        if (!cancelled && json?.data) setSiteSettings(json.data)
+      })
+      .catch(() => {})
+
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  const resolvedEmail = siteSettings?.contactEmail || MD2I_EMAIL
+  const resolvedPhoneDisplay = siteSettings?.contactPhone || MD2I_PHONE_DISPLAY
+  const resolvedPhoneHref = siteSettings?.contactPhoneHref || MD2I_PHONE_HREF
+  const resolvedAddress = siteSettings?.address || MD2I_ADDRESS
+  const resolvedWebsiteUrl = siteSettings?.websiteUrl || MD2I_WEBSITE_URL
+  const resolvedLinkedinUrl = siteSettings?.linkedinUrl || SOCIAL_LINKEDIN_URL
+  const resolvedFacebookUrl = siteSettings?.facebookUrl || SOCIAL_FACEBOOK_URL
+  const resolvedXUrl = siteSettings?.xUrl || SOCIAL_X_URL
+
   const palette = useMemo(() => tokens(dark), [dark])
 
   const tr = (
@@ -323,8 +372,15 @@ export default function PublicFooter() {
   )
 
   const socials = useMemo(
-    () => RAW_SOCIALS.filter((social) => social.href && social.href !== '#'),
-    []
+    () =>
+      buildRawSocials({
+        websiteUrl: resolvedWebsiteUrl,
+        linkedinUrl: resolvedLinkedinUrl,
+        facebookUrl: resolvedFacebookUrl,
+        xUrl: resolvedXUrl,
+        email: resolvedEmail,
+      }).filter((social) => social.href && social.href !== '#'),
+    [resolvedWebsiteUrl, resolvedLinkedinUrl, resolvedFacebookUrl, resolvedXUrl, resolvedEmail]
   )
 
   const [email, setEmail] = useState('')
@@ -1662,22 +1718,22 @@ export default function PublicFooter() {
                       {[
                         {
                           color: '#10B981',
-                          text: MD2I_ADDRESS,
+                          text: resolvedAddress,
                           href: GOOGLE_MAP_SEARCH_URL,
                           external: true,
                           icon: <MapPin size={12} />,
                         },
                         {
                           color: '#3B82F6',
-                          text: MD2I_EMAIL,
-                          href: `mailto:${MD2I_EMAIL}`,
+                          text: resolvedEmail,
+                          href: `mailto:${resolvedEmail}`,
                           external: false,
                           icon: <Mail size={12} />,
                         },
                         {
                           color: '#F59E0B',
-                          text: MD2I_PHONE_DISPLAY,
-                          href: `tel:${MD2I_PHONE_HREF}`,
+                          text: resolvedPhoneDisplay,
+                          href: `tel:${resolvedPhoneHref}`,
                           external: false,
                           icon: <Phone size={12} />,
                         },

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/app/lib/prisma";
 import { PostStatus } from "@/generated/prisma/client";
 import { withPermission } from "@/(permisionGuard)/lib/permissions";
+import { logAudit } from "@/(permisionGuard)/lib/audit";
 
 type Params = {
   params: Promise<{ id: string }>;
@@ -187,6 +188,15 @@ export async function PUT(request: NextRequest, { params }: Params) {
       },
     });
 
+    await logAudit({
+      actorId: guard.session.user.id,
+      action: "update",
+      entity: "post",
+      entityId: id,
+      metadata: { title, slug, status },
+      req: request,
+    });
+
     return NextResponse.json(post);
   } catch (error) {
     console.error("[PUT /api/posts/[id]]", error);
@@ -281,6 +291,15 @@ export async function PATCH(request: NextRequest, { params }: Params) {
       },
     });
 
+    await logAudit({
+      actorId: guard.session.user.id,
+      action: isPublishToggle ? (body.status === "PUBLISHED" ? "publish" : "unpublish") : "update",
+      entity: "post",
+      entityId: id,
+      metadata: { title: post.title, slug: post.slug, status: post.status },
+      req: request,
+    });
+
     return NextResponse.json(post);
   } catch (error) {
     console.error("[PATCH /api/posts/[id]]", error);
@@ -317,6 +336,15 @@ export async function DELETE(req: NextRequest, { params }: Params) {
 
     await prisma.post.delete({
       where: { id },
+    });
+
+    await logAudit({
+      actorId: guard.session.user.id,
+      action: "delete",
+      entity: "post",
+      entityId: id,
+      metadata: { title: existing.title, slug: existing.slug },
+      req,
     });
 
     return NextResponse.json({

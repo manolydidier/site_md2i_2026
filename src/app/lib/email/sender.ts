@@ -2,6 +2,7 @@
 
 import { Resend } from "resend";
 import { prisma } from "@/app/lib/prisma";
+import { sendResendEmail } from "./send-with-retry";
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
@@ -408,7 +409,7 @@ export async function sendTestEmail({
       hasBaseCss: finalHtml.includes("MD2I_EMAIL_BASE"),
     });
 
-    const { data, error } = await resend.emails.send({
+    const { data, error } = await sendResendEmail(resend, {
       from: verifiedFrom,
       to: [to],
       subject,
@@ -523,7 +524,7 @@ export async function sendCampaign(campaignId: string) {
         hasBaseCss: html.includes("MD2I_EMAIL_BASE"),
       });
 
-      const { error } = await resend.emails.send({
+      const { error } = await sendResendEmail(resend, {
         from: verifiedFrom,
         to: [recipient.email],
         subject: campaign.subject,
@@ -649,7 +650,7 @@ export async function sendAutomationEmail({
       hasBaseCss: finalHtml.includes("MD2I_EMAIL_BASE"),
     });
 
-    const { data, error } = await resend.emails.send({
+    const { data, error } = await sendResendEmail(resend, {
       from: verifiedFrom,
       to: [to],
       subject,

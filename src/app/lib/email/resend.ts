@@ -1,6 +1,7 @@
 // app/lib/email/resend.ts
 
 import { Resend } from "resend";
+import { sendResendEmail } from "./send-with-retry";
 
 type SendMarketingEmailInput = {
   to: string;
@@ -84,7 +85,7 @@ export async function sendMarketingEmail({
   const startedAt = Date.now();
 
   try {
-    const { data, error } = await resend.emails.send({
+    const { data, error } = await sendResendEmail(resend, {
       from,
       to,
       subject,

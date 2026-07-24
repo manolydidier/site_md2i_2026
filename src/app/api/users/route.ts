@@ -1,6 +1,7 @@
 // app/api/users/route.ts
 import { NextRequest } from 'next/server'
 import { withPermission } from '../../../(permisionGuard)/lib/permissions'
+import { logAudit } from '../../../(permisionGuard)/lib/audit'
 import { prisma } from '@/app/lib/prisma'
 
 // ── GET /api/users — liste paginée + filtres + recherche ─────────────────────
@@ -98,6 +99,15 @@ export async function POST(req: NextRequest) {
       }),
     },
     select: { id: true, email: true, firstName: true, lastName: true, status: true },
+  })
+
+  await logAudit({
+    actorId: guard.session.user.id,
+    action: 'create',
+    entity: 'user',
+    entityId: user.id,
+    metadata: { email: user.email, roleId: roleId ?? null },
+    req,
   })
 
   return Response.json(user, { status: 201 })

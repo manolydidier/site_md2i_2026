@@ -3,6 +3,7 @@ import { NextRequest } from 'next/server'
 import { auth } from '@/auth'
 import { prisma } from '@/app/lib/prisma'
 import { withPermission } from '@/(permisionGuard)/lib/permissions'
+import { logAudit } from '@/(permisionGuard)/lib/audit'
 
 // ── GET /api/roles — liste paginée + recherche + tri ─────────────────────────
 export async function GET(req: NextRequest) {
@@ -81,6 +82,15 @@ export async function POST(req: NextRequest) {
   const role = await prisma.role.create({
     data: { name, code: code.toUpperCase(), description },
     select: { id: true, name: true, code: true, description: true, isSystem: true, createdAt: true },
+  })
+
+  await logAudit({
+    actorId: session.user.id,
+    action: 'create',
+    entity: 'role',
+    entityId: role.id,
+    metadata: { name: role.name, code: role.code },
+    req,
   })
 
   return Response.json(role, { status: 201 })

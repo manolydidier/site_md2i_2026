@@ -1,6 +1,6 @@
 import { prisma } from "@/app/lib/prisma";
 import { checkPermission } from "@/(permisionGuard)/lib/permissions";
-import ProjectForm from "../_components/ProjectForm";
+import ProjectStudio from "../_components/ProjectStudio";
 
 export default async function EditProjectPage({
   params,
@@ -21,9 +21,7 @@ export default async function EditProjectPage({
 
   const { id } = await params;
 
-  const project = await prisma.project.findUnique({
-    where: { id },
-  });
+  const project = await prisma.project.findUnique({ where: { id }, select: { id: true } });
 
   if (!project) {
     return (
@@ -35,23 +33,5 @@ export default async function EditProjectPage({
 
   const canUpdate = await checkPermission("projects", "canUpdate").then((r) => r.ok);
 
-  return (
-    <ProjectForm
-      mode="edit"
-      canUpdate={canUpdate}
-      initial={{
-        id: project.id,
-        title: project.title,
-        slug: project.slug,
-        excerpt: project.excerpt,
-        coverImage: project.coverImage,
-        images: project.images,
-        techStack: project.techStack,
-        projectUrl: project.projectUrl,
-        githubUrl: project.githubUrl,
-        status: project.status,
-        gjsHtml: project.gjsHtml,
-      }}
-    />
-  );
+  return <ProjectStudio mode="edit" projectId={id} canUpdate={canUpdate} />;
 }

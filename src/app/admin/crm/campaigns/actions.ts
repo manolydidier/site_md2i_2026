@@ -8,6 +8,7 @@ import { redirect } from "next/navigation";
 import { getCrmOwnerUserId } from "@/app/lib/crm-owner";
 import { prisma } from "@/app/lib/prisma";
 import { requirePermission } from "@/(permisionGuard)/lib/permissions";
+import { logAudit } from "@/(permisionGuard)/lib/audit";
 import { processDueCrmPublications } from "@/app/lib/crm-publication-cron";
 import { publishCrmPublication } from "@/app/lib/crm-publication-publisher";
 import {
@@ -202,7 +203,7 @@ async function createUniqueSlug(name: string, channel: string) {
 }
 
 export async function createCrmMarketingCampaign(formData: FormData) {
-  await requirePermission("crm_campaigns", "canCreate");
+  const session = await requirePermission("crm_campaigns", "canCreate");
   const userId = await getCrmOwnerUserId();
 
   const name = readText(formData, "name");
@@ -248,7 +249,7 @@ export async function createCrmMarketingCampaign(formData: FormData) {
     }))
   );
 
-  await prisma.$transaction(async (tx) => {
+  const createdCampaign = await prisma.$transaction(async (tx) => {
     const campaign = await tx.crmMarketingCampaign.create({
       data: {
         name,
@@ -337,6 +338,16 @@ export async function createCrmMarketingCampaign(formData: FormData) {
         userId,
       },
     });
+
+    return campaign;
+  });
+
+  await logAudit({
+    actorId: session.user.id,
+    action: "create",
+    entity: "crm_campaign",
+    entityId: createdCampaign.id,
+    metadata: { name, channels: publicationPlans.map((plan) => plan.channel) },
   });
 
   revalidatePath("/admin/crm/campaigns");
@@ -344,7 +355,7 @@ export async function createCrmMarketingCampaign(formData: FormData) {
 }
 
 export async function publishCrmPublicationNow(formData: FormData) {
-  await requirePermission("crm_campaigns", "canExecute");
+  const session = await requirePermission("crm_campaigns", "canExecute");
   const userId = await getCrmOwnerUserId();
   const publicationId = readText(formData, "publicationId");
 
@@ -578,6 +589,14 @@ export async function publishCrmPublicationNow(formData: FormData) {
     });
   }
 
+  await logAudit({
+    actorId: session.user.id,
+    action: redirectStatus === "success" ? "publish" : "publish_failed",
+    entity: "crm_publication",
+    entityId: publication.id,
+    metadata: { channel: publication.channel, title: publication.title },
+  });
+
   revalidatePath("/admin/crm/campaigns");
   revalidatePath("/admin/crm");
 
@@ -589,7 +608,7 @@ export async function publishCrmPublicationNow(formData: FormData) {
 }
 
 export async function processCrmPublicationQueue(formData: FormData) {
-  await requirePermission("crm_campaigns", "canExecute");
+  const session = await requirePermission("crm_campaigns", "canExecute");
   const userId = await getCrmOwnerUserId();
   const rawLimit = Number(readText(formData, "limit", "20"));
   const limit = Number.isFinite(rawLimit)
@@ -607,6 +626,13 @@ export async function processCrmPublicationQueue(formData: FormData) {
     params.set("manualReady", String(result.manualReady));
     params.set("failed", String(result.failed));
     params.set("skipped", String(result.skipped));
+
+    await logAudit({
+      actorId: session.user.id,
+      action: "execute",
+      entity: "crm_publication_queue",
+      metadata: { checked: result.checked, published: result.published, failed: result.failed },
+    });
   } catch (error) {
     params.set("queue", "failed");
     params.set("message", getErrorMessage(error));
@@ -619,7 +645,7 @@ export async function processCrmPublicationQueue(formData: FormData) {
 }
 
 export async function updateCrmPublicationStatus(formData: FormData) {
-  await requirePermission("crm_campaigns", "canUpdate");
+  const session = await requirePermission("crm_campaigns", "canUpdate");
   const userId = await getCrmOwnerUserId();
   const publicationId = readText(formData, "publicationId");
   const nextStatus = toPublicationStatus(readText(formData, "status"));
@@ -709,12 +735,20 @@ export async function updateCrmPublicationStatus(formData: FormData) {
     });
   });
 
+  await logAudit({
+    actorId: session.user.id,
+    action: "status_change",
+    entity: "crm_publication",
+    entityId: publication.id,
+    metadata: { status: nextStatus, channel: publication.channel },
+  });
+
   revalidatePath("/admin/crm/campaigns");
   revalidatePath("/admin/crm");
 }
 
 export async function deleteCrmMarketingCampaign(formData: FormData) {
-  await requirePermission("crm_campaigns", "canDelete");
+  const session = await requirePermission("crm_campaigns", "canDelete");
   const userId = await getCrmOwnerUserId();
   const campaignId = readText(formData, "campaignId");
 
@@ -796,12 +830,20 @@ export async function deleteCrmMarketingCampaign(formData: FormData) {
     });
   });
 
+  await logAudit({
+    actorId: session.user.id,
+    action: "delete",
+    entity: "crm_campaign",
+    entityId: campaign.id,
+    metadata: { name: campaign.name },
+  });
+
   revalidatePath("/admin/crm/campaigns");
   revalidatePath("/admin/crm");
 }
 
 export async function deleteSelectedCrmMarketingCampaigns(formData: FormData) {
-  await requirePermission("crm_campaigns", "canDelete");
+  const session = await requirePermission("crm_campaigns", "canDelete");
   const userId = await getCrmOwnerUserId();
   const campaignIds = readIds(formData, "campaignIds");
 
@@ -893,6 +935,13 @@ export async function deleteSelectedCrmMarketingCampaigns(formData: FormData) {
         userId,
       },
     });
+  });
+
+  await logAudit({
+    actorId: session.user.id,
+    action: "bulk_delete",
+    entity: "crm_campaign",
+    metadata: { ids: authorizedCampaignIds, count: authorizedCampaignIds.length },
   });
 
   revalidatePath("/admin/crm/campaigns");

@@ -1,19 +1,16 @@
 import { ContactStatus } from "@/generated/prisma/enums";
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/app/lib/prisma";
-import {
-  redirectBack,
-  requireAdminApiAuth,
-} from "@/app/lib/messages/helpers";
+import { withPermission } from "@/(permisionGuard)/lib/permissions";
+import { redirectBack } from "@/app/lib/messages/helpers";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 export async function POST(request: NextRequest) {
   try {
-    const authResponse = await requireAdminApiAuth(request);
-
-    if (authResponse) return authResponse;
+    const guard = await withPermission(request, { resource: "messages", action: "canUpdate" });
+    if (!guard.ok) return guard.response;
 
     const formData = await request.formData();
 

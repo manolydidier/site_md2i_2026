@@ -2,6 +2,7 @@ import { NextRequest } from 'next/server'
 import { auth } from '@/auth'
 import { prisma } from '@/app/lib/prisma'
 import { withPermission } from '@/(permisionGuard)/lib/permissions'
+import { logAudit } from '@/(permisionGuard)/lib/audit'
 
 const PERMISSION_SELECT = {
   id: true,
@@ -67,6 +68,15 @@ export async function PATCH(
     select: PERMISSION_SELECT,
   })
 
+  await logAudit({
+    actorId: session.user.id,
+    action: 'update',
+    entity: 'role_permission',
+    entityId: permissionId,
+    metadata: { roleId, ...data },
+    req,
+  })
+
   return Response.json(updated)
 }
 
@@ -88,6 +98,15 @@ export async function DELETE(
   if (!existing) return Response.json({ error: 'Permission introuvable' }, { status: 404 })
 
   await prisma.rolePermission.delete({ where: { id: permissionId } })
+
+  await logAudit({
+    actorId: session.user.id,
+    action: 'delete',
+    entity: 'role_permission',
+    entityId: permissionId,
+    metadata: { roleId, resourceId: existing.resourceId },
+    req,
+  })
 
   return Response.json({ success: true })
 }

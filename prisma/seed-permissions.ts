@@ -38,6 +38,8 @@ const RESOURCES = [
   { name: 'Permissions',           code: 'permissions',          category: 'Administration' },
   { name: 'Messages',              code: 'messages',             category: 'Administration' },
   { name: 'Audit',                 code: 'audit_logs',           category: 'Administration' },
+  { name: 'Paramètres du site',    code: 'settings',             category: 'Administration' },
+  { name: 'Médiathèque',           code: 'uploads',              category: 'Administration' },
 ] as const
 
 async function main() {

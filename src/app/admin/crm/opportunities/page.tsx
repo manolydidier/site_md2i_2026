@@ -16,7 +16,8 @@ import { prisma } from "@/app/lib/prisma";
 import { getCrmOwnerUserId } from "@/app/lib/crm-owner";
 import { checkPermission } from "@/(permisionGuard)/lib/permissions";
 import OpportunitiesTable from "./OpportunitiesTable";
-import { CrmOpportunityStage } from "@/generated/prisma/client";
+import StageManager from "./_components/StageManager";
+import { getActiveOpportunityStages } from "@/app/lib/crm-opportunity-stages";
 
 export const dynamic = "force-dynamic";
 
@@ -141,9 +142,10 @@ export default async function CrmOpportunitiesPage() {
     },
   });
 
-  const stageOptions = Object.values(CrmOpportunityStage).map((value) => ({
-    value,
-    label: formatStageLabel(value),
+  const stageRows = await getActiveOpportunityStages(userId);
+  const stageOptions = stageRows.map((row) => ({
+    value: row.key,
+    label: row.label || formatStageLabel(row.key),
   }));
 
   const rows = opportunities.map((opportunity) => ({
@@ -287,6 +289,8 @@ export default async function CrmOpportunitiesPage() {
           highlight
         />
       </section>
+
+      <StageManager canUpdate={canUpdate} />
 
       <OpportunitiesTable
         opportunities={rows}

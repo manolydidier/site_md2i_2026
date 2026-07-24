@@ -10,13 +10,22 @@ import { useTheme } from "@/app/context/ThemeContext";
 import { ensureBaseBlocksCss, registerCommonBlocks } from "./grapes-shared/blocks";
 import { registerCommonKeymaps } from "./grapes-shared/keymaps";
 import { STYLE_MANAGER_SECTORS } from "./grapes-shared/styleManagerConfig";
+import {
+  type EditorSnapshot,
+  clearDraft,
+  formatRelativeTime,
+  listHistory,
+  loadDraft,
+  pushHistoryEntry,
+  saveDraft,
+} from "./grapes-shared/draftHistory";
 
 interface GrapesEditorProps {
   mode: "create" | "edit";
   postId?: string;
 }
 
-type PanelTab = "blocks" | "layers" | "code" | "media";
+type PanelTab = "blocks" | "layers" | "code" | "media" | "history";
 type Device = "desktop" | "tablet" | "mobile";
 type SaveStatus = "idle" | "saving" | "saved" | "error";
 type MediaKind = "image" | "video" | "file";
@@ -51,6 +60,11 @@ export default function GrapesEditor({ mode, postId }: GrapesEditorProps) {
   const [isReady, setIsReady] = useState(false);
   const [selectedName, setSelectedName] = useState("Aucun élément");
   const [linksEnabled, setLinksEnabled] = useState(false);
+  const [draftNotice, setDraftNotice] = useState<{ savedAt: number } | null>(null);
+  const [historyEntries, setHistoryEntries] = useState<EditorSnapshot[]>([]);
+  const [lastAutosaveAt, setLastAutosaveAt] = useState<number | null>(null);
+
+  const draftId = postId ?? "new";
 
   const [codeHtml, setCodeHtml] = useState("");
   const [codeCss, setCodeCss] = useState("");
@@ -671,9 +685,66 @@ export default function GrapesEditor({ mode, postId }: GrapesEditorProps) {
     }
   }, [activeTab, fetchMediaLibrary, mediaItems.length, mediaLoading]);
 
+  // Détecte un brouillon local non enregistré dès que l'éditeur est prêt.
+  useEffect(() => {
+    if (!isReady) return;
+    const draft = loadDraft("post", draftId);
+    if (draft) setDraftNotice({ savedAt: draft.savedAt });
+  }, [isReady, draftId]);
+
+  // Sauvegarde automatique dans le navigateur + alimentation de l'historique.
+  useEffect(() => {
+    if (!isReady) return;
+    const interval = setInterval(() => {
+      const editor = gjsRef.current;
+      if (!editor) return;
+      const snapshot: EditorSnapshot = {
+        html: editor.getHtml() || "",
+        css: editor.getCss() || "",
+        js: codeJs,
+        savedAt: Date.now(),
+      };
+      saveDraft("post", draftId, snapshot);
+      pushHistoryEntry("post", draftId, snapshot);
+      setLastAutosaveAt(snapshot.savedAt);
+    }, 20000);
+    return () => clearInterval(interval);
+  }, [isReady, draftId, codeJs]);
+
+  const restoreSnapshot = (snapshot: EditorSnapshot) => {
+    const editor = gjsRef.current;
+    if (!editor) return;
+    editor.setComponents(snapshot.html);
+    editor.setStyle(snapshot.css);
+    setCodeJs(snapshot.js);
+    ensureBaseBlocksCss(editor);
+    setTimeout(() => {
+      runCanvasJs(snapshot.js);
+      syncCodeFieldsSilently();
+      readPageStyles();
+    }, 0);
+  };
+
+  const restoreDraft = () => {
+    const draft = loadDraft("post", draftId);
+    if (draft) restoreSnapshot(draft);
+    setDraftNotice(null);
+  };
+
+  const dismissDraft = () => {
+    clearDraft("post", draftId);
+    setDraftNotice(null);
+  };
+
+  const restoreHistoryEntry = (entry: EditorSnapshot) => {
+    restoreSnapshot(entry);
+    setActiveTab(null);
+  };
+
   const openTab = (tab: PanelTab) => {
     if (tab === "code") syncCodeFieldsSilently();
     if (tab === "media" && mediaItems.length === 0 && !mediaLoading) fetchMediaLibrary();
+    if (tab === "history") setHistoryEntries(listHistory("post", draftId));
     setActiveTab((prev) => (prev === tab ? null : tab));
   };
 
@@ -842,6 +913,7 @@ export default function GrapesEditor({ mode, postId }: GrapesEditorProps) {
       const res = await fetch(url, { method, headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
       if (!res.ok) { const e = await res.json(); throw new Error(e.error ?? "Échec"); }
       const saved = await res.json();
+      clearDraft("post", draftId);
       setSaveStatus("saved");
       setTimeout(() => setSaveStatus("idle"), 3000);
       if (mode === "create") router.push(`/admin/posts/${saved.id}/edit`);
@@ -919,6 +991,11 @@ export default function GrapesEditor({ mode, postId }: GrapesEditorProps) {
         </div>
 
         <div className="ed-topbar__right">
+          {saveStatus === "idle" && lastAutosaveAt && (
+            <span className="ed-autosave-tag" title="Brouillon enregistré automatiquement dans ce navigateur">
+              💾 Brouillon local {formatRelativeTime(lastAutosaveAt)}
+            </span>
+          )}
           {saveStatus !== "idle" && (
             <span className={`ed-save-tag ed-save-tag--${saveStatus}`}>
               {saveStatus === "saving" && "Sauvegarde…"}
@@ -958,6 +1035,7 @@ export default function GrapesEditor({ mode, postId }: GrapesEditorProps) {
               { id: "blocks", title: "Blocs", icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="7" height="7" rx="1" /><rect x="14" y="3" width="7" height="7" rx="1" /><rect x="3" y="14" width="7" height="7" rx="1" /><rect x="14" y="14" width="7" height="7" rx="1" /></svg> },
               { id: "layers", title: "Calques", icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" /></svg> },
               { id: "media", title: "Média", icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="4" width="18" height="16" rx="2" /><circle cx="8.5" cy="9.5" r="1.5" /><path d="M21 15l-5-5L5 20" /></svg> },
+              { id: "history", title: "Historique", icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3.5 2" /></svg> },
             ].map((item) => (
               <button key={item.id} type="button" className={`ed-rail-btn ${activeTab === item.id ? "is-active" : ""}`} onClick={() => openTab(item.id as PanelTab)} title={item.title}>
                 {item.icon}
@@ -984,6 +1062,7 @@ export default function GrapesEditor({ mode, postId }: GrapesEditorProps) {
                 {activeTab === "layers" && "Calques"}
                 {activeTab === "code" && "Code personnalisé"}
                 {activeTab === "media" && "Médiathèque"}
+                {activeTab === "history" && "Historique"}
               </strong>
             </div>
             <button className="ed-left-drawer__close" type="button" onClick={() => setActiveTab(null)}>
@@ -993,6 +1072,25 @@ export default function GrapesEditor({ mode, postId }: GrapesEditorProps) {
 
           <div id="ed-blocks" className={`ed-panel ${activeTab === "blocks" ? "is-visible" : ""}`} />
           <div id="ed-layers" className={`ed-panel ${activeTab === "layers" ? "is-visible" : ""}`} />
+
+          <div className={`ed-panel ${activeTab === "history" ? "is-visible" : ""}`}>
+            <div className="ed-history-shell">
+              <h3 className="ed-code-title">Historique des versions</h3>
+              <p className="ed-code-subtitle">Instantanés automatiques enregistrés dans ce navigateur (20 max).</p>
+              {historyEntries.length === 0 ? (
+                <p className="ed-history-empty">Aucun historique pour l&apos;instant — il se remplit automatiquement pendant l&apos;édition.</p>
+              ) : (
+                <ul className="ed-history-list">
+                  {[...historyEntries].reverse().map((entry) => (
+                    <li key={entry.savedAt} className="ed-history-item">
+                      <span>{formatRelativeTime(entry.savedAt)}</span>
+                      <button type="button" className="ed-code-secondary" onClick={() => restoreHistoryEntry(entry)}>Restaurer</button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          </div>
 
           <div className={`ed-panel ${activeTab === "media" ? "is-visible" : ""}`}>
             <div className="ed-media-shell">
@@ -1129,6 +1227,15 @@ export default function GrapesEditor({ mode, postId }: GrapesEditorProps) {
             <div className="ed-splash">
               <div className="ed-splash__ring" />
               <p>Chargement de l'éditeur…</p>
+            </div>
+          )}
+          {draftNotice && (
+            <div className="ed-draft-banner">
+              <span>Brouillon non enregistré trouvé ({formatRelativeTime(draftNotice.savedAt)}).</span>
+              <div className="ed-draft-banner__actions">
+                <button type="button" className="ed-code-primary" onClick={restoreDraft}>Restaurer</button>
+                <button type="button" className="ed-code-secondary" onClick={dismissDraft}>Ignorer</button>
+              </div>
             </div>
           )}
           <div ref={mountRef} className="ed-mount" />
@@ -1384,6 +1491,7 @@ export default function GrapesEditor({ mode, postId }: GrapesEditorProps) {
           .ed-link-toggle span { display: none; }
         }
 
+        .ed-autosave-tag { font-size: 11px; font-weight: 600; padding: 5px 10px; border-radius: 999px; white-space: nowrap; color: var(--ed-text-mute); background: var(--ed-shell-soft); }
         .ed-save-tag { font-size: 11px; font-weight: 600; padding: 5px 10px; border-radius: 999px; white-space: nowrap; }
         .ed-save-tag--saving { color: var(--ed-text-soft); background: var(--ed-shell-soft); }
         .ed-save-tag--saved { color: var(--ed-success); background: rgba(34,197,94,.10); }
@@ -1580,6 +1688,12 @@ export default function GrapesEditor({ mode, postId }: GrapesEditorProps) {
         .ed-link-primary:hover, .ed-link-secondary:hover { transform: translateY(-1px); }
         .ed-link-help { margin-top: 10px; font-size: 11px; line-height: 1.55; color: var(--ed-text-soft); }
 
+        .ed-draft-banner { position: absolute; top: 18px; left: 50%; transform: translateX(-50%); z-index: 20; display: flex; align-items: center; gap: 14px; padding: 10px 16px; border-radius: 12px; background: ${dark ? "#1B202B" : "#FFFFFF"}; border: 1px solid var(--ed-accent-soft-border); box-shadow: var(--shadow-lg); font-size: 12px; color: var(--ed-text); }
+        .ed-draft-banner__actions { display: flex; gap: 8px; }
+        .ed-history-shell { display: flex; flex-direction: column; gap: 12px; padding: 12px; }
+        .ed-history-empty { margin: 0; font-size: 12px; color: var(--ed-text-mute); }
+        .ed-history-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+        .ed-history-item { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 10px 12px; border-radius: 10px; border: 1px solid var(--ed-border); background: var(--ed-shell-soft); font-size: 12px; color: var(--ed-text); }
         .ed-media-shell { display: flex; flex-direction: column; gap: 14px; padding: 12px; }
         .ed-media-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
         .ed-media-toolbar { display: flex; flex-direction: column; gap: 10px; }

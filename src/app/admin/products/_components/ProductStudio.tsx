@@ -10,6 +10,15 @@ import { useTheme } from "@/app/context/ThemeContext";
 import { ensureBaseBlocksCss, registerCommonBlocks } from "@/app/components/edito/grapes-shared/blocks";
 import { registerCommonKeymaps } from "@/app/components/edito/grapes-shared/keymaps";
 import { STYLE_MANAGER_SECTORS } from "@/app/components/edito/grapes-shared/styleManagerConfig";
+import {
+  type EditorSnapshot,
+  clearDraft,
+  formatRelativeTime,
+  listHistory,
+  loadDraft,
+  pushHistoryEntry,
+  saveDraft,
+} from "@/app/components/edito/grapes-shared/draftHistory";
 
 interface ProductStudioProps {
   mode: 'create' | 'edit'
@@ -17,7 +26,7 @@ interface ProductStudioProps {
   authorId?: string
 }
 
-type PanelTab = "blocks" | "layers" | "media" | "code";
+type PanelTab = "blocks" | "layers" | "media" | "code" | "history";
 type Device = "desktop" | "tablet" | "mobile";
 type SaveStatus = "idle" | "saving" | "saved" | "error";
 type MediaKind = "image" | "video" | "file";
@@ -56,6 +65,11 @@ export default function ProductStudio({ mode, productId, authorId,}: ProductStud
   const [isReady, setIsReady] = useState(false);
   const [selectedName, setSelectedName] = useState("Aucun élément");
   const [linksEnabled, setLinksEnabled] = useState(false);
+  const [draftNotice, setDraftNotice] = useState<{ savedAt: number } | null>(null);
+  const [historyEntries, setHistoryEntries] = useState<EditorSnapshot[]>([]);
+  const [lastAutosaveAt, setLastAutosaveAt] = useState<number | null>(null);
+
+  const draftId = productId ?? "new";
 
   const [codeHtml, setCodeHtml] = useState("");
   const [codeCss, setCodeCss] = useState("");
@@ -705,8 +719,65 @@ export default function ProductStudio({ mode, productId, authorId,}: ProductStud
     }
   }, [activeTab, loadMediaLibrary]);
 
+  // Détecte un brouillon local non enregistré dès que l'éditeur est prêt.
+  useEffect(() => {
+    if (!isReady) return;
+    const draft = loadDraft("product", draftId);
+    if (draft) setDraftNotice({ savedAt: draft.savedAt });
+  }, [isReady, draftId]);
+
+  // Sauvegarde automatique dans le navigateur + alimentation de l'historique.
+  useEffect(() => {
+    if (!isReady) return;
+    const interval = setInterval(() => {
+      const editor = gjsRef.current;
+      if (!editor) return;
+      const snapshot: EditorSnapshot = {
+        html: editor.getHtml() || "",
+        css: editor.getCss() || "",
+        js: codeJs,
+        savedAt: Date.now(),
+      };
+      saveDraft("product", draftId, snapshot);
+      pushHistoryEntry("product", draftId, snapshot);
+      setLastAutosaveAt(snapshot.savedAt);
+    }, 20000);
+    return () => clearInterval(interval);
+  }, [isReady, draftId, codeJs]);
+
+  const restoreSnapshot = (snapshot: EditorSnapshot) => {
+    const editor = gjsRef.current;
+    if (!editor) return;
+    editor.setComponents(snapshot.html);
+    editor.setStyle(snapshot.css);
+    setCodeJs(snapshot.js);
+    ensureBaseBlocksCss(editor);
+    setTimeout(() => {
+      runCanvasJs(snapshot.js);
+      syncCodeFieldsSilently();
+      readPageStyles();
+    }, 0);
+  };
+
+  const restoreDraft = () => {
+    const draft = loadDraft("product", draftId);
+    if (draft) restoreSnapshot(draft);
+    setDraftNotice(null);
+  };
+
+  const dismissDraft = () => {
+    clearDraft("product", draftId);
+    setDraftNotice(null);
+  };
+
+  const restoreHistoryEntry = (entry: EditorSnapshot) => {
+    restoreSnapshot(entry);
+    setActiveTab(null);
+  };
+
   const openTab = (tab: PanelTab) => {
     if (tab === "code") syncCodeFieldsSilently();
+    if (tab === "history") setHistoryEntries(listHistory("product", draftId));
     setActiveTab((prev) => (prev === tab ? null : tab));
   };
 
@@ -909,6 +980,7 @@ const handleSave = async (statusOverride?: 'DRAFT' | 'PUBLISHED') => {
     const saved = await res.json()
     const nextId = saved?.data?.id ?? saved?.id
 
+    clearDraft('product', draftId)
     setSaveStatus('saved')
     setTimeout(() => setSaveStatus('idle'), 3000)
 
@@ -992,6 +1064,11 @@ const handleSave = async (statusOverride?: 'DRAFT' | 'PUBLISHED') => {
         </div>
 
         <div className="ed-topbar__right">
+          {saveStatus === "idle" && lastAutosaveAt && (
+            <span className="ed-autosave-tag" title="Brouillon enregistré automatiquement dans ce navigateur">
+              💾 Brouillon local {formatRelativeTime(lastAutosaveAt)}
+            </span>
+          )}
           {saveStatus !== "idle" && (
             <span className={`ed-save-tag ed-save-tag--${saveStatus}`}>
               {saveStatus === "saving" && "Sauvegarde…"}
@@ -1031,6 +1108,7 @@ const handleSave = async (statusOverride?: 'DRAFT' | 'PUBLISHED') => {
               { id: "blocks", title: "Blocs", icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="7" height="7" rx="1" /><rect x="14" y="3" width="7" height="7" rx="1" /><rect x="3" y="14" width="7" height="7" rx="1" /><rect x="14" y="14" width="7" height="7" rx="1" /></svg> },
               { id: "layers", title: "Calques", icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" /></svg> },
               { id: "media", title: "Médiathèque", icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 7a2 2 0 012-2h3l2 2h9a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2V7z" /><circle cx="9" cy="11" r="1.5" /><path d="M21 15l-4.5-4.5L10 17" /></svg> },
+              { id: "history", title: "Historique", icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3.5 2" /></svg> },
             ].map((item) => (
               <button key={item.id} type="button" className={`ed-rail-btn ${activeTab === item.id ? "is-active" : ""}`} onClick={() => openTab(item.id as PanelTab)} title={item.title}>
                 {item.icon}
@@ -1057,6 +1135,7 @@ const handleSave = async (statusOverride?: 'DRAFT' | 'PUBLISHED') => {
                 {activeTab === "layers" && "Calques"}
                 {activeTab === "media" && "Médiathèque"}
                 {activeTab === "code" && "Code personnalisé"}
+                {activeTab === "history" && "Historique"}
               </strong>
             </div>
             <button className="ed-left-drawer__close" type="button" onClick={() => setActiveTab(null)}>
@@ -1066,6 +1145,25 @@ const handleSave = async (statusOverride?: 'DRAFT' | 'PUBLISHED') => {
 
           <div id="ed-blocks" className={`ed-panel ${activeTab === "blocks" ? "is-visible" : ""}`} />
           <div id="ed-layers" className={`ed-panel ${activeTab === "layers" ? "is-visible" : ""}`} />
+
+          <div className={`ed-panel ${activeTab === "history" ? "is-visible" : ""}`}>
+            <div className="ed-history-shell">
+              <h3 className="ed-code-title">Historique des versions</h3>
+              <p className="ed-code-subtitle">Instantanés automatiques enregistrés dans ce navigateur (20 max).</p>
+              {historyEntries.length === 0 ? (
+                <p className="ed-history-empty">Aucun historique pour l&apos;instant — il se remplit automatiquement pendant l&apos;édition.</p>
+              ) : (
+                <ul className="ed-history-list">
+                  {[...historyEntries].reverse().map((entry) => (
+                    <li key={entry.savedAt} className="ed-history-item">
+                      <span>{formatRelativeTime(entry.savedAt)}</span>
+                      <button type="button" className="ed-code-secondary" onClick={() => restoreHistoryEntry(entry)}>Restaurer</button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          </div>
 
           <div className={`ed-panel ${activeTab === "media" ? "is-visible" : ""}`}>
             <div className="ed-media-shell">
@@ -1230,6 +1328,15 @@ const handleSave = async (statusOverride?: 'DRAFT' | 'PUBLISHED') => {
             <div className="ed-splash">
               <div className="ed-splash__ring" />
               <p>Chargement de l'éditeur…</p>
+            </div>
+          )}
+          {draftNotice && (
+            <div className="ed-draft-banner">
+              <span>Brouillon non enregistré trouvé ({formatRelativeTime(draftNotice.savedAt)}).</span>
+              <div className="ed-draft-banner__actions">
+                <button type="button" className="ed-code-primary" onClick={restoreDraft}>Restaurer</button>
+                <button type="button" className="ed-code-secondary" onClick={dismissDraft}>Ignorer</button>
+              </div>
             </div>
           )}
           <div ref={mountRef} className="ed-mount" />
@@ -1486,6 +1593,7 @@ const handleSave = async (statusOverride?: 'DRAFT' | 'PUBLISHED') => {
           .ed-link-toggle span { display: none; }
         }
 
+        .ed-autosave-tag { font-size: 11px; font-weight: 600; padding: 5px 10px; border-radius: 999px; white-space: nowrap; color: var(--ed-text-mute); background: var(--ed-shell-soft); }
         .ed-save-tag { font-size: 11px; font-weight: 600; padding: 5px 10px; border-radius: 999px; white-space: nowrap; }
         .ed-save-tag--saving { color: var(--ed-text-soft); background: var(--ed-shell-soft); }
         .ed-save-tag--saved { color: var(--ed-success); background: rgba(34,197,94,.10); }
@@ -1664,6 +1772,12 @@ const handleSave = async (statusOverride?: 'DRAFT' | 'PUBLISHED') => {
         .ed-example-list { display: flex; flex-direction: column; gap: 8px; }
         .ed-example-note { margin-top: 12px; padding: 10px; border-radius: 10px; background: var(--ed-shell-soft); border: 1px solid var(--ed-border); color: var(--ed-text-soft); font-size: 11px; line-height: 1.6; }
 
+        .ed-draft-banner { position: absolute; top: 18px; left: 50%; transform: translateX(-50%); z-index: 20; display: flex; align-items: center; gap: 14px; padding: 10px 16px; border-radius: 12px; background: ${dark ? "#1B202B" : "#FFFFFF"}; border: 1px solid var(--ed-accent-soft-border); box-shadow: var(--shadow-lg); font-size: 12px; color: var(--ed-text); }
+        .ed-draft-banner__actions { display: flex; gap: 8px; }
+        .ed-history-shell { display: flex; flex-direction: column; gap: 12px; padding: 12px; }
+        .ed-history-empty { margin: 0; font-size: 12px; color: var(--ed-text-mute); }
+        .ed-history-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+        .ed-history-item { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 10px 12px; border-radius: 10px; border: 1px solid var(--ed-border); background: var(--ed-shell-soft); font-size: 12px; color: var(--ed-text); }
         .ed-media-shell { padding: 12px 10px 18px; }
         .ed-media-card { background: var(--ed-panel); border: 1px solid var(--ed-border); border-radius: 14px; padding: 14px; box-shadow: var(--shadow-sm); }
         .ed-media-card__head { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; margin-bottom: 12px; }

@@ -1,19 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/app/lib/prisma";
 import { withPermission } from "@/(permisionGuard)/lib/permissions";
+import { isPrismaNotFound } from "@/app/lib/prisma-errors";
 
 export const dynamic = "force-dynamic";
 
 type Params = { params: Promise<{ id: string }> };
-
-function isPrismaNotFound(error: unknown) {
-  return (
-    typeof error === "object" &&
-    error !== null &&
-    "code" in error &&
-    (error as { code?: unknown }).code === "P2025"
-  );
-}
 
 export async function PATCH(req: NextRequest, { params }: Params) {
   const guard = await withPermission(req, { resource: "categories", action: "canUpdate" });

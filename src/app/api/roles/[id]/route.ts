@@ -2,6 +2,7 @@
 import { NextRequest } from 'next/server'
 import { auth } from '@/auth'
 import { prisma } from '@/app/lib/prisma'
+import { logAudit } from '@/(permisionGuard)/lib/audit'
 
 type RoleParams = { params: Promise<{ id: string }> }
 
@@ -80,11 +81,20 @@ export async function PATCH(req: NextRequest, { params }: RoleParams) {
     select: { id: true, name: true, code: true, description: true, isSystem: true, updatedAt: true },
   })
 
+  await logAudit({
+    actorId: session.user.id,
+    action: 'update',
+    entity: 'role',
+    entityId: id,
+    metadata: { name, code, description },
+    req,
+  })
+
   return Response.json(role)
 }
 
 // ── DELETE /api/roles/[id] — supprimer ────────────────────────────────────────
-export async function DELETE(_: NextRequest, { params }: RoleParams) {
+export async function DELETE(req: NextRequest, { params }: RoleParams) {
   const session = await auth()
   const { id } = await params
   if (!session) return Response.json({ error: 'Non authentifié' }, { status: 401 })
@@ -102,5 +112,15 @@ export async function DELETE(_: NextRequest, { params }: RoleParams) {
   }
 
   await prisma.role.delete({ where: { id: id } })
+
+  await logAudit({
+    actorId: session.user.id,
+    action: 'delete',
+    entity: 'role',
+    entityId: id,
+    metadata: { name: existing.name, code: existing.code },
+    req,
+  })
+
   return Response.json({ success: true })
 }

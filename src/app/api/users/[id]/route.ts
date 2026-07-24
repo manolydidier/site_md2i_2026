@@ -1,5 +1,6 @@
 import { NextRequest } from 'next/server'
 import { withPermission } from '../../../../(permisionGuard)/lib/permissions'
+import { logAudit } from '../../../../(permisionGuard)/lib/audit'
 import { prisma } from '@/app/lib/prisma'
 
 type Ctx = {
@@ -114,6 +115,15 @@ export async function PUT(req: NextRequest, { params }: Ctx) {
       }
     }
 
+    await logAudit({
+      actorId: guard.session.user.id,
+      action: 'update',
+      entity: 'user',
+      entityId: id,
+      metadata: { firstName, lastName, username, phone, email, roleId },
+      req,
+    })
+
     return Response.json(user)
   } catch (error) {
     console.error('Erreur lors de la mise à jour de l\'utilisateur :', error)
@@ -147,6 +157,15 @@ export async function PATCH(req: NextRequest, { params }: Ctx) {
     select: { id: true, status: true },
   })
 
+  await logAudit({
+    actorId: guard.session.user.id,
+    action: 'status_change',
+    entity: 'user',
+    entityId: id,
+    metadata: { status },
+    req,
+  })
+
   return Response.json(user)
 }
 
@@ -167,6 +186,15 @@ export async function DELETE(req: NextRequest, { params }: Ctx) {
   await prisma.user.update({
     where: { id },
     data: { deletedAt: new Date(), status: 'DELETED' },
+  })
+
+  await logAudit({
+    actorId: guard.session.user.id,
+    action: 'delete',
+    entity: 'user',
+    entityId: id,
+    metadata: { soft: true },
+    req,
   })
 
   return Response.json({ success: true })

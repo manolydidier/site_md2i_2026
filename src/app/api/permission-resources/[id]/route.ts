@@ -2,6 +2,7 @@ import { NextRequest } from 'next/server'
 import { auth } from '@/auth'
 import { prisma } from '@/app/lib/prisma'
 import { withPermission } from '@/(permisionGuard)/lib/permissions'
+import { logAudit } from '@/(permisionGuard)/lib/audit'
 
 const RESOURCE_SELECT = {
   id: true,
@@ -61,6 +62,16 @@ export async function PATCH(req: NextRequest, context: { params: Promise<{ id: s
   }
 
   const resource = await prisma.permissionResource.update({ where: { id }, data, select: RESOURCE_SELECT })
+
+  await logAudit({
+    actorId: session.user.id,
+    action: 'update',
+    entity: 'permission_resource',
+    entityId: id,
+    metadata: data,
+    req,
+  })
+
   return Response.json(resource)
 }
 
@@ -90,5 +101,14 @@ export async function DELETE(req: NextRequest, context: { params: Promise<{ id: 
   }
 
   await prisma.permissionResource.delete({ where: { id } })
+
+  await logAudit({
+    actorId: session.user.id,
+    action: 'delete',
+    entity: 'permission_resource',
+    entityId: id,
+    req,
+  })
+
   return Response.json({ success: true })
 }

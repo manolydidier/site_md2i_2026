@@ -2,6 +2,7 @@ import { NextRequest } from 'next/server'
 import { auth } from '@/auth'
 import { prisma } from '@/app/lib/prisma'
 import { withPermission } from '@/(permisionGuard)/lib/permissions'
+import { logAudit } from '@/(permisionGuard)/lib/audit'
 
 const PERMISSION_SELECT = {
   id: true,
@@ -110,6 +111,15 @@ export async function POST(
       specialPermission,
     },
     select: PERMISSION_SELECT,
+  })
+
+  await logAudit({
+    actorId: session.user.id,
+    action: 'create',
+    entity: 'role_permission',
+    entityId: permission.id,
+    metadata: { roleId, resourceId, resourceCode: resource.code, specialPermission },
+    req,
   })
 
   return Response.json(permission, { status: 201 })
