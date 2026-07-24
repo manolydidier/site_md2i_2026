@@ -2,6 +2,8 @@ import { mkdir, writeFile } from "fs/promises";
 import path from "path";
 import { NextRequest, NextResponse } from "next/server";
 
+import { withPermission } from "@/(permisionGuard)/lib/permissions";
+
 export const dynamic = "force-dynamic";
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024;
@@ -34,6 +36,9 @@ function sanitizeFileName(value: string) {
 }
 
 export async function POST(request: NextRequest) {
+  const guard = await withPermission(request, { allowAnyAuth: true });
+  if (!guard.ok) return guard.response;
+
   const formData = await request.formData();
   const file = formData.get("file");
 

@@ -3,6 +3,10 @@
 import { useEffect, useRef } from 'react'
 import type { TFunction } from 'i18next'
 import * as THREE from 'three'
+import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js'
+import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js'
+import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js'
+import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js'
 import { easeInOutCubic } from '../herosection/utils/animations'
 import { getFeatureContent } from '../herosection/utils/featureContent'
 import { makeObject } from '../herosection/three/builders'
@@ -148,6 +152,11 @@ export function useHero3DScene(
     if (!root || !canvas || !eyebrowEl || !titleEl || !descEl || !btnsEl || !stepsEl || !progressEl) return
     const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches
 
+    // Échelle de l'objet 3D héro — volontairement plus grande que l'ancienne
+    // valeur (0.56) pour que le modèle occupe davantage la scène et que ses
+    // détails (LEDs, accents) restent lisibles à la taille du canvas.
+    const HERO_OBJECT_SCALE = 0.74
+
     // ── CSS variables ─────────────────────────────────────────────────────
     root.style.setProperty('--hero-bg',                  theme.bg)
     root.style.setProperty('--hero-title',               theme.title)
@@ -187,6 +196,19 @@ export function useHero3DScene(
     const camera = new THREE.PerspectiveCamera(55, 1, 0.1, 100)
     camera.position.set(0, 0.06, 6.05)
     const cameraLookAt = new THREE.Vector3(0, -0.04, 0)
+
+    // ── Post-processing — bloom subtil sur les surfaces émissives (LEDs,
+    // accents) pour donner un rendu "premium" à l'objet 3D héro.
+    const composer = new EffectComposer(renderer)
+    composer.addPass(new RenderPass(scene, camera))
+    const bloomPass = new UnrealBloomPass(
+      new THREE.Vector2(canvas.clientWidth || 1, canvas.clientHeight || 1),
+      mode === 'dark' ? 0.62 : 0.34,
+      0.55,
+      mode === 'dark' ? 0.74 : 0.86
+    )
+    composer.addPass(bloomPass)
+    composer.addPass(new OutputPass())
 
     // ── Éclairage amélioré ────────────────────────────────────────────────
     const ambient = new THREE.AmbientLight(0xffffff, theme.ambientIntensity)
@@ -441,7 +463,7 @@ export function useHero3DScene(
           const ease    = easeInOutCubic(Math.min(t, 1))
           const scaleVal = Math.max(0, 1 - ease * 1.15)
           previousObj.rotation.y = initialRotY + exitAngleTarget * ease
-          previousObj.scale.setScalar(0.56 * scaleVal)
+          previousObj.scale.setScalar(HERO_OBJECT_SCALE * scaleVal)
           previousObj.position.z = -ease * 1.2
           if (t >= 1) { scene.remove(previousObj); clearInterval(fade) }
         }, 16)
@@ -450,7 +472,7 @@ export function useHero3DScene(
 
       // Entrée nouvel objet avec easeOutBack
       let tin = 0
-      const finalScale = 0.56
+      const finalScale = HERO_OBJECT_SCALE
       const enter = setInterval(() => {
         tin += 0.032
         const clamped = Math.min(tin, 1)
@@ -495,6 +517,8 @@ export function useHero3DScene(
       const w = canvas!.clientWidth
       const h = canvas!.clientHeight
       renderer.setSize(w, h, false)
+      composer.setSize(w, h)
+      bloomPass.resolution.set(w, h)
       camera.aspect = w / h
       camera.updateProjectionMatrix()
     }
@@ -679,7 +703,7 @@ export function useHero3DScene(
     // ── Objet initial ─────────────────────────────────────────────────────
     currentObjRef.current = prepareHeroObject(makeObject(slides[0].object, slides[0].color, mode, addShadow))
     currentObjRef.current.position.set(0, 0, 0)
-    currentObjRef.current.scale.setScalar(0.56)
+    currentObjRef.current.scale.setScalar(HERO_OBJECT_SCALE)
     scene.add(currentObjRef.current)
     setContent(0, true)
     if (!prefersReducedMotion) {
@@ -710,7 +734,7 @@ export function useHero3DScene(
 
         obj.rotation.y += (targetRotY - obj.rotation.y) * 0.045 + autoRotateYRef.current
         obj.rotation.x += (targetRotX - obj.rotation.x) * 0.055
-        obj.scale.setScalar(0.56 + Math.sin(clock * 1.1) * 0.009)
+        obj.scale.setScalar(HERO_OBJECT_SCALE + Math.sin(clock * 1.1) * 0.009)
         obj.position.y   = Math.sin(clock * 0.7) * 0.055
         obj.position.x   = mouseRef.current.x * 0.035 + Math.sin(clock * 0.45) * 0.014
         obj.position.z   = Math.max(obj.position.z, 0)
@@ -776,7 +800,7 @@ export function useHero3DScene(
         fillLight.position.y  = Math.cos(clock * 0.25) * 2
       }
 
-      renderer.render(scene, camera)
+      composer.render()
     }
 
     animate()
@@ -807,6 +831,7 @@ export function useHero3DScene(
       })
 
       floorTexture.dispose()
+      composer.dispose()
       renderer.dispose()
     }
   }, [mode, theme, refs, slides, t, showParticles])

@@ -2,9 +2,16 @@ import { NextRequest, NextResponse } from 'next/server'
 import path from 'path'
 
 import { UPLOADS_ROOT, listUploadFiles } from '@/app/lib/uploads'
+import { withPermission } from '@/(permisionGuard)/lib/permissions'
 
 export async function GET(request: NextRequest) {
   try {
+    // Simple garde de session — pas de permission fine dédiée, cette route
+    // alimente le sélecteur média partagé par plusieurs éditeurs de contenu
+    // (articles, produits, projets) déjà eux-mêmes protégés par rôle.
+    const guard = await withPermission(request, { allowAnyAuth: true })
+    if (!guard.ok) return guard.response
+
     const { searchParams } = new URL(request.url)
 
     const limit = Math.max(1, Math.min(500, Number(searchParams.get('limit') || '200')))

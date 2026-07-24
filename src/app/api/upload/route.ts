@@ -4,6 +4,7 @@ import { randomUUID } from "node:crypto";
 import { NextResponse } from "next/server";
 
 import { withFsRetry } from "@/app/lib/fs-retry";
+import { withPermission } from "@/(permisionGuard)/lib/permissions";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -53,6 +54,12 @@ function getExtensionFromMime(mimeType: string) {
 
 export async function POST(request: Request) {
   try {
+    // Écrit sur le disque du serveur — au minimum, exige une session valide
+    // (pas de permission fine dédiée : route partagée par les éditeurs
+    // articles/produits/projets, chacun déjà protégé par rôle en amont).
+    const guard = await withPermission(request, { allowAnyAuth: true });
+    if (!guard.ok) return guard.response;
+
     const formData = await request.formData();
     const file = formData.get("file");
 

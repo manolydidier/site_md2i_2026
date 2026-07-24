@@ -3,6 +3,7 @@
 
 import type { CSSProperties, ReactNode } from "react";
 import {
+  Activity,
   Bell,
   Building2,
   Clock3,
@@ -14,6 +15,7 @@ import {
 
 import { prisma } from "@/app/lib/prisma";
 import { getCrmOwnerUserId } from "@/app/lib/crm-owner";
+import { getActiveOpportunityStages } from "@/app/lib/crm-opportunity-stages";
 
 export const dynamic = "force-dynamic";
 
@@ -109,6 +111,67 @@ function getSourceLabel(source: string) {
   return labels[source] || source;
 }
 
+function formatAmount(amount: number) {
+  return new Intl.NumberFormat("fr-FR", {
+    style: "currency",
+    currency: "EUR",
+    maximumFractionDigits: 0,
+  }).format(amount);
+}
+
+function formatRelativeDate(date: Date) {
+  const diffMs = Date.now() - date.getTime();
+  const diffMinutes = Math.round(diffMs / 60000);
+
+  if (diffMinutes < 1) return "à l’instant";
+  if (diffMinutes < 60) return `il y a ${diffMinutes} min`;
+
+  const diffHours = Math.round(diffMinutes / 60);
+  if (diffHours < 24) return `il y a ${diffHours} h`;
+
+  const diffDays = Math.round(diffHours / 24);
+  if (diffDays < 7) return `il y a ${diffDays} j`;
+
+  return new Intl.DateTimeFormat("fr-FR", { dateStyle: "medium" }).format(date);
+}
+
+const AUDIT_ENTITY_LABELS: Record<string, string> = {
+  crm_opportunity: "Opportunité",
+  crm_task: "Tâche",
+  crm_campaign: "Campagne",
+  crm_publication: "Publication",
+  crm_publication_queue: "File de publication",
+  contact: "Contact",
+};
+
+const AUDIT_ACTION_LABELS: Record<string, string> = {
+  create: "créée",
+  update: "mise à jour",
+  delete: "supprimée",
+  bulk_delete: "supprimés (lot)",
+  publish: "publiée",
+  publish_failed: "échec de publication",
+  execute: "exécutée",
+  status_change: "changement de statut",
+};
+
+function describeAuditEntry(entity: string, action: string) {
+  const entityLabel = AUDIT_ENTITY_LABELS[entity] || entity;
+  const actionLabel = AUDIT_ACTION_LABELS[action] || action;
+  return `${entityLabel} ${actionLabel}`;
+}
+
+function getActorName(actor?: {
+  firstName: string | null;
+  lastName: string | null;
+  email: string;
+} | null) {
+  if (!actor) return "Système";
+
+  const name = [actor.firstName, actor.lastName].filter(Boolean).join(" ").trim();
+  return name || actor.email;
+}
+
 export default async function CrmDashboardPage() {
   const userId = await getCrmOwnerUserId();
 
@@ -119,6 +182,9 @@ export default async function CrmDashboardPage() {
     tasksToDoCount,
     recentOpportunities,
     urgentTasks,
+    stageOptions,
+    pipelineByStage,
+    recentActivity,
   ] = await Promise.all([
     prisma.contact.count({
       where: {
@@ -178,7 +244,43 @@ export default async function CrmDashboardPage() {
         opportunity: true,
       },
     }),
+
+    getActiveOpportunityStages(userId),
+
+    prisma.crmOpportunity.groupBy({
+      by: ["stage"],
+      where: { userId },
+      _sum: { amount: true },
+      _count: { _all: true },
+    }),
+
+    prisma.auditLog.findMany({
+      where: {
+        entity: { in: Object.keys(AUDIT_ENTITY_LABELS) },
+      },
+      take: 8,
+      orderBy: { createdAt: "desc" },
+      include: {
+        actor: { select: { firstName: true, lastName: true, email: true } },
+      },
+    }),
   ]);
+
+  const pipeline = stageOptions
+    .map((option) => {
+      const bucket = pipelineByStage.find((row) => row.stage === option.key);
+
+      return {
+        key: option.key,
+        label: option.label || option.key,
+        color: option.color,
+        count: bucket?._count._all ?? 0,
+        amount: Number(bucket?._sum.amount ?? 0),
+      };
+    })
+    .filter((row) => row.count > 0);
+
+  const pipelineMax = Math.max(1, ...pipeline.map((row) => row.amount));
 
   return (
     <div style={s.page}>
@@ -396,6 +498,71 @@ export default async function CrmDashboardPage() {
                 </tbody>
               </table>
             </div>
+          )}
+        </PremiumSection>
+      </section>
+
+      <section style={s.contentGrid}>
+        <PremiumSection
+          title="Pipeline par étape"
+          subtitle="Valeur et nombre d’opportunités par étape active"
+          icon={<TrendingUp size={18} />}
+        >
+          {pipeline.length === 0 ? (
+            <EmptyState text="Aucune opportunité chiffrée pour le moment." />
+          ) : (
+            <div style={s.pipelineList}>
+              {pipeline.map((row) => (
+                <div key={row.key} style={s.pipelineRow}>
+                  <div style={s.pipelineRowHeader}>
+                    <span style={s.pipelineLabel}>
+                      <span
+                        style={{ ...s.pipelineDot, background: row.color }}
+                      />
+                      {row.label}
+                    </span>
+                    <span style={s.pipelineMeta}>
+                      {row.count} · {formatAmount(row.amount)}
+                    </span>
+                  </div>
+                  <div style={s.pipelineBarTrack}>
+                    <div
+                      style={{
+                        ...s.pipelineBarFill,
+                        width: `${Math.max(4, (row.amount / pipelineMax) * 100)}%`,
+                        background: row.color,
+                      }}
+                    />
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </PremiumSection>
+
+        <PremiumSection
+          title="Activité récente"
+          subtitle="Dernières actions journalisées (CRM)"
+          icon={<Activity size={18} />}
+        >
+          {recentActivity.length === 0 ? (
+            <EmptyState text="Aucune activité récente." />
+          ) : (
+            <ul style={s.activityList}>
+              {recentActivity.map((entry) => (
+                <li key={entry.id} style={s.activityItem}>
+                  <div style={s.activityDot} />
+                  <div style={s.activityBody}>
+                    <span style={s.activityText}>
+                      {describeAuditEntry(entry.entity, entry.action)}
+                    </span>
+                    <span style={s.muted}>
+                      {getActorName(entry.actor)} · {formatRelativeDate(entry.createdAt)}
+                    </span>
+                  </div>
+                </li>
+              ))}
+            </ul>
           )}
         </PremiumSection>
       </section>
@@ -828,6 +995,99 @@ const s: Record<string, CSSProperties> = {
     fontSize: 12,
     fontWeight: 900,
     whiteSpace: "nowrap",
+  },
+
+  pipelineList: {
+    display: "flex",
+    flexDirection: "column",
+    gap: 14,
+  },
+
+  pipelineRow: {
+    display: "flex",
+    flexDirection: "column",
+    gap: 6,
+  },
+
+  pipelineRowHeader: {
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 8,
+  },
+
+  pipelineLabel: {
+    display: "inline-flex",
+    alignItems: "center",
+    gap: 8,
+    color: TEXT,
+    fontSize: 13,
+    fontWeight: 800,
+  },
+
+  pipelineDot: {
+    width: 9,
+    height: 9,
+    borderRadius: 999,
+    flexShrink: 0,
+  },
+
+  pipelineMeta: {
+    color: MUTED,
+    fontSize: 12,
+    fontWeight: 700,
+    whiteSpace: "nowrap",
+  },
+
+  pipelineBarTrack: {
+    width: "100%",
+    height: 8,
+    borderRadius: 999,
+    background: "#F1F5F9",
+    overflow: "hidden",
+  },
+
+  pipelineBarFill: {
+    height: "100%",
+    borderRadius: 999,
+  },
+
+  activityList: {
+    display: "flex",
+    flexDirection: "column",
+    gap: 4,
+    margin: 0,
+    padding: 0,
+    listStyle: "none",
+  },
+
+  activityItem: {
+    display: "flex",
+    alignItems: "flex-start",
+    gap: 10,
+    padding: "10px 4px",
+    borderBottom: "1px solid #F1F5F9",
+  },
+
+  activityDot: {
+    marginTop: 5,
+    width: 7,
+    height: 7,
+    borderRadius: 999,
+    background: ORANGE,
+    flexShrink: 0,
+  },
+
+  activityBody: {
+    display: "flex",
+    flexDirection: "column",
+    gap: 2,
+  },
+
+  activityText: {
+    color: TEXT,
+    fontSize: 13,
+    fontWeight: 800,
   },
 
   empty: {
