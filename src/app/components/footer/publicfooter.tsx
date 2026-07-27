@@ -694,8 +694,8 @@ export default function PublicFooter() {
         }
 
         .footer-social {
-          width: 39px;
-          height: 39px;
+          width: 44px;
+          height: 44px;
           border-radius: 13px;
           background: var(--ft-icon);
           border: 1px solid var(--ft-icon-border);

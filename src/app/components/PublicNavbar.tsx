@@ -2,7 +2,6 @@
 
 import Link from 'next/link'
 import Image from 'next/image'
-import Script from 'next/script'
 import { usePathname, useRouter } from 'next/navigation'
 import {
   useState,
@@ -11,7 +10,6 @@ import {
   useCallback,
   useMemo,
   useId,
-  createElement,
   type KeyboardEvent as ReactKeyboardEvent,
 } from 'react'
 import { createPortal } from 'react-dom'
@@ -21,6 +19,7 @@ import {
   X,
   Moon,
   Sun,
+  Search,
   ChevronDown as ChevronDownLucide,
   ArrowRight as ArrowRightLucide,
   type LucideIcon,
@@ -128,18 +127,8 @@ function AnimatedLucideIcon({
   )
 }
 
-function LordiconSearch({ size = 26 }: { size?: number }) {
-  return createElement('lord-icon', {
-    src: 'https://cdn.lordicon.com/wjyqkiew.json',
-    trigger: 'hover',
-    colors: 'primary:#121331,secondary:#e88c30',
-    style: {
-      width: `${size}px`,
-      height: `${size}px`,
-      display: 'block',
-    },
-    'aria-hidden': 'true',
-  })
+function SearchIcon({ size = 26 }: { size?: number }) {
+  return <Search size={size * 0.72} strokeWidth={2} aria-hidden="true" />
 }
 
 const CloseIcon = () => (
@@ -1140,7 +1129,7 @@ function SearchModal({
                 boxShadow: '0 10px 24px rgba(239,159,39,.16)',
               }}
             >
-              <LordiconSearch size={28} />
+              <SearchIcon size={28} />
             </span>
 
             <input
@@ -1734,11 +1723,6 @@ export default function PublicNavbar() {
 
   return (
     <>
-      <Script
-        src="https://cdn.lordicon.com/lordicon.js"
-        strategy="afterInteractive"
-      />
-
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=Inter:wght@400;500;600;700;800&display=swap');
 
@@ -2170,7 +2154,7 @@ export default function PublicNavbar() {
                 border: '1px solid rgba(239,159,39,.30)',
               }}
             >
-              <LordiconSearch size={27} />
+              <SearchIcon size={27} />
             </button>
 
             <ThemeSwitch

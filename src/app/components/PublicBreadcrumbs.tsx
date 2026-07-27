@@ -150,7 +150,7 @@ export default function PublicBreadcrumbs() {
 
         .public-breadcrumbs__list {
           width: min(1180px, 100%);
-          min-height: 30px;
+          min-height: 36px;
           margin: 0 auto;
           padding: 0;
           display: flex;
@@ -195,7 +195,7 @@ export default function PublicBreadcrumbs() {
         .public-breadcrumbs__current {
           display: inline-flex;
           align-items: center;
-          min-height: 26px;
+          min-height: 32px;
           border-radius: 999px;
           text-decoration: none;
           transition:
@@ -205,7 +205,7 @@ export default function PublicBreadcrumbs() {
         }
 
         .public-breadcrumbs__link {
-          padding: 0 5px;
+          padding: 0 8px;
           color: rgba(71, 85, 105, 0.78);
         }
 
@@ -260,7 +260,7 @@ export default function PublicBreadcrumbs() {
           }
 
           .public-breadcrumbs__list {
-            min-height: 28px;
+            min-height: 32px;
             opacity: 0.72;
           }
 
@@ -271,7 +271,7 @@ export default function PublicBreadcrumbs() {
 
           .public-breadcrumbs__link,
           .public-breadcrumbs__current {
-            min-height: 24px;
+            min-height: 32px;
           }
 
           .public-breadcrumbs__current {
