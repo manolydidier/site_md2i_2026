@@ -2,6 +2,7 @@
 
 import type { TFunction } from 'i18next'
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
+import Image from 'next/image'
 import { useEffect, useId, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
@@ -553,12 +554,14 @@ export default function OrganisationSection() {
                     whileHover={prefersReducedMotion ? {} : { y: -2 }}
                     transition={{ duration: 0.35 }}
                   >
-                    <img
+                    <Image
                       src={imageErrors[index] ? unit.fallbackImage : unit.image}
                       alt={unit.alt}
                       className={s.media}
+                      fill
+                      sizes="(max-width: 900px) 100vw, 50vw"
+                      style={{ objectFit: 'cover' }}
                       loading="lazy"
-                      decoding="async"
                       onError={() =>
                         setImageErrors((prev) => ({
                           ...prev,
@@ -616,7 +619,7 @@ export default function OrganisationSection() {
                       <div className={s.cardActions}>
                         <button
                           type="button"
-                          className={s.actionPrimary}
+                          className="publicBtnPrimary"
                           onClick={() => openModal(index)}
                         >
                           {translate('homeOrganisation.actions.viewDetail')}
@@ -655,7 +658,7 @@ export default function OrganisationSection() {
           </div>
 
           <div className={s.ctaActions}>
-            <button type="button" className={s.actionPrimary} onClick={() => openModal(activeIndex)}>
+            <button type="button" className="publicBtnPrimary" onClick={() => openModal(activeIndex)}>
               {translate('homeOrganisation.actions.openActive')}
               <ArrowIcon />
             </button>
@@ -700,10 +703,19 @@ export default function OrganisationSection() {
               </button>
 
               <div className={s.modalMedia}>
-                <img
+                <Image
                   src={imageErrors[selectedIndex] ? selectedUnit.fallbackImage : selectedUnit.image}
                   alt={selectedUnit.alt}
                   className={s.modalImage}
+                  fill
+                  sizes="(max-width: 900px) 100vw, 640px"
+                  style={{ objectFit: 'cover' }}
+                  onError={() =>
+                    setImageErrors((prev) => ({
+                      ...prev,
+                      [selectedIndex]: true,
+                    }))
+                  }
                 />
                 <div className={s.modalMediaOverlay} />
 
@@ -793,7 +805,7 @@ export default function OrganisationSection() {
                     </button>
                   </div>
 
-                  <button type="button" className={s.actionPrimary} onClick={closeModal}>
+                  <button type="button" className="publicBtnPrimary" onClick={closeModal}>
                     {translate('common.close')}
                     <CloseIcon />
                   </button>

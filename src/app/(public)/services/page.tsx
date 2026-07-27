@@ -57,8 +57,8 @@ type Service = {
 const BRAND = {
   charcoal: "#2F2F31",
   graphite: "#5F6062",
-  gold: "#E1A12C",
-  goldSoft: "#F3D28B",
+  gold: "#EF9F27",
+  goldSoft: "#F7C060",
   ivory: "#F8F7F4",
 };
 
@@ -77,14 +77,14 @@ function serviceTokens(dark: boolean) {
     textSoft: dark ? "rgba(248,250,252,.76)" : "#475569",
     textMute: dark ? "rgba(248,250,252,.58)" : "#64748B",
     accent: BRAND.gold,
-    accentSoft: dark ? "rgba(225,161,44,.14)" : "rgba(225,161,44,.11)",
+    accentSoft: dark ? "rgba(239,159,39,.14)" : "rgba(239,159,39,.11)",
     accentSoft2: BRAND.goldSoft,
-    badgeBg: dark ? "rgba(225,161,44,.12)" : "rgba(225,161,44,.10)",
-    badgeBorder: dark ? "rgba(225,161,44,.22)" : "rgba(225,161,44,.22)",
+    badgeBg: dark ? "rgba(239,159,39,.12)" : "rgba(239,159,39,.10)",
+    badgeBorder: dark ? "rgba(239,159,39,.22)" : "rgba(239,159,39,.22)",
     overlay: dark ? "rgba(3,7,18,.72)" : "rgba(15,23,42,.50)",
     heroGlowA: dark
-      ? "linear-gradient(135deg, rgba(225,161,44,.16) 0%, rgba(225,161,44,0) 62%)"
-      : "linear-gradient(135deg, rgba(225,161,44,.12) 0%, rgba(225,161,44,0) 62%)",
+      ? "linear-gradient(135deg, rgba(239,159,39,.16) 0%, rgba(239,159,39,0) 62%)"
+      : "linear-gradient(135deg, rgba(239,159,39,.12) 0%, rgba(239,159,39,0) 62%)",
     heroGlowB: dark
       ? "linear-gradient(135deg, rgba(37,99,235,.10) 0%, rgba(37,99,235,0) 68%)"
       : "linear-gradient(135deg, rgba(37,99,235,.08) 0%, rgba(37,99,235,0) 68%)",
@@ -103,8 +103,8 @@ function serviceTokens(dark: boolean) {
     ctaText: "#FFFFFF",
     ctaSub: dark ? "rgba(255,255,255,.76)" : "rgba(255,255,255,.76)",
     fixedBgImage: dark
-      ? `linear-gradient(135deg, rgba(225,161,44,.08) 0%, transparent 45%), linear-gradient(225deg, rgba(37,99,235,.07) 0%, transparent 48%)`
-      : `linear-gradient(135deg, rgba(225,161,44,.08) 0%, transparent 44%), linear-gradient(225deg, rgba(37,99,235,.06) 0%, transparent 46%)`,
+      ? `linear-gradient(135deg, rgba(239,159,39,.08) 0%, transparent 45%), linear-gradient(225deg, rgba(37,99,235,.07) 0%, transparent 48%)`
+      : `linear-gradient(135deg, rgba(239,159,39,.08) 0%, transparent 44%), linear-gradient(225deg, rgba(37,99,235,.06) 0%, transparent 46%)`,
   };
 }
 
@@ -789,7 +789,7 @@ function StatCard({
           fontSize: "0.84rem",
           lineHeight: 1.7,
           color: theme.textSoft,
-          fontFamily: "'Inter', sans-serif",
+          fontFamily: 'var(--font-body), sans-serif',
         }}
       >
         {title}
@@ -820,7 +820,7 @@ function ImpactChip({
         fontSize: "0.75rem",
         fontWeight: 700,
         color: theme.textSoft,
-        fontFamily: "'Inter', sans-serif",
+        fontFamily: 'var(--font-body), sans-serif',
         whiteSpace: "nowrap",
       }}
     >
@@ -864,7 +864,7 @@ function FilterButton({
         cursor: "pointer",
         fontSize: "0.82rem",
         fontWeight: 700,
-        fontFamily: "'Inter', sans-serif",
+        fontFamily: 'var(--font-body), sans-serif',
         transition: "all .25s ease",
         whiteSpace: "nowrap",
         display: "inline-flex",
@@ -906,13 +906,13 @@ function CTAButton({
     textDecoration: "none",
     fontWeight: 800,
     fontSize: "0.875rem",
-    fontFamily: "'Inter', sans-serif",
+    fontFamily: 'var(--font-body), sans-serif',
     whiteSpace: "nowrap",
     transition: "all .28s cubic-bezier(.22,1,.36,1)",
     background: filled ? theme.accent : theme.accentSoft,
     color: filled ? "#FFFFFF" : theme.accent,
-    border: `1.5px solid ${filled ? theme.accent : "rgba(225,161,44,.28)"}`,
-    boxShadow: filled && hovered ? "0 16px 36px rgba(225,161,44,.25)" : "none",
+    border: `1.5px solid ${filled ? theme.accent : "rgba(239,159,39,.28)"}`,
+    boxShadow: filled && hovered ? "0 16px 36px rgba(239,159,39,.25)" : "none",
     transform: hovered ? "translateY(-1px)" : "translateY(0)",
   };
   const content = (
@@ -986,7 +986,7 @@ function ProductLink({
     "--md2i-product-muted": filled ? "rgba(255,255,255,.78)" : theme.textSoft,
     "--md2i-product-icon": filled ? "#FFFFFF" : linkAccent,
     "--md2i-product-shadow": filled
-      ? "0 16px 36px rgba(225,161,44,.24)"
+      ? "0 16px 36px rgba(239,159,39,.24)"
       : theme.cardShadow,
   } as React.CSSProperties;
 
@@ -1032,7 +1032,7 @@ function DetailBlock({
           fontSize: "0.96rem",
           fontWeight: 800,
           color: theme.text,
-          fontFamily: "'Inter', sans-serif",
+          fontFamily: 'var(--font-body), sans-serif',
         }}
       >
         {title}
@@ -1066,7 +1066,7 @@ function DetailBlock({
                 fontSize: "0.89rem",
                 lineHeight: 1.78,
                 color: theme.textSoft,
-                fontFamily: "'Inter', sans-serif",
+                fontFamily: 'var(--font-body), sans-serif',
               }}
             >
               {item}
@@ -1121,7 +1121,6 @@ function FeaturedService({
           fill
           priority
           sizes="(max-width: 1080px) 100vw, 52vw"
-          unoptimized
           style={{
             objectFit: "contain",
             padding: 18,
@@ -1157,7 +1156,7 @@ function FeaturedService({
               color: "#FFFFFF",
               fontSize: "0.75rem",
               fontWeight: 800,
-              fontFamily: "'Inter', sans-serif",
+              fontFamily: 'var(--font-body), sans-serif',
             }}
           >
             {service.badge}
@@ -1173,7 +1172,7 @@ function FeaturedService({
               color: "rgba(255,255,255,.92)",
               fontSize: "0.75rem",
               fontWeight: 700,
-              fontFamily: "'Inter', sans-serif",
+              fontFamily: 'var(--font-body), sans-serif',
             }}
           >
             {service.category}
@@ -1222,7 +1221,7 @@ function FeaturedService({
               color: "rgba(255,255,255,.82)",
               fontSize: "0.92rem",
               lineHeight: 1.75,
-              fontFamily: "'Inter', sans-serif",
+              fontFamily: 'var(--font-body), sans-serif',
               maxWidth: 580,
             }}
           >
@@ -1254,7 +1253,7 @@ function FeaturedService({
                 color: theme.accent,
                 fontSize: "0.74rem",
                 fontWeight: 800,
-                fontFamily: "'Inter', sans-serif",
+                fontFamily: 'var(--font-body), sans-serif',
               }}
             >
               <Icons.Sparkles color={theme.accent} size={14} />
@@ -1271,7 +1270,7 @@ function FeaturedService({
                 color: theme.textSoft,
                 fontSize: "0.74rem",
                 fontWeight: 700,
-                fontFamily: "'Inter', sans-serif",
+                fontFamily: 'var(--font-body), sans-serif',
               }}
             >
               {service.shortLabel}
@@ -1297,7 +1296,7 @@ function FeaturedService({
               color: theme.textSoft,
               fontSize: "0.95rem",
               lineHeight: 1.9,
-              fontFamily: "'Inter', sans-serif",
+              fontFamily: 'var(--font-body), sans-serif',
             }}
           >
             {service.intro}
@@ -1318,7 +1317,7 @@ function FeaturedService({
                 color: theme.text,
                 fontSize: "0.92rem",
                 fontWeight: 800,
-                fontFamily: "'Inter', sans-serif",
+                fontFamily: 'var(--font-body), sans-serif',
               }}
             >
               {t("servicesPage.featured.valueTitle", {
@@ -1330,7 +1329,7 @@ function FeaturedService({
                 color: theme.textSoft,
                 fontSize: "0.88rem",
                 lineHeight: 1.8,
-                fontFamily: "'Inter', sans-serif",
+                fontFamily: 'var(--font-body), sans-serif',
               }}
             >
               {service.kpi}
@@ -1353,7 +1352,7 @@ function FeaturedService({
                   color: service.accent,
                   fontSize: "0.75rem",
                   fontWeight: 700,
-                  fontFamily: "'Inter', sans-serif",
+                  fontFamily: 'var(--font-body), sans-serif',
                 }}
               >
                 {item}
@@ -1380,7 +1379,7 @@ function FeaturedService({
                   fontWeight: 800,
                   letterSpacing: "0.12em",
                   textTransform: "uppercase",
-                  fontFamily: "'Inter', sans-serif",
+                  fontFamily: 'var(--font-body), sans-serif',
                 }}
               >
                 {t("servicesPage.products.panelKicker", {
@@ -1393,7 +1392,7 @@ function FeaturedService({
                   color: theme.textSoft,
                   fontSize: "0.86rem",
                   lineHeight: 1.7,
-                  fontFamily: "'Inter', sans-serif",
+                  fontFamily: 'var(--font-body), sans-serif',
                 }}
               >
                 {productBridge.hint}
@@ -1425,7 +1424,7 @@ function FeaturedService({
               cursor: "pointer",
               fontSize: "0.875rem",
               fontWeight: 800,
-              fontFamily: "'Inter', sans-serif",
+              fontFamily: 'var(--font-body), sans-serif',
               display: "inline-flex",
               alignItems: "center",
               gap: 10,
@@ -1572,17 +1571,13 @@ function ServiceCard({
           transform: "none",
         }}
       >
-        <div
-          style={{
-            position: "absolute",
-            inset: 0,
-            backgroundImage: `url(${service.imageUrl})`,
-            backgroundSize: "contain",
-            backgroundRepeat: "no-repeat",
-            backgroundPosition: "center",
-            transform: "none",
-            transition: "none",
-          }}
+        <Image
+          src={service.imageUrl}
+          alt=""
+          fill
+          sizes="(max-width: 900px) 100vw, 33vw"
+          loading="lazy"
+          style={{ objectFit: "contain" }}
         />
         <div
           style={{
@@ -1611,7 +1606,7 @@ function ServiceCard({
               fontSize: "0.72rem",
               lineHeight: 1.35,
               fontWeight: 750,
-              fontFamily: "'Inter', sans-serif",
+              fontFamily: 'var(--font-body), sans-serif',
               textShadow: "0 2px 14px rgba(0,0,0,.32)",
             }}
           >
@@ -1674,7 +1669,7 @@ function ServiceCard({
               color: theme.textMute,
               fontSize: "0.7rem",
               fontWeight: 700,
-              fontFamily: "'Inter', sans-serif",
+              fontFamily: 'var(--font-body), sans-serif',
             }}
           >
             {service.category}
@@ -1687,7 +1682,7 @@ function ServiceCard({
               color: service.accent,
               fontSize: "0.7rem",
               fontWeight: 800,
-              fontFamily: "'Inter', sans-serif",
+              fontFamily: 'var(--font-body), sans-serif',
             }}
           >
             {service.badge}
@@ -1716,7 +1711,7 @@ function ServiceCard({
             fontWeight: 800,
             letterSpacing: "0.08em",
             textTransform: "uppercase",
-            fontFamily: "'Inter', sans-serif",
+            fontFamily: 'var(--font-body), sans-serif',
           }}
         >
           {service.shortLabel}
@@ -1727,7 +1722,7 @@ function ServiceCard({
             color: theme.textSoft,
             fontSize: "0.875rem",
             lineHeight: 1.78,
-            fontFamily: "'Inter', sans-serif",
+            fontFamily: 'var(--font-body), sans-serif',
           }}
         >
           {service.description}
@@ -1770,7 +1765,7 @@ function ServiceCard({
             fontWeight: 800,
             letterSpacing: "0.08em",
             textTransform: "uppercase",
-            fontFamily: "'Inter', sans-serif",
+            fontFamily: 'var(--font-body), sans-serif',
           }}
         >
           {t("servicesPage.actions.viewDetail", {
@@ -1957,7 +1952,6 @@ function ServiceModal({
               alt={service.illustrationLabel}
               fill
               sizes="(max-width: 1080px) 100vw, 46vw"
-              unoptimized
               style={{ objectFit: "contain", padding: 18 }}
             />
             <div
@@ -1990,7 +1984,7 @@ function ServiceModal({
                     color: "#FFFFFF",
                     fontSize: "0.75rem",
                     fontWeight: 800,
-                    fontFamily: "'Inter', sans-serif",
+                    fontFamily: 'var(--font-body), sans-serif',
                   }}
                 >
                   {service.category}
@@ -2004,7 +1998,7 @@ function ServiceModal({
                     color: "rgba(255,255,255,.92)",
                     fontSize: "0.75rem",
                     fontWeight: 700,
-                    fontFamily: "'Inter', sans-serif",
+                    fontFamily: 'var(--font-body), sans-serif',
                   }}
                 >
                   {service.badge}
@@ -2054,7 +2048,7 @@ function ServiceModal({
                   color: "rgba(255,255,255,.84)",
                   fontSize: "0.92rem",
                   lineHeight: 1.8,
-                  fontFamily: "'Inter', sans-serif",
+                  fontFamily: 'var(--font-body), sans-serif',
                   maxWidth: 560,
                 }}
               >
@@ -2100,7 +2094,7 @@ function ServiceModal({
                       fontWeight: 800,
                       letterSpacing: "0.12em",
                       textTransform: "uppercase",
-                      fontFamily: "'Inter', sans-serif",
+                      fontFamily: 'var(--font-body), sans-serif',
                     }}
                   >
                     {t("servicesPage.modal.domain", {
@@ -2172,7 +2166,7 @@ function ServiceModal({
                         cursor: "pointer",
                         fontSize: "0.8rem",
                         fontWeight: 800,
-                        fontFamily: "'Inter', sans-serif",
+                        fontFamily: 'var(--font-body), sans-serif',
                         whiteSpace: "nowrap",
                         flexShrink: 0,
                         display: "inline-flex",
@@ -2204,7 +2198,7 @@ function ServiceModal({
                       fontSize: "0.92rem",
                       fontWeight: 800,
                       marginBottom: 10,
-                      fontFamily: "'Inter', sans-serif",
+                      fontFamily: 'var(--font-body), sans-serif',
                     }}
                   >
                     {t("servicesPage.modal.positioning", {
@@ -2217,7 +2211,7 @@ function ServiceModal({
                       color: theme.textSoft,
                       fontSize: "0.93rem",
                       lineHeight: 1.88,
-                      fontFamily: "'Inter', sans-serif",
+                      fontFamily: 'var(--font-body), sans-serif',
                     }}
                   >
                     {service.intro}
@@ -2301,7 +2295,7 @@ function ServiceModal({
                   cursor: "pointer",
                   fontSize: "0.875rem",
                   fontWeight: 800,
-                  fontFamily: "'Inter', sans-serif",
+                  fontFamily: 'var(--font-body), sans-serif',
                 }}
               >
                 {t("common.close", { defaultValue: "Fermer" })}
@@ -2444,7 +2438,7 @@ export default function MD2IServicesSection() {
                   borderRadius: "50%",
                   background: T.accent,
                   boxShadow: `0 0 0 6px ${
-                    dark ? "rgba(225,161,44,.16)" : "rgba(225,161,44,.10)"
+                    dark ? "rgba(239,159,39,.16)" : "rgba(239,159,39,.10)"
                   }`,
                 }}
               />
@@ -2622,7 +2616,7 @@ export default function MD2IServicesSection() {
                       fontWeight: 800,
                       letterSpacing: "0.12em",
                       textTransform: "uppercase",
-                      fontFamily: "'Inter', sans-serif",
+                      fontFamily: 'var(--font-body), sans-serif',
                     }}
                   >
                     {t("servicesPage.sidebar.kicker", {
@@ -2647,7 +2641,7 @@ export default function MD2IServicesSection() {
                       color: T.textSoft,
                       fontSize: "0.84rem",
                       lineHeight: 1.75,
-                      fontFamily: "'Inter', sans-serif",
+                      fontFamily: 'var(--font-body), sans-serif',
                     }}
                   >
                     {t("servicesPage.sidebar.text", {
@@ -2675,7 +2669,7 @@ export default function MD2IServicesSection() {
                       color: T.text,
                       fontSize: "0.92rem",
                       fontWeight: 800,
-                      fontFamily: "'Inter', sans-serif",
+                      fontFamily: 'var(--font-body), sans-serif',
                     }}
                   >
                     {t("servicesPage.products.sidebarTitle", {
@@ -2688,7 +2682,7 @@ export default function MD2IServicesSection() {
                       color: T.textSoft,
                       fontSize: "0.82rem",
                       lineHeight: 1.65,
-                      fontFamily: "'Inter', sans-serif",
+                      fontFamily: 'var(--font-body), sans-serif',
                     }}
                   >
                     {t("servicesPage.products.sidebarText", {
@@ -2740,7 +2734,7 @@ export default function MD2IServicesSection() {
               position: "absolute",
               inset: 0,
               background:
-                "linear-gradient(135deg, rgba(225,161,44,.18) 0%, rgba(225,161,44,0) 42%)",
+                "linear-gradient(135deg, rgba(239,159,39,.18) 0%, rgba(239,159,39,0) 42%)",
               pointerEvents: "none",
             }}
           />
@@ -2789,7 +2783,7 @@ export default function MD2IServicesSection() {
                 color: T.ctaSub,
                 fontSize: "0.92rem",
                 lineHeight: 1.82,
-                fontFamily: "'Inter', sans-serif",
+                fontFamily: 'var(--font-body), sans-serif',
               }}
             >
               {t("servicesPage.cta.text", {
@@ -2906,7 +2900,7 @@ export default function MD2IServicesSection() {
 
         .md2i-service-card:focus-visible,
         .md2i-product-link:focus-visible {
-          outline: 3px solid rgba(225,161,44,.44);
+          outline: 3px solid rgba(239,159,39,.44);
           outline-offset: 4px;
         }
 
@@ -2928,7 +2922,7 @@ export default function MD2IServicesSection() {
           color: var(--md2i-product-text);
           text-decoration: none;
           box-shadow: var(--md2i-product-shadow);
-          font-family: 'Inter', sans-serif;
+          font-family: var(--font-body), sans-serif;
           transition:
             transform .24s cubic-bezier(.22,1,.36,1),
             box-shadow .24s ease,
@@ -2943,7 +2937,7 @@ export default function MD2IServicesSection() {
         }
 
         .md2i-product-link.is-filled:hover {
-          box-shadow: 0 14px 32px rgba(225,161,44,.22);
+          box-shadow: 0 14px 32px rgba(239,159,39,.22);
         }
 
         .md2i-product-link.is-compact {

@@ -23,7 +23,7 @@
 }
 
 body {
-  font-family: 'Inter', sans-serif;
+  font-family: var(--font-body), 'DM Sans', sans-serif;
   background: #0f0e0d;
 }
 

@@ -20,7 +20,7 @@
     linear-gradient(180deg, #fffaf3 0%, #ffffff 44%, #f8fafc 100%)
   );
   color: var(--ink);
-  font-family: Inter, Arial, Helvetica, sans-serif;
+  font-family: var(--font-body), Arial, Helvetica, sans-serif;
 }
 
 .container {
@@ -175,11 +175,13 @@
 }
 
 .btnSecondary {
-  background: rgba(255, 255, 255, 0.78);
+  background: var(--surface-strong);
   color: var(--ink);
   border: 1px solid var(--line-strong);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
+}
+
+.btnSecondary:hover {
+  background: var(--surface-soft);
 }
 
 .heroPanel {

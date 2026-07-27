@@ -1,6 +1,7 @@
 'use client'
 
 import Link from 'next/link'
+import Image from 'next/image'
 import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { useTranslation } from 'react-i18next'
@@ -1073,7 +1074,7 @@ export default function PostDetailClient() {
       <main className="post-detail-page">
         <section className="post-hero">
           <div className="post-hero-bg">
-            <img src={heroImage} alt="" />
+            <Image src={heroImage} alt="" fill sizes="100vw" priority style={{ objectFit: 'cover' }} />
             <div className="post-hero-overlay" />
           </div>
 

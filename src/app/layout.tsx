@@ -1,4 +1,5 @@
 import type { Metadata } from 'next'
+import { DM_Sans, Fraunces, Roboto } from 'next/font/google'
 import Providers from './providers'
 import {
   MD2I_DEFAULT_DESCRIPTION,
@@ -7,6 +8,28 @@ import {
   MD2I_ORGANIZATION_JSON_LD,
   SITE_URL,
 } from './seo'
+
+const fontBody = DM_Sans({
+  subsets: ['latin'],
+  weight: ['300', '400', '500', '600', '700'],
+  variable: '--font-body',
+  display: 'swap',
+})
+
+const fontDisplay = Fraunces({
+  subsets: ['latin'],
+  weight: ['300', '400'],
+  style: ['normal', 'italic'],
+  variable: '--font-display',
+  display: 'swap',
+})
+
+const fontHeading = Roboto({
+  subsets: ['latin'],
+  weight: ['700', '800', '900'],
+  variable: '--font-heading',
+  display: 'swap',
+})
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
@@ -70,7 +93,10 @@ export default function RootLayout({
   children,
 }: { children: React.ReactNode }) {
   return (
-    <html lang="fr">
+    <html
+      lang="fr"
+      className={`${fontBody.variable} ${fontDisplay.variable} ${fontHeading.variable}`}
+    >
       <body style={{ margin: 0 }}>
         <script
           type="application/ld+json"

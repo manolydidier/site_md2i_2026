@@ -53,27 +53,25 @@ export default async function ContactCommercialPage() {
   return (
     <main className="cc-page">
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700;800&display=swap');
-
         .cc-page {
-          --cc-font: "Sora", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+          --cc-font: var(--font-body), system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
 
-          --cc-bg: #f8fafc;
+          --cc-bg: var(--public-bg, #f8fafc);
           --cc-bg-2: #ffffff;
           --cc-surface: #ffffff;
           --cc-surface-soft: #fbfcfe;
           --cc-surface-warm: #fffaf2;
           --cc-surface-orange: #fff7ed;
 
-          --cc-border: #e2e8f0;
-          --cc-border-strong: #cbd5e1;
+          --cc-border: var(--public-border, #e2e8f0);
+          --cc-border-strong: var(--public-border-strong, #cbd5e1);
 
-          --cc-text: #0f172a;
-          --cc-text-soft: #334155;
-          --cc-muted: #64748b;
+          --cc-text: var(--public-text, #0f172a);
+          --cc-text-soft: var(--public-text-soft, #334155);
+          --cc-muted: var(--public-text-muted, #64748b);
 
-          --cc-orange: #ef9f27;
-          --cc-orange-dark: #b6620e;
+          --cc-orange: var(--public-accent, #ef9f27);
+          --cc-orange-dark: var(--public-accent-strong, #b6620e);
           --cc-orange-soft: #fff7ed;
           --cc-orange-border: #fed7aa;
 
@@ -85,35 +83,35 @@ export default async function ContactCommercialPage() {
           --cc-blue-border: #bfdbfe;
           --cc-blue-text: #1e40af;
 
-          --cc-shadow-sm: 0 8px 22px rgba(15, 23, 42, 0.055);
-          --cc-shadow-md: 0 18px 45px rgba(15, 23, 42, 0.075);
-          --cc-shadow-lg: 0 24px 70px rgba(15, 23, 42, 0.095);
+          --cc-shadow-sm: var(--public-shadow-soft, 0 8px 22px rgba(15, 23, 42, 0.055));
+          --cc-shadow-md: var(--public-shadow, 0 18px 45px rgba(15, 23, 42, 0.075));
+          --cc-shadow-lg: var(--public-shadow-hover, 0 24px 70px rgba(15, 23, 42, 0.095));
 
           /*
             Variables pour ProductLeadForm variant="premium".
             Elles gardent le formulaire blanc, lisible et cohérent.
           */
-          --lead-font-body: "Sora";
-          --lead-form-ink: #0f172a;
-          --lead-form-strong: #0f172a;
+          --lead-font-body: var(--font-body);
+          --lead-form-ink: var(--public-text, #0f172a);
+          --lead-form-strong: var(--public-text, #0f172a);
           --lead-form-bg: #ffffff;
-          --lead-muted: #475569;
-          --lead-soft: #64748b;
-          --lead-border: #e2e8f0;
-          --lead-panel-border: #e2e8f0;
+          --lead-muted: var(--public-text-soft, #475569);
+          --lead-soft: var(--public-text-muted, #64748b);
+          --lead-border: var(--public-border, #e2e8f0);
+          --lead-panel-border: var(--public-border, #e2e8f0);
           --lead-panel-hover-bg: #f8fafc;
           --lead-field-bg: #ffffff;
           --lead-field-focus-bg: #ffffff;
           --lead-placeholder: #94a3b8;
           --lead-option-text: #0f172a;
           --lead-option-bg: #ffffff;
-          --lead-gold: #b6620e;
+          --lead-gold: var(--public-accent-strong, #b6620e);
           --lead-amber: #d8891e;
           --lead-cyan: #2563eb;
           --lead-emerald: #16a34a;
           --lead-accent-soft: #fff7ed;
           --lead-accent-border: #fed7aa;
-          --lead-cta-bg: #ef9f27;
+          --lead-cta-bg: var(--public-accent, #ef9f27);
           --lead-cta-hover: #f5a623;
           --lead-button-text: #ffffff;
 

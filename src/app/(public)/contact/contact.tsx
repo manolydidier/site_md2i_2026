@@ -649,7 +649,7 @@ export default function ContactPage() {
                       />
                     </F>
 
-                    <F label={t('contactPage.form.phone')} error={fieldErrors.phone}>
+                    <F label={t('contactPage.form.phone')} error={fieldErrors.phone} optional>
                       <input
                         name="phone"
                         type="tel"
@@ -662,7 +662,7 @@ export default function ContactPage() {
                     </F>
                   </div>
 
-                  <F label={t('contactPage.form.organization')} error={fieldErrors.organization}>
+                  <F label={t('contactPage.form.organization')} error={fieldErrors.organization} optional>
                     <input
                       name="organization"
                       type="text"
@@ -881,10 +881,12 @@ function F({
   label,
   error,
   children,
+  optional = false,
 }: {
   label: string
   error?: string
   children: ReactNode
+  optional?: boolean
 }) {
   return (
     <label className={styles.field}>
@@ -896,7 +898,12 @@ function F({
           gap: 12,
         }}
       >
-        <span className={styles.fLabel}>{label}</span>
+        <span className={styles.fLabel}>
+          {label}
+          {optional && (
+            <span style={{ color: 'var(--contact-text-muted)', fontWeight: 600 }}> (facultatif)</span>
+          )}
+        </span>
 
         {error ? (
           <span

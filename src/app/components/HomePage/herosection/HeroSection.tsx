@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo, useRef } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useTheme } from '../../../context/ThemeContext'
 import { useHero3DScene } from '../hooks/useHero3DScene'
@@ -70,6 +70,11 @@ export default function Hero3D() {
 
   const slides = useMemo(() => getLocalizedSlides(t), [t])
 
+  // Contenu figé du premier slide, rendu une seule fois en JSX pour que le
+  // titre/description/CTA existent au premier affichage (SEO, no-JS, avant
+  // que useHero3DScene ne prenne la main de façon impérative sur ces refs).
+  const [initialSlide] = useState(() => slides[0])
+
   useHero3DScene(mode, theme, heroRefs, slides, t)
 
   return (
@@ -93,8 +98,8 @@ export default function Hero3D() {
 
       <div className={styles.hero3dOverlay}>
         <div className={styles.hero3dHeader}>
-          <div ref={eyebrowRef} className={styles.hero3dEyebrow} />
-          <h1 ref={titleRef} className={styles.hero3dTitle} />
+          <div ref={eyebrowRef} className={styles.hero3dEyebrow}>{initialSlide.eyebrow}</div>
+          <h1 ref={titleRef} className={styles.hero3dTitle} dangerouslySetInnerHTML={{ __html: initialSlide.title }} />
         </div>
 
         <div className={styles.hero3dFeatures}>
@@ -117,19 +122,23 @@ export default function Hero3D() {
         </div>
 
         <div className={styles.hero3dBottom}>
-          <p ref={descRef} className={styles.hero3dDesc} />
-          <div ref={btnsRef} className={styles.hero3dBtns} />
+          <p ref={descRef} className={styles.hero3dDesc}>{initialSlide.desc}</p>
+          <div ref={btnsRef} className={styles.hero3dBtns}>
+            {initialSlide.btns.map((btn) => (
+              <a
+                key={btn.href}
+                className={`${styles.heroBtn} ${btn.cls === 'primary' ? styles.primary : styles.secondary}`}
+                href={btn.href}
+              >
+                {btn.label}
+              </a>
+            ))}
+          </div>
         </div>
       </div>
 
-      {/* <div ref={statsRef} className={styles.hero3dStats} /> */}
       <div ref={stepsRef} className={styles.hero3dSteps} />
       <div ref={progressRef} className={styles.hero3dProgress} />
-
-      {/* <div className={styles.hero3dScrollHint}>
-        <span>Scroll</span>
-        <div className={styles.hero3dScrollLine} />
-      </div> */}
     </div>
   )
 }

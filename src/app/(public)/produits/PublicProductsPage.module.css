@@ -1,11 +1,10 @@
-@import url('https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,400;1,9..144,300;1,9..144,400&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600&family=Roboto:wght@700;800;900&family=Syne:wght@700;800&display=swap');
 
 .page {
   --acc: var(--public-accent, #EF9F27);
   --acc-dim: var(--public-accent-soft, rgba(239, 159, 39, 0.08));
   --acc-bd: var(--public-border-strong, rgba(239, 159, 39, 0.22));
   --acc-text: var(--public-accent-strong, #A06200);
-  font-family: 'DM Sans', sans-serif;
+  font-family: var(--font-body), sans-serif;
   min-height: 100vh;
   color: var(--t1);
   background: var(--bg);
@@ -109,7 +108,7 @@
   align-items: center;
   gap: 10px;
   margin-bottom: 18px;
-  font-family: 'Roboto', 'Syne', sans-serif;
+  font-family: var(--font-heading), sans-serif;
   font-size: 11px;
   font-weight: 800;
   letter-spacing: 0.18em;
@@ -131,7 +130,7 @@
 
 .heroTitle {
   margin: 0;
-  font-family: 'Roboto', 'Syne', sans-serif;
+  font-family: var(--font-heading), sans-serif;
   font-size: clamp(35px, 3.8vw, 62px);
   font-weight: 800;
   line-height: 1.05;
@@ -152,7 +151,7 @@
 .heroSub {
   margin: 18px 0 0;
   max-width: 560px;
-  font-family: 'DM Sans', sans-serif;
+  font-family: var(--font-body), sans-serif;
   font-size: 15px;
   line-height: 1.8;
   font-weight: 400;
@@ -180,7 +179,7 @@
 }
 
 .heroStatNum {
-  font-family: 'Roboto', 'Syne', sans-serif;
+  font-family: var(--font-heading), sans-serif;
   font-size: 46px;
   font-weight: 800;
   line-height: 1;
@@ -261,7 +260,7 @@
 
 .serviceBridge h2 {
   margin: 0;
-  font-family: 'Roboto', 'Syne', sans-serif;
+  font-family: var(--font-heading), sans-serif;
   font-size: clamp(18px, 2.1vw, 26px);
   line-height: 1.18;
   font-weight: 800;
@@ -291,7 +290,7 @@
   min-height: 44px;
   border-radius: 12px;
   padding: 0 14px;
-  font-family: 'DM Sans', sans-serif;
+  font-family: var(--font-body), sans-serif;
   font-size: 12px;
   font-weight: 800;
   cursor: pointer;
@@ -430,7 +429,7 @@
   border: none;
   background: transparent;
   outline: none;
-  font-family: 'DM Sans', sans-serif;
+  font-family: var(--font-body), sans-serif;
   font-size: 13px;
   font-weight: 500;
   color: var(--t1);
@@ -500,7 +499,7 @@
     linear-gradient(180deg, rgba(255, 255, 255, .06), rgba(255, 255, 255, 0)),
     var(--card);
   color: var(--t2);
-  font-family: 'DM Sans', sans-serif;
+  font-family: var(--font-body), sans-serif;
   font-size: 12px;
   font-weight: 600;
   cursor: pointer;
@@ -655,7 +654,7 @@
   border: 1px solid var(--line2);
   background: transparent;
   color: var(--t2);
-  font-family: 'DM Sans', sans-serif;
+  font-family: var(--font-body), sans-serif;
   font-size: 11px;
   font-weight: 600;
   cursor: pointer;
@@ -717,7 +716,7 @@
   color: var(--t1);
   padding: 0 12px;
   outline: none;
-  font-family: 'DM Sans', sans-serif;
+  font-family: var(--font-body), sans-serif;
   font-size: 12px;
   font-weight: 500;
   transition: border-color .2s ease, box-shadow .2s ease, transform .2s ease;
@@ -742,7 +741,7 @@
   border: 1px solid var(--line2);
   background: transparent;
   color: var(--t2);
-  font-family: 'DM Sans', sans-serif;
+  font-family: var(--font-body), sans-serif;
   font-size: 11px;
   font-weight: 700;
   cursor: pointer;
@@ -773,7 +772,7 @@
   border: none;
   background: transparent;
   color: var(--t2);
-  font-family: 'DM Sans', sans-serif;
+  font-family: var(--font-body), sans-serif;
   font-size: 12px;
   font-weight: 500;
   cursor: pointer;
@@ -804,7 +803,7 @@
   border-radius: 12px;
   border: 1px dashed var(--line2);
   background: transparent;
-  font-family: 'DM Sans', sans-serif;
+  font-family: var(--font-body), sans-serif;
   font-size: 11px;
   font-weight: 700;
   letter-spacing: .05em;
@@ -1007,7 +1006,7 @@
 }
 
 .placeholder span {
-  font-family: 'Fraunces', serif;
+  font-family: var(--font-display), serif;
   font-size: 72px;
   font-weight: 300;
   font-style: italic;
@@ -1095,7 +1094,7 @@
 
 .cardTitle {
   margin: 0;
-  font-family: 'DM Sans', sans-serif;
+  font-family: var(--font-body), sans-serif;
   font-size: 15px;
   font-weight: 600;
   line-height: 1.35;
@@ -1145,7 +1144,7 @@
   border: none;
   background: none;
   cursor: pointer;
-  font-family: 'DM Sans', sans-serif;
+  font-family: var(--font-body), sans-serif;
   font-size: 10px;
   font-weight: 600;
   color: var(--t3);
@@ -1221,7 +1220,7 @@
 }
 
 .cardPrice {
-  font-family: 'Roboto', sans-serif;
+  font-family: var(--font-heading), sans-serif;
   font-size: 20px;
   font-weight: 800;
   letter-spacing: 0;
@@ -1266,7 +1265,7 @@
   min-height: 44px;
   border-radius: 999px;
   padding: 0 14px;
-  font-family: 'DM Sans', sans-serif;
+  font-family: var(--font-body), sans-serif;
   font-size: 11px;
   font-weight: 800;
   cursor: pointer;
@@ -1349,7 +1348,7 @@
   border: none;
   background: linear-gradient(135deg, #EF9F27 0%, #F7C060 100%);
   color: #fff;
-  font-family: 'DM Sans', sans-serif;
+  font-family: var(--font-body), sans-serif;
   font-size: 11px;
   font-weight: 700;
   letter-spacing: .01em;
@@ -1466,7 +1465,7 @@
 
 .empty h2 {
   margin: 0;
-  font-family: 'Fraunces', serif;
+  font-family: var(--font-display), serif;
   font-size: 20px;
   font-weight: 400;
   color: var(--t1);
@@ -1489,7 +1488,7 @@
   border: 1px solid var(--acc-bd);
   background: var(--acc-dim);
   color: var(--acc-text);
-  font-family: 'DM Sans', sans-serif;
+  font-family: var(--font-body), sans-serif;
   font-size: 12px;
   font-weight: 500;
   cursor: pointer;
@@ -1532,7 +1531,7 @@
   border: 1px solid var(--line);
   background: var(--card);
   color: var(--t2);
-  font-family: 'DM Sans', sans-serif;
+  font-family: var(--font-body), sans-serif;
   font-size: 13px;
   cursor: pointer;
   transition: all .18s;

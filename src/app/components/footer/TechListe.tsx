@@ -646,7 +646,7 @@ function ViewSelector({
                 ? `linear-gradient(135deg, ${theme.accent}, ${theme.accent2})`
                 : 'transparent',
             color: view === mode.key ? '#FFFFFF' : theme.softText,
-            fontFamily: '"DM Sans", sans-serif',
+            fontFamily: 'var(--font-body), sans-serif',
             fontSize: 12,
             fontWeight: 700,
             letterSpacing: '0.02em',
@@ -683,7 +683,7 @@ function SortSelector({
         border: `1px solid ${theme.stickyBorder}`,
         background: theme.panel,
         color: theme.text,
-        fontFamily: '"DM Sans", sans-serif',
+        fontFamily: 'var(--font-body), sans-serif',
         fontSize: 12,
         fontWeight: 700,
         cursor: 'pointer',
@@ -713,7 +713,7 @@ function Badge({ text, color }: { text: string; color: string }) {
         background: `${color}14`,
         border: `1px solid ${color}22`,
         color,
-        fontFamily: '"DM Sans", sans-serif',
+        fontFamily: 'var(--font-body), sans-serif',
         fontSize: 10,
         fontWeight: 700,
         letterSpacing: '0.05em',
@@ -894,7 +894,7 @@ function TechItemComponent({
           <span
             style={{
               color: theme.text,
-              fontFamily: '"DM Sans", sans-serif',
+              fontFamily: 'var(--font-body), sans-serif',
               fontSize: 12,
               fontWeight: 600,
             }}
@@ -975,7 +975,7 @@ function TechItemComponent({
           <strong
             style={{
               color: theme.text,
-              fontFamily: '"DM Sans", sans-serif',
+              fontFamily: 'var(--font-body), sans-serif',
               fontSize: 14,
               fontWeight: 700,
             }}
@@ -994,7 +994,7 @@ function TechItemComponent({
             style={{
               marginBottom: 6,
               color: theme.softText,
-              fontFamily: '"DM Sans", sans-serif',
+              fontFamily: 'var(--font-body), sans-serif',
               fontSize: 12.5,
               lineHeight: 1.6,
             }}
@@ -1006,7 +1006,7 @@ function TechItemComponent({
         <div
           style={{
             color: theme.subtleText,
-            fontFamily: '"DM Sans", sans-serif',
+            fontFamily: 'var(--font-body), sans-serif',
             fontSize: 11.5,
             fontWeight: 600,
           }}
@@ -1035,7 +1035,7 @@ function TechItemComponent({
                   color: theme.text,
                   display: 'inline-flex',
                   alignItems: 'center',
-                  fontFamily: '"DM Sans", sans-serif',
+                  fontFamily: 'var(--font-body), sans-serif',
                   fontSize: 10.5,
                   fontWeight: 600,
                 }}
@@ -1151,7 +1151,7 @@ function TechMarqueeItem({
               <span
                 style={{
                   color: theme.text,
-                  fontFamily: '"DM Sans", sans-serif',
+                  fontFamily: 'var(--font-body), sans-serif',
                   fontSize: 12,
                   fontWeight: 800,
                 }}
@@ -1166,7 +1166,7 @@ function TechMarqueeItem({
               style={{
                 display: 'block',
                 color: theme.text,
-                fontFamily: '"DM Sans", sans-serif',
+                fontFamily: 'var(--font-body), sans-serif',
                 fontSize: 15,
                 fontWeight: 800,
                 letterSpacing: '-0.02em',
@@ -1183,7 +1183,7 @@ function TechMarqueeItem({
                 display: 'block',
                 marginTop: 4,
                 color: theme.subtleText,
-                fontFamily: '"DM Sans", sans-serif',
+                fontFamily: 'var(--font-body), sans-serif',
                 fontSize: 11.5,
                 fontWeight: 600,
               }}
@@ -1219,7 +1219,7 @@ function TechMarqueeItem({
           margin: 0,
           minHeight: 34,
           color: theme.softText,
-          fontFamily: '"DM Sans", sans-serif',
+          fontFamily: 'var(--font-body), sans-serif',
           fontSize: 12,
           lineHeight: 1.45,
           display: '-webkit-box',
@@ -1245,7 +1245,7 @@ function TechMarqueeItem({
           <span
             style={{
               color: theme.softText,
-              fontFamily: '"DM Sans", sans-serif',
+              fontFamily: 'var(--font-body), sans-serif',
               fontSize: 11.5,
               fontWeight: 700,
             }}
@@ -1378,7 +1378,7 @@ function TechCategoryMarquee({
             <span
               style={{
                 color: theme.accent,
-                fontFamily: '"Roboto", "Syne", sans-serif',
+                fontFamily: 'var(--font-heading), sans-serif',
                 fontSize: 10.5,
                 fontWeight: 800,
                 letterSpacing: '0.16em',
@@ -1393,7 +1393,7 @@ function TechCategoryMarquee({
             style={{
               margin: 0,
               color: theme.text,
-              fontFamily: '"Fraunces", serif',
+              fontFamily: 'var(--font-display), serif',
               fontSize: 'clamp(25px, 2.4vw, 36px)',
               fontWeight: 400,
               lineHeight: 1.08,
@@ -1408,7 +1408,7 @@ function TechCategoryMarquee({
               maxWidth: 620,
               margin: '8px 0 0',
               color: theme.softText,
-              fontFamily: '"DM Sans", sans-serif',
+              fontFamily: 'var(--font-body), sans-serif',
               fontSize: 13.5,
               lineHeight: 1.7,
             }}
@@ -1427,7 +1427,7 @@ function TechCategoryMarquee({
             color: theme.subtleText,
             display: 'inline-flex',
             alignItems: 'center',
-            fontFamily: '"DM Sans", sans-serif',
+            fontFamily: 'var(--font-body), sans-serif',
             fontSize: 11,
             fontWeight: 800,
             letterSpacing: '0.04em',
@@ -1594,7 +1594,7 @@ function TechCategoryCard({
               style={{
                 margin: 0,
                 color: theme.text,
-                fontFamily: '"Fraunces", serif',
+                fontFamily: 'var(--font-display), serif',
                 fontSize: viewMode === 'compact' ? 18 : 22,
                 fontWeight: 400,
                 lineHeight: 1.15,
@@ -1615,7 +1615,7 @@ function TechCategoryCard({
               color: theme.subtleText,
               display: 'inline-flex',
               alignItems: 'center',
-              fontFamily: '"DM Sans", sans-serif',
+              fontFamily: 'var(--font-body), sans-serif',
               fontSize: 11,
               fontWeight: 700,
             }}
@@ -1629,7 +1629,7 @@ function TechCategoryCard({
             style={{
               margin: 0,
               color: theme.softText,
-              fontFamily: '"DM Sans", sans-serif',
+              fontFamily: 'var(--font-body), sans-serif',
               fontSize: 13.5,
               lineHeight: 1.7,
             }}
@@ -1780,7 +1780,7 @@ function CompareModal({
                 <span
                   style={{
                     color: theme.accent,
-                    fontFamily: '"Roboto", "Syne", sans-serif',
+                    fontFamily: 'var(--font-heading), sans-serif',
                     fontSize: 11,
                     fontWeight: 800,
                     letterSpacing: '0.18em',
@@ -1795,7 +1795,7 @@ function CompareModal({
                 style={{
                   margin: 0,
                   color: theme.text,
-                  fontFamily: '"Roboto", "Syne", sans-serif',
+                  fontFamily: 'var(--font-heading), sans-serif',
                   fontSize: 'clamp(24px, 2.6vw, 34px)',
                   fontWeight: 800,
                   lineHeight: 1.05,
@@ -1810,7 +1810,7 @@ function CompareModal({
                 style={{
                   margin: '10px 0 0',
                   color: theme.softText,
-                  fontFamily: '"DM Sans", sans-serif',
+                  fontFamily: 'var(--font-body), sans-serif',
                   fontSize: 14,
                   lineHeight: 1.7,
                   maxWidth: 620,
@@ -1891,7 +1891,7 @@ function CompareModal({
                     style={{
                       margin: 0,
                       color: theme.text,
-                      fontFamily: '"Fraunces", serif',
+                      fontFamily: 'var(--font-display), serif',
                       fontSize: 26,
                       fontWeight: 400,
                       lineHeight: 1.1,
@@ -1909,7 +1909,7 @@ function CompareModal({
                   style={{
                     marginBottom: 16,
                     color: theme.softText,
-                    fontFamily: '"DM Sans", sans-serif',
+                    fontFamily: 'var(--font-body), sans-serif',
                     fontSize: 13.5,
                     lineHeight: 1.7,
                   }}
@@ -1949,7 +1949,7 @@ function CompareModal({
                       <span
                         style={{
                           color: theme.subtleText,
-                          fontFamily: '"DM Sans", sans-serif',
+                          fontFamily: 'var(--font-body), sans-serif',
                           fontSize: 12.5,
                           fontWeight: 600,
                         }}
@@ -1960,7 +1960,7 @@ function CompareModal({
                       <span
                         style={{
                           color: theme.text,
-                          fontFamily: '"DM Sans", sans-serif',
+                          fontFamily: 'var(--font-body), sans-serif',
                           fontSize: 12.5,
                           fontWeight: 700,
                           textAlign: 'right',
@@ -1978,7 +1978,7 @@ function CompareModal({
                       style={{
                         marginBottom: 8,
                         color: theme.subtleText,
-                        fontFamily: '"DM Sans", sans-serif',
+                        fontFamily: 'var(--font-body), sans-serif',
                         fontSize: 11,
                         fontWeight: 700,
                         letterSpacing: '0.08em',
@@ -2007,7 +2007,7 @@ function CompareModal({
                             background: theme.itemBg,
                             border: `1px solid ${theme.itemBorder}`,
                             color: theme.text,
-                            fontFamily: '"DM Sans", sans-serif',
+                            fontFamily: 'var(--font-body), sans-serif',
                             fontSize: 11.5,
                             fontWeight: 600,
                           }}
@@ -2093,7 +2093,7 @@ function StickyFilterBar({
           <span
             style={{
               color: theme.accent,
-              fontFamily: '"Roboto", "Syne", sans-serif',
+              fontFamily: 'var(--font-heading), sans-serif',
               fontSize: 11,
               fontWeight: 800,
               letterSpacing: '0.18em',
@@ -2113,7 +2113,7 @@ function StickyFilterBar({
               background: theme.itemBg,
               border: `1px solid ${theme.itemBorder}`,
               color: theme.softText,
-              fontFamily: '"DM Sans", sans-serif',
+              fontFamily: 'var(--font-body), sans-serif',
               fontSize: 11,
               fontWeight: 700,
             }}
@@ -2275,7 +2275,6 @@ export default function TechListe() {
   return (
     <>
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,400;1,9..144,300;1,9..144,400&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600;9..40,700&family=Roboto:wght@700;800;900&family=Syne:wght@700;800&display=swap');
 
         * {
           box-sizing: border-box;
@@ -2448,7 +2447,7 @@ export default function TechListe() {
                       gap: 10,
                       marginBottom: 16,
                       color: theme.accent,
-                      fontFamily: '"Roboto", "Syne", sans-serif',
+                      fontFamily: 'var(--font-heading), sans-serif',
                       fontSize: 11,
                       fontWeight: 800,
                       letterSpacing: '0.18em',
@@ -2472,7 +2471,7 @@ export default function TechListe() {
                     style={{
                       margin: 0,
                       color: theme.text,
-                      fontFamily: '"Roboto", "Syne", sans-serif',
+                      fontFamily: 'var(--font-heading), sans-serif',
                       fontSize: 'clamp(35px, 3.9vw, 62px)',
                       fontWeight: 800,
                       lineHeight: 1.04,
@@ -2501,7 +2500,7 @@ export default function TechListe() {
                       margin: 0,
                       maxWidth: 620,
                       color: theme.softText,
-                      fontFamily: '"DM Sans", sans-serif',
+                      fontFamily: 'var(--font-body), sans-serif',
                       fontSize: 15,
                       lineHeight: 1.76,
                       fontWeight: 400,
@@ -2527,7 +2526,7 @@ export default function TechListe() {
                           background: 'rgba(239, 159, 39, 0.08)',
                           border: '1px solid rgba(239, 159, 39, 0.16)',
                           color: theme.accent,
-                          fontFamily: '"DM Sans", sans-serif',
+                          fontFamily: 'var(--font-body), sans-serif',
                           fontSize: 11,
                           fontWeight: 600,
                           letterSpacing: '0.03em',
@@ -2551,7 +2550,7 @@ export default function TechListe() {
                       <span
                         style={{
                           color: theme.subtleText,
-                          fontFamily: '"DM Sans", sans-serif',
+                          fontFamily: 'var(--font-body), sans-serif',
                           fontSize: 12,
                           letterSpacing: '0.08em',
                           textTransform: 'uppercase',
@@ -2563,7 +2562,7 @@ export default function TechListe() {
                       <span
                         style={{
                           color: theme.text,
-                          fontFamily: '"DM Sans", sans-serif',
+                          fontFamily: 'var(--font-body), sans-serif',
                           fontSize: 12,
                           fontWeight: 700,
                         }}
@@ -2634,7 +2633,7 @@ export default function TechListe() {
                   <div
                     style={{
                       color: theme.text,
-                      fontFamily: '"Roboto", "Syne", sans-serif',
+                      fontFamily: 'var(--font-heading), sans-serif',
                       fontSize: 'clamp(34px, 3vw, 44px)',
                       fontWeight: 800,
                       lineHeight: 1,
@@ -2648,7 +2647,7 @@ export default function TechListe() {
                     style={{
                       marginTop: 8,
                       color: theme.subtleText,
-                      fontFamily: '"DM Sans", sans-serif',
+                      fontFamily: 'var(--font-body), sans-serif',
                       fontSize: 11,
                       fontWeight: 700,
                       letterSpacing: '0.10em',
@@ -2701,7 +2700,7 @@ export default function TechListe() {
                       style={{
                         marginBottom: 3,
                         color: theme.accent,
-                        fontFamily: '"Roboto", "Syne", sans-serif',
+                        fontFamily: 'var(--font-heading), sans-serif',
                         fontSize: 10.5,
                         fontWeight: 800,
                         letterSpacing: '0.14em',
@@ -2714,7 +2713,7 @@ export default function TechListe() {
                     <div
                       style={{
                         color: theme.text,
-                        fontFamily: '"Fraunces", serif',
+                        fontFamily: 'var(--font-display), serif',
                         fontSize: 26,
                         fontWeight: 400,
                         lineHeight: 1.15,
@@ -2729,7 +2728,7 @@ export default function TechListe() {
                   style={{
                     maxWidth: 560,
                     color: theme.softText,
-                    fontFamily: '"DM Sans", sans-serif',
+                    fontFamily: 'var(--font-body), sans-serif',
                     fontSize: 13.5,
                     lineHeight: 1.7,
                   }}

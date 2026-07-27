@@ -2150,6 +2150,13 @@ export default function PublicNavbar() {
           </div>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: 9 }}>
+            {pathname === '/reference' && (
+              <div
+                id="reference-navbar-menu-slot"
+                style={{ display: 'flex', alignItems: 'center' }}
+              />
+            )}
+
             <button
               className="pro-icon"
               onClick={() => setSearchOpen(true)}
