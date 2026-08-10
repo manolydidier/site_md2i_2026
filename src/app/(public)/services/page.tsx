@@ -2904,6 +2904,12 @@ export default function MD2IServicesSection() {
           outline-offset: 4px;
         }
 
+        button:focus-visible,
+        a:focus-visible {
+          outline: 3px solid rgba(239,159,39,.44);
+          outline-offset: 3px;
+        }
+
         .md2i-service-card-media {
           aspect-ratio: 16 / 9;
         }

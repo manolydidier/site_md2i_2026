@@ -438,7 +438,7 @@
   height: 18px;
   padding: 0 5px;
   border-radius: 999px;
-  background: linear-gradient(135deg, #EF9F27 0%, #F7C060 100%);
+  background: linear-gradient(135deg, var(--public-accent, #EF9F27) 0%, #F7C060 100%);
   color: #fff;
   font-size: 9px;
   font-weight: 700;
