@@ -28,6 +28,7 @@ export const resources = {
           close: 'Fermer la recherche',
           escape: 'Échap',
           hint: 'Commencez à taper pour chercher dans le site.',
+          recentSearches: 'Recherches récentes',
           minChars: 'Tapez au moins 2 caractères pour lancer la recherche.',
           error: 'Une erreur est survenue pendant la recherche.',
           keyboardHint: '↑ ↓ pour naviguer · Entrée pour ouvrir',
@@ -1161,6 +1162,10 @@ footer: {
         loading: 'Chargement...',
         notFound: 'Post introuvable.',
         back: 'Retour',
+        readingTime: '{{count}} min de lecture',
+        related: {
+          title: 'Articles similaires',
+        },
         cta: {
           title: 'Vous souhaitez aller plus loin ?',
           text:
@@ -1450,6 +1455,7 @@ footer: {
           close: 'Close search',
           escape: 'Esc',
           hint: 'Start typing to search the site.',
+          recentSearches: 'Recent searches',
           minChars: 'Type at least 2 characters to start searching.',
           error: 'An error occurred while searching.',
           keyboardHint: '↑ ↓ to navigate · Enter to open',
@@ -2879,6 +2885,10 @@ footer: {
         loading: 'Loading...',
         notFound: 'Post not found.',
         back: 'Back',
+        readingTime: '{{count}} min read',
+        related: {
+          title: 'Related articles',
+        },
         cta: {
           title: 'Want to go further?',
           text:

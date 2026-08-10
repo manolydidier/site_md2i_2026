@@ -22,6 +22,7 @@ import {
   Search,
   ChevronDown as ChevronDownLucide,
   ArrowRight as ArrowRightLucide,
+  Clock,
   type LucideIcon,
 } from 'lucide-react'
 import { useTheme } from '../context/ThemeContext'
@@ -67,6 +68,38 @@ type ApiSearchResult = {
   href: string
   image?: string | null
   meta?: string | null
+}
+
+type RecentSearchEntry = {
+  id: string
+  category: SearchCategory
+  title: string
+  href: string
+}
+
+const RECENT_SEARCHES_KEY = 'md2i_recent_searches'
+const RECENT_SEARCHES_MAX = 6
+
+function loadRecentSearches(): RecentSearchEntry[] {
+  if (typeof window === 'undefined') return []
+
+  try {
+    const raw = window.localStorage.getItem(RECENT_SEARCHES_KEY)
+    const parsed = raw ? JSON.parse(raw) : []
+    return Array.isArray(parsed) ? parsed : []
+  } catch {
+    return []
+  }
+}
+
+function saveRecentSearches(entries: RecentSearchEntry[]) {
+  if (typeof window === 'undefined') return
+
+  try {
+    window.localStorage.setItem(RECENT_SEARCHES_KEY, JSON.stringify(entries))
+  } catch {
+    // stockage indisponible (mode privé, quota) : on ignore silencieusement
+  }
 }
 
 type ApiSearchResponse = {
@@ -851,6 +884,7 @@ function SearchModal({
   const [data, setData] = useState<ApiSearchResponse | null>(null)
   const [error, setError] = useState(false)
   const [selectedIndex, setSelectedIndex] = useState(-1)
+  const [recentSearches, setRecentSearches] = useState<RecentSearchEntry[]>([])
 
   const inputRef = useRef<HTMLInputElement>(null)
   const t = tokens(dark, true)
@@ -912,6 +946,7 @@ function SearchModal({
       setData(null)
       setError(false)
       setSelectedIndex(-1)
+      setRecentSearches(loadRecentSearches())
       inputRef.current?.focus()
     }, 120)
 
@@ -1010,9 +1045,36 @@ function SearchModal({
 
   const quickLinks = links.slice(0, 6)
 
-  const handleOpenResult = (result: ApiSearchResult) => {
+  const rememberSearch = (
+    result: Pick<ApiSearchResult, 'id' | 'category' | 'title' | 'href'>
+  ) => {
+    const entry: RecentSearchEntry = {
+      id: result.id,
+      category: result.category,
+      title: result.title,
+      href: result.href,
+    }
+
+    const next = [
+      entry,
+      ...recentSearches.filter((item) => item.href !== entry.href),
+    ].slice(0, RECENT_SEARCHES_MAX)
+
+    setRecentSearches(next)
+    saveRecentSearches(next)
+  }
+
+  const handleOpenResult = (
+    result: Pick<ApiSearchResult, 'id' | 'category' | 'title' | 'href'>
+  ) => {
+    rememberSearch(result)
     onClose()
     router.push(result.href)
+  }
+
+  const handleClearRecentSearches = () => {
+    setRecentSearches([])
+    saveRecentSearches([])
   }
 
   const handleInputKeyDown = (
@@ -1231,6 +1293,89 @@ function SearchModal({
                   {translate('navbar.search.hint')}
                 </div>
 
+                {recentSearches.length > 0 && (
+                  <div style={{ padding: '0 12px 14px' }}>
+                    <div
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        marginBottom: 6,
+                      }}
+                    >
+                      <span
+                        style={{
+                          fontSize: 11,
+                          fontWeight: 800,
+                          letterSpacing: '.06em',
+                          textTransform: 'uppercase',
+                          color: t.subtleText,
+                        }}
+                      >
+                        {translate('navbar.search.recentSearches')}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={handleClearRecentSearches}
+                        style={{
+                          background: 'none',
+                          border: 'none',
+                          cursor: 'pointer',
+                          fontSize: 12,
+                          fontWeight: 700,
+                          color: t.subtleText,
+                          padding: '6px 4px',
+                          minHeight: 32,
+                        }}
+                      >
+                        {translate('common.clearAll')}
+                      </button>
+                    </div>
+
+                    <div style={{ display: 'grid', gap: 6 }}>
+                      {recentSearches.map((entry) => (
+                        <button
+                          key={entry.href}
+                          type="button"
+                          onClick={() => handleOpenResult(entry)}
+                          className="pro-search-link"
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'space-between',
+                            gap: 12,
+                            padding: '11px 14px',
+                            borderRadius: 17,
+                            textDecoration: 'none',
+                            color: t.text,
+                            fontSize: 14,
+                            width: '100%',
+                            textAlign: 'left',
+                            background: dark
+                              ? 'rgba(255,255,255,.025)'
+                              : 'rgba(15,23,42,.025)',
+                            border: `1px solid ${
+                              dark
+                                ? 'rgba(255,255,255,.035)'
+                                : 'rgba(15,23,42,.035)'
+                            }`,
+                            cursor: 'pointer',
+                            fontFamily: 'inherit',
+                          }}
+                        >
+                          <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                            <Clock size={14} strokeWidth={2.2} color={t.subtleText} aria-hidden="true" />
+                            {entry.title}
+                          </span>
+                          <span style={{ color: t.subtleText }}>
+                            <ArrowRight />
+                          </span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
                 <div style={{ display: 'grid', gap: 6 }}>
                   {quickLinks.map((item) => (
                     <Link
@@ -1362,7 +1507,10 @@ function SearchModal({
                               id={`search-result-${globalIndex}`}
                               key={`${item.category}-${item.id}`}
                               href={item.href}
-                              onClick={onClose}
+                              onClick={() => {
+                                rememberSearch(item)
+                                onClose()
+                              }}
                               onMouseEnter={() =>
                                 setSelectedIndex(globalIndex)
                               }

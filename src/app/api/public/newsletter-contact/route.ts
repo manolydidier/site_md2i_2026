@@ -8,6 +8,7 @@ import { z } from "zod";
 
 import { prisma } from "@/app/lib/prisma";
 import { getCrmOwnerUserId } from "@/app/lib/crm-owner";
+import { startContactAutomation } from "@/app/lib/email/automation-engine";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -80,6 +81,9 @@ function getAllowedOrigins() {
     "http://localhost:3000",
     "http://127.0.0.1:3000",
     "http://192.168.1.2:3000",
+    "http://localhost:3001",
+    "http://127.0.0.1:3001",
+    "http://192.168.1.2:3001",
   ]
     .filter(Boolean)
     .map((origin) => String(origin).replace(/\/$/, ""));
@@ -544,6 +548,16 @@ export async function POST(req: NextRequest) {
             },
           },
         });
+
+    if (!existingContact) {
+      startContactAutomation({
+        userId,
+        contactId: contact.id,
+        trigger: "CONTACT_CREATED",
+      }).catch((err) => {
+        console.error("[public-newsletter-contact][automation]", err);
+      });
+    }
 
     return NextResponse.json({
       success: true,

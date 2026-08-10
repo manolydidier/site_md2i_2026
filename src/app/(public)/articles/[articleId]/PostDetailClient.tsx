@@ -30,6 +30,15 @@ type Post = {
   gjsCss?: string | null
   gjsStyles?: unknown
   gjsComponents?: unknown
+  category?: { id: string; name: string; slug: string } | null
+}
+
+type RelatedPost = {
+  id: string
+  title: string
+  slug: string
+  excerpt?: string | null
+  coverImage?: string | null
 }
 
 type GrapesComponentInput = Parameters<Editor['setComponents']>[0]
@@ -105,6 +114,18 @@ function safeImage(src?: string | null) {
 
 function stripHtml(value?: string | null) {
   return (value || '').replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim()
+}
+
+const READING_WORDS_PER_MINUTE = 200
+
+function estimateReadingMinutes(html?: string | null) {
+  const text = stripHtml(html)
+  if (!text) return null
+
+  const wordCount = text.split(' ').filter(Boolean).length
+  if (wordCount < 40) return null
+
+  return Math.max(1, Math.round(wordCount / READING_WORDS_PER_MINUTE))
 }
 
 function syncEmbeddedTheme(editor: Editor, dark: boolean) {
@@ -210,10 +231,15 @@ export default function PostDetailClient() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [canvasHeight, setCanvasHeight] = useState(900)
+  const [relatedPosts, setRelatedPosts] = useState<RelatedPost[]>([])
 
   const ui = useMemo(() => getUiColors(dark), [dark])
   const hasGjsContent = Boolean(post?.gjsComponents || post?.gjsHtml)
   const heroImage = safeImage(post?.coverImage)
+  const readingMinutes = useMemo(
+    () => estimateReadingMinutes(post?.gjsHtml),
+    [post?.gjsHtml],
+  )
 
   useEffect(() => {
     if (!articleId) return
@@ -268,6 +294,40 @@ export default function PostDetailClient() {
       cancelled = true
     }
   }, [articleId, locale, t])
+
+  useEffect(() => {
+    const categorySlug = post?.category?.slug
+    const currentId = post?.id
+
+    if (!categorySlug || !currentId) {
+      setRelatedPosts([])
+      return
+    }
+
+    let cancelled = false
+
+    ;(async () => {
+      try {
+        const res = await api.get<{ data: RelatedPost[] }>(
+          `/api/articles/public?category=${encodeURIComponent(categorySlug)}&limit=4`,
+        )
+
+        if (cancelled) return
+
+        const others = (res.data?.data || []).filter(
+          (item) => item.id !== currentId,
+        )
+
+        setRelatedPosts(others.slice(0, 3))
+      } catch {
+        if (!cancelled) setRelatedPosts([])
+      }
+    })()
+
+    return () => {
+      cancelled = true
+    }
+  }, [post?.category?.slug, post?.id])
 
   useEffect(() => {
     if (!mountRef.current || !post || !hasGjsContent) return
@@ -989,6 +1049,87 @@ export default function PostDetailClient() {
           box-shadow: 0 14px 30px rgba(239,159,39,.28);
         }
 
+        .post-related {
+          width: min(1180px, calc(100% - 40px));
+          margin: 0 auto 84px;
+        }
+
+        .post-related h2 {
+          margin: 0 0 20px;
+          font-size: clamp(22px, 2.6vw, 28px);
+          font-weight: 900;
+          letter-spacing: -.03em;
+          color: ${ui.text};
+        }
+
+        .post-related-grid {
+          display: grid;
+          grid-template-columns: repeat(3, minmax(0, 1fr));
+          gap: 20px;
+        }
+
+        .post-related-card {
+          display: flex;
+          flex-direction: column;
+          border-radius: 20px;
+          overflow: hidden;
+          background: ${ui.cardBg};
+          border: 1px solid ${ui.cardBorder};
+          text-decoration: none;
+          transition: transform .22s ease, box-shadow .22s ease;
+        }
+
+        .post-related-card:hover {
+          transform: translateY(-3px);
+          box-shadow: ${ui.buttonShadow};
+        }
+
+        .post-related-card-image {
+          position: relative;
+          width: 100%;
+          aspect-ratio: 16 / 9;
+          background: ${ui.appBg};
+        }
+
+        .post-related-card-body {
+          padding: 16px 18px 20px;
+        }
+
+        .post-related-card-body h3 {
+          margin: 0 0 8px;
+          font-size: 16px;
+          font-weight: 800;
+          line-height: 1.3;
+          color: ${ui.text};
+        }
+
+        .post-related-card-body p {
+          margin: 0;
+          font-size: 13px;
+          line-height: 1.6;
+          color: ${ui.textMuted};
+          display: -webkit-box;
+          -webkit-line-clamp: 2;
+          -webkit-box-orient: vertical;
+          overflow: hidden;
+        }
+
+        @media (max-width: 900px) {
+          .post-related-grid {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+          }
+        }
+
+        @media (max-width: 640px) {
+          .post-related {
+            width: min(100% - 28px, 1180px);
+          }
+
+          .post-related-grid {
+            grid-template-columns: 1fr;
+          }
+        }
+
         .post-state-page {
           min-height: 100vh;
           display: grid;
@@ -1094,6 +1235,15 @@ export default function PostDetailClient() {
                 <span className="post-chip">
                   {formatDate(post.publishedAt || post.createdAt, locale)}
                 </span>
+
+                {readingMinutes !== null && (
+                  <span className="post-chip">
+                    {t('postDetail.readingTime', {
+                      defaultValue: '{{count}} min de lecture',
+                      count: readingMinutes,
+                    })}
+                  </span>
+                )}
               </div>
 
               <h1>{post.title}</h1>
@@ -1165,6 +1315,41 @@ export default function PostDetailClient() {
               })}
             </Link>
           </div>
+
+          {relatedPosts.length > 0 && (
+            <div className="post-related">
+              <h2>
+                {t('postDetail.related.title', {
+                  defaultValue: 'Articles similaires',
+                })}
+              </h2>
+
+              <div className="post-related-grid">
+                {relatedPosts.map((item) => (
+                  <Link
+                    key={item.id}
+                    href={`/articles/${item.slug}`}
+                    className="post-related-card"
+                  >
+                    <div className="post-related-card-image">
+                      <Image
+                        src={safeImage(item.coverImage)}
+                        alt=""
+                        fill
+                        sizes="(max-width: 720px) 100vw, 33vw"
+                        style={{ objectFit: 'cover' }}
+                      />
+                    </div>
+
+                    <div className="post-related-card-body">
+                      <h3>{item.title}</h3>
+                      <p>{stripHtml(item.excerpt) || t('articlesPage.card.noDescription')}</p>
+                    </div>
+                  </Link>
+                ))}
+              </div>
+            </div>
+          )}
         </section>
       </main>
     </>
