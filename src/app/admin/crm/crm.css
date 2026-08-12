@@ -46,6 +46,16 @@
   box-sizing: border-box;
 }
 
+.crm-shell a:focus-visible,
+.crm-shell button:focus-visible,
+.crm-shell [tabindex]:focus-visible,
+.crm-shell input:focus-visible,
+.crm-shell select:focus-visible,
+.crm-shell textarea:focus-visible {
+  outline: 3px solid rgba(239, 159, 39, 0.42);
+  outline-offset: 3px;
+}
+
 html,
 body {
   background: #ffffff;
@@ -1584,8 +1594,8 @@ body {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 34px;
-  height: 34px;
+  width: 44px;
+  height: 44px;
   border: 1px solid var(--crm-border);
   border-radius: 999px;
   background: var(--crm-surface);
@@ -1779,8 +1789,8 @@ body {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 28px;
-  height: 28px;
+  width: 44px;
+  height: 44px;
   border: 0;
   border-radius: 999px;
   background: var(--crm-surface-muted);

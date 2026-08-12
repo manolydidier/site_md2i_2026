@@ -795,6 +795,7 @@ export function ContactsTable() {
               onClick={() => setPage(Math.max(1, page - 1))}
               disabled={page <= 1}
               className={styles.pageBtn}
+              aria-label="Page précédente"
             >
               <ChevronLeft size={15} />
             </button>
@@ -821,6 +822,7 @@ export function ContactsTable() {
               onClick={() => setPage(Math.min(totalPages, page + 1))}
               disabled={page >= totalPages}
               className={styles.pageBtn}
+              aria-label="Page suivante"
             >
               <ChevronRight size={15} />
             </button>
