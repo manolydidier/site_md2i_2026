@@ -26,6 +26,8 @@ const RESOURCES = [
   { name: 'CRM — Tâches',          code: 'crm_tasks',            category: 'CRM' },
   { name: 'CRM — Campagnes',       code: 'crm_campaigns',        category: 'CRM' },
   { name: 'CRM — Statuts',         code: 'crm_statuses',         category: 'CRM' },
+  // Facturation
+  { name: 'Factures',              code: 'invoices',             category: 'Facturation' },
   // Marketing
   { name: 'Email marketing',       code: 'email_marketing',      category: 'Marketing' },
   { name: 'Campagnes email',       code: 'campaigns',            category: 'Marketing' },

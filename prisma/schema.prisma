@@ -57,6 +57,9 @@ model User {
   crmTrackedLinks            CrmTrackedLink[]
   crmPublicationLogs         CrmPublicationLog[]
 
+  // Invoices
+  invoices Invoice[]
+
   @@index([email])
   @@index([username])
   @@index([status])
@@ -1648,4 +1651,71 @@ model CrmOpportunityStageOption {
   @@index([userId, isActive], map: "crm_opportunity_stage_options_user_active_idx")
   @@index([userId, sortOrder], map: "crm_opportunity_stage_options_user_sort_idx")
   @@map("crm_opportunity_stage_options")
+}
+
+// ============================================================
+// INVOICES
+// ============================================================
+
+model Invoice {
+  id             String        @id @default(uuid()) @db.Uuid
+  invoiceNumber  String        @unique @db.VarChar(50)
+  supplier       String        @db.VarChar(255)
+  client         String        @db.VarChar(255)
+  projectName    String        @db.Text
+  projectAddress String?       @db.Text
+  invoiceDate    DateTime
+  object         String        @db.Text
+  lotDescription String?       @db.Text
+  contractRef    String?       @db.VarChar(255)
+  totalTtc       Decimal       @default(0) @db.Decimal(14, 2)
+  tmpRatePercent Decimal       @default(8) @db.Decimal(5, 2)
+  amountInWords  String?       @db.Text
+  bankName       String?       @db.VarChar(255)
+  accountHolder  String?       @db.VarChar(255)
+  accountNumber  String?       @db.VarChar(100)
+  bankCode       String?       @db.VarChar(20)
+  branchCode     String?       @db.VarChar(20)
+  ribKey         String?       @db.VarChar(10)
+  bic            String?       @db.VarChar(20)
+  iban           String?       @db.VarChar(50)
+  signature      String?       @db.VarChar(255)
+  status         InvoiceStatus @default(DRAFT)
+  deletedAt      DateTime?
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+  userId         String        @db.Uuid
+
+  user  User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  lines InvoiceLine[]
+
+  @@index([invoiceNumber])
+  @@index([client])
+  @@index([invoiceDate])
+  @@index([userId])
+  @@index([deletedAt])
+  @@map("invoices")
+}
+
+model InvoiceLine {
+  id           String  @id @default(uuid()) @db.Uuid
+  invoiceId    String  @db.Uuid
+  libelle      String  @db.Text
+  unite        String? @db.VarChar(50)
+  quantite     Decimal @default(0) @db.Decimal(12, 2)
+  prixUnitaire Decimal @default(0) @db.Decimal(14, 2)
+  montant      Decimal @default(0) @db.Decimal(14, 2)
+  sortOrder    Int     @default(0)
+
+  invoice Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+
+  @@index([invoiceId])
+  @@map("invoice_lines")
+}
+
+enum InvoiceStatus {
+  DRAFT
+  ISSUED
+  PAID
+  CANCELLED
 }
