@@ -1,17 +1,32 @@
 // src/app/api/invoices/[id]/export/pdf/route.tsx
 // GET /api/invoices/:id/export/pdf — export PDF paginé et imprimable.
 
+import path from "node:path";
 import { NextRequest, NextResponse } from "next/server";
-import { Document, Page, View, Text, StyleSheet, renderToBuffer } from "@react-pdf/renderer";
+import { Document, Page, View, Text, Image, StyleSheet, renderToBuffer } from "@react-pdf/renderer";
 import { withPermission } from "@/(permisionGuard)/lib/permissions";
 import { prisma } from "@/app/lib/prisma";
+import {
+  invoiceDocumentInclude,
+  buildInvoiceDocumentModel,
+  getLibelleStyle,
+  type InvoiceDocumentModel,
+} from "@/app/lib/invoices/document-model";
+import { toPdfStyle } from "@/app/lib/invoices/style";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
 const styles = StyleSheet.create({
   page: { padding: 36, fontSize: 10, fontFamily: "Helvetica", color: "#111827" },
-  row: { flexDirection: "row", justifyContent: "space-between", marginBottom: 4 },
+  headerImage: { width: "100%", maxHeight: 90, objectFit: "contain", marginBottom: 14 },
+  invoiceNumberRow: { marginBottom: 14, textAlign: "right" },
+  invoiceNumberBadge: { fontFamily: "Helvetica-Bold", fontSize: 13 },
+  partiesRow: { flexDirection: "row", gap: 10, marginBottom: 14 },
+  partyBox: { flex: 1, backgroundColor: "#F1F5F9", borderRadius: 4, padding: 10 },
+  partyLabel: { fontFamily: "Helvetica-Bold", fontSize: 9, color: "#64748b", marginBottom: 4 },
+  partyName: { fontFamily: "Helvetica-Bold", fontSize: 11, marginBottom: 3 },
+  partyLine: { fontSize: 9, color: "#334155", marginTop: 1 },
   bold: { fontFamily: "Helvetica-Bold" },
   underline: { textDecoration: "underline" },
   section: { marginBottom: 10 },
@@ -29,33 +44,68 @@ const styles = StyleSheet.create({
   wordsBox: { marginTop: 14, padding: 8, borderWidth: 1, borderColor: "#e2e8f0", backgroundColor: "#f8fafc" },
   bankSection: { marginTop: 22, paddingTop: 10, borderTopWidth: 1, borderTopColor: "#cbd5e1" },
   bankTitle: { fontFamily: "Helvetica-Bold", marginBottom: 4 },
+  footerBlock: { marginTop: 18 },
   footer: { position: "absolute", bottom: 20, left: 36, right: 36, textAlign: "center", fontSize: 8, color: "#64748b" },
 });
-
-function formatDateFr(date: Date) {
-  return new Intl.DateTimeFormat("fr-FR", { day: "2-digit", month: "long", year: "numeric" }).format(date);
-}
 
 function formatAmount(value: number) {
   return new Intl.NumberFormat("fr-FR", { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(value);
 }
 
-type InvoiceWithLines = NonNullable<Awaited<ReturnType<typeof loadInvoice>>>;
+function InvoicePdf({ invoice, headerImagePath }: { invoice: InvoiceDocumentModel; headerImagePath: string | null }) {
+  const libelleStyle = toPdfStyle(invoice.libelleStyle);
 
-async function loadInvoice(id: string) {
-  return prisma.invoice.findFirst({
-    where: { id, deletedAt: null },
-    include: { lines: { orderBy: { sortOrder: "asc" } } },
-  });
-}
-
-function InvoicePdf({ invoice }: { invoice: InvoiceWithLines }) {
   return (
     <Document>
       <Page size="A4" style={styles.page} wrap>
-        <View style={styles.row}>
-          <Text style={[styles.bold, styles.underline]}>Fournisseur: {invoice.supplier}</Text>
-          <Text style={[styles.bold, styles.underline]}>Client: {invoice.client}</Text>
+        {/* eslint-disable-next-line jsx-a11y/alt-text -- Image ici vient de @react-pdf/renderer (primitive PDF sans prop alt), pas du HTML */}
+        {headerImagePath ? <Image src={headerImagePath} style={styles.headerImage} /> : null}
+
+        <View style={styles.invoiceNumberRow}>
+          <Text style={styles.invoiceNumberBadge}>N° Facture: {invoice.invoiceNumber}</Text>
+        </View>
+
+        <View style={styles.partiesRow}>
+          <View style={styles.partyBox}>
+            <Text style={styles.partyLabel}>FOURNISSEUR</Text>
+            <Text style={styles.partyName}>{invoice.supplier.name}</Text>
+            {invoice.supplier.address ? <Text style={styles.partyLine}>{invoice.supplier.address}</Text> : null}
+            {invoice.supplier.phone ? <Text style={styles.partyLine}>Tél: {invoice.supplier.phone}</Text> : null}
+            {invoice.supplier.email ? <Text style={styles.partyLine}>Email: {invoice.supplier.email}</Text> : null}
+            {invoice.supplier.statNumber ? <Text style={styles.partyLine}>N° Stat: {invoice.supplier.statNumber}</Text> : null}
+            {invoice.supplier.nif ? <Text style={styles.partyLine}>NIF: {invoice.supplier.nif}</Text> : null}
+            {invoice.supplier.rcs ? <Text style={styles.partyLine}>RCS: {invoice.supplier.rcs}</Text> : null}
+          </View>
+          <View style={styles.partyBox}>
+            <Text style={styles.partyLabel}>CLIENT</Text>
+            <Text style={styles.partyName}>{invoice.client}</Text>
+            {invoice.clientParagraphs.map((paragraph, index) =>
+              paragraph.type === "text" ? (
+                <Text key={index} style={styles.partyLine}>
+                  {paragraph.runs.map((run, runIndex) => (
+                    <Text
+                      key={runIndex}
+                      style={{
+                        fontFamily: run.bold ? "Helvetica-Bold" : "Helvetica",
+                        fontStyle: run.italic ? "italic" : "normal",
+                        textDecoration: run.underline ? "underline" : "none",
+                        color: run.color || undefined,
+                      }}
+                    >
+                      {run.text}
+                    </Text>
+                  ))}
+                </Text>
+              ) : (
+                // eslint-disable-next-line jsx-a11y/alt-text -- Image @react-pdf/renderer, pas HTML
+                <Image
+                  key={index}
+                  src={path.join(process.cwd(), "public", paragraph.url)}
+                  style={{ width: "100%", maxHeight: 60, objectFit: "contain", marginTop: 4 }}
+                />
+              )
+            )}
+          </View>
         </View>
 
         <View style={styles.section}>
@@ -64,10 +114,11 @@ function InvoicePdf({ invoice }: { invoice: InvoiceWithLines }) {
         </View>
 
         <View style={styles.section}>
-          <Text style={styles.bold}>Date: {formatDateFr(invoice.invoiceDate)}</Text>
+          <Text style={styles.bold}>{invoice.dateTypeLabel || "Date"}: {invoice.invoiceDateLabel}</Text>
           <Text>Objet: {invoice.object}</Text>
           {invoice.lotDescription ? <Text>{invoice.lotDescription}</Text> : null}
           {invoice.contractRef ? <Text>Réf: {invoice.contractRef}</Text> : null}
+          {invoice.paymentModeLabel ? <Text>Mode de paiement: {invoice.paymentModeLabel}</Text> : null}
         </View>
 
         <View style={styles.table}>
@@ -79,24 +130,34 @@ function InvoicePdf({ invoice }: { invoice: InvoiceWithLines }) {
             <Text style={[styles.cellMontant, styles.bold]}>MONTANT/Ar</Text>
           </View>
 
-          {invoice.lines.map((line) => (
-            <View style={styles.tableRow} key={line.id} wrap={false}>
-              <Text style={styles.cellLibelle}>{line.libelle}</Text>
+          {invoice.lines.map((line, index) => (
+            <View style={styles.tableRow} key={index} wrap={false}>
+              <Text style={styles.cellLibelle}>
+                {line.libelleRuns && line.libelleRuns.length > 0 ? (
+                  line.libelleRuns.map((run, runIndex) => (
+                    <Text key={runIndex} style={run.style ? toPdfStyle(run.style) : undefined}>
+                      {run.text}
+                    </Text>
+                  ))
+                ) : (
+                  <Text style={libelleStyle}>{line.libelle}</Text>
+                )}
+              </Text>
               <Text style={styles.cellUnite}>{line.unite || ""}</Text>
-              <Text style={styles.cellQty}>{formatAmount(Number(line.quantite))}</Text>
-              <Text style={styles.cellPrix}>{formatAmount(Number(line.prixUnitaire))}</Text>
-              <Text style={styles.cellMontant}>{formatAmount(Number(line.montant))}</Text>
+              <Text style={styles.cellQty}>{formatAmount(line.quantite)}</Text>
+              <Text style={styles.cellPrix}>{formatAmount(line.prixUnitaire)}</Text>
+              <Text style={styles.cellMontant}>{formatAmount(line.montant)}</Text>
             </View>
           ))}
         </View>
 
         <View style={styles.totalRow}>
           <Text style={styles.totalLabel}>MONTANT TOTAL TTC/AR</Text>
-          <Text style={styles.totalValue}>{formatAmount(Number(invoice.totalTtc))} Ar</Text>
+          <Text style={styles.totalValue}>{formatAmount(invoice.totalTtc)} Ar</Text>
         </View>
 
         <View style={styles.wordsBox}>
-          <Text>Montant en lettres: {invoice.amountInWords}</Text>
+          <Text>Montant en lettres: <Text style={styles.bold}>{invoice.amountInWords}</Text></Text>
         </View>
 
         <View style={{ marginTop: 18 }}>
@@ -114,6 +175,16 @@ function InvoicePdf({ invoice }: { invoice: InvoiceWithLines }) {
           {invoice.bic ? <Text>BIC: {invoice.bic}</Text> : null}
           {invoice.iban ? <Text>IBAN: {invoice.iban}</Text> : null}
         </View>
+
+        {invoice.footerLines.length > 0 && (
+          <View style={styles.footerBlock}>
+            {invoice.footerLines.map((line, index) => (
+              <Text key={index} style={toPdfStyle(line.style)}>
+                {line.text}
+              </Text>
+            ))}
+          </View>
+        )}
 
         <Text
           style={styles.footer}
@@ -133,19 +204,37 @@ export async function GET(
   if (!guard.ok) return guard.response;
 
   const { id } = await context.params;
-  const invoice = await loadInvoice(id);
 
-  if (!invoice) {
-    return NextResponse.json({ error: "Facture introuvable." }, { status: 404 });
+  try {
+    const [record, libelleStyle] = await Promise.all([
+      prisma.invoice.findFirst({ where: { id, deletedAt: null }, include: invoiceDocumentInclude }),
+      getLibelleStyle(),
+    ]);
+
+    if (!record) {
+      return NextResponse.json({ error: "Facture introuvable." }, { status: 404 });
+    }
+
+    const invoice = buildInvoiceDocumentModel(record, libelleStyle);
+    const headerImagePath = invoice.header ? path.join(process.cwd(), "public", invoice.header.imageUrl) : null;
+
+    const buffer = await renderToBuffer(<InvoicePdf invoice={invoice} headerImagePath={headerImagePath} />);
+    const filename = `Facture-${invoice.invoiceNumber}.pdf`;
+
+    return new NextResponse(buffer as unknown as BodyInit, {
+      headers: {
+        "Content-Type": "application/pdf",
+        "Content-Disposition": `attachment; filename="${filename}"; filename*=UTF-8''${encodeURIComponent(filename)}`,
+      },
+    });
+  } catch (error) {
+    console.error("[invoices-pdf-export][ERROR]", error);
+    return NextResponse.json(
+      {
+        error: "Erreur lors de la génération du PDF.",
+        detail: error instanceof Error ? error.message : String(error),
+      },
+      { status: 500 }
+    );
   }
-
-  const buffer = await renderToBuffer(<InvoicePdf invoice={invoice} />);
-  const filename = `Facture-${invoice.invoiceNumber}.pdf`;
-
-  return new NextResponse(buffer as unknown as BodyInit, {
-    headers: {
-      "Content-Type": "application/pdf",
-      "Content-Disposition": `attachment; filename="${filename}"; filename*=UTF-8''${encodeURIComponent(filename)}`,
-    },
-  });
 }

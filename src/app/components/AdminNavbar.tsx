@@ -162,6 +162,7 @@ const MENU_SECTIONS = [
         children: [
           { href: '/admin/invoices', label: 'Toutes les factures', exact: true },
           { href: '/admin/invoices/new', label: 'Nouvelle facture' },
+          { href: '/admin/invoices/settings', label: 'Paramètres' },
         ],
       },
     ],

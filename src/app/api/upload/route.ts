@@ -26,6 +26,8 @@ const ALLOWED_MIME_TYPES = new Set([
   "application/x-zip-compressed",
 ]);
 
+const ALLOWED_FOLDERS = new Set(["posts", "invoices", "clients"]);
+
 function getExtensionFromMime(mimeType: string) {
   switch (mimeType) {
     case "image/jpeg":
@@ -104,7 +106,10 @@ export async function POST(request: Request) {
 
     const fileName = `${Date.now()}-${randomUUID()}-${safeBaseName}${extension}`;
 
-    const relativeDir = path.join("uploads", "posts");
+    const requestedFolder = String(formData.get("folder") || "posts");
+    const folder = ALLOWED_FOLDERS.has(requestedFolder) ? requestedFolder : "posts";
+
+    const relativeDir = path.join("uploads", folder);
     const absoluteDir = path.join(process.cwd(), "public", relativeDir);
     const absolutePath = path.join(absoluteDir, fileName);
 

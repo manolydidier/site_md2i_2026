@@ -1,0 +1,64 @@
+// src/app/api/invoice-date-types/[id]/route.ts
+// PATCH  /api/invoice-date-types/:id — mise à jour
+// DELETE /api/invoice-date-types/:id — suppression douce
+
+import { NextRequest, NextResponse } from "next/server";
+import { z } from "zod";
+import { prisma } from "@/app/lib/prisma";
+import { withPermission } from "@/(permisionGuard)/lib/permissions";
+
+export const dynamic = "force-dynamic";
+
+const updateSchema = z.object({
+  label: z.string().trim().min(1).max(100).optional(),
+  isActive: z.boolean().optional(),
+  sortOrder: z.coerce.number().int().optional(),
+});
+
+type Params = { params: Promise<{ id: string }> };
+
+export async function PATCH(req: NextRequest, { params }: Params) {
+  const guard = await withPermission(req, { resource: "invoice_settings", action: "canUpdate" });
+  if (!guard.ok) return guard.response;
+
+  const { id } = await params;
+  const existing = await prisma.invoiceDateType.findFirst({ where: { id, deletedAt: null } });
+
+  if (!existing) {
+    return NextResponse.json({ error: "Type de date introuvable." }, { status: 404 });
+  }
+
+  const body = await req.json().catch(() => null);
+  const parsed = updateSchema.safeParse(body);
+
+  if (!parsed.success) {
+    return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
+  }
+
+  const type = await prisma.invoiceDateType.update({
+    where: { id },
+    data: {
+      label: parsed.data.label ?? existing.label,
+      isActive: parsed.data.isActive ?? existing.isActive,
+      sortOrder: parsed.data.sortOrder ?? existing.sortOrder,
+    },
+  });
+
+  return NextResponse.json({ data: type });
+}
+
+export async function DELETE(req: NextRequest, { params }: Params) {
+  const guard = await withPermission(req, { resource: "invoice_settings", action: "canDelete" });
+  if (!guard.ok) return guard.response;
+
+  const { id } = await params;
+  const existing = await prisma.invoiceDateType.findFirst({ where: { id, deletedAt: null } });
+
+  if (!existing) {
+    return NextResponse.json({ error: "Type de date introuvable." }, { status: 404 });
+  }
+
+  await prisma.invoiceDateType.update({ where: { id }, data: { deletedAt: new Date() } });
+
+  return NextResponse.json({ success: true });
+}

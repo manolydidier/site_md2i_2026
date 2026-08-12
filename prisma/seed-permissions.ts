@@ -28,6 +28,7 @@ const RESOURCES = [
   { name: 'CRM — Statuts',         code: 'crm_statuses',         category: 'CRM' },
   // Facturation
   { name: 'Factures',              code: 'invoices',             category: 'Facturation' },
+  { name: 'Paramètres facturation', code: 'invoice_settings',    category: 'Facturation' },
   // Marketing
   { name: 'Email marketing',       code: 'email_marketing',      category: 'Marketing' },
   { name: 'Campagnes email',       code: 'campaigns',            category: 'Marketing' },

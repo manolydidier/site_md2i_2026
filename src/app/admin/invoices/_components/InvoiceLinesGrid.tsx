@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useMemo } from "react";
+import { useCallback, useMemo, useState } from "react";
 import {
   AgGridReact,
 } from "ag-grid-react";
@@ -9,10 +9,13 @@ import {
   AllCommunityModule,
   themeQuartz,
   type ColDef,
+  type CellStyle,
   type CellValueChangedEvent,
   type ICellRendererParams,
 } from "ag-grid-community";
-import { Trash2, Plus } from "lucide-react";
+import { Trash2, Plus, Pencil } from "lucide-react";
+import { toCssStyle, type TextStyle, type TextRun } from "@/app/lib/invoices/style";
+import LibelleRunsEditor from "./LibelleRunsEditor";
 
 ModuleRegistry.registerModules([AllCommunityModule]);
 
@@ -20,6 +23,7 @@ export type InvoiceLineRow = {
   rowId: string;
   id?: string;
   libelle: string;
+  libelleRuns?: TextRun[] | null;
   unite: string;
   quantite: number;
   prixUnitaire: number;
@@ -57,12 +61,64 @@ function DeleteRowButton(props: ICellRendererParams<InvoiceLineRow> & { onDelete
   );
 }
 
+function LibelleCellRenderer(props: ICellRendererParams<InvoiceLineRow> & { onEditRuns: (rowId: string) => void }) {
+  if (!props.data) return null;
+  const runs = props.data.libelleRuns;
+
+  return (
+    <div style={{ display: "flex", alignItems: "center", gap: 6, width: "100%" }}>
+      <span style={{ flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+        {runs && runs.length > 0
+          ? runs.map((run, i) => (
+              <span
+                key={i}
+                style={{
+                  fontWeight: run.style?.bold ? 700 : undefined,
+                  fontStyle: run.style?.italic ? "italic" : undefined,
+                  textDecoration: run.style?.underline ? "underline" : undefined,
+                  color: run.style?.color,
+                }}
+              >
+                {run.text}
+              </span>
+            ))
+          : props.data.libelle}
+      </span>
+      <button
+        type="button"
+        onClick={(e) => {
+          e.stopPropagation();
+          props.onEditRuns(props.data!.rowId);
+        }}
+        title="Styler le libellé mot par mot"
+        style={{
+          width: 24,
+          height: 24,
+          flexShrink: 0,
+          display: "inline-flex",
+          alignItems: "center",
+          justifyContent: "center",
+          border: "1px solid #E5E7EB",
+          background: "#F8FAFC",
+          color: "#334155",
+          borderRadius: 6,
+          cursor: "pointer",
+        }}
+      >
+        <Pencil size={11} />
+      </button>
+    </div>
+  );
+}
+
 export default function InvoiceLinesGrid({
   rows,
   onChange,
+  libelleStyle,
 }: {
   rows: InvoiceLineRow[];
   onChange: (rows: InvoiceLineRow[]) => void;
+  libelleStyle?: TextStyle;
 }) {
   const handleDelete = useCallback(
     (rowId: string) => {
@@ -88,16 +144,32 @@ export default function InvoiceLinesGrid({
     (event: CellValueChangedEvent<InvoiceLineRow>) => {
       if (!event.data) return;
 
-      onChange(
-        rows.map((row) => (row.rowId === event.data!.rowId ? { ...event.data! } : row))
-      );
+      // Une édition directe du texte libelle invalide les runs stylés déjà
+      // définis (ils référenceraient l'ancien texte) — repli sur texte brut.
+      const editedLibelle = event.colDef.field === "libelle" && event.oldValue !== event.newValue;
+      const nextData = editedLibelle ? { ...event.data, libelleRuns: null } : event.data;
+
+      onChange(rows.map((row) => (row.rowId === nextData.rowId ? { ...nextData } : row)));
     },
     [rows, onChange]
   );
 
+  const [editingRunsRowId, setEditingRunsRowId] = useState<string | null>(null);
+  const editingRow = rows.find((row) => row.rowId === editingRunsRowId) || null;
+
   const columnDefs = useMemo<ColDef<InvoiceLineRow>[]>(
     () => [
-      { field: "libelle", headerName: "Libellé", editable: true, flex: 3, cellDataType: "text" },
+      {
+        field: "libelle",
+        headerName: "Libellé",
+        editable: true,
+        flex: 3,
+        cellDataType: "text",
+        cellStyle: libelleStyle ? (toCssStyle(libelleStyle) as unknown as CellStyle) : undefined,
+        cellRenderer: (params: ICellRendererParams<InvoiceLineRow>) => (
+          <LibelleCellRenderer {...params} onEditRuns={setEditingRunsRowId} />
+        ),
+      },
       { field: "unite", headerName: "Unité", editable: true, flex: 1, cellDataType: "text" },
       {
         field: "quantite",
@@ -139,7 +211,7 @@ export default function InvoiceLinesGrid({
         ),
       },
     ],
-    [handleDelete]
+    [handleDelete, libelleStyle, setEditingRunsRowId]
   );
 
   return (
@@ -182,6 +254,24 @@ export default function InvoiceLinesGrid({
         <Plus size={14} />
         Ajouter une ligne
       </button>
+
+      {editingRow && (
+        <LibelleRunsEditor
+          libelle={editingRow.libelle}
+          initialRuns={editingRow.libelleRuns ?? null}
+          onClose={() => setEditingRunsRowId(null)}
+          onSave={(runs) => {
+            onChange(
+              rows.map((row) =>
+                row.rowId === editingRow.rowId
+                  ? { ...row, libelleRuns: runs, libelle: runs.map((r) => r.text).join("") }
+                  : row
+              )
+            );
+            setEditingRunsRowId(null);
+          }}
+        />
+      )}
     </div>
   );
 }

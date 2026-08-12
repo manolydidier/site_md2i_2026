@@ -3,10 +3,12 @@
 // factures (src/app/api/invoices/route.ts et src/app/api/invoices/[id]/route.ts).
 
 import { z } from "zod";
+import { textRunsSchema } from "./style";
 
 export const invoiceLineSchema = z.object({
   id: z.string().uuid().optional(),
   libelle: z.string().trim().min(1, "Libellé requis"),
+  libelleRuns: textRunsSchema.optional().nullable(),
   unite: z.string().trim().max(50).optional().nullable(),
   quantite: z.coerce.number().min(0, "Quantité invalide"),
   prixUnitaire: z.coerce.number().min(0, "Prix unitaire invalide"),
@@ -34,6 +36,12 @@ export const invoiceSchema = z.object({
   iban: z.string().trim().max(50).optional().nullable(),
   signature: z.string().trim().max(255).optional().nullable(),
   status: z.enum(["DRAFT", "ISSUED", "PAID", "CANCELLED"]).optional(),
+  supplierId: z.string().uuid().optional().nullable(),
+  paymentModeId: z.string().uuid().optional().nullable(),
+  dateTypeId: z.string().uuid().optional().nullable(),
+  headerId: z.string().uuid().optional().nullable(),
+  footerId: z.string().uuid().optional().nullable(),
+  clientId: z.string().uuid().optional().nullable(),
   lines: z.array(invoiceLineSchema).min(1, "Au moins une ligne est requise"),
 });
 
@@ -45,6 +53,15 @@ export function computeInvoiceTotals(lines: InvoiceLineInput[]) {
   const computedLines = lines.map((line, index) => ({
     ...line,
     sortOrder: line.sortOrder ?? index,
+    // Le libellé texte brut reste toujours cohérent avec les runs stylés
+    // (recherche, tri, export CSV, repli si le style est retiré plus tard).
+    // `libelleRuns` normalisé à `null` (jamais `undefined`) pour qu'un tableau
+    // vide efface bien les runs existants lors d'une mise à jour.
+    libelle:
+      line.libelleRuns && line.libelleRuns.length > 0
+        ? line.libelleRuns.map((run) => run.text).join("")
+        : line.libelle,
+    libelleRuns: line.libelleRuns && line.libelleRuns.length > 0 ? line.libelleRuns : null,
     montant: Math.round(line.quantite * line.prixUnitaire * 100) / 100,
   }));
 

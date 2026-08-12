@@ -6,6 +6,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { withPermission } from "@/(permisionGuard)/lib/permissions";
 import { prisma } from "@/app/lib/prisma";
+import { Prisma } from "@/generated/prisma/client";
 import { invoiceSchema, computeInvoiceTotals } from "@/app/lib/invoices/schema";
 import { invoiceAmountInWords } from "@/app/lib/invoices/amount-in-words";
 
@@ -19,7 +20,15 @@ function logError(label: string, data?: Record<string, unknown>) {
 async function loadInvoice(id: string) {
   return prisma.invoice.findFirst({
     where: { id, deletedAt: null },
-    include: { lines: { orderBy: { sortOrder: "asc" } } },
+    include: {
+      lines: { orderBy: { sortOrder: "asc" } },
+      supplierRef: true,
+      paymentMode: true,
+      dateType: true,
+      header: true,
+      footer: true,
+      clientRef: true,
+    },
   });
 }
 
@@ -95,9 +104,17 @@ export async function PUT(
         await tx.invoiceLine.deleteMany({ where: { id: { in: idsToDelete } } });
       }
 
+      // Re-snapshot des coordonnées fournisseur / contenu client si
+      // (re)sélectionnés, même logique qu'à la création.
+      const [supplierRecord, clientRecord] = await Promise.all([
+        data.supplierId ? tx.invoiceSupplier.findUnique({ where: { id: data.supplierId } }) : null,
+        data.clientId ? tx.client.findUnique({ where: { id: data.clientId } }) : null,
+      ]);
+
       for (const line of computedLines) {
         const lineData = {
           libelle: line.libelle,
+          libelleRuns: line.libelleRuns ?? Prisma.JsonNull,
           unite: line.unite || null,
           quantite: line.quantite,
           prixUnitaire: line.prixUnitaire,
@@ -137,6 +154,23 @@ export async function PUT(
           iban: data.iban || null,
           signature: data.signature || null,
           status: data.status || existing.status,
+          supplierId: data.supplierId || null,
+          paymentModeId: data.paymentModeId || null,
+          dateTypeId: data.dateTypeId || null,
+          headerId: data.headerId || null,
+          footerId: data.footerId || null,
+          clientId: data.clientId || null,
+          ...(data.supplierId
+            ? {
+                supplierAddress: supplierRecord?.address || null,
+                supplierPhone: supplierRecord?.phone || null,
+                supplierEmail: supplierRecord?.email || null,
+                supplierStatNumber: supplierRecord?.statNumber || null,
+                supplierNif: supplierRecord?.nif || null,
+                supplierRcs: supplierRecord?.rcs || null,
+              }
+            : {}),
+          ...(data.clientId ? { clientContent: clientRecord?.content ?? undefined } : {}),
         },
         include: { lines: { orderBy: { sortOrder: "asc" } } },
       });

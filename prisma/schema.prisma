@@ -1686,14 +1686,40 @@ model Invoice {
   updatedAt      DateTime      @updatedAt
   userId         String        @db.Uuid
 
-  user  User          @relation(fields: [userId], references: [id], onDelete: Cascade)
-  lines InvoiceLine[]
+  supplierId         String? @db.Uuid
+  paymentModeId      String? @db.Uuid
+  dateTypeId         String? @db.Uuid
+  headerId           String? @db.Uuid
+  footerId           String? @db.Uuid
+  clientId           String? @db.Uuid
+  supplierAddress    String? @db.Text
+  supplierPhone      String? @db.VarChar(50)
+  supplierEmail      String? @db.VarChar(255)
+  supplierStatNumber String? @db.VarChar(100)
+  supplierNif        String? @db.VarChar(100)
+  supplierRcs        String? @db.VarChar(100)
+  clientContent      String? @db.Text
+
+  user        User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  lines       InvoiceLine[]
+  supplierRef InvoiceSupplier? @relation(fields: [supplierId], references: [id], onDelete: SetNull)
+  paymentMode PaymentMode?     @relation(fields: [paymentModeId], references: [id], onDelete: SetNull)
+  dateType    InvoiceDateType? @relation(fields: [dateTypeId], references: [id], onDelete: SetNull)
+  header      InvoiceHeader?   @relation(fields: [headerId], references: [id], onDelete: SetNull)
+  footer      InvoiceFooter?   @relation(fields: [footerId], references: [id], onDelete: SetNull)
+  clientRef   Client?          @relation(fields: [clientId], references: [id], onDelete: SetNull)
 
   @@index([invoiceNumber])
   @@index([client])
   @@index([invoiceDate])
   @@index([userId])
   @@index([deletedAt])
+  @@index([supplierId])
+  @@index([clientId])
+  @@index([paymentModeId])
+  @@index([dateTypeId])
+  @@index([headerId])
+  @@index([footerId])
   @@map("invoices")
 }
 
@@ -1701,6 +1727,7 @@ model InvoiceLine {
   id           String  @id @default(uuid()) @db.Uuid
   invoiceId    String  @db.Uuid
   libelle      String  @db.Text
+  libelleRuns  Json?
   unite        String? @db.VarChar(50)
   quantite     Decimal @default(0) @db.Decimal(12, 2)
   prixUnitaire Decimal @default(0) @db.Decimal(14, 2)
@@ -1718,4 +1745,111 @@ enum InvoiceStatus {
   ISSUED
   PAID
   CANCELLED
+}
+
+model InvoiceSupplier {
+  id         String    @id @default(uuid()) @db.Uuid
+  name       String    @db.VarChar(255)
+  address    String?   @db.Text
+  phone      String?   @db.VarChar(50)
+  email      String?   @db.VarChar(255)
+  statNumber String?   @db.VarChar(100)
+  nif        String?   @db.VarChar(100)
+  rcs        String?   @db.VarChar(100)
+  isDefault  Boolean   @default(false)
+  deletedAt  DateTime?
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  invoices Invoice[]
+
+  @@index([deletedAt])
+  @@map("invoice_suppliers")
+}
+
+model PaymentMode {
+  id        String    @id @default(uuid()) @db.Uuid
+  label     String    @db.VarChar(100)
+  isActive  Boolean   @default(true)
+  sortOrder Int       @default(0)
+  deletedAt DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  invoices Invoice[]
+
+  @@index([deletedAt])
+  @@map("invoice_payment_modes")
+}
+
+model InvoiceDateType {
+  id        String    @id @default(uuid()) @db.Uuid
+  label     String    @db.VarChar(100)
+  isActive  Boolean   @default(true)
+  sortOrder Int       @default(0)
+  deletedAt DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  invoices Invoice[]
+
+  @@index([deletedAt])
+  @@map("invoice_date_types")
+}
+
+model InvoiceHeader {
+  id        String    @id @default(uuid()) @db.Uuid
+  name      String    @db.VarChar(150)
+  imageUrl  String    @db.Text
+  altText   String?   @db.VarChar(255)
+  isDefault Boolean   @default(false)
+  sortOrder Int       @default(0)
+  deletedAt DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  invoices Invoice[]
+
+  @@index([deletedAt])
+  @@map("invoice_headers")
+}
+
+model InvoiceFooter {
+  id        String    @id @default(uuid()) @db.Uuid
+  name      String    @db.VarChar(150)
+  lines     Json
+  isDefault Boolean   @default(false)
+  sortOrder Int       @default(0)
+  deletedAt DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  invoices Invoice[]
+
+  @@index([deletedAt])
+  @@map("invoice_footers")
+}
+
+model Client {
+  id        String    @id @default(uuid()) @db.Uuid
+  name      String    @db.VarChar(255)
+  content   String    @db.Text
+  isDefault Boolean   @default(false)
+  sortOrder Int       @default(0)
+  deletedAt DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  invoices Invoice[]
+
+  @@index([deletedAt])
+  @@map("clients")
+}
+
+model InvoiceDocumentSettings {
+  id           String   @id @default("default")
+  libelleStyle Json
+  updatedAt    DateTime @updatedAt
+
+  @@map("invoice_document_settings")
 }

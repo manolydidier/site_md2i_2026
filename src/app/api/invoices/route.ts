@@ -5,6 +5,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { withPermission } from "@/(permisionGuard)/lib/permissions";
 import { prisma } from "@/app/lib/prisma";
+import { Prisma } from "@/generated/prisma/client";
 import { invoiceSchema, computeInvoiceTotals } from "@/app/lib/invoices/schema";
 import { invoiceAmountInWords } from "@/app/lib/invoices/amount-in-words";
 
@@ -138,6 +139,14 @@ export async function POST(req: NextRequest) {
     const tmpRatePercent = data.tmpRatePercent ?? 8;
 
     const invoice = await prisma.$transaction(async (tx) => {
+      // Snapshot des coordonnées du fournisseur / du contenu client choisis
+      // au moment de la création, pour ne jamais changer rétroactivement une
+      // facture déjà émise si le fournisseur ou le client est modifié plus tard.
+      const [supplierRecord, clientRecord] = await Promise.all([
+        data.supplierId ? tx.invoiceSupplier.findUnique({ where: { id: data.supplierId } }) : null,
+        data.clientId ? tx.client.findUnique({ where: { id: data.clientId } }) : null,
+      ]);
+
       return tx.invoice.create({
         data: {
           invoiceNumber: data.invoiceNumber,
@@ -163,9 +172,23 @@ export async function POST(req: NextRequest) {
           signature: data.signature || null,
           status: data.status || "DRAFT",
           userId: session.user.id,
+          supplierId: data.supplierId || null,
+          paymentModeId: data.paymentModeId || null,
+          dateTypeId: data.dateTypeId || null,
+          headerId: data.headerId || null,
+          footerId: data.footerId || null,
+          clientId: data.clientId || null,
+          supplierAddress: supplierRecord?.address || null,
+          supplierPhone: supplierRecord?.phone || null,
+          supplierEmail: supplierRecord?.email || null,
+          supplierStatNumber: supplierRecord?.statNumber || null,
+          supplierNif: supplierRecord?.nif || null,
+          supplierRcs: supplierRecord?.rcs || null,
+          clientContent: clientRecord?.content ?? undefined,
           lines: {
             create: computedLines.map((line) => ({
               libelle: line.libelle,
+              libelleRuns: line.libelleRuns ?? Prisma.JsonNull,
               unite: line.unite || null,
               quantite: line.quantite,
               prixUnitaire: line.prixUnitaire,

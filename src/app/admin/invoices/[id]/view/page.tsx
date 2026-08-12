@@ -3,11 +3,14 @@
 import { useEffect, useState, type CSSProperties } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
+import Image from "next/image";
 import { ArrowLeft, FileDown, FileSpreadsheet, Pencil } from "lucide-react";
+import { toCssStyle, DEFAULT_LIBELLE_STYLE, type TextStyle, type TextLine, type TextRun } from "@/app/lib/invoices/style";
 
 type InvoiceLine = {
   id: string;
   libelle: string;
+  libelleRuns: TextRun[] | null;
   unite: string | null;
   quantite: string | number;
   prixUnitaire: string | number;
@@ -37,6 +40,17 @@ type Invoice = {
   iban: string | null;
   signature: string | null;
   lines: InvoiceLine[];
+  supplierAddress: string | null;
+  supplierPhone: string | null;
+  supplierEmail: string | null;
+  supplierStatNumber: string | null;
+  supplierNif: string | null;
+  supplierRcs: string | null;
+  paymentMode: { label: string } | null;
+  dateType: { label: string } | null;
+  header: { imageUrl: string; altText: string | null } | null;
+  footer: { lines: TextLine[] } | null;
+  clientContent: string | null;
 };
 
 function formatAmount(value: string | number) {
@@ -56,15 +70,24 @@ export default function InvoiceViewPage() {
   const id = params.id as string;
 
   const [invoice, setInvoice] = useState<Invoice | null>(null);
+  const [libelleStyle, setLibelleStyle] = useState<TextStyle>(DEFAULT_LIBELLE_STYLE);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    fetch(`/api/invoices/${id}`, { cache: "no-store" })
-      .then(async (res) => {
+    Promise.all([
+      fetch(`/api/invoices/${id}`, { cache: "no-store" }).then(async (res) => {
         const json = await res.json();
         if (!res.ok) throw new Error(json.error || "Erreur lors du chargement.");
-        setInvoice(json.data);
+        return json.data as Invoice;
+      }),
+      fetch(`/api/invoice-document-settings`, { cache: "no-store" })
+        .then((res) => (res.ok ? res.json() : null))
+        .catch(() => null),
+    ])
+      .then(([invoiceData, settingsJson]) => {
+        setInvoice(invoiceData);
+        if (settingsJson?.data?.libelleStyle) setLibelleStyle(settingsJson.data.libelleStyle);
       })
       .catch((err) => setError(err instanceof Error ? err.message : "Erreur lors du chargement."))
       .finally(() => setLoading(false));
@@ -105,14 +128,38 @@ export default function InvoiceViewPage() {
       </div>
 
       <div className="invoice-view-card" style={s.card}>
-        <div style={s.headerRow}>
-          <div>
-            <div style={s.label}>Fournisseur</div>
-            <div style={s.value}>{invoice.supplier}</div>
+        {invoice.header && (
+          <div style={{ marginBottom: 16, textAlign: "center" }}>
+            <Image
+              src={invoice.header.imageUrl}
+              alt={invoice.header.altText || "En-tête"}
+              width={700}
+              height={100}
+              style={{ width: "100%", height: "auto", maxHeight: 100, objectFit: "contain" }}
+              unoptimized
+            />
           </div>
-          <div>
-            <div style={s.label}>Client</div>
-            <div style={s.value}>{invoice.client}</div>
+        )}
+
+        <div style={s.invoiceNumberRow}>N° Facture : {invoice.invoiceNumber}</div>
+
+        <div style={s.partiesGrid}>
+          <div style={s.partyBox}>
+            <div style={s.partyLabel}>Fournisseur</div>
+            <div style={s.partyName}>{invoice.supplier}</div>
+            {invoice.supplierAddress && <div style={s.partyLine}>{invoice.supplierAddress}</div>}
+            {invoice.supplierPhone && <div style={s.partyLine}>Tél : {invoice.supplierPhone}</div>}
+            {invoice.supplierEmail && <div style={s.partyLine}>Email : {invoice.supplierEmail}</div>}
+            {invoice.supplierStatNumber && <div style={s.partyLine}>N° Stat : {invoice.supplierStatNumber}</div>}
+            {invoice.supplierNif && <div style={s.partyLine}>NIF : {invoice.supplierNif}</div>}
+            {invoice.supplierRcs && <div style={s.partyLine}>RCS : {invoice.supplierRcs}</div>}
+          </div>
+          <div style={s.partyBox}>
+            <div style={s.partyLabel}>Client</div>
+            <div style={s.partyName}>{invoice.client}</div>
+            {invoice.clientContent && (
+              <div style={s.clientRichContent} dangerouslySetInnerHTML={{ __html: invoice.clientContent }} />
+            )}
           </div>
         </div>
 
@@ -122,10 +169,11 @@ export default function InvoiceViewPage() {
         </div>
 
         <div style={s.section}>
-          <div><strong>Date :</strong> {formatDate(invoice.invoiceDate)}</div>
+          <div><strong>{invoice.dateType?.label || "Date"} :</strong> {formatDate(invoice.invoiceDate)}</div>
           <div><strong>Objet :</strong> {invoice.object}</div>
           {invoice.lotDescription && <div>{invoice.lotDescription}</div>}
           {invoice.contractRef && <div><strong>Réf :</strong> {invoice.contractRef}</div>}
+          {invoice.paymentMode?.label && <div><strong>Mode de paiement :</strong> {invoice.paymentMode.label}</div>}
         </div>
 
         <table style={s.table}>
@@ -141,7 +189,17 @@ export default function InvoiceViewPage() {
           <tbody>
             {invoice.lines.map((line) => (
               <tr key={line.id}>
-                <td style={s.td}>{line.libelle}</td>
+                <td style={s.td}>
+                  {line.libelleRuns && line.libelleRuns.length > 0 ? (
+                    line.libelleRuns.map((run, index) => (
+                      <span key={index} style={run.style ? toCssStyle(run.style) : undefined}>
+                        {run.text}
+                      </span>
+                    ))
+                  ) : (
+                    <span style={toCssStyle(libelleStyle)}>{line.libelle}</span>
+                  )}
+                </td>
                 <td style={s.td}>{line.unite || ""}</td>
                 <td style={{ ...s.td, textAlign: "right" }}>{formatAmount(line.quantite)}</td>
                 <td style={{ ...s.td, textAlign: "right" }}>{formatAmount(line.prixUnitaire)}</td>
@@ -157,7 +215,7 @@ export default function InvoiceViewPage() {
         </div>
 
         {invoice.amountInWords && (
-          <div style={s.wordsBox}>Montant en lettres : {invoice.amountInWords}</div>
+          <div style={s.wordsBox}>Montant en lettres : <strong>{invoice.amountInWords}</strong></div>
         )}
 
         <div style={s.section}>
@@ -175,6 +233,14 @@ export default function InvoiceViewPage() {
           {invoice.bic && <div>BIC : {invoice.bic}</div>}
           {invoice.iban && <div>IBAN : {invoice.iban}</div>}
         </div>
+
+        {invoice.footer?.lines && invoice.footer.lines.length > 0 && (
+          <div style={{ marginTop: 16, paddingTop: 12, borderTop: `1px solid ${BORDER}` }}>
+            {invoice.footer.lines.map((line, index) => (
+              <div key={index} style={toCssStyle(line.style)}>{line.text}</div>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );
@@ -194,7 +260,13 @@ const s: Record<string, CSSProperties> = {
   primaryButton: { height: 40, padding: "0 16px", borderRadius: 10, display: "inline-flex", alignItems: "center", gap: 8, fontSize: 13, fontWeight: 700, background: ORANGE, color: "#1a0d00", textDecoration: "none" },
   secondaryButton: { height: 40, padding: "0 16px", borderRadius: 10, display: "inline-flex", alignItems: "center", gap: 8, fontSize: 13, fontWeight: 700, background: SURFACE, color: TEXT, border: `1px solid ${BORDER}`, textDecoration: "none" },
   card: { background: SURFACE, border: `1px solid ${BORDER}`, borderRadius: 18, padding: 32, maxWidth: 900, margin: "0 auto", boxShadow: "0 12px 34px rgba(15,23,42,0.06)" },
-  headerRow: { display: "flex", justifyContent: "space-between", marginBottom: 18, fontWeight: 700, textDecoration: "underline" },
+  invoiceNumberRow: { textAlign: "right", fontSize: 13, fontWeight: 800, marginBottom: 10, color: TEXT },
+  partiesGrid: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, marginBottom: 18 },
+  partyBox: { background: "#F1F5F9", borderRadius: 10, padding: 14 },
+  partyLabel: { fontSize: 11, fontWeight: 800, color: MUTED, textTransform: "uppercase", marginBottom: 4 },
+  partyName: { fontSize: 15, fontWeight: 700, marginBottom: 4 },
+  partyLine: { fontSize: 12.5, color: "#334155", marginTop: 2 },
+  clientRichContent: { fontSize: 12.5, color: "#334155", marginTop: 4, lineHeight: 1.6 },
   label: { fontSize: 11, color: MUTED, textTransform: "uppercase", fontWeight: 700, marginBottom: 2 },
   value: { fontSize: 15, fontWeight: 700 },
   muted: { fontSize: 13, color: MUTED },
