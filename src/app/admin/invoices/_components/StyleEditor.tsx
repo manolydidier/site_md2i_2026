@@ -4,7 +4,7 @@ import type { CSSProperties } from "react";
 import { Bold, Italic, Underline, AlignLeft, AlignCenter, AlignRight } from "lucide-react";
 import { SAFE_FONT_FAMILIES, type TextStyle, type TextAlign } from "@/app/lib/invoices/style";
 
-const BORDER = "#E5E7EB";
+const BORDER = "#E7E4DD";
 const ORANGE = "#EF9F27";
 
 export default function StyleEditor({

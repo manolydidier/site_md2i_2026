@@ -3,6 +3,7 @@
 // PATCH /api/invoice-document-settings — mise à jour du style LIBELLE global
 
 import { NextRequest, NextResponse } from "next/server";
+import { z } from "zod";
 import { prisma } from "@/app/lib/prisma";
 import { withPermission } from "@/(permisionGuard)/lib/permissions";
 import { logAudit } from "@/(permisionGuard)/lib/audit";
@@ -11,6 +12,12 @@ import { DEFAULT_LIBELLE_STYLE, textStyleSchema } from "@/app/lib/invoices/style
 export const dynamic = "force-dynamic";
 
 const SETTINGS_ID = "default";
+
+const patchSchema = z.object({
+  libelleStyle: textStyleSchema.optional(),
+  facturePrefix: z.string().max(20).optional(),
+  proformaPrefix: z.string().max(20).optional(),
+});
 
 export async function GET(req: NextRequest) {
   const guard = await withPermission(req, { resource: "invoice_settings", action: "canList" });
@@ -30,16 +37,27 @@ export async function PATCH(req: NextRequest) {
   if (!guard.ok) return guard.response;
 
   const body = await req.json().catch(() => null);
-  const parsed = textStyleSchema.safeParse(body?.libelleStyle);
+  const parsed = patchSchema.safeParse(body);
 
   if (!parsed.success) {
     return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
   }
 
+  const { libelleStyle, facturePrefix, proformaPrefix } = parsed.data;
+
   const settings = await prisma.invoiceDocumentSettings.upsert({
     where: { id: SETTINGS_ID },
-    update: { libelleStyle: parsed.data },
-    create: { id: SETTINGS_ID, libelleStyle: parsed.data },
+    update: {
+      ...(libelleStyle ? { libelleStyle } : {}),
+      ...(facturePrefix !== undefined ? { facturePrefix } : {}),
+      ...(proformaPrefix !== undefined ? { proformaPrefix } : {}),
+    },
+    create: {
+      id: SETTINGS_ID,
+      libelleStyle: libelleStyle || DEFAULT_LIBELLE_STYLE,
+      ...(facturePrefix !== undefined ? { facturePrefix } : {}),
+      ...(proformaPrefix !== undefined ? { proformaPrefix } : {}),
+    },
   });
 
   await logAudit({

@@ -18,9 +18,10 @@ type InvoiceListItem = {
   invoiceNumber: string;
   client: string;
   projectName: string;
-  invoiceDate: string;
+  invoiceDate: string | null;
   totalTtc: string | number;
   status: "DRAFT" | "ISSUED" | "PAID" | "CANCELLED";
+  documentType: "FACTURE" | "PROFORMA";
 };
 
 const STATUS_LABELS: Record<InvoiceListItem["status"], string> = {
@@ -36,7 +37,7 @@ function formatAmount(value: string | number) {
   );
 }
 
-function formatDate(value: string) {
+function formatDate(value: string | null) {
   if (!value) return "—";
   try {
     return new Intl.DateTimeFormat("fr-FR", { day: "2-digit", month: "2-digit", year: "numeric" }).format(
@@ -214,7 +215,10 @@ export default function InvoicesListPage() {
             ) : (
               invoices.map((invoice) => (
                 <tr key={invoice.id}>
-                  <td style={s.td}>{invoice.invoiceNumber}</td>
+                  <td style={s.td}>
+                    {invoice.invoiceNumber}
+                    {invoice.documentType === "PROFORMA" && <span style={s.proformaBadge}>Proforma</span>}
+                  </td>
                   <td style={s.td}>{formatDate(invoice.invoiceDate)}</td>
                   <td style={s.td}>{invoice.client}</td>
                   <td style={s.td}>{invoice.projectName}</td>
@@ -294,6 +298,7 @@ const s: Record<string, CSSProperties> = {
   td: { padding: "13px 14px", borderBottom: `1px solid ${BORDER}` },
   tdEmpty: { padding: "32px 14px", textAlign: "center", color: MUTED },
   statusBadge: { display: "inline-flex", padding: "3px 10px", borderRadius: 999, fontSize: 11, fontWeight: 700, background: "#F1F5F9", color: "#334155" },
+  proformaBadge: { display: "inline-flex", marginLeft: 8, padding: "2px 8px", borderRadius: 999, fontSize: 10, fontWeight: 800, background: "#FEF3C7", color: "#92400E" },
   actions: { display: "flex", gap: 6, justifyContent: "flex-end" },
   iconLink: { width: 34, height: 34, borderRadius: 9, display: "inline-flex", alignItems: "center", justifyContent: "center", color: MUTED, border: `1px solid ${BORDER}`, textDecoration: "none" },
   iconButtonDanger: { width: 34, height: 34, borderRadius: 9, display: "inline-flex", alignItems: "center", justifyContent: "center", color: "#991B1B", border: "1px solid #FECACA", background: "#FEF2F2", cursor: "pointer" },

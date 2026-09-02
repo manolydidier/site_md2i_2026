@@ -226,7 +226,6 @@ export default function InvoiceLinesGrid({
           columnDefs={columnDefs}
           getRowId={(p) => p.data.rowId}
           onCellValueChanged={handleCellValueChanged}
-          singleClickEdit
           stopEditingWhenCellsLoseFocus
           domLayout="normal"
         />

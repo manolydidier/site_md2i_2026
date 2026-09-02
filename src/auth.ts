@@ -7,6 +7,7 @@ import { prisma } from "@/app/lib/prisma";
 export const authOptions = {
   session: { strategy: "jwt" },
   pages: { signIn: "/login" },
+  trustHost: true,
 
   providers: [
     Credentials({

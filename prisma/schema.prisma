@@ -1664,12 +1664,14 @@ model Invoice {
   client         String        @db.VarChar(255)
   projectName    String        @db.Text
   projectAddress String?       @db.Text
-  invoiceDate    DateTime
+  invoiceDate    DateTime?
   object         String        @db.Text
   lotDescription String?       @db.Text
   contractRef    String?       @db.VarChar(255)
   totalTtc       Decimal       @default(0) @db.Decimal(14, 2)
   tmpRatePercent Decimal       @default(8) @db.Decimal(5, 2)
+  taxLabel       String        @default("taxes sur les marchés publics (TMP)") @db.VarChar(200)
+  currency       String        @default("Ar") @db.VarChar(10)
   amountInWords  String?       @db.Text
   bankName       String?       @db.VarChar(255)
   accountHolder  String?       @db.VarChar(255)
@@ -1681,6 +1683,8 @@ model Invoice {
   iban           String?       @db.VarChar(50)
   signature      String?       @db.VarChar(255)
   status         InvoiceStatus @default(DRAFT)
+  documentType     InvoiceDocumentType @default(FACTURE)
+  showDocumentType Boolean             @default(true)
   deletedAt      DateTime?
   createdAt      DateTime      @default(now())
   updatedAt      DateTime      @updatedAt
@@ -1745,6 +1749,11 @@ enum InvoiceStatus {
   ISSUED
   PAID
   CANCELLED
+}
+
+enum InvoiceDocumentType {
+  FACTURE
+  PROFORMA
 }
 
 model InvoiceSupplier {
@@ -1847,9 +1856,11 @@ model Client {
 }
 
 model InvoiceDocumentSettings {
-  id           String   @id @default("default")
-  libelleStyle Json
-  updatedAt    DateTime @updatedAt
+  id             String   @id @default("default")
+  libelleStyle   Json
+  facturePrefix  String   @default("FA-") @db.VarChar(20)
+  proformaPrefix String   @default("PRO-") @db.VarChar(20)
+  updatedAt      DateTime @updatedAt
 
   @@map("invoice_document_settings")
 }

@@ -5,6 +5,14 @@
 import { z } from "zod";
 import { textRunsSchema } from "./style";
 
+// Date de facture non obligatoire : l'utilisateur peut la laisser vide,
+// choisir la date du jour ou saisir n'importe quelle date — "" est normalisé
+// en `null` avant validation plutôt que rejeté comme date invalide.
+const optionalInvoiceDate = z.preprocess(
+  (val) => (val === "" || val === null || val === undefined ? null : val),
+  z.coerce.date({ message: "Date invalide" }).nullable()
+);
+
 export const invoiceLineSchema = z.object({
   id: z.string().uuid().optional(),
   libelle: z.string().trim().min(1, "Libellé requis"),
@@ -21,11 +29,13 @@ export const invoiceSchema = z.object({
   client: z.string().trim().min(1, "Client requis").max(255),
   projectName: z.string().trim().min(1, "Projet requis"),
   projectAddress: z.string().trim().max(2000).optional().nullable(),
-  invoiceDate: z.coerce.date({ message: "Date invalide" }),
+  invoiceDate: optionalInvoiceDate,
   object: z.string().trim().min(1, "Objet requis"),
   lotDescription: z.string().trim().optional().nullable(),
   contractRef: z.string().trim().max(255).optional().nullable(),
   tmpRatePercent: z.coerce.number().min(0).max(100).optional(),
+  taxLabel: z.string().max(200).optional(),
+  currency: z.string().max(10).optional(),
   bankName: z.string().trim().max(255).optional().nullable(),
   accountHolder: z.string().trim().max(255).optional().nullable(),
   accountNumber: z.string().trim().max(100).optional().nullable(),
@@ -36,6 +46,8 @@ export const invoiceSchema = z.object({
   iban: z.string().trim().max(50).optional().nullable(),
   signature: z.string().trim().max(255).optional().nullable(),
   status: z.enum(["DRAFT", "ISSUED", "PAID", "CANCELLED"]).optional(),
+  documentType: z.enum(["FACTURE", "PROFORMA"]).optional(),
+  showDocumentType: z.boolean().optional(),
   supplierId: z.string().uuid().optional().nullable(),
   paymentModeId: z.string().uuid().optional().nullable(),
   dateTypeId: z.string().uuid().optional().nullable(),

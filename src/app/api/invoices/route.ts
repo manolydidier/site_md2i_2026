@@ -20,10 +20,20 @@ function logError(label: string, data?: Record<string, unknown>) {
   console.error(`[invoices-api][${label}]`, data || {});
 }
 
-/** Propose un numéro de facture au format FA-{année}-{séquence sur 4 chiffres}. */
-async function suggestInvoiceNumber() {
+/**
+ * Propose un numéro de facture au format {préfixe}{année}-{séquence sur 4
+ * chiffres}. Le préfixe dépend du type de document (Facture / Facture
+ * Proforma) et est configurable dans les paramètres de facturation.
+ */
+async function suggestInvoiceNumber(documentType: "FACTURE" | "PROFORMA") {
+  const settings = await prisma.invoiceDocumentSettings.findUnique({ where: { id: "default" } });
+  const prefixBase =
+    documentType === "PROFORMA"
+      ? settings?.proformaPrefix || "PRO-"
+      : settings?.facturePrefix || "FA-";
+
   const year = new Date().getFullYear();
-  const prefix = `FA-${year}-`;
+  const prefix = `${prefixBase}${year}-`;
 
   const count = await prisma.invoice.count({
     where: { invoiceNumber: { startsWith: prefix } },
@@ -47,9 +57,11 @@ export async function GET(req: NextRequest) {
   const dateTo = searchParams.get("dateTo") || undefined;
   const search = searchParams.get("search") || undefined;
 
-  // Suggestion de numéro pour le formulaire de création (appelé avec ?suggestNumber=1)
+  // Suggestion de numéro pour le formulaire de création (appelé avec ?suggestNumber=1),
+  // le préfixe suit le type de document choisi (?documentType=FACTURE|PROFORMA).
   if (searchParams.get("suggestNumber")) {
-    const invoiceNumber = await suggestInvoiceNumber();
+    const documentType = searchParams.get("documentType") === "PROFORMA" ? "PROFORMA" : "FACTURE";
+    const invoiceNumber = await suggestInvoiceNumber(documentType);
     return NextResponse.json({ invoiceNumber });
   }
 
@@ -94,6 +106,7 @@ export async function GET(req: NextRequest) {
           invoiceDate: true,
           totalTtc: true,
           status: true,
+          documentType: true,
         },
       }),
       prisma.invoice.count({ where }),
@@ -137,6 +150,8 @@ export async function POST(req: NextRequest) {
     const data = parsed.data;
     const { computedLines, totalTtc } = computeInvoiceTotals(data.lines);
     const tmpRatePercent = data.tmpRatePercent ?? 8;
+    const taxLabel = data.taxLabel?.trim() || "taxes sur les marchés publics (TMP)";
+    const currency = data.currency?.trim() || "Ar";
 
     const invoice = await prisma.$transaction(async (tx) => {
       // Snapshot des coordonnées du fournisseur / du contenu client choisis
@@ -160,7 +175,9 @@ export async function POST(req: NextRequest) {
           contractRef: data.contractRef || null,
           totalTtc,
           tmpRatePercent,
-          amountInWords: invoiceAmountInWords(totalTtc, tmpRatePercent),
+          taxLabel,
+          currency,
+          amountInWords: invoiceAmountInWords(totalTtc, tmpRatePercent, taxLabel),
           bankName: data.bankName || null,
           accountHolder: data.accountHolder || null,
           accountNumber: data.accountNumber || null,
@@ -171,6 +188,8 @@ export async function POST(req: NextRequest) {
           iban: data.iban || null,
           signature: data.signature || null,
           status: data.status || "DRAFT",
+          documentType: data.documentType || "FACTURE",
+          showDocumentType: data.showDocumentType ?? true,
           userId: session.user.id,
           supplierId: data.supplierId || null,
           paymentModeId: data.paymentModeId || null,

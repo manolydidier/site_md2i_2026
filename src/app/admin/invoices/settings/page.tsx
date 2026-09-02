@@ -2,18 +2,19 @@
 
 import { useCallback, useEffect, useState, type CSSProperties } from "react";
 import Link from "next/link";
-import { ArrowLeft, Plus, Trash2, Star, Upload, Pencil, X } from "lucide-react";
+import { ArrowLeft, Plus, Trash2, Star, Upload, Pencil, X, Truck, Users2, CreditCard, Image as ImageIcon, FileStack, Type } from "lucide-react";
 import { usePermissions } from "@/(permisionGuard)/context/PermissionsContext";
 import StyleEditor from "../_components/StyleEditor";
 import RichTextEditor from "../_components/RichTextEditor";
 import { DEFAULT_LIBELLE_STYLE, DEFAULT_TEXT_STYLE, type TextStyle, type TextLine } from "@/app/lib/invoices/style";
 
 const ORANGE = "#EF9F27";
-const BG = "#F8FAFC";
+const ORANGE_DEEP = "#B4610F";
+const BG = "#F8F7F4";
 const SURFACE = "#FFFFFF";
-const BORDER = "#E5E7EB";
-const TEXT = "#111827";
-const MUTED = "#6B7280";
+const BORDER = "#E7E4DD";
+const TEXT = "#1C1917";
+const MUTED = "#6B6660";
 
 type Supplier = {
   id: string;
@@ -33,13 +34,12 @@ type Footer = { id: string; name: string; lines: TextLine[]; isDefault: boolean 
 type ClientRecord = { id: string; name: string; content: string; isDefault: boolean };
 
 const TABS = [
-  { key: "suppliers", label: "Fournisseurs" },
-  { key: "clients", label: "Clients" },
-  { key: "payment-modes", label: "Modes de paiement" },
-  { key: "date-types", label: "Types de date" },
-  { key: "headers", label: "En-têtes" },
-  { key: "footers", label: "Pieds de page" },
-  { key: "libelle-style", label: "Style LIBELLE" },
+  { key: "suppliers", label: "Fournisseurs", description: "Les émetteurs possibles d'une facture.", icon: Truck },
+  { key: "clients", label: "Clients", description: "Contenu riche (texte, images) affiché sur la facture.", icon: Users2 },
+  { key: "payment-modes", label: "Modes de paiement", description: "Options proposées sur chaque facture.", icon: CreditCard },
+  { key: "headers", label: "En-têtes", description: "Images utilisables en haut du document.", icon: ImageIcon },
+  { key: "footers", label: "Pieds de page", description: "Mentions légales réutilisables en bas du document.", icon: FileStack },
+  { key: "libelle-style", label: "Style & numérotation", description: "Style global de la colonne LIBELLE et préfixes de numérotation.", icon: Type },
 ] as const;
 
 type TabKey = (typeof TABS)[number]["key"];
@@ -48,9 +48,41 @@ export default function InvoiceSettingsPage() {
   const { can } = usePermissions();
   const canManage = can("invoice_settings", "canCreate") || can("invoice_settings", "canUpdate");
   const [tab, setTab] = useState<TabKey>("suppliers");
+  const activeTab = TABS.find((t) => t.key === tab)!;
 
   return (
-    <div style={s.page}>
+    <div style={s.page} className="stg-form">
+      <style>{`
+        .stg-form input:focus, .stg-form select:focus, .stg-form textarea:focus {
+          outline: none;
+          border-color: ${ORANGE};
+          box-shadow: 0 0 0 3px rgba(239,159,39,0.14);
+        }
+        .stg-form input:hover:not(:focus):not(:disabled) { border-color: #C9C4BB; }
+        .stg-add-btn:hover:not(:disabled) { filter: brightness(1.04); }
+        .stg-add-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+        .stg-secondary-btn:hover { background: #F5F4F1; }
+        .stg-icon-btn:hover { background: #F5F4F1; }
+        .stg-icon-btn-danger:hover { background: #FEE2E2; }
+        .stg-row:hover { background: #FBFAF9; }
+
+        .stg-workspace { display: grid; grid-template-columns: 208px 1fr; background: ${SURFACE}; border: 1px solid ${BORDER}; border-radius: 12px; overflow: hidden; }
+        .stg-rail { display: flex; flex-direction: column; gap: 1px; padding: 12px 8px; border-right: 1px solid ${BORDER}; background: #FBFAF9; }
+        .stg-rail-item { display: flex; align-items: center; gap: 9px; padding: 8px 10px; border-radius: 7px; border: none; background: transparent; color: #57534E; font-size: 13px; font-weight: 600; text-align: left; cursor: pointer; transition: background .12s ease, color .12s ease; }
+        .stg-rail-item:hover:not(.active) { background: #F1F0EC; color: #1C1917; }
+        .stg-rail-item.active { background: ${SURFACE}; color: #1C1917; box-shadow: inset 2px 0 0 ${ORANGE}; font-weight: 700; }
+        .stg-rail-item svg { flex-shrink: 0; color: #A8A29E; }
+        .stg-rail-item.active svg { color: ${ORANGE}; }
+        .stg-content { padding: 28px 32px; min-width: 0; }
+
+        @media (max-width: 760px) {
+          .stg-workspace { grid-template-columns: 1fr; border-radius: 10px; }
+          .stg-rail { flex-direction: row; overflow-x: auto; border-right: none; border-bottom: 1px solid ${BORDER}; padding: 8px; }
+          .stg-rail-item.active { box-shadow: inset 0 -2px 0 ${ORANGE}; }
+          .stg-content { padding: 20px; }
+        }
+      `}</style>
+
       <header style={s.header}>
         <div>
           <Link href="/admin/invoices" style={s.backLink}>
@@ -61,27 +93,36 @@ export default function InvoiceSettingsPage() {
         </div>
       </header>
 
-      <div style={s.tabRow}>
-        {TABS.map((t) => (
-          <button
-            key={t.key}
-            type="button"
-            onClick={() => setTab(t.key)}
-            style={{ ...s.tabButton, ...(tab === t.key ? s.tabButtonActive : {}) }}
-          >
-            {t.label}
-          </button>
-        ))}
-      </div>
+      <div className="stg-workspace">
+        <nav className="stg-rail">
+          {TABS.map((t) => {
+            const Icon = t.icon;
+            const isActive = tab === t.key;
+            return (
+              <button
+                key={t.key}
+                type="button"
+                onClick={() => setTab(t.key)}
+                className={`stg-rail-item${isActive ? " active" : ""}`}
+              >
+                <Icon size={15} />
+                {t.label}
+              </button>
+            );
+          })}
+        </nav>
 
-      <div style={s.card}>
-        {tab === "suppliers" && <SuppliersTab canManage={canManage} />}
-        {tab === "clients" && <ClientsTab canManage={canManage} />}
-        {tab === "payment-modes" && <SimpleListTab canManage={canManage} endpoint="/api/invoice-payment-modes" label="mode de paiement" />}
-        {tab === "date-types" && <SimpleListTab canManage={canManage} endpoint="/api/invoice-date-types" label="type de date" />}
-        {tab === "headers" && <HeadersTab canManage={canManage} />}
-        {tab === "footers" && <FootersTab canManage={canManage} />}
-        {tab === "libelle-style" && <LibelleStyleTab canManage={canManage} />}
+        <div className="stg-content">
+          <h2 style={s.sectionHeading}>{activeTab.label}</h2>
+          <p style={s.sectionSubheading}>{activeTab.description}</p>
+
+          {tab === "suppliers" && <SuppliersTab canManage={canManage} />}
+          {tab === "clients" && <ClientsTab canManage={canManage} />}
+          {tab === "payment-modes" && <SimpleListTab canManage={canManage} endpoint="/api/invoice-payment-modes" label="mode de paiement" />}
+          {tab === "headers" && <HeadersTab canManage={canManage} />}
+          {tab === "footers" && <FootersTab canManage={canManage} />}
+          {tab === "libelle-style" && <LibelleStyleTab canManage={canManage} />}
+        </div>
       </div>
     </div>
   );
@@ -145,7 +186,7 @@ function SuppliersTab({ canManage }: { canManage: boolean }) {
           <input placeholder="N° Stat" value={form.statNumber} onChange={(e) => setForm({ ...form, statNumber: e.target.value })} style={s.input} />
           <input placeholder="NIF" value={form.nif} onChange={(e) => setForm({ ...form, nif: e.target.value })} style={s.input} />
           <input placeholder="RCS" value={form.rcs} onChange={(e) => setForm({ ...form, rcs: e.target.value })} style={s.input} />
-          <button type="button" onClick={handleCreate} disabled={saving} style={s.addButton}>
+          <button type="button" onClick={handleCreate} disabled={saving} style={s.addButton} className="stg-add-btn">
             <Plus size={14} /> Ajouter
           </button>
         </div>
@@ -156,7 +197,7 @@ function SuppliersTab({ canManage }: { canManage: boolean }) {
       ) : (
         <div style={s.list}>
           {items.map((item) => (
-            <div key={item.id} style={s.listRow}>
+            <div key={item.id} style={s.listRow} className="stg-row">
               <div>
                 <div style={s.listTitle}>
                   {item.name} {item.isDefault && <span style={s.defaultBadge}>Par défaut</span>}
@@ -167,10 +208,10 @@ function SuppliersTab({ canManage }: { canManage: boolean }) {
               </div>
               {canManage && (
                 <div style={s.listActions}>
-                  <button type="button" onClick={() => handleSetDefault(item.id)} style={s.iconButton} title="Définir par défaut">
+                  <button type="button" onClick={() => handleSetDefault(item.id)} style={s.iconButton} className="stg-icon-btn" title="Définir par défaut">
                     <Star size={14} fill={item.isDefault ? ORANGE : "none"} color={item.isDefault ? ORANGE : MUTED} />
                   </button>
-                  <button type="button" onClick={() => handleDelete(item.id)} style={s.iconButtonDanger} title="Supprimer">
+                  <button type="button" onClick={() => handleDelete(item.id)} style={s.iconButtonDanger} className="stg-icon-btn-danger" title="Supprimer">
                     <Trash2 size={14} />
                   </button>
                 </div>
@@ -262,7 +303,7 @@ function ClientsTab({ canManage }: { canManage: boolean }) {
           <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
             <input placeholder="Nom du client" value={name} onChange={(e) => setName(e.target.value)} style={{ ...s.input, flex: 1 }} />
             {editingId && (
-              <button type="button" onClick={resetForm} style={s.iconButton} title="Annuler la modification">
+              <button type="button" onClick={resetForm} style={s.iconButton} className="stg-icon-btn" title="Annuler la modification">
                 <X size={14} />
               </button>
             )}
@@ -270,7 +311,7 @@ function ClientsTab({ canManage }: { canManage: boolean }) {
 
           <RichTextEditor key={editingId ?? "new"} initialValue={content} onChange={setContent} uploadFolder="clients" />
 
-          <button type="button" onClick={handleSave} disabled={saving} style={{ ...s.addButton, alignSelf: "flex-start" }}>
+          <button type="button" onClick={handleSave} disabled={saving} style={{ ...s.addButton, alignSelf: "flex-start" }} className="stg-add-btn">
             {saving ? "Enregistrement…" : editingId ? "Enregistrer les modifications" : "Créer ce client"}
           </button>
         </div>
@@ -281,7 +322,7 @@ function ClientsTab({ canManage }: { canManage: boolean }) {
       ) : (
         <div style={s.list}>
           {items.map((item) => (
-            <div key={item.id} style={s.listRow}>
+            <div key={item.id} style={s.listRow} className="stg-row">
               <div>
                 <div style={s.listTitle}>
                   {item.name} {item.isDefault && <span style={s.defaultBadge}>Par défaut</span>}
@@ -289,13 +330,13 @@ function ClientsTab({ canManage }: { canManage: boolean }) {
               </div>
               {canManage && (
                 <div style={s.listActions}>
-                  <button type="button" onClick={() => handleSetDefault(item.id)} style={s.iconButton} title="Définir par défaut">
+                  <button type="button" onClick={() => handleSetDefault(item.id)} style={s.iconButton} className="stg-icon-btn" title="Définir par défaut">
                     <Star size={14} fill={item.isDefault ? ORANGE : "none"} color={item.isDefault ? ORANGE : MUTED} />
                   </button>
-                  <button type="button" onClick={() => startEdit(item)} style={s.iconButton} title="Modifier">
+                  <button type="button" onClick={() => startEdit(item)} style={s.iconButton} className="stg-icon-btn" title="Modifier">
                     <Pencil size={14} />
                   </button>
-                  <button type="button" onClick={() => handleDelete(item.id)} style={s.iconButtonDanger} title="Supprimer">
+                  <button type="button" onClick={() => handleDelete(item.id)} style={s.iconButtonDanger} className="stg-icon-btn-danger" title="Supprimer">
                     <Trash2 size={14} />
                   </button>
                 </div>
@@ -373,11 +414,11 @@ function SimpleListTab({ canManage, endpoint, label }: { canManage: boolean; end
             style={{ ...s.input, flex: 1 }}
           />
           {editingId && (
-            <button type="button" onClick={resetForm} style={s.iconButton} title="Annuler la modification">
+            <button type="button" onClick={resetForm} style={s.iconButton} className="stg-icon-btn" title="Annuler la modification">
               <X size={14} />
             </button>
           )}
-          <button type="button" onClick={handleSave} disabled={saving} style={s.addButton}>
+          <button type="button" onClick={handleSave} disabled={saving} style={s.addButton} className="stg-add-btn">
             {editingId ? "Enregistrer" : <><Plus size={14} /> Ajouter</>}
           </button>
         </div>
@@ -388,19 +429,19 @@ function SimpleListTab({ canManage, endpoint, label }: { canManage: boolean; end
       ) : (
         <div style={s.list}>
           {items.map((item) => (
-            <div key={item.id} style={s.listRow}>
+            <div key={item.id} style={s.listRow} className="stg-row">
               <div style={s.listTitle}>{item.label}</div>
               {canManage && (
                 <div style={s.listActions}>
                   <button
                     type="button"
                     onClick={() => { setEditingId(item.id); setNewLabel(item.label); }}
-                    style={s.iconButton}
+                    style={s.iconButton} className="stg-icon-btn"
                     title="Modifier"
                   >
                     <Pencil size={14} />
                   </button>
-                  <button type="button" onClick={() => handleDelete(item.id)} style={s.iconButtonDanger} title="Supprimer">
+                  <button type="button" onClick={() => handleDelete(item.id)} style={s.iconButtonDanger} className="stg-icon-btn-danger" title="Supprimer">
                     <Trash2 size={14} />
                   </button>
                 </div>
@@ -491,7 +532,7 @@ function HeadersTab({ canManage }: { canManage: boolean }) {
       {canManage && (
         <div style={{ display: "flex", gap: 10, marginBottom: 18, alignItems: "center" }}>
           <input placeholder="Nom de l'en-tête" value={name} onChange={(e) => setName(e.target.value)} style={{ ...s.input, flex: 1 }} />
-          <label style={s.uploadButton}>
+          <label style={s.uploadButton} className="stg-secondary-btn">
             <Upload size={14} />
             {uploading ? "Envoi…" : "Uploader une image"}
             <input
@@ -525,10 +566,10 @@ function HeadersTab({ canManage }: { canManage: boolean }) {
                     style={{ ...s.input, flex: 1, height: 32 }}
                     autoFocus
                   />
-                  <button type="button" onClick={() => handleRename(item.id)} style={s.iconButton} title="Enregistrer">
+                  <button type="button" onClick={() => handleRename(item.id)} style={s.iconButton} className="stg-icon-btn" title="Enregistrer">
                     <Pencil size={12} />
                   </button>
-                  <button type="button" onClick={() => setRenamingId(null)} style={s.iconButton} title="Annuler">
+                  <button type="button" onClick={() => setRenamingId(null)} style={s.iconButton} className="stg-icon-btn" title="Annuler">
                     <X size={12} />
                   </button>
                 </div>
@@ -539,18 +580,18 @@ function HeadersTab({ canManage }: { canManage: boolean }) {
               )}
               {canManage && (
                 <div style={s.listActions}>
-                  <button type="button" onClick={() => handleSetDefault(item.id)} style={s.iconButton} title="Définir par défaut">
+                  <button type="button" onClick={() => handleSetDefault(item.id)} style={s.iconButton} className="stg-icon-btn" title="Définir par défaut">
                     <Star size={14} fill={item.isDefault ? ORANGE : "none"} color={item.isDefault ? ORANGE : MUTED} />
                   </button>
                   <button
                     type="button"
                     onClick={() => { setRenamingId(item.id); setRenameValue(item.name); }}
-                    style={s.iconButton}
+                    style={s.iconButton} className="stg-icon-btn"
                     title="Renommer"
                   >
                     <Pencil size={14} />
                   </button>
-                  <button type="button" onClick={() => handleDelete(item.id)} style={s.iconButtonDanger} title="Supprimer">
+                  <button type="button" onClick={() => handleDelete(item.id)} style={s.iconButtonDanger} className="stg-icon-btn-danger" title="Supprimer">
                     <Trash2 size={14} />
                   </button>
                 </div>
@@ -637,7 +678,7 @@ function FootersTab({ canManage }: { canManage: boolean }) {
           <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
             <input placeholder="Nom du pied de page" value={name} onChange={(e) => setName(e.target.value)} style={{ ...s.input, flex: 1 }} />
             {editingId && (
-              <button type="button" onClick={resetForm} style={s.iconButton} title="Annuler la modification">
+              <button type="button" onClick={resetForm} style={s.iconButton} className="stg-icon-btn" title="Annuler la modification">
                 <X size={14} />
               </button>
             )}
@@ -645,21 +686,24 @@ function FootersTab({ canManage }: { canManage: boolean }) {
 
           {lines.map((line, index) => (
             <div key={index} style={s.footerLineEditor}>
+              <div style={s.footerLineHeader}>
+                <span style={s.footerLineIndex}>Ligne {index + 1}</span>
+                <button
+                  type="button"
+                  onClick={() => setLines((prev) => prev.filter((_, i) => i !== index))}
+                  style={s.iconButtonDanger} className="stg-icon-btn-danger"
+                  title="Retirer la ligne"
+                >
+                  <Trash2 size={14} />
+                </button>
+              </div>
               <input
                 placeholder={`Ligne ${index + 1}`}
                 value={line.text}
                 onChange={(e) => updateLine(index, { text: e.target.value })}
-                style={s.input}
+                style={{ ...s.input, width: "100%" }}
               />
               <StyleEditor compact value={line.style} onChange={(style) => updateLine(index, { style })} />
-              <button
-                type="button"
-                onClick={() => setLines((prev) => prev.filter((_, i) => i !== index))}
-                style={s.iconButtonDanger}
-                title="Retirer la ligne"
-              >
-                <Trash2 size={14} />
-              </button>
             </div>
           ))}
 
@@ -667,11 +711,11 @@ function FootersTab({ canManage }: { canManage: boolean }) {
             <button
               type="button"
               onClick={() => setLines((prev) => [...prev, { text: "", style: DEFAULT_TEXT_STYLE }])}
-              style={s.secondaryButton}
+              style={s.secondaryButton} className="stg-secondary-btn"
             >
               <Plus size={14} /> Ajouter une ligne
             </button>
-            <button type="button" onClick={handleSave} disabled={saving} style={s.addButton}>
+            <button type="button" onClick={handleSave} disabled={saving} style={s.addButton} className="stg-add-btn">
               {saving ? "Enregistrement…" : editingId ? "Enregistrer les modifications" : "Créer ce pied de page"}
             </button>
           </div>
@@ -683,17 +727,17 @@ function FootersTab({ canManage }: { canManage: boolean }) {
       ) : (
         <div style={s.list}>
           {items.map((item) => (
-            <div key={item.id} style={s.listRow}>
+            <div key={item.id} style={s.listRow} className="stg-row">
               <div>
                 <div style={s.listTitle}>{item.name}</div>
                 <div style={s.listSubtitle}>{item.lines.map((l) => l.text).join(" · ")}</div>
               </div>
               {canManage && (
                 <div style={s.listActions}>
-                  <button type="button" onClick={() => startEdit(item)} style={s.iconButton} title="Modifier">
+                  <button type="button" onClick={() => startEdit(item)} style={s.iconButton} className="stg-icon-btn" title="Modifier">
                     <Pencil size={14} />
                   </button>
-                  <button type="button" onClick={() => handleDelete(item.id)} style={s.iconButtonDanger} title="Supprimer">
+                  <button type="button" onClick={() => handleDelete(item.id)} style={s.iconButtonDanger} className="stg-icon-btn-danger" title="Supprimer">
                     <Trash2 size={14} />
                   </button>
                 </div>
@@ -710,6 +754,8 @@ function FootersTab({ canManage }: { canManage: boolean }) {
 // ── Style LIBELLE global ────────────────────────────────────────────────────
 function LibelleStyleTab({ canManage }: { canManage: boolean }) {
   const [style, setStyle] = useState<TextStyle>(DEFAULT_LIBELLE_STYLE);
+  const [facturePrefix, setFacturePrefix] = useState("FA-");
+  const [proformaPrefix, setProformaPrefix] = useState("PRO-");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -719,6 +765,8 @@ function LibelleStyleTab({ canManage }: { canManage: boolean }) {
       .then((r) => r.json())
       .then((j) => {
         if (j?.data?.libelleStyle) setStyle(j.data.libelleStyle);
+        if (j?.data?.facturePrefix) setFacturePrefix(j.data.facturePrefix);
+        if (j?.data?.proformaPrefix) setProformaPrefix(j.data.proformaPrefix);
       })
       .finally(() => setLoading(false));
   }, []);
@@ -730,7 +778,7 @@ function LibelleStyleTab({ canManage }: { canManage: boolean }) {
       await fetch("/api/invoice-document-settings", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ libelleStyle: style }),
+        body: JSON.stringify({ libelleStyle: style, facturePrefix, proformaPrefix }),
       });
       setSaved(true);
     } finally {
@@ -742,6 +790,24 @@ function LibelleStyleTab({ canManage }: { canManage: boolean }) {
 
   return (
     <div>
+      <div style={s.footerBuilder}>
+        <div style={s.footerLineIndex}>Numérotation</div>
+        <p style={{ ...s.helpText, marginBottom: 10, marginTop: -4 }}>
+          Préfixe automatique proposé pour le N° facture, selon le type de document (Facture ou Facture Proforma).
+          Format final : <code>{"{préfixe}{année}-{numéro}"}</code>, ex. <code>{facturePrefix}2025-0001</code>.
+        </p>
+        <div style={{ ...s.formGrid, marginBottom: 0, paddingBottom: 0, borderBottom: "none" }}>
+          <label style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+            <span style={s.footerLineIndex}>Préfixe Facture</span>
+            <input value={facturePrefix} onChange={(e) => setFacturePrefix(e.target.value)} style={s.input} placeholder="FA-" />
+          </label>
+          <label style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+            <span style={s.footerLineIndex}>Préfixe Facture Proforma</span>
+            <input value={proformaPrefix} onChange={(e) => setProformaPrefix(e.target.value)} style={s.input} placeholder="PRO-" />
+          </label>
+        </div>
+      </div>
+
       <p style={s.helpText}>
         Ce style s&apos;applique à la colonne LIBELLE des lignes de facturation, sur l&apos;aperçu web, l&apos;export Excel et l&apos;export PDF.
       </p>
@@ -755,7 +821,7 @@ function LibelleStyleTab({ canManage }: { canManage: boolean }) {
       </div>
 
       {canManage && (
-        <button type="button" onClick={handleSave} disabled={saving} style={{ ...s.addButton, marginTop: 18 }}>
+        <button type="button" onClick={handleSave} disabled={saving} style={{ ...s.addButton, marginTop: 18 }} className="stg-add-btn">
           {saving ? "Enregistrement…" : saved ? "Enregistré ✓" : "Enregistrer le style"}
         </button>
       )}
@@ -768,28 +834,28 @@ const s: Record<string, CSSProperties> = {
   header: { marginBottom: 20 },
   backLink: { display: "inline-flex", alignItems: "center", gap: 6, fontSize: 12, color: MUTED, textDecoration: "none", marginBottom: 8 },
   title: { margin: 0, fontSize: 22, fontWeight: 700, letterSpacing: "-0.02em" },
-  tabRow: { display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 18 },
-  tabButton: { height: 38, padding: "0 16px", borderRadius: 10, border: `1px solid ${BORDER}`, background: SURFACE, color: TEXT, fontSize: 13, fontWeight: 700, cursor: "pointer" },
-  tabButtonActive: { background: ORANGE, borderColor: ORANGE, color: "#1a0d00" },
-  card: { background: SURFACE, border: `1px solid ${BORDER}`, borderRadius: 18, padding: 24, boxSizing: "border-box" },
-  formGrid: { display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 10, marginBottom: 20, alignItems: "center" },
-  input: { height: 40, borderRadius: 9, border: `1px solid ${BORDER}`, padding: "0 12px", fontSize: 13, outline: "none", boxSizing: "border-box" },
-  addButton: { height: 40, padding: "0 16px", borderRadius: 9, border: "none", background: ORANGE, color: "#1a0d00", fontSize: 13, fontWeight: 700, cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 6 },
-  secondaryButton: { height: 40, padding: "0 16px", borderRadius: 9, border: `1px solid ${BORDER}`, background: SURFACE, color: TEXT, fontSize: 13, fontWeight: 700, cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 6 },
-  uploadButton: { height: 40, padding: "0 16px", borderRadius: 9, border: `1px solid ${BORDER}`, background: SURFACE, color: TEXT, fontSize: 13, fontWeight: 700, cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 6 },
-  list: { display: "flex", flexDirection: "column", gap: 8 },
-  listRow: { display: "flex", justifyContent: "space-between", alignItems: "center", padding: "12px 14px", borderRadius: 10, border: `1px solid ${BORDER}` },
-  listTitle: { fontSize: 13.5, fontWeight: 700 },
+  sectionHeading: { margin: 0, fontSize: 17, fontWeight: 700, letterSpacing: "-0.01em" },
+  sectionSubheading: { margin: "4px 0 22px", fontSize: 12.5, color: MUTED },
+  formGrid: { display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 10, marginBottom: 22, paddingBottom: 22, borderBottom: `1px solid ${BORDER}`, alignItems: "center" },
+  input: { height: 38, borderRadius: 7, border: `1px solid ${BORDER}`, padding: "0 11px", fontSize: 13.5, outline: "none", boxSizing: "border-box", background: SURFACE, transition: "border-color 0.15s ease, box-shadow 0.15s ease" },
+  addButton: { height: 38, padding: "0 16px", borderRadius: 7, border: "none", background: ORANGE, color: "#1a0d00", fontSize: 13, fontWeight: 700, cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 6 },
+  secondaryButton: { height: 38, padding: "0 16px", borderRadius: 7, border: `1px solid ${BORDER}`, background: SURFACE, color: TEXT, fontSize: 13, fontWeight: 600, cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 6 },
+  uploadButton: { height: 38, padding: "0 16px", borderRadius: 7, border: `1px solid ${BORDER}`, background: SURFACE, color: TEXT, fontSize: 13, fontWeight: 600, cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 6 },
+  list: { display: "flex", flexDirection: "column", border: `1px solid ${BORDER}`, borderRadius: 10, overflow: "hidden" },
+  listRow: { display: "flex", justifyContent: "space-between", alignItems: "center", padding: "11px 14px", borderTop: `1px solid ${BORDER}` },
+  listTitle: { fontSize: 13.5, fontWeight: 600 },
   listSubtitle: { fontSize: 12, color: MUTED, marginTop: 2 },
-  listActions: { display: "flex", gap: 6 },
-  iconButton: { width: 32, height: 32, borderRadius: 8, border: `1px solid ${BORDER}`, background: SURFACE, cursor: "pointer", display: "inline-flex", alignItems: "center", justifyContent: "center" },
-  iconButtonDanger: { width: 32, height: 32, borderRadius: 8, border: "1px solid #FECACA", background: "#FEF2F2", color: "#991B1B", cursor: "pointer", display: "inline-flex", alignItems: "center", justifyContent: "center" },
-  defaultBadge: { fontSize: 10, fontWeight: 800, color: ORANGE, marginLeft: 6 },
+  listActions: { display: "flex", gap: 4 },
+  iconButton: { width: 30, height: 30, borderRadius: 7, border: "none", background: "transparent", color: "#57534E", cursor: "pointer", display: "inline-flex", alignItems: "center", justifyContent: "center" },
+  iconButtonDanger: { width: 30, height: 30, borderRadius: 7, border: "none", background: "transparent", color: "#B42318", cursor: "pointer", display: "inline-flex", alignItems: "center", justifyContent: "center" },
+  defaultBadge: { fontSize: 10, fontWeight: 700, color: ORANGE_DEEP, marginLeft: 6, textTransform: "uppercase", letterSpacing: "0.04em" },
   muted: { fontSize: 13, color: MUTED, padding: "12px 0" },
   headerGrid: { display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 14 },
-  headerCard: { border: `1px solid ${BORDER}`, borderRadius: 12, padding: 12 },
+  headerCard: { border: `1px solid ${BORDER}`, borderRadius: 10, padding: 12 },
   headerImg: { width: "100%", height: 80, objectFit: "contain", marginBottom: 8, background: BG, borderRadius: 8 },
-  footerBuilder: { display: "flex", flexDirection: "column", gap: 12, marginBottom: 20, paddingBottom: 20, borderBottom: `1px solid ${BORDER}` },
-  footerLineEditor: { display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" },
+  footerBuilder: { display: "flex", flexDirection: "column", gap: 12, marginBottom: 22, paddingBottom: 22, borderBottom: `1px solid ${BORDER}` },
+  footerLineEditor: { display: "flex", flexDirection: "column", gap: 10, border: `1px solid ${BORDER}`, borderRadius: 10, padding: 12, background: "#FBFAF9" },
+  footerLineHeader: { display: "flex", justifyContent: "space-between", alignItems: "center" },
+  footerLineIndex: { fontSize: 11, fontWeight: 700, color: "#A8A29E", textTransform: "uppercase", letterSpacing: "0.06em" },
   helpText: { fontSize: 13, color: MUTED, marginBottom: 16, lineHeight: 1.6 },
 };

@@ -24,7 +24,6 @@ async function loadInvoice(id: string) {
       lines: { orderBy: { sortOrder: "asc" } },
       supplierRef: true,
       paymentMode: true,
-      dateType: true,
       header: true,
       footer: true,
       clientRef: true,
@@ -92,6 +91,8 @@ export async function PUT(
     const data = parsed.data;
     const { computedLines, totalTtc } = computeInvoiceTotals(data.lines);
     const tmpRatePercent = data.tmpRatePercent ?? Number(existing.tmpRatePercent);
+    const taxLabel = data.taxLabel?.trim() || existing.taxLabel || "taxes sur les marchés publics (TMP)";
+    const currency = data.currency?.trim() || existing.currency || "Ar";
 
     const existingLineIds = new Set(existing.lines.map((line) => line.id));
     const incomingLineIds = new Set(
@@ -143,7 +144,9 @@ export async function PUT(
           contractRef: data.contractRef || null,
           totalTtc,
           tmpRatePercent,
-          amountInWords: invoiceAmountInWords(totalTtc, tmpRatePercent),
+          taxLabel,
+          currency,
+          amountInWords: invoiceAmountInWords(totalTtc, tmpRatePercent, taxLabel),
           bankName: data.bankName || null,
           accountHolder: data.accountHolder || null,
           accountNumber: data.accountNumber || null,
@@ -154,6 +157,8 @@ export async function PUT(
           iban: data.iban || null,
           signature: data.signature || null,
           status: data.status || existing.status,
+          documentType: data.documentType || existing.documentType,
+          showDocumentType: data.showDocumentType ?? existing.showDocumentType,
           supplierId: data.supplierId || null,
           paymentModeId: data.paymentModeId || null,
           dateTypeId: data.dateTypeId || null,

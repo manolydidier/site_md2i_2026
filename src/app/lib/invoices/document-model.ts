@@ -23,11 +23,15 @@ export const invoiceDocumentInclude = {
   lines: { orderBy: { sortOrder: "asc" } },
   supplierRef: true,
   paymentMode: true,
-  dateType: true,
   header: true,
   footer: true,
   clientRef: true,
 } satisfies Prisma.InvoiceInclude;
+
+const DOCUMENT_TYPE_LABELS: Record<string, string> = {
+  FACTURE: "FACTURE",
+  PROFORMA: "FACTURE PROFORMA",
+};
 
 export type InvoiceWithRelations = Prisma.InvoiceGetPayload<{
   include: typeof invoiceDocumentInclude;
@@ -50,9 +54,11 @@ export type InvoiceDocumentModel = {
   clientParagraphs: RichParagraph[];
   projectName: string;
   projectAddress: string | null;
-  invoiceDate: Date;
+  invoiceDate: Date | null;
   invoiceDateLabel: string;
-  dateTypeLabel: string | null;
+  documentType: string;
+  documentTypeLabel: string;
+  showDocumentType: boolean;
   object: string;
   lotDescription: string | null;
   contractRef: string | null;
@@ -66,6 +72,7 @@ export type InvoiceDocumentModel = {
     montant: number;
   }[];
   totalTtc: number;
+  currency: string;
   amountInWords: string;
   bankName: string | null;
   accountHolder: string | null;
@@ -103,7 +110,7 @@ export function buildInvoiceDocumentModel(
   const recalculatedTotal = invoice.lines.reduce((sum, line) => sum + Number(line.montant), 0);
   const totalTtc = Math.round(recalculatedTotal * 100) / 100;
   const tmpRatePercent = Number(invoice.tmpRatePercent);
-  const amountInWords = totalTtc > 0 ? invoiceAmountInWords(totalTtc, tmpRatePercent) : invoice.amountInWords || "";
+  const amountInWords = totalTtc > 0 ? invoiceAmountInWords(totalTtc, tmpRatePercent, invoice.taxLabel || "taxes sur les marchés publics (TMP)") : invoice.amountInWords || "";
 
   const footerLinesParsed = textLinesSchema.safeParse(invoice.footer?.lines ?? []);
   const footerLines = footerLinesParsed.success ? footerLinesParsed.data : [];
@@ -129,8 +136,10 @@ export function buildInvoiceDocumentModel(
     projectName: invoice.projectName,
     projectAddress: invoice.projectAddress,
     invoiceDate: invoice.invoiceDate,
-    invoiceDateLabel: formatDateFr(invoice.invoiceDate),
-    dateTypeLabel: invoice.dateType?.label ?? null,
+    invoiceDateLabel: invoice.invoiceDate ? formatDateFr(invoice.invoiceDate) : "",
+    documentType: invoice.documentType,
+    documentTypeLabel: DOCUMENT_TYPE_LABELS[invoice.documentType] ?? "FACTURE",
+    showDocumentType: invoice.showDocumentType,
     object: invoice.object,
     lotDescription: invoice.lotDescription,
     contractRef: invoice.contractRef,
@@ -149,6 +158,7 @@ export function buildInvoiceDocumentModel(
       };
     }),
     totalTtc,
+    currency: invoice.currency || "Ar",
     amountInWords,
     bankName: invoice.bankName,
     accountHolder: invoice.accountHolder,

@@ -24,11 +24,12 @@ type Invoice = {
   client: string;
   projectName: string;
   projectAddress: string | null;
-  invoiceDate: string;
+  invoiceDate: string | null;
   object: string;
   lotDescription: string | null;
   contractRef: string | null;
   totalTtc: string | number;
+  currency: string;
   amountInWords: string | null;
   bankName: string | null;
   accountHolder: string | null;
@@ -47,17 +48,28 @@ type Invoice = {
   supplierNif: string | null;
   supplierRcs: string | null;
   paymentMode: { label: string } | null;
-  dateType: { label: string } | null;
   header: { imageUrl: string; altText: string | null } | null;
   footer: { lines: TextLine[] } | null;
   clientContent: string | null;
+  documentType: "FACTURE" | "PROFORMA";
+  showDocumentType: boolean;
+};
+
+const DOCUMENT_TYPE_LABELS: Record<Invoice["documentType"], string> = {
+  FACTURE: "FACTURE",
+  PROFORMA: "FACTURE PROFORMA",
 };
 
 function formatAmount(value: string | number) {
   return new Intl.NumberFormat("fr-FR", { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(Number(value));
 }
 
-function formatDate(value: string) {
+function formatAmountOrBlank(value: string | number) {
+  return Number(value) ? formatAmount(value) : "";
+}
+
+function formatDate(value: string | null) {
+  if (!value) return null;
   try {
     return new Intl.DateTimeFormat("fr-FR", { day: "2-digit", month: "long", year: "numeric" }).format(new Date(value));
   } catch {
@@ -133,47 +145,77 @@ export default function InvoiceViewPage() {
             <Image
               src={invoice.header.imageUrl}
               alt={invoice.header.altText || "En-tête"}
-              width={700}
-              height={100}
-              style={{ width: "100%", height: "auto", maxHeight: 100, objectFit: "contain" }}
+              width={900}
+              height={140}
+              style={{ width: "100%", height: "auto", maxHeight: 140, objectFit: "contain" }}
               unoptimized
             />
           </div>
         )}
 
-        <div style={s.invoiceNumberRow}>N° Facture : {invoice.invoiceNumber}</div>
+        {invoice.showDocumentType && (
+          <div style={s.documentTitle}>{DOCUMENT_TYPE_LABELS[invoice.documentType]}</div>
+        )}
 
         <div style={s.partiesGrid}>
-          <div style={s.partyBox}>
-            <div style={s.partyLabel}>Fournisseur</div>
-            <div style={s.partyName}>{invoice.supplier}</div>
-            {invoice.supplierAddress && <div style={s.partyLine}>{invoice.supplierAddress}</div>}
-            {invoice.supplierPhone && <div style={s.partyLine}>Tél : {invoice.supplierPhone}</div>}
-            {invoice.supplierEmail && <div style={s.partyLine}>Email : {invoice.supplierEmail}</div>}
-            {invoice.supplierStatNumber && <div style={s.partyLine}>N° Stat : {invoice.supplierStatNumber}</div>}
-            {invoice.supplierNif && <div style={s.partyLine}>NIF : {invoice.supplierNif}</div>}
-            {invoice.supplierRcs && <div style={s.partyLine}>RCS : {invoice.supplierRcs}</div>}
+          <div>
+            <div style={s.partyHeading}>Fournisseur</div>
+            <div style={s.supplierGrid}>
+              <div style={s.supplierRow}>
+                <div style={s.supplierValue}><strong>{invoice.supplier}</strong></div>
+              </div>
+              {[
+                ["Adresse", invoice.supplierAddress],
+                ["Téléphone", invoice.supplierPhone],
+                ["E-mail", invoice.supplierEmail],
+                ["N° Stat", invoice.supplierStatNumber],
+              ]
+                .filter(([, value]) => value)
+                .map(([label, value]) => (
+                  <div key={label} style={s.supplierRow}>
+                    <div style={s.supplierValue}>{label} : {value}</div>
+                  </div>
+                ))}
+              {(invoice.supplierNif || invoice.supplierRcs) && (
+                <div style={s.supplierRow}>
+                  <div style={s.supplierValue}>
+                    {invoice.supplierNif && <>NIF : {invoice.supplierNif}</>}
+                    {invoice.supplierNif && invoice.supplierRcs && "   •   "}
+                    {invoice.supplierRcs && <>RCS : {invoice.supplierRcs}</>}
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
-          <div style={s.partyBox}>
-            <div style={s.partyLabel}>Client</div>
-            <div style={s.partyName}>{invoice.client}</div>
-            {invoice.clientContent && (
-              <div style={s.clientRichContent} dangerouslySetInnerHTML={{ __html: invoice.clientContent }} />
-            )}
+          <div>
+            <div style={s.partyHeading}>Client</div>
+            <div style={s.partyBox}>
+              <div style={s.partyName}>{invoice.client}</div>
+              {invoice.clientContent && (
+                <div style={s.clientRichContent} dangerouslySetInnerHTML={{ __html: invoice.clientContent }} />
+              )}
+            </div>
           </div>
         </div>
 
-        <div style={s.section}>
-          <div style={s.value}>{invoice.projectName}</div>
-          {invoice.projectAddress && <div style={s.muted}>{invoice.projectAddress}</div>}
+        <div style={{ ...s.section, marginBottom: 8 }}>
+          <div><strong>Date :</strong> {formatDate(invoice.invoiceDate) || ""}</div>
+          <div><strong style={s.underline}>Objet :</strong> {invoice.object}</div>
+          {invoice.lotDescription && <div style={{ marginTop: 10 }}>{invoice.lotDescription}</div>}
+          {invoice.contractRef && <div style={{ marginTop: 10 }}><strong>Réf :</strong> {invoice.contractRef}</div>}
         </div>
 
-        <div style={s.section}>
-          <div><strong>{invoice.dateType?.label || "Date"} :</strong> {formatDate(invoice.invoiceDate)}</div>
-          <div><strong>Objet :</strong> {invoice.object}</div>
-          {invoice.lotDescription && <div>{invoice.lotDescription}</div>}
-          {invoice.contractRef && <div><strong>Réf :</strong> {invoice.contractRef}</div>}
-          {invoice.paymentMode?.label && <div><strong>Mode de paiement :</strong> {invoice.paymentMode.label}</div>}
+        <div style={s.miniTableRow}>
+          <div style={s.miniTableBox}>
+            <div style={s.miniTableLabel}>N° Facture</div>
+            <div style={s.miniTableValue}>{invoice.invoiceNumber}</div>
+          </div>
+          {invoice.paymentMode?.label && (
+            <div style={s.miniTableBox}>
+              <div style={s.miniTableLabel}>Mode de paiement</div>
+              <div style={s.miniTableValue}>{invoice.paymentMode.label}</div>
+            </div>
+          )}
         </div>
 
         <table style={s.table}>
@@ -182,8 +224,8 @@ export default function InvoiceViewPage() {
               <th style={s.th}>LIBELLE</th>
               <th style={s.th}>UNITE</th>
               <th style={{ ...s.th, textAlign: "right" }}>QUANTITE</th>
-              <th style={{ ...s.th, textAlign: "right" }}>PRIX UNITAIRE/Ar</th>
-              <th style={{ ...s.th, textAlign: "right" }}>MONTANT/Ar</th>
+              <th style={{ ...s.th, textAlign: "right" }}>PRIX UNITAIRE/{invoice.currency}</th>
+              <th style={{ ...s.th, textAlign: "right" }}>MONTANT/{invoice.currency}</th>
             </tr>
           </thead>
           <tbody>
@@ -201,37 +243,38 @@ export default function InvoiceViewPage() {
                   )}
                 </td>
                 <td style={s.td}>{line.unite || ""}</td>
-                <td style={{ ...s.td, textAlign: "right" }}>{formatAmount(line.quantite)}</td>
-                <td style={{ ...s.td, textAlign: "right" }}>{formatAmount(line.prixUnitaire)}</td>
-                <td style={{ ...s.td, textAlign: "right", fontWeight: 700 }}>{formatAmount(line.montant)}</td>
+                <td style={{ ...s.td, textAlign: "right" }}>{formatAmountOrBlank(line.quantite)}</td>
+                <td style={{ ...s.td, textAlign: "right" }}>{formatAmountOrBlank(line.prixUnitaire)}</td>
+                <td style={{ ...s.td, textAlign: "right", fontWeight: 700 }}>{formatAmountOrBlank(line.montant)}</td>
               </tr>
             ))}
           </tbody>
         </table>
 
         <div style={s.totalRow}>
-          <span style={s.totalLabel}>MONTANT TOTAL TTC/AR</span>
-          <span style={s.totalValue}>{formatAmount(invoice.totalTtc)} Ar</span>
+          <span style={s.totalLabel}>MONTANT TOTAL TTC/{invoice.currency.toUpperCase()}</span>
+          <span style={s.totalValue}>{formatAmount(invoice.totalTtc)} {invoice.currency}</span>
         </div>
 
         {invoice.amountInWords && (
           <div style={s.wordsBox}>Montant en lettres : <strong>{invoice.amountInWords}</strong></div>
         )}
 
-        <div style={s.section}>
-          Nom, Fonction et Signature : {invoice.signature || ""}
-        </div>
-
         <div style={s.bankSection}>
           <div style={s.bankTitle}>Nom complet & adresse de la banque pour le paiement :</div>
-          {invoice.bankName && <div>{invoice.bankName}</div>}
-          {invoice.accountHolder && <div>Nom du détenteur : {invoice.accountHolder}</div>}
-          {invoice.accountNumber && <div>Numéro de compte : {invoice.accountNumber}</div>}
-          {invoice.bankCode && <div>Code Banque : {invoice.bankCode}</div>}
-          {invoice.branchCode && <div>Code Guichet : {invoice.branchCode}</div>}
-          {invoice.ribKey && <div>Clé RIB : {invoice.ribKey}</div>}
-          {invoice.bic && <div>BIC : {invoice.bic}</div>}
-          {invoice.iban && <div>IBAN : {invoice.iban}</div>}
+          {invoice.bankName && <div>Banque : <strong>{invoice.bankName}</strong></div>}
+          <div style={{ ...s.bankTitle, marginTop: 10 }}>Nom du détenteur et numéro de compte complet</div>
+          {invoice.accountHolder && <div>Nom du détenteur : <strong>{invoice.accountHolder}</strong></div>}
+          {invoice.accountNumber && <div>Numéro de compte : <strong>{invoice.accountNumber}</strong></div>}
+          {invoice.bankCode && <div>Code Banque : <strong>{invoice.bankCode}</strong></div>}
+          {invoice.branchCode && <div>Code Guichet : <strong>{invoice.branchCode}</strong></div>}
+          {invoice.ribKey && <div>Clé RIB : <strong>{invoice.ribKey}</strong></div>}
+          {invoice.bic && <div>BIC : <strong>{invoice.bic}</strong></div>}
+          {invoice.iban && <div>IBAN : <strong>{invoice.iban}</strong></div>}
+        </div>
+
+        <div style={{ ...s.section, marginTop: 16 }}>
+          Nom, Fonction et Signature : {invoice.signature || ""}
         </div>
 
         {invoice.footer?.lines && invoice.footer.lines.length > 0 && (
@@ -260,12 +303,20 @@ const s: Record<string, CSSProperties> = {
   primaryButton: { height: 40, padding: "0 16px", borderRadius: 10, display: "inline-flex", alignItems: "center", gap: 8, fontSize: 13, fontWeight: 700, background: ORANGE, color: "#1a0d00", textDecoration: "none" },
   secondaryButton: { height: 40, padding: "0 16px", borderRadius: 10, display: "inline-flex", alignItems: "center", gap: 8, fontSize: 13, fontWeight: 700, background: SURFACE, color: TEXT, border: `1px solid ${BORDER}`, textDecoration: "none" },
   card: { background: SURFACE, border: `1px solid ${BORDER}`, borderRadius: 18, padding: 32, maxWidth: 900, margin: "0 auto", boxShadow: "0 12px 34px rgba(15,23,42,0.06)" },
-  invoiceNumberRow: { textAlign: "right", fontSize: 13, fontWeight: 800, marginBottom: 10, color: TEXT },
-  partiesGrid: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, marginBottom: 18 },
-  partyBox: { background: "#F1F5F9", borderRadius: 10, padding: 14 },
-  partyLabel: { fontSize: 11, fontWeight: 800, color: MUTED, textTransform: "uppercase", marginBottom: 4 },
+  documentTitle: { textAlign: "center", fontSize: 22, fontWeight: 800, marginBottom: 14, color: TEXT, letterSpacing: "0.04em" },
+  underline: { textDecoration: "underline" },
+  miniTableRow: { display: "flex", gap: 40, marginBottom: 18 },
+  miniTableBox: { flex: 1, background: "#F1F5F9", border: `1px solid #CBD5E1`, borderRadius: 8, overflow: "hidden" },
+  miniTableLabel: { fontSize: 11.5, textAlign: "center", padding: "8px 10px", borderBottom: `1px solid #CBD5E1`, color: TEXT },
+  miniTableValue: { fontSize: 13, fontWeight: 700, textAlign: "center", padding: "8px 10px" },
+  partiesGrid: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 28, marginBottom: 18 },
+  partyBox: { background: "#F1F5F9", border: `1px solid #CBD5E1`, borderRadius: 10, padding: 14 },
+  partyHeading: { fontSize: 20, fontWeight: 800, color: TEXT, textDecoration: "underline", marginBottom: 8 },
   partyName: { fontSize: 15, fontWeight: 700, marginBottom: 4 },
   partyLine: { fontSize: 12.5, color: "#334155", marginTop: 2 },
+  supplierGrid: { border: `1px solid #CBD5E1`, borderRadius: 10, overflow: "hidden" },
+  supplierRow: { display: "flex", background: "#F1F5F9" },
+  supplierValue: { flex: 1, fontSize: 11.5, padding: "6px 10px" },
   clientRichContent: { fontSize: 12.5, color: "#334155", marginTop: 4, lineHeight: 1.6 },
   label: { fontSize: 11, color: MUTED, textTransform: "uppercase", fontWeight: 700, marginBottom: 2 },
   value: { fontSize: 15, fontWeight: 700 },

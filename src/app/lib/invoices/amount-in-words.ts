@@ -94,11 +94,18 @@ export function integerToFrenchWords(value: number): string {
 /**
  * Génère le texte "montant en lettres" tel qu'affiché sur les factures MD2I :
  * "{partie entière en lettres} ariary et {centimes en lettres} y compris les
- * taxes sur les marchés publics (TMP) de {tmpRatePercent}% "
+ * {taxLabel} de {tmpRatePercent}% "
  *
- * Si les centimes sont nuls, la mention "et ..." est omise.
+ * Si les centimes sont nuls, la mention "et ..." est omise. `taxLabel` est le
+ * texte complet de la mention fiscale ("taxes sur les marchés publics (TMP)"
+ * par défaut), fourni tel quel par facture — certains contrats utilisent une
+ * autre taxe (TTC, TPC...) avec un intitulé différent.
  */
-export function invoiceAmountInWords(totalTtc: number, tmpRatePercent: number): string {
+export function invoiceAmountInWords(
+  totalTtc: number,
+  tmpRatePercent: number,
+  taxLabel = 'taxes sur les marchés publics (TMP)'
+): string {
   const rounded = Math.round(Math.abs(totalTtc) * 100) / 100
   const integerPart = Math.floor(rounded)
   const cents = Math.round((rounded - integerPart) * 100)
@@ -110,5 +117,5 @@ export function invoiceAmountInWords(totalTtc: number, tmpRatePercent: number): 
     ? String(tmpRatePercent)
     : String(tmpRatePercent).replace('.', ',')
 
-  return `${integerWords} ariary${centsClause} y compris les taxes sur les marchés publics (TMP) de ${rateLabel}%`
+  return `${integerWords} ariary${centsClause} y compris les ${taxLabel} de ${rateLabel}%`
 }
