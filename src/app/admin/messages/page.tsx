@@ -1,10 +1,30 @@
 import { ContactStatus } from "@/generated/prisma/enums";
 import type { Prisma } from "@/generated/prisma/client";
 import Link from "next/link";
+import {
+  Inbox,
+  Mail,
+  MailOpen,
+  Clock,
+  CornerUpLeft,
+  Archive,
+  CheckCircle2,
+  Circle,
+  MailX,
+  ShieldAlert,
+  type LucideIcon,
+} from "lucide-react";
 import { prisma } from "@/app/lib/prisma";
 import { checkPermission } from "@/(permisionGuard)/lib/permissions";
 import MessageActions from "./MessageActions";
 import MailColumnLayout from "./MailColumnLayout";
+import MailList from "./MailList";
+import MessageNotes from "./MessageNotes";
+import SearchToolbar from "./SearchToolbar";
+import NewMessagesBanner from "./NewMessagesBanner";
+import KeyboardShortcuts from "./KeyboardShortcuts";
+import ToastStack from "./ToastStack";
+import { MailActionsProvider } from "./actions-context";
 import styles from "./login/admin-messages.module.css";
 
 type SearchParams = {
@@ -12,7 +32,13 @@ type SearchParams = {
   status?: string;
   page?: string;
   selected?: string;
+  sort?: string;
 };
+
+const SORT_OPTIONS = ["date_desc", "date_asc", "unread_first"] as const;
+type SortOption = (typeof SORT_OPTIONS)[number];
+
+const SPAM_IP_THRESHOLD = 3;
 
 type PageProps = {
   searchParams?: Promise<SearchParams> | SearchParams;
@@ -38,13 +64,13 @@ const STATUS_FOLDER_LABELS: Record<string, string> = {
   CLOSED: "Fermés",
 };
 
-const STATUS_ICONS: Record<string, string> = {
-  NEW: "●",
-  READ: "○",
-  IN_PROGRESS: "◐",
-  REPLIED: "↩",
-  ARCHIVED: "▣",
-  CLOSED: "✓",
+const STATUS_ICONS: Record<string, LucideIcon> = {
+  NEW: Circle,
+  READ: MailOpen,
+  IN_PROGRESS: Clock,
+  REPLIED: CornerUpLeft,
+  ARCHIVED: Archive,
+  CLOSED: CheckCircle2,
 };
 
 const STATUS_OPTIONS = Object.values(ContactStatus) as ContactStatus[];
@@ -61,7 +87,7 @@ function labelFolder(status: ContactStatus) {
 }
 
 function statusIcon(status: ContactStatus) {
-  return STATUS_ICONS[String(status)] || "●";
+  return STATUS_ICONS[String(status)] || Circle;
 }
 
 function statusClass(status: ContactStatus) {
@@ -84,11 +110,17 @@ function getValidStatus(value?: string) {
   return status as ContactStatus;
 }
 
+function getValidSort(value?: string): SortOption {
+  const sort = cleanParam(value);
+  return (SORT_OPTIONS as readonly string[]).includes(sort) ? (sort as SortOption) : "date_desc";
+}
+
 function buildHref(params: {
   q?: string;
   status?: string;
   page?: number;
   selected?: string;
+  sort?: string;
 }) {
   const search = new URLSearchParams();
 
@@ -96,6 +128,7 @@ function buildHref(params: {
   if (params.status) search.set("status", params.status);
   if (params.page && params.page > 1) search.set("page", String(params.page));
   if (params.selected) search.set("selected", params.selected);
+  if (params.sort && params.sort !== "date_desc") search.set("sort", params.sort);
 
   const query = search.toString();
 
@@ -175,6 +208,7 @@ export default async function AdminMessagesPage({ searchParams }: PageProps) {
 
   const q = cleanParam(params.q);
   const selectedStatus = getValidStatus(params.status);
+  const sort = getValidSort(params.sort);
   const selectedId =
     params.selected && UUID_RE.test(params.selected) ? params.selected : "";
 
@@ -196,11 +230,18 @@ export default async function AdminMessagesPage({ searchParams }: PageProps) {
       : {}),
   };
 
+  const orderBy: Prisma.ContactMessageOrderByWithRelationInput[] =
+    sort === "date_asc"
+      ? [{ createdAt: "asc" }]
+      : sort === "unread_first"
+        ? [{ status: "asc" }, { createdAt: "desc" }]
+        : [{ createdAt: "desc" }];
+
   const [messages, filteredTotal, allTotal, groupedStatus] =
     await Promise.all([
       prisma.contactMessage.findMany({
         where,
-        orderBy: { createdAt: "desc" },
+        orderBy,
         skip,
         take: PAGE_SIZE,
       }),
@@ -217,8 +258,19 @@ export default async function AdminMessagesPage({ searchParams }: PageProps) {
   const selectedMessage = selectedId
     ? await prisma.contactMessage.findUnique({
         where: { id: selectedId },
+        include: { notes: { orderBy: { createdAt: "desc" } } },
       })
-    : messages[0] || null;
+    : messages[0]
+      ? await prisma.contactMessage.findUnique({
+          where: { id: messages[0].id },
+          include: { notes: { orderBy: { createdAt: "desc" } } },
+        })
+      : null;
+
+  const senderMessageCount = selectedMessage?.ipAddress
+    ? await prisma.contactMessage.count({ where: { ipAddress: selectedMessage.ipAddress } })
+    : 0;
+  const isLikelySpam = senderMessageCount >= SPAM_IP_THRESHOLD;
 
   const totalPages = Math.max(1, Math.ceil(filteredTotal / PAGE_SIZE));
 
@@ -232,25 +284,68 @@ export default async function AdminMessagesPage({ searchParams }: PageProps) {
 
   const newCount = countsByStatus.NEW || 0;
 
+  const mailListItems = messages.map((message) => ({
+    id: message.id,
+    href: buildHref({
+      q,
+      status: selectedStatus,
+      page: currentPage,
+      selected: message.id,
+      sort,
+    }),
+    active: selectedMessage?.id === message.id,
+    unread: String(message.status) === "NEW",
+    initials: getInitials(message.name),
+    name: message.name,
+    dateLabel: formatInboxDate(message.createdAt),
+    subject: message.subject || "Sans objet",
+    status: String(message.status),
+    statusClass: statusClass(message.status),
+    badgeLabel: labelStatus(message.status),
+    excerpt: excerpt(message.message),
+    email: message.email,
+    phone: message.phone,
+  }));
+
   const currentReturnTo = buildHref({
     q,
     status: selectedStatus,
     page: currentPage,
     selected: selectedMessage?.id,
+    sort,
   });
 
   const listOnlyHref = buildHref({
     q,
     status: selectedStatus,
     page: currentPage,
+    sort,
   });
 
   const title = selectedStatus
     ? labelFolder(selectedStatus)
     : "Boîte de réception";
 
+  const noteItems = (selectedMessage?.notes || []).map((note) => ({
+    id: note.id,
+    authorName: note.authorName,
+    type: note.type,
+    body: note.body,
+    dateLabel: formatFullDate(note.createdAt),
+  }));
+
+  const replyHref = selectedMessage ? getMailtoHref(selectedMessage) : undefined;
+
   return (
     <MailColumnLayout>
+      <MailActionsProvider canUpdate={canUpdate} canDelete={canDelete}>
+        <KeyboardShortcuts
+          items={mailListItems.map((item) => ({ id: item.id, href: item.href }))}
+          selectedId={selectedMessage?.id}
+          replyHref={replyHref}
+        />
+        <ToastStack />
+
       <aside className={styles.sidebar}>
         <div className={styles.sidebarBrand}>
           <div className={styles.logoMark}>M</div>
@@ -262,18 +357,20 @@ export default async function AdminMessagesPage({ searchParams }: PageProps) {
         </div>
 
         <Link href="/admin/messages" className={styles.inboxButton}>
-          <span>✉</span>
+          <Inbox size={16} />
           Boîte de réception
         </Link>
 
         <nav className={styles.folderList} aria-label="Filtres de messages">
           <Link
-            href={buildHref({ q })}
+            href={buildHref({ q, sort })}
             className={`${styles.folderLink} ${
               !selectedStatus ? styles.folderLinkActive : ""
             }`}
           >
-            <span className={styles.folderIcon}>📥</span>
+            <span className={styles.folderIcon}>
+              <Mail size={14} />
+            </span>
             <span>Tous les messages</span>
             <strong>{allTotal}</strong>
           </Link>
@@ -281,11 +378,12 @@ export default async function AdminMessagesPage({ searchParams }: PageProps) {
           {STATUS_OPTIONS.map((status) => {
             const active = selectedStatus === status;
             const count = countsByStatus[String(status)] || 0;
+            const Icon = statusIcon(status);
 
             return (
               <Link
                 key={status}
-                href={buildHref({ q, status })}
+                href={buildHref({ q, status, sort })}
                 className={`${styles.folderLink} ${
                   active ? styles.folderLinkActive : ""
                 }`}
@@ -296,7 +394,7 @@ export default async function AdminMessagesPage({ searchParams }: PageProps) {
                     styles.statusSymbol_default
                   }`}
                 >
-                  {statusIcon(status)}
+                  <Icon size={14} />
                 </span>
 
                 <span>{labelFolder(status)}</span>
@@ -344,39 +442,23 @@ export default async function AdminMessagesPage({ searchParams }: PageProps) {
           </div>
         </header>
 
-        <form className={styles.searchToolbar} method="get">
-          <div className={styles.gmailSearch}>
-            <span>⌕</span>
+        <SearchToolbar
+          q={q}
+          status={selectedStatus}
+          sort={sort}
+          statusOptions={STATUS_OPTIONS.map((status) => ({
+            value: String(status),
+            label: labelStatus(status),
+          }))}
+        />
 
-            <input
-              name="q"
-              defaultValue={q}
-              placeholder="Rechercher dans les messages"
-            />
-          </div>
-
-          <select name="status" defaultValue={selectedStatus}>
-            <option value="">Tous</option>
-
-            {STATUS_OPTIONS.map((status) => (
-              <option key={status} value={status}>
-                {labelStatus(status)}
-              </option>
-            ))}
-          </select>
-
-          <button type="submit">Rechercher</button>
-
-          {(q || selectedStatus) && (
-            <Link href="/admin/messages" className={styles.clearFilter}>
-              Effacer
-            </Link>
-          )}
-        </form>
+        <NewMessagesBanner initialNewCount={newCount} />
 
         <div className={styles.inboxMetaBar}>
           <span>
-            Page {currentPage} sur {totalPages}
+            {filteredTotal === 0
+              ? "0 message"
+              : `${skip + 1}–${Math.min(skip + PAGE_SIZE, filteredTotal)} sur ${filteredTotal}`}
           </span>
 
           <div className={styles.pageControls}>
@@ -390,6 +472,7 @@ export default async function AdminMessagesPage({ searchParams }: PageProps) {
                 status: selectedStatus,
                 page: Math.max(1, currentPage - 1),
                 selected: selectedId,
+                sort,
               })}
             >
               ‹
@@ -405,6 +488,7 @@ export default async function AdminMessagesPage({ searchParams }: PageProps) {
                 status: selectedStatus,
                 page: Math.min(totalPages, currentPage + 1),
                 selected: selectedId,
+                sort,
               })}
             >
               ›
@@ -412,66 +496,7 @@ export default async function AdminMessagesPage({ searchParams }: PageProps) {
           </div>
         </div>
 
-        <div className={styles.mailList}>
-          {messages.length === 0 ? (
-            <div className={styles.emptyList}>
-              <div>📭</div>
-              <strong>Aucun message</strong>
-              <p>Aucun message ne correspond à vos filtres actuels.</p>
-            </div>
-          ) : (
-            messages.map((message) => {
-              const active = selectedMessage?.id === message.id;
-              const unread = String(message.status) === "NEW";
-
-              return (
-                <Link
-                  key={message.id}
-                  href={buildHref({
-                    q,
-                    status: selectedStatus,
-                    page: currentPage,
-                    selected: message.id,
-                  })}
-                  className={`${styles.mailItem} ${
-                    active ? styles.mailItemActive : ""
-                  } ${unread ? styles.mailItemUnread : ""}`}
-                >
-                  <div className={styles.mailAvatar}>
-                    {getInitials(message.name)}
-                  </div>
-
-                  <div className={styles.mailPreview}>
-                    <div className={styles.mailPreviewTop}>
-                      <strong>{message.name}</strong>
-                      <time>{formatInboxDate(message.createdAt)}</time>
-                    </div>
-
-                    <div className={styles.mailSubjectLine}>
-                      <span>{message.subject || "Sans objet"}</span>
-
-                      <em
-                        className={`${styles.badge} ${
-                          styles[`badge_${statusClass(message.status)}`] ||
-                          styles.badge_default
-                        }`}
-                      >
-                        {labelStatus(message.status)}
-                      </em>
-                    </div>
-
-                    <p>{excerpt(message.message)}</p>
-
-                    <div className={styles.mailPreviewMeta}>
-                      <span>{message.email}</span>
-                      {message.phone ? <span>{message.phone}</span> : null}
-                    </div>
-                  </div>
-                </Link>
-              );
-            })
-          )}
-        </div>
+        <MailList items={mailListItems} searchTerm={q} />
       </section>
 
       <section className={styles.readerPane}>
@@ -487,6 +512,13 @@ export default async function AdminMessagesPage({ searchParams }: PageProps) {
                 >
                   {labelStatus(selectedMessage.status)}
                 </span>
+
+                {isLikelySpam && (
+                  <span className={styles.spamFlag} title={`${senderMessageCount} messages depuis cette IP`}>
+                    <ShieldAlert size={11} />
+                    Possible spam
+                  </span>
+                )}
 
                 <time>{formatFullDate(selectedMessage.createdAt)}</time>
               </div>
@@ -516,6 +548,7 @@ export default async function AdminMessagesPage({ searchParams }: PageProps) {
                 href={getMailtoHref(selectedMessage)}
                 className={styles.replyMini}
               >
+                <CornerUpLeft size={13} />
                 Répondre
               </a>
             </section>
@@ -546,6 +579,13 @@ export default async function AdminMessagesPage({ searchParams }: PageProps) {
               <p>{selectedMessage.message}</p>
             </article>
 
+            <MessageNotes
+              messageId={selectedMessage.id}
+              notes={noteItems}
+              canUpdate={canUpdate}
+              canDelete={canDelete}
+            />
+
             <MessageActions
               messageId={selectedMessage.id}
               currentStatus={String(selectedMessage.status)}
@@ -555,6 +595,7 @@ export default async function AdminMessagesPage({ searchParams }: PageProps) {
                 q,
                 status: selectedStatus,
                 page: currentPage,
+                sort,
               })}
               statuses={STATUS_OPTIONS.map((status) => ({
                 value: String(status),
@@ -566,12 +607,15 @@ export default async function AdminMessagesPage({ searchParams }: PageProps) {
           </>
         ) : (
           <div className={styles.emptyReader}>
-            <div>✉</div>
+            <div>
+              <MailX size={26} />
+            </div>
             <strong>Aucun message sélectionné</strong>
             <p>Sélectionnez un message dans la liste pour le lire ici.</p>
           </div>
         )}
       </section>
+      </MailActionsProvider>
     </MailColumnLayout>
   );
 }

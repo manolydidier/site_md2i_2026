@@ -399,10 +399,26 @@ model ContactMessage {
   createdAt DateTime      @default(now())
   updatedAt DateTime      @updatedAt
 
+  notes ContactMessageNote[]
+
   @@index([email])
   @@index([status])
   @@index([createdAt])
   @@map("contact_messages")
+}
+
+model ContactMessageNote {
+  id         String                 @id @default(uuid()) @db.Uuid
+  messageId  String                 @db.Uuid
+  message    ContactMessage         @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  authorId   String?                @db.Uuid
+  authorName String                 @db.VarChar(150)
+  type       ContactMessageNoteType @default(NOTE)
+  body       String
+  createdAt  DateTime               @default(now())
+
+  @@index([messageId])
+  @@map("contact_message_notes")
 }
 
 model Reference {
@@ -1387,6 +1403,11 @@ enum ContactStatus {
   READ
   REPLIED
   ARCHIVED
+}
+
+enum ContactMessageNoteType {
+  NOTE
+  REPLY
 }
 
 enum ReferenceStatus {

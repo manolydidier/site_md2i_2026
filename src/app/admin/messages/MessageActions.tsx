@@ -2,6 +2,8 @@
 
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
+import { CornerUpLeft, MailOpen, Trash2 } from "lucide-react";
+import { AuthRequiredError, postJson } from "./api-client";
 import styles from "./login/admin-messages.module.css";
 
 type StatusOption = {
@@ -20,74 +22,10 @@ type Props = {
   canDelete: boolean;
 };
 
-type ApiResult = {
-  ok?: boolean;
-  authRequired?: boolean;
-  loginUrl?: string;
-  error?: string;
-  message?: {
-    id: string;
-    status: string;
-    updatedAt: string;
-  };
-};
-
-class AuthRequiredError extends Error {
-  loginUrl: string;
-
-  constructor(loginUrl: string) {
-    super("Session expirée. Veuillez vous reconnecter.");
-    this.name = "AuthRequiredError";
-    this.loginUrl = loginUrl;
-  }
-}
-
 function getMailtoHref(email: string, subject: string | null) {
   return `mailto:${email}?subject=${encodeURIComponent(
     `Re: ${subject || "Votre message"}`
   )}`;
-}
-
-async function postJson(url: string, body: Record<string, unknown>) {
-  const response = await fetch(url, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Accept: "application/json",
-    },
-    credentials: "same-origin",
-    redirect: "follow",
-    body: JSON.stringify(body),
-  });
-
-  /**
-   * Cas où le serveur redirige vers le login et fetch suit la redirection.
-   * Cela évite d'essayer de parser une page HTML comme du JSON.
-   */
-  if (response.redirected) {
-    const redirectedUrl = new URL(response.url);
-
-    if (redirectedUrl.pathname.includes("/login")) {
-      throw new AuthRequiredError(
-        `${redirectedUrl.pathname}${redirectedUrl.search}`
-      );
-    }
-  }
-
-  const data = (await response.json().catch(() => null)) as ApiResult | null;
-
-  /**
-   * Cas propre recommandé : l'API JSON répond 401 avec loginUrl.
-   */
-  if (response.status === 401 || data?.authRequired) {
-    throw new AuthRequiredError(data?.loginUrl || "/login");
-  }
-
-  if (!response.ok || !data?.ok) {
-    throw new Error(data?.error || "Action impossible.");
-  }
-
-  return data;
 }
 
 export default function MessageActions({
@@ -234,6 +172,7 @@ export default function MessageActions({
     <>
       <footer className={styles.readerActions}>
         <a href={getMailtoHref(email, subject)} className={styles.primaryAction}>
+          <CornerUpLeft size={14} />
           Répondre
         </a>
 
@@ -244,6 +183,7 @@ export default function MessageActions({
             onClick={markAsRead}
             disabled={isPending || status === "READ"}
           >
+            <MailOpen size={14} />
             Marquer lu
           </button>
         )}
@@ -275,6 +215,7 @@ export default function MessageActions({
             onClick={deleteMessage}
             disabled={isPending}
           >
+            <Trash2 size={14} />
             Supprimer
           </button>
         )}

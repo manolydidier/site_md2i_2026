@@ -2,6 +2,7 @@
 
 import type { ReactNode } from "react";
 import { useEffect, useState } from "react";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 import styles from "./login/admin-messages.module.css";
 
 type Props = {
@@ -71,7 +72,9 @@ export default function MailColumnLayout({ children }: Props) {
           leftOpen ? "Fermer la colonne gauche" : "Ouvrir la colonne gauche"
         }
       >
-        <span className={styles.columnToggleIcon}>{leftOpen ? "‹" : "›"}</span>
+        <span className={styles.columnToggleIcon}>
+          {leftOpen ? <ChevronLeft size={13} /> : <ChevronRight size={13} />}
+        </span>
         <span className={styles.columnToggleText}>
           {leftOpen ? "Dossiers" : "Ouvrir"}
         </span>
@@ -95,7 +98,9 @@ export default function MailColumnLayout({ children }: Props) {
         <span className={styles.columnToggleText}>
           {rightOpen ? "Lecture" : "Ouvrir"}
         </span>
-        <span className={styles.columnToggleIcon}>{rightOpen ? "›" : "‹"}</span>
+        <span className={styles.columnToggleIcon}>
+          {rightOpen ? <ChevronRight size={13} /> : <ChevronLeft size={13} />}
+        </span>
       </button>
 
       {children}
