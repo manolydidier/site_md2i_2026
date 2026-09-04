@@ -19,6 +19,7 @@ import {
   UserRound,
   X,
 } from "lucide-react";
+import { formatDate } from "@/app/lib/format-date";
 
 type TaskStatus = "TODO" | "IN_PROGRESS" | "DONE" | "CANCELLED";
 type TaskPriority = "LOW" | "MEDIUM" | "HIGH" | "URGENT";
@@ -78,14 +79,6 @@ const PRIORITIES: { value: TaskPriority; label: string }[] = [
   { value: "HIGH", label: "Haute" },
   { value: "URGENT", label: "Urgente" },
 ];
-
-function formatDate(value: string | null) {
-  if (!value) return "—";
-
-  return new Intl.DateTimeFormat("fr-FR", {
-    dateStyle: "medium",
-  }).format(new Date(value));
-}
 
 function toDateInput(value: string | null) {
   if (!value) return "";

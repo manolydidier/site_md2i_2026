@@ -12,6 +12,7 @@ import {
   Search,
   RefreshCcw,
 } from "lucide-react";
+import { formatDate as formatDateShared } from "@/app/lib/format-date";
 
 type InvoiceListItem = {
   id: string;
@@ -38,14 +39,7 @@ function formatAmount(value: string | number) {
 }
 
 function formatDate(value: string | null) {
-  if (!value) return "—";
-  try {
-    return new Intl.DateTimeFormat("fr-FR", { day: "2-digit", month: "2-digit", year: "numeric" }).format(
-      new Date(value)
-    );
-  } catch {
-    return value;
-  }
+  return formatDateShared(value, { style: "numeric" });
 }
 
 export default function InvoicesListPage() {

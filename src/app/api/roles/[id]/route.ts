@@ -1,16 +1,16 @@
 // app/api/roles/[id]/route.ts
 import { NextRequest } from 'next/server'
-import { auth } from '@/auth'
 import { prisma } from '@/app/lib/prisma'
+import { withPermission } from '@/(permisionGuard)/lib/permissions'
 import { logAudit } from '@/(permisionGuard)/lib/audit'
 
 type RoleParams = { params: Promise<{ id: string }> }
 
 // ── GET /api/roles/[id] — détail + utilisateurs assignés ─────────────────────
-export async function GET(_: NextRequest, { params }: RoleParams) {
-  const session = await auth()
+export async function GET(req: NextRequest, { params }: RoleParams) {
+  const guard = await withPermission(req)
+  if (!guard.ok) return guard.response
   const { id } = await params
-  if (!session) return Response.json({ error: 'Non authentifié' }, { status: 401 })
 
   const role = await prisma.role.findFirst({
     where: { id: id },
@@ -51,9 +51,10 @@ export async function GET(_: NextRequest, { params }: RoleParams) {
 
 // ── PATCH /api/roles/[id] — modifier ─────────────────────────────────────────
 export async function PATCH(req: NextRequest, { params }: RoleParams) {
-  const session = await auth()
+  const guard = await withPermission(req)
+  if (!guard.ok) return guard.response
+  const { session } = guard
   const { id } = await params
-  if (!session) return Response.json({ error: 'Non authentifié' }, { status: 401 })
 
   const existing = await prisma.role.findUnique({ where: { id: id } })
   if (!existing) return Response.json({ error: 'Rôle introuvable' }, { status: 404 })
@@ -95,9 +96,10 @@ export async function PATCH(req: NextRequest, { params }: RoleParams) {
 
 // ── DELETE /api/roles/[id] — supprimer ────────────────────────────────────────
 export async function DELETE(req: NextRequest, { params }: RoleParams) {
-  const session = await auth()
+  const guard = await withPermission(req)
+  if (!guard.ok) return guard.response
+  const { session } = guard
   const { id } = await params
-  if (!session) return Response.json({ error: 'Non authentifié' }, { status: 401 })
 
   const existing = await prisma.role.findFirst({
     where: { id: id },

@@ -6,6 +6,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { ArrowLeft, FileDown, FileSpreadsheet, Pencil } from "lucide-react";
 import { toCssStyle, DEFAULT_LIBELLE_STYLE, type TextStyle, type TextLine, type TextRun } from "@/app/lib/invoices/style";
+import { formatDate as formatDateShared } from "@/app/lib/format-date";
 
 type InvoiceLine = {
   id: string;
@@ -69,12 +70,7 @@ function formatAmountOrBlank(value: string | number) {
 }
 
 function formatDate(value: string | null) {
-  if (!value) return null;
-  try {
-    return new Intl.DateTimeFormat("fr-FR", { day: "2-digit", month: "long", year: "numeric" }).format(new Date(value));
-  } catch {
-    return value;
-  }
+  return formatDateShared(value, { style: "long" });
 }
 
 export default function InvoiceViewPage() {

@@ -13,6 +13,7 @@ import {
   translateHtmlContent,
 } from '@/app/i18n/dynamic'
 import { type Locale, normalizeLocale } from '@/app/i18n/settings'
+import { formatDate as formatDateShared } from '@/app/lib/format-date'
 import grapesjs, { Editor } from 'grapesjs'
 import 'grapesjs/dist/css/grapes.min.css'
 
@@ -612,17 +613,11 @@ function formatPrice(value: Product['price'], locale: Locale) {
 }
 
 function formatDate(value: string | null | undefined, locale: Locale) {
-  if (!value) return locale === 'en' ? 'Not specified' : 'Non renseigné'
-
-  try {
-    return new Intl.DateTimeFormat(locale === 'en' ? 'en-US' : 'fr-FR', {
-      day: '2-digit',
-      month: 'long',
-      year: 'numeric',
-    }).format(new Date(value))
-  } catch {
-    return value
-  }
+  return formatDateShared(value, {
+    style: 'long',
+    locale: locale === 'en' ? 'en-US' : 'fr-FR',
+    fallback: locale === 'en' ? 'Not specified' : 'Non renseigné',
+  })
 }
 
 function getProductLeadHref(product: Product) {

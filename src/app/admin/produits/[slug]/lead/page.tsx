@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import ProductLeadForm from "@/app/admin/components/crm/ProductLeadForm";
 import { prisma } from "@/app/lib/prisma";
 import type { Prisma } from "@/generated/prisma/client";
+import { formatDate as formatDateShared } from "@/app/lib/format-date";
 
 type ProductLeadPageProps = {
   params: Promise<{
@@ -33,16 +34,7 @@ function formatPrice(value: unknown) {
 }
 
 function formatDate(value: Date | string | null | undefined) {
-  if (!value) return "Non renseigné";
-  try {
-    return new Intl.DateTimeFormat("fr-FR", {
-      day: "2-digit",
-      month: "long",
-      year: "numeric",
-    }).format(new Date(value));
-  } catch {
-    return "Non renseigné";
-  }
+  return formatDateShared(value, { style: "long", fallback: "Non renseigné" });
 }
 
 export default async function ProductLeadPage({ params }: ProductLeadPageProps) {

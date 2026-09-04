@@ -1,9 +1,60 @@
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import { type Locale, normalizeLocale } from '@/app/i18n/settings'
 
 const MAX_TEXTS = 60
 const MAX_TEXT_LENGTH = 5000
 const responseCache = new Map<string, string>()
+
+// Endpoint public par nature (traduction du contenu du site pour les
+// visiteurs anonymes, voir src/app/i18n/dynamic.ts) : pas de garde de
+// permission possible ici. Protégé par limitation de débit par IP à la
+// place, pour éviter qu'un tiers ne fasse gonfler la facture Google
+// Cloud Translate — même schéma que src/app/api/contact/route.ts.
+const RATE_LIMIT_WINDOW_MS = 60 * 1000
+const RATE_LIMIT_MAX_REQUESTS = 30
+
+const rateLimitStore = new Map<
+  string,
+  {
+    count: number
+    resetAt: number
+  }
+>()
+
+function getClientIp(request: NextRequest) {
+  return (
+    request.headers.get('cf-connecting-ip') ||
+    request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ||
+    request.headers.get('x-real-ip') ||
+    'unknown'
+  )
+}
+
+function checkRateLimit(key: string) {
+  const now = Date.now()
+
+  for (const [storedKey, record] of rateLimitStore.entries()) {
+    if (record.resetAt <= now) {
+      rateLimitStore.delete(storedKey)
+    }
+  }
+
+  const record = rateLimitStore.get(key)
+
+  if (!record || record.resetAt <= now) {
+    rateLimitStore.set(key, { count: 1, resetAt: now + RATE_LIMIT_WINDOW_MS })
+    return { allowed: true, retryAfterSeconds: 0 }
+  }
+
+  if (record.count >= RATE_LIMIT_MAX_REQUESTS) {
+    return { allowed: false, retryAfterSeconds: Math.ceil((record.resetAt - now) / 1000) }
+  }
+
+  record.count += 1
+  rateLimitStore.set(key, record)
+
+  return { allowed: true, retryAfterSeconds: 0 }
+}
 
 function cacheKey(text: string, source: Locale, target: Locale) {
   return `${source}:${target}:${text}`
@@ -128,8 +179,17 @@ async function translateTexts(texts: string[], source: Locale, target: Locale) {
   )
 }
 
-export async function POST(request: Request) {
+export async function POST(request: NextRequest) {
   try {
+    const rateLimit = checkRateLimit(getClientIp(request))
+
+    if (!rateLimit.allowed) {
+      return NextResponse.json(
+        { error: `Too many requests. Retry in ${rateLimit.retryAfterSeconds}s.` },
+        { status: 429 },
+      )
+    }
+
     const body = (await request.json()) as {
       texts?: unknown
       target?: unknown

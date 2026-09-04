@@ -24,6 +24,8 @@ import {
   X,
   Zap,
 } from "lucide-react";
+import { formatDate as formatDateShared } from "@/app/lib/format-date";
+import { useConfirm } from "@/app/admin/_components/ConfirmDialog";
 
 type LegacyTrigger =
   | "CONTACT_CREATED"
@@ -522,16 +524,7 @@ function getConditionLabel(
 }
 
 function formatDate(value?: string | null) {
-  if (!value) return "—";
-
-  try {
-    return new Intl.DateTimeFormat("fr-FR", {
-      dateStyle: "medium",
-      timeStyle: "short",
-    }).format(new Date(value));
-  } catch {
-    return "—";
-  }
+  return formatDateShared(value, { style: "datetime" });
 }
 
 function getFieldValuePlaceholder(field: ConditionField) {
@@ -614,6 +607,7 @@ export default function EmailAutomationsPage() {
   const canCreate = can("email_automations", "canCreate");
   const canUpdate = can("email_automations", "canUpdate");
   const canDelete = can("email_automations", "canDelete");
+  const { confirm, confirmDialog } = useConfirm();
 
   const [automations, setAutomations] = useState<Automation[]>([]);
   const [draftCampaigns, setDraftCampaigns] = useState<DraftCampaign[]>([]);
@@ -1185,9 +1179,12 @@ export default function EmailAutomationsPage() {
   };
 
   const handleDelete = async (automation: Automation) => {
-    const confirmed = window.confirm(
-      `Supprimer l’automatisation “${automation.name}” ? Les emails en attente liés à cette automatisation seront annulés.`
-    );
+    const confirmed = await confirm({
+      title: "Supprimer cette automatisation ?",
+      message: `Supprimer l’automatisation “${automation.name}” ? Les emails en attente liés à cette automatisation seront annulés.`,
+      confirmLabel: "Supprimer",
+      danger: true,
+    });
 
     if (!confirmed) return;
 
@@ -1230,6 +1227,7 @@ export default function EmailAutomationsPage() {
 
   return (
     <div style={s.page}>
+      {confirmDialog}
       <header style={s.header}>
         <div>
           <div style={s.breadcrumb}>

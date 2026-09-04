@@ -22,6 +22,7 @@ import {
   UserRound,
   X,
 } from "lucide-react";
+import { formatDate } from "@/app/lib/format-date";
 
 type StageOption = {
   value: string;
@@ -75,14 +76,6 @@ type ModalForm = {
   nextFollowUpAt: string;
   lostReason: string;
 };
-
-function formatDate(value: string | null) {
-  if (!value) return "—";
-
-  return new Intl.DateTimeFormat("fr-FR", {
-    dateStyle: "medium",
-  }).format(new Date(value));
-}
 
 function formatAmount(amount: string, currency: string | null) {
   if (!amount) return "—";

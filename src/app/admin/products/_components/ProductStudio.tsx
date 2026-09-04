@@ -2,14 +2,13 @@
 
 import { useEffect, useRef, useState, useCallback, type ChangeEvent } from "react";
 import { useRouter } from "next/navigation";
-import grapesjs, { Editor } from "grapesjs";
+import type { Editor } from "grapesjs";
 import "grapesjs/dist/css/grapes.min.css";
 import ProductMetaSidebar, { ProductMeta } from './ProductMetaSidebar'
 import { generateSlug } from "@/app/lib/utils/slug";
 import { useTheme } from "@/app/context/ThemeContext";
-import { ensureBaseBlocksCss, registerCommonBlocks } from "@/app/components/edito/grapes-shared/blocks";
-import { registerCommonKeymaps } from "@/app/components/edito/grapes-shared/keymaps";
-import { STYLE_MANAGER_SECTORS } from "@/app/components/edito/grapes-shared/styleManagerConfig";
+import { ensureBaseBlocksCss } from "@/app/components/edito/grapes-shared/blocks";
+import { createMd2iGrapesEditor } from "@/app/components/edito/grapes-shared/createEditor";
 import {
   type EditorSnapshot,
   clearDraft,
@@ -61,6 +60,7 @@ export default function ProductStudio({ mode, productId, authorId,}: ProductStud
   const [inspectorTab, setInspectorTab] = useState<"styles" | "properties">("styles");
   const [device, setDevice] = useState<Device>("desktop");
   const [saveStatus, setSaveStatus] = useState<SaveStatus>("idle");
+  const [saveError, setSaveError] = useState("");
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [isReady, setIsReady] = useState(false);
   const [selectedName, setSelectedName] = useState("Aucun élément");
@@ -599,65 +599,9 @@ export default function ProductStudio({ mode, productId, authorId,}: ProductStud
     if (!mountRef.current || gjsRef.current) return;
 
     (async () => {
-      const [
-        { default: gjsPreset },
-        { default: gjsBlocks },
-        { default: gjsForms },
-        { default: gjsNavbar },
-        { default: gjsCustomCode },
-      ] = await Promise.all([
-        import("grapesjs-preset-webpage"),
-        import("grapesjs-blocks-basic"),
-        import("grapesjs-plugin-forms"),
-        import("grapesjs-navbar"),
-        import("grapesjs-custom-code"),
-      ]);
-
-      const editor = grapesjs.init({
-        container: mountRef.current!,
-        height: "100%",
-        width: "100%",
-        fromElement: false,
-        storageManager: false,
-
-        plugins: [gjsPreset, gjsBlocks, gjsForms, gjsNavbar, gjsCustomCode],
-        pluginsOpts: {
-          [gjsPreset as never]: { modalImportTitle: "Importer du HTML" },
-          [gjsBlocks as never]: { flexGrid: true },
-        },
-
-        panels: { defaults: [] },
-
-        deviceManager: {
-          devices: [
-            { name: "Desktop", width: "" },
-            { name: "Tablet", width: "768px", widthMedia: "992px" },
-            { name: "Mobile", width: "375px", widthMedia: "480px" },
-          ],
-        },
-
-        canvas: {
-          styles: [
-            "https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap",
-            "https://unpkg.com/leaflet@1.9.4/dist/leaflet.css",
-          ],
-          scripts: ["https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"],
-        },
-
-        blockManager: { appendTo: "#ed-blocks" },
-        layerManager: { appendTo: "#ed-layers" },
-        traitManager: { appendTo: "#ed-traits" },
-        selectorManager: { appendTo: "#ed-style-selectors" },
-
-        styleManager: {
-          appendTo: "#ed-styles-fields",
-          sectors: STYLE_MANAGER_SECTORS,
-        },
-      });
+      const editor = await createMd2iGrapesEditor(mountRef.current!);
 
       gjsRef.current = editor;
-      registerCommonBlocks(editor);
-      registerCommonKeymaps(editor);
 
       const updateSelectedLabel = () => {
         const selected = editor.getSelected() as any;
@@ -982,6 +926,7 @@ const handleSave = async (statusOverride?: 'DRAFT' | 'PUBLISHED') => {
 
     clearDraft('product', draftId)
     setSaveStatus('saved')
+    setSaveError('')
     setTimeout(() => setSaveStatus('idle'), 3000)
 
     if (mode === 'create' && nextId) {
@@ -989,8 +934,8 @@ const handleSave = async (statusOverride?: 'DRAFT' | 'PUBLISHED') => {
     }
   } catch (err) {
     setSaveStatus('error')
+    setSaveError(err instanceof Error ? err.message : 'Erreur de sauvegarde')
     setTimeout(() => setSaveStatus('idle'), 4000)
-    alert(err instanceof Error ? err.message : 'Erreur de sauvegarde')
   }
 }
  const handleNameChange = (name: string) =>
@@ -1070,10 +1015,13 @@ const handleSave = async (statusOverride?: 'DRAFT' | 'PUBLISHED') => {
             </span>
           )}
           {saveStatus !== "idle" && (
-            <span className={`ed-save-tag ed-save-tag--${saveStatus}`}>
+            <span
+              className={`ed-save-tag ed-save-tag--${saveStatus}`}
+              title={saveStatus === "error" ? saveError : undefined}
+            >
               {saveStatus === "saving" && "Sauvegarde…"}
               {saveStatus === "saved" && "✓ Sauvegardé"}
-              {saveStatus === "error" && "✗ Erreur"}
+              {saveStatus === "error" && `✗ ${saveError || "Erreur"}`}
             </span>
           )}
           <button className="ed-btn ed-btn--ghost" onClick={() => setSidebarOpen(true)}>

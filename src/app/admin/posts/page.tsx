@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { useTheme } from '@/app/context/ThemeContext'
 import api from '@/app/lib/axios'
 import { usePermissions } from '@/(permisionGuard)/context/PermissionsContext'
+import { useConfirm } from '@/app/admin/_components/ConfirmDialog'
 
 type PostStatus = 'DRAFT' | 'PUBLISHED' | 'ARCHIVED'
 type SortField = 'createdAt' | 'updatedAt' | 'title' | 'status' | 'publishedAt'
@@ -348,6 +349,7 @@ export default function AdminPostsPage() {
   const [loading, setLoading] = useState(true)
   const [accessError, setAccessError] = useState<401 | 403 | null>(null)
   const [toast, setToast] = useState<{ message: string; type: 'ok' | 'err' } | null>(null)
+  const { confirm, confirmDialog } = useConfirm()
 
   const [page, setPage] = useState(1)
   const [limit, setLimit] = useState(10)
@@ -446,7 +448,13 @@ export default function AdminPostsPage() {
   }
 
   const handleDelete = async (id: string, title: string) => {
-    if (!window.confirm(`Supprimer définitivement "${title}" ?`)) return
+    const ok = await confirm({
+      title: 'Supprimer cet article ?',
+      message: `Supprimer définitivement "${title}" ?`,
+      confirmLabel: 'Supprimer',
+      danger: true,
+    })
+    if (!ok) return
 
     try {
       await api.delete(`/api/posts/${id}`)
@@ -459,7 +467,13 @@ export default function AdminPostsPage() {
 
   const handleBulkDelete = async () => {
     if (!selected.size) return
-    if (!window.confirm(`Supprimer ${selected.size} article(s) ?`)) return
+    const ok = await confirm({
+      title: 'Supprimer ces articles ?',
+      message: `Supprimer ${selected.size} article(s) ?`,
+      confirmLabel: 'Supprimer',
+      danger: true,
+    })
+    if (!ok) return
 
     try {
       await Promise.all([...selected].map((id) => api.delete(`/api/posts/${id}`)))
@@ -607,6 +621,7 @@ export default function AdminPostsPage() {
         }
       `}</style>
 
+      {confirmDialog}
       {toast && <Toast message={toast.message} type={toast.type} />}
 
       <div

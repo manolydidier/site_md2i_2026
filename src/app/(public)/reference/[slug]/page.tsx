@@ -2,7 +2,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { notFound } from "next/navigation";
 import { prisma } from "@/app/lib/prisma";
-import { buildMetadata } from "@/app/seo";
+import { buildMetadata, SITE_URL } from "@/app/seo";
 
 type ReferencePageProps = {
   params: Promise<{
@@ -154,8 +154,31 @@ export default async function ReferenceDetailPage({
     { label: "Budget", value: reference.budget },
   ].filter((item) => Boolean(item.value));
 
+  const jsonLd = {
+    "@context": "https://schema.org",
+    "@type": "Article",
+    headline: reference.title,
+    description: stripHtml(reference.excerpt).slice(0, 300),
+    image: reference.image
+      ? reference.image.startsWith("http")
+        ? reference.image
+        : `${SITE_URL}${reference.image}`
+      : undefined,
+    author: { "@type": "Organization", name: "MD2I", url: SITE_URL },
+    publisher: { "@type": "Organization", name: "MD2I", url: SITE_URL },
+    datePublished: reference.publishedAt?.toISOString(),
+    dateModified: reference.updatedAt?.toISOString(),
+    about: reference.client,
+    articleSection: reference.category,
+    url: `${SITE_URL}/reference/${reference.slug}`,
+  };
+
   return (
     <main className="reference-detail-page">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd).replace(/</g, "\\u003c") }}
+      />
       <section className="reference-hero">
         <div className="reference-hero-media">
           {reference.image ? (

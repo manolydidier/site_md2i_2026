@@ -63,8 +63,9 @@ const guard = await withPermission(req, { action: 'canList' })
 
 // ── POST /api/roles — créer un rôle ─────────────────────────────────────────
 export async function POST(req: NextRequest) {
-  const session = await auth()
-  if (!session) return Response.json({ error: 'Non authentifié' }, { status: 401 })
+  const guard = await withPermission(req)
+  if (!guard.ok) return guard.response
+  const { session } = guard
 
   const { name, code, description } = await req.json()
 

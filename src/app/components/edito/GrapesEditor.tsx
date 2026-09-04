@@ -2,14 +2,13 @@
 
 import { useEffect, useRef, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import grapesjs, { Editor } from "grapesjs";
+import type { Editor } from "grapesjs";
 import "grapesjs/dist/css/grapes.min.css";
 import PostMetaSidebar, { PostMeta } from "./PostMetaSidebar";
 import { generateSlug } from "@/app/lib/utils/slug";
 import { useTheme } from "@/app/context/ThemeContext";
-import { ensureBaseBlocksCss, registerCommonBlocks } from "./grapes-shared/blocks";
-import { registerCommonKeymaps } from "./grapes-shared/keymaps";
-import { STYLE_MANAGER_SECTORS } from "./grapes-shared/styleManagerConfig";
+import { ensureBaseBlocksCss } from "./grapes-shared/blocks";
+import { createMd2iGrapesEditor } from "./grapes-shared/createEditor";
 import {
   type EditorSnapshot,
   clearDraft,
@@ -565,65 +564,9 @@ export default function GrapesEditor({ mode, postId }: GrapesEditorProps) {
     if (!mountRef.current || gjsRef.current) return;
 
     (async () => {
-      const [
-        { default: gjsPreset },
-        { default: gjsBlocks },
-        { default: gjsForms },
-        { default: gjsNavbar },
-        { default: gjsCustomCode },
-      ] = await Promise.all([
-        import("grapesjs-preset-webpage"),
-        import("grapesjs-blocks-basic"),
-        import("grapesjs-plugin-forms"),
-        import("grapesjs-navbar"),
-        import("grapesjs-custom-code"),
-      ]);
-
-      const editor = grapesjs.init({
-        container: mountRef.current!,
-        height: "100%",
-        width: "100%",
-        fromElement: false,
-        storageManager: false,
-
-        plugins: [gjsPreset, gjsBlocks, gjsForms, gjsNavbar, gjsCustomCode],
-        pluginsOpts: {
-          [gjsPreset as never]: { modalImportTitle: "Importer du HTML" },
-          [gjsBlocks as never]: { flexGrid: true },
-        },
-
-        panels: { defaults: [] },
-
-        deviceManager: {
-          devices: [
-            { name: "Desktop", width: "" },
-            { name: "Tablet", width: "768px", widthMedia: "992px" },
-            { name: "Mobile", width: "375px", widthMedia: "480px" },
-          ],
-        },
-
-        canvas: {
-          styles: [
-            "https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap",
-            "https://unpkg.com/leaflet@1.9.4/dist/leaflet.css",
-          ],
-          scripts: ["https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"],
-        },
-
-        blockManager: { appendTo: "#ed-blocks" },
-        layerManager: { appendTo: "#ed-layers" },
-        traitManager: { appendTo: "#ed-traits" },
-        selectorManager: { appendTo: "#ed-style-selectors" },
-
-        styleManager: {
-          appendTo: "#ed-styles-fields",
-          sectors: STYLE_MANAGER_SECTORS,
-        },
-      });
+      const editor = await createMd2iGrapesEditor(mountRef.current!);
 
       gjsRef.current = editor;
-      registerCommonBlocks(editor);
-      registerCommonKeymaps(editor);
 
       const updateSelectedLabel = () => {
         const selected = editor.getSelected() as any;

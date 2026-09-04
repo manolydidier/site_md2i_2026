@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react'
 import { usePermissions } from '@/(permisionGuard)/context/PermissionsContext'
+import { useConfirm } from '@/app/admin/_components/ConfirmDialog'
 
 interface OrphanFile {
   id: string
@@ -37,6 +38,7 @@ export default function UploadsPage() {
   const [selected, setSelected] = useState<Set<string>>(new Set())
   const [error, setError] = useState('')
   const [message, setMessage] = useState('')
+  const { confirm, confirmDialog } = useConfirm()
 
   const fetchOrphans = useCallback(async () => {
     setLoading(true)
@@ -74,7 +76,13 @@ export default function UploadsPage() {
 
   async function handleDelete() {
     if (selected.size === 0) return
-    if (!confirm(`Supprimer définitivement ${selected.size} fichier(s) ?`)) return
+    const ok = await confirm({
+      title: 'Supprimer ces fichiers ?',
+      message: `Supprimer définitivement ${selected.size} fichier(s) ? Cette action est irréversible.`,
+      confirmLabel: 'Supprimer',
+      danger: true,
+    })
+    if (!ok) return
 
     setDeleting(true)
     setError('')
@@ -108,6 +116,7 @@ export default function UploadsPage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
+      {confirmDialog}
       <div className="bg-white border-b border-gray-200 px-6 py-5">
         <div className="max-w-4xl mx-auto flex items-center justify-between">
           <div>

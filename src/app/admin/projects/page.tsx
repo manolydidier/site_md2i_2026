@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback } from 'react'
 import Link from 'next/link'
 import { usePermissions } from '@/(permisionGuard)/context/PermissionsContext'
+import { formatDate as formatDateShared } from '@/app/lib/format-date'
 
 interface ProjectRow {
   id: string
@@ -28,8 +29,7 @@ const STATUS_STYLES: Record<string, string> = {
 }
 
 function formatDate(iso: string | null) {
-  if (!iso) return '—'
-  return new Intl.DateTimeFormat('fr-FR', { day: '2-digit', month: 'short', year: 'numeric' }).format(new Date(iso))
+  return formatDateShared(iso, { style: 'short' })
 }
 
 function getAuthorLabel(author: ProjectRow['author']) {

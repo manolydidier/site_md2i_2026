@@ -14,6 +14,7 @@ import {
   RefreshCcw,
   Target,
 } from "lucide-react";
+import { formatDate as formatDateShared } from "@/app/lib/format-date";
 
 type DelayUnit = "MINUTES" | "HOURS" | "DAYS";
 
@@ -85,16 +86,7 @@ function getDelayLabel(delayValue: number, delayUnit: DelayUnit) {
 }
 
 function formatDate(value?: string | null) {
-  if (!value) return "—";
-
-  try {
-    return new Intl.DateTimeFormat("fr-FR", {
-      dateStyle: "medium",
-      timeStyle: "short",
-    }).format(new Date(value));
-  } catch {
-    return "—";
-  }
+  return formatDateShared(value, { style: "datetime" });
 }
 
 export default function ProspectEmailAutomationPage() {

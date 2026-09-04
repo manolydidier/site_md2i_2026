@@ -25,6 +25,7 @@ import {
 } from "@/app/hooks/useEmailMarketing";
 import type { Contact } from "@/app/types/email-marketing";
 import { usePermissions } from "@/(permisionGuard)/context/PermissionsContext";
+import { formatDate } from "@/app/lib/format-date";
 import { ContactModal } from "./ContactModal";
 import styles from "./ContactsTable.module.css";
 
@@ -40,22 +41,6 @@ const CRM_SOURCES = [
   { value: "REFERRAL", label: "Recommandation" },
   { value: "OTHER", label: "Autre" },
 ];
-
-function formatDate(value?: string | Date | null) {
-  if (!value) return "—";
-
-  const date = new Date(value);
-
-  if (Number.isNaN(date.getTime())) {
-    return "—";
-  }
-
-  return date.toLocaleDateString("fr-FR", {
-    day: "2-digit",
-    month: "short",
-    year: "numeric",
-  });
-}
 
 function getContactName(contact: Contact) {
   const fullName = `${contact.firstName || ""} ${contact.lastName || ""}`.trim();
@@ -747,7 +732,7 @@ export function ContactsTable() {
 
                     <td>
                       <span className={styles.date}>
-                        {formatDate(contact.createdAt)}
+                        {formatDate(contact.createdAt, { style: "short" })}
                       </span>
                     </td>
 

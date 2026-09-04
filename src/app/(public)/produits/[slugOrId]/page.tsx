@@ -2,7 +2,7 @@
 
 import type { Metadata } from 'next'
 import { prisma } from '@/app/lib/prisma'
-import { buildMetadata } from '@/app/seo'
+import { buildMetadata, SITE_URL } from '@/app/seo'
 import ProductDetailClient from './ProductDetailClient'
 import type { Prisma } from '@/generated/prisma/client'
 
@@ -114,6 +114,60 @@ export async function generateMetadata({
   })
 }
 
-export default function Page() {
-  return <ProductDetailClient />
+export default async function Page({ params }: ProductPageProps) {
+  const { slugOrId: rawIdentifier } = await params
+  const identifier = decodeIdentifier(rawIdentifier)
+
+  const product = identifier
+    ? await prisma.product.findFirst({
+        where: buildProductWhere(identifier),
+        select: {
+          name: true,
+          slug: true,
+          id: true,
+          excerpt: true,
+          coverImage: true,
+          price: true,
+          category: { select: { name: true } },
+        },
+      })
+    : null
+
+  const jsonLd = product
+    ? {
+        '@context': 'https://schema.org',
+        '@type': 'SoftwareApplication',
+        name: product.name,
+        description:
+          stripHtml(product.excerpt).slice(0, 300) ||
+          `${product.name}, une solution MD2I pour la gestion, le suivi et l'accompagnement des projets de développement.`,
+        image: product.coverImage
+          ? product.coverImage.startsWith('http')
+            ? product.coverImage
+            : `${SITE_URL}${product.coverImage}`
+          : undefined,
+        applicationCategory: product.category?.name || 'BusinessApplication',
+        url: `${SITE_URL}/produits/${encodeURIComponent(product.slug || product.id)}`,
+        offers: product.price
+          ? {
+              '@type': 'Offer',
+              price: product.price.toString(),
+              priceCurrency: 'MGA',
+              availability: 'https://schema.org/InStock',
+            }
+          : undefined,
+      }
+    : null
+
+  return (
+    <>
+      {jsonLd && (
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd).replace(/</g, '\\u003c') }}
+        />
+      )}
+      <ProductDetailClient />
+    </>
+  )
 }

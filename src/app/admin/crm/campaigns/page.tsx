@@ -27,6 +27,7 @@ import {
 import { getCrmOwnerUserId } from "@/app/lib/crm-owner";
 import { checkPermission } from "@/(permisionGuard)/lib/permissions";
 import { prisma } from "@/app/lib/prisma";
+import { formatDate as formatDateShared } from "@/app/lib/format-date";
 import { getCrmPublicationPublisherReadiness } from "@/app/lib/crm-publication-publisher";
 import {
   deleteCrmMarketingCampaign,
@@ -286,11 +287,7 @@ function formatDateTime(value: Date | null) {
 }
 
 function formatDate(value: Date | null) {
-  if (!value) return "Non planifié";
-
-  return new Intl.DateTimeFormat("fr-FR", {
-    dateStyle: "medium",
-  }).format(value);
+  return formatDateShared(value, { fallback: "Non planifié" });
 }
 
 function formatStatus(value: string) {

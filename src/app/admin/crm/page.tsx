@@ -16,16 +16,9 @@ import {
 import { prisma } from "@/app/lib/prisma";
 import { getCrmOwnerUserId } from "@/app/lib/crm-owner";
 import { getActiveOpportunityStages } from "@/app/lib/crm-opportunity-stages";
+import { formatDate } from "@/app/lib/format-date";
 
 export const dynamic = "force-dynamic";
-
-function formatDate(date: Date | null) {
-  if (!date) return "—";
-
-  return new Intl.DateTimeFormat("fr-FR", {
-    dateStyle: "medium",
-  }).format(date);
-}
 
 function getContactName(contact?: {
   firstName: string | null;

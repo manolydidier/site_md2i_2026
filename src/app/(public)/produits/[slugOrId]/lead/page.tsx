@@ -1,6 +1,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import { notFound } from "next/navigation";
+import type { Metadata } from "next";
 import {
   ArrowLeft,
   ArrowRight,
@@ -18,6 +19,7 @@ import type { ReactNode } from "react";
 import ProductLeadForm from "@/app/admin/components/crm/ProductLeadForm";
 import { T } from "@/app/i18n/T";
 import { prisma } from "@/app/lib/prisma";
+import { buildMetadata } from "@/app/seo";
 import type { Prisma } from "@/generated/prisma/client";
 import LeadThemeShell from "./LeadThemeShell";
 
@@ -724,6 +726,55 @@ const LEAD_PAGE_STYLES = `
     }
   }
 `;
+
+/* ------------------------------------------------------------------ */
+/* Métadonnées                                                         */
+/* ------------------------------------------------------------------ */
+// Page de conversion (formulaire de demande), dupliquée pour chaque
+// produit : noIndex pour éviter la dilution de contenu dupliqué, mais un
+// titre par produit plutôt que le titre générique du site.
+
+export async function generateMetadata({
+  params,
+}: ProductLeadPageProps): Promise<Metadata> {
+  const { slugOrId } = await params;
+  const cleanSlugOrId = decodeIdentifier(slugOrId);
+
+  if (!cleanSlugOrId) {
+    return buildMetadata({
+      title: "Demande — produit introuvable",
+      path: "/produits",
+      noIndex: true,
+    });
+  }
+
+  const product = await prisma.product.findFirst({
+    where: {
+      status: "PUBLISHED",
+      publishedAt: { not: null, lte: new Date() },
+      OR: [
+        { slug: cleanSlugOrId },
+        ...(isUuid(cleanSlugOrId) ? [{ id: cleanSlugOrId }] : []),
+      ],
+    },
+    select: { name: true, slug: true, id: true },
+  });
+
+  if (!product) {
+    return buildMetadata({
+      title: "Demande — produit introuvable",
+      path: `/produits/${encodeURIComponent(cleanSlugOrId)}/lead`,
+      noIndex: true,
+    });
+  }
+
+  return buildMetadata({
+    title: `Demander une démo ou un devis — ${product.name}`,
+    description: `Décrivez votre besoin pour ${product.name} : l'équipe MD2I revient vers vous avec une démonstration, un devis ou un rappel.`,
+    path: `/produits/${encodeURIComponent(product.slug || product.id)}/lead`,
+    noIndex: true,
+  });
+}
 
 /* ------------------------------------------------------------------ */
 /* Composant                                                           */

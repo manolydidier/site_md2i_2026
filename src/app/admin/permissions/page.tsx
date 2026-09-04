@@ -9,6 +9,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { isAxiosError } from 'axios'
 import { useTheme } from '@/app/context/ThemeContext'
 import api from '@/app/lib/axios'
+import { useConfirm } from '@/app/admin/_components/ConfirmDialog'
 
 function apiErrorMessage(e: unknown, fallback: string) {
   if (isAxiosError(e) && typeof e.response?.data?.error === 'string') return e.response.data.error
@@ -178,6 +179,7 @@ export default function PermissionsCatalogPage() {
   const [showInactive, setShowInactive] = useState(false)
   const [editing, setEditing]     = useState<Resource | null | 'new'>(null)
   const [toast, setToast]         = useState<{ msg: string; type: 'ok' | 'err' } | null>(null)
+  const { confirm, confirmDialog } = useConfirm()
 
   const fetchResources = useCallback(async () => {
     setLoading(true)
@@ -223,7 +225,13 @@ export default function PermissionsCatalogPage() {
   }
 
   async function handleDelete(r: Resource) {
-    if (!confirm(`Supprimer définitivement le module "${r.name}" ?`)) return
+    const ok = await confirm({
+      title: 'Supprimer ce module ?',
+      message: `Supprimer définitivement le module "${r.name}" ?`,
+      confirmLabel: 'Supprimer',
+      danger: true,
+    })
+    if (!ok) return
     try {
       await api.delete(`/api/permission-resources/${r.id}`)
       showToast('Module supprimé')
@@ -246,6 +254,7 @@ export default function PermissionsCatalogPage() {
 
   return (
     <div style={{ fontFamily: "'DM Sans', sans-serif", color: t.TEXT_MAIN }}>
+      {confirmDialog}
       {toast && (
         <div style={{ position: 'fixed', bottom: 24, right: 24, zIndex: 400, padding: '12px 20px', borderRadius: 12, fontSize: 13, fontWeight: 500, background: toast.type === 'ok' ? 'rgba(29,158,117,.95)' : 'rgba(226,75,74,.95)', color: '#fff', boxShadow: '0 8px 32px rgba(0,0,0,.35)' }}>
           {toast.type === 'ok' ? '✓ ' : '✕ '}{toast.msg}

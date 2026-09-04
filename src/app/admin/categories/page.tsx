@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from 'react'
 import { usePermissions } from '@/(permisionGuard)/context/PermissionsContext'
+import { formatDate as formatDateShared } from '@/app/lib/format-date'
 
 // ── Types ────────────────────────────────────────────────────────────────────
 interface Category {
@@ -32,7 +33,7 @@ function slugify(str: string) {
 }
 
 function formatDate(iso: string) {
-  return new Intl.DateTimeFormat('fr-FR', { day: '2-digit', month: 'short', year: 'numeric' }).format(new Date(iso))
+  return formatDateShared(iso, { style: 'short' })
 }
 
 // ── Component ────────────────────────────────────────────────────────────────

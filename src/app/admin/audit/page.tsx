@@ -2,16 +2,14 @@ import type { CSSProperties } from "react";
 
 import { prisma } from "@/app/lib/prisma";
 import { checkPermission } from "@/(permisionGuard)/lib/permissions";
+import { formatDate as formatDateShared } from "@/app/lib/format-date";
 
 export const dynamic = "force-dynamic";
 
 const PAGE_SIZE = 50;
 
 function formatDate(value: Date) {
-  return new Intl.DateTimeFormat("fr-FR", {
-    dateStyle: "medium",
-    timeStyle: "short",
-  }).format(value);
+  return formatDateShared(value, { style: "datetime" });
 }
 
 function getActorLabel(actor: { email: string; firstName: string | null; lastName: string | null } | null) {

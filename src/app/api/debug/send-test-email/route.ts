@@ -2,18 +2,18 @@
 
 import { NextRequest, NextResponse } from "next/server";
 
-import { auth } from "@/auth";
+import { withPermission } from "@/(permisionGuard)/lib/permissions";
 import { sendTestEmail } from "@/app/lib/email/sender";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
 async function handler(req: NextRequest) {
-  const session = await auth();
-
-  if (!session?.user?.id) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+  // Outil de diagnostic d'envoi d'email (Resend) — réservé aux admins ayant
+  // la main sur les paramètres du site, pas à tout utilisateur connecté,
+  // car il permet d'envoyer un email arbitraire vers n'importe quelle adresse.
+  const guard = await withPermission(req, { resource: "settings", action: "canUpdate" });
+  if (!guard.ok) return guard.response;
 
   let to = "";
   let subject = "Test Resend direct";

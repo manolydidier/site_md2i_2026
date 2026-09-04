@@ -2,7 +2,7 @@ import PostDetailClient from "./PostDetailClient";
 import type { Metadata } from "next";
 import { permanentRedirect } from "next/navigation";
 import { prisma } from "@/app/lib/prisma";
-import { buildMetadata } from "@/app/seo";
+import { buildMetadata, SITE_URL } from "@/app/seo";
 
 type ArticlePageProps = {
   params: Promise<{
@@ -54,9 +54,17 @@ async function getPublishedPostByIdentifier(identifier: string) {
       title: true,
       excerpt: true,
       coverImage: true,
+      publishedAt: true,
+      updatedAt: true,
       category: {
         select: {
           name: true,
+        },
+      },
+      author: {
+        select: {
+          firstName: true,
+          lastName: true,
         },
       },
     },
@@ -118,5 +126,39 @@ export default async function Page({ params }: ArticlePageProps) {
     permanentRedirect(`/articles/${encodeURIComponent(post.slug)}`);
   }
 
-  return <PostDetailClient />
+  const authorName = post?.author
+    ? [post.author.firstName, post.author.lastName].filter(Boolean).join(" ").trim()
+    : "";
+
+  const jsonLd = post
+    ? {
+        "@context": "https://schema.org",
+        "@type": "BlogPosting",
+        headline: post.title,
+        description: stripHtml(post.excerpt).slice(0, 300),
+        image: post.coverImage
+          ? post.coverImage.startsWith("http")
+            ? post.coverImage
+            : `${SITE_URL}${post.coverImage}`
+          : undefined,
+        author: { "@type": "Person", name: authorName || "MD2I" },
+        publisher: { "@type": "Organization", name: "MD2I", url: SITE_URL },
+        datePublished: post.publishedAt?.toISOString(),
+        dateModified: post.updatedAt?.toISOString(),
+        articleSection: post.category?.name,
+        url: `${SITE_URL}/articles/${encodeURIComponent(post.slug || post.id)}`,
+      }
+    : null;
+
+  return (
+    <>
+      {jsonLd && (
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd).replace(/</g, "\\u003c") }}
+        />
+      )}
+      <PostDetailClient />
+    </>
+  );
 }
