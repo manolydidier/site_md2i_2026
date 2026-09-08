@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState, useCallback } from 'react'
+import { Plus, Search, Pencil, Trash2, RotateCcw, Tag as TagIcon } from 'lucide-react'
 import { usePermissions } from '@/(permisionGuard)/context/PermissionsContext'
 import { formatDate as formatDateShared } from '@/app/lib/format-date'
 
@@ -171,15 +172,19 @@ export default function TagsPage() {
       <div className="bg-white border-b border-gray-200 px-6 py-5">
         <div className="max-w-4xl mx-auto flex items-center justify-between gap-4 flex-wrap">
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">Tags</h1>
+            <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
+              <TagIcon size={22} className="text-[#B4610F]" />
+              Tags
+            </h1>
             <p className="text-sm text-gray-500 mt-0.5">{tags.length} tag{tags.length !== 1 ? 's' : ''}</p>
           </div>
           {canCreate && (
             <button
               onClick={openCreate}
-              className="px-4 py-2 text-sm font-semibold text-white bg-amber-500 rounded-lg hover:bg-amber-600 transition-colors shadow-sm"
+              className="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-semibold text-white bg-[#EF9F27] rounded-lg hover:bg-[#DB8E1F] transition-colors shadow-sm"
             >
-              + Nouveau tag
+              <Plus size={15} />
+              Nouveau tag
             </button>
           )}
         </div>
@@ -188,13 +193,16 @@ export default function TagsPage() {
       <div className="max-w-4xl mx-auto px-6 py-6 space-y-5">
         {/* Search */}
         <div className="bg-white border border-gray-200 rounded-xl p-4">
-          <input
-            type="search"
-            placeholder="Rechercher un tag…"
-            value={search}
-            onChange={e => setSearch(e.target.value)}
-            className="w-full px-4 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-400"
-          />
+          <div className="relative">
+            <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+            <input
+              type="search"
+              placeholder="Rechercher un tag…"
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              className="w-full pl-9 pr-4 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#EF9F27]/40"
+            />
+          </div>
         </div>
 
         {/* List */}
@@ -205,7 +213,7 @@ export default function TagsPage() {
             <div className="flex flex-col items-center justify-center h-48 gap-2">
               <p className="text-gray-400 text-sm">Aucun tag</p>
               {canCreate && (
-                <button onClick={openCreate} className="text-amber-600 text-sm font-medium hover:underline">
+                <button onClick={openCreate} className="text-[#B4610F] text-sm font-medium hover:underline">
                   Créer le premier tag →
                 </button>
               )}
@@ -233,7 +241,7 @@ export default function TagsPage() {
                     <td className="px-5 py-3">
                       <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold ${
                         tag._count.posts > 0
-                          ? 'bg-blue-50 text-blue-700 ring-1 ring-blue-200'
+                          ? 'bg-[#F1E6D2] text-[#8A6A3A] ring-1 ring-[#E3D5B8]'
                           : 'bg-gray-100 text-gray-500'
                       }`}>
                         {tag._count.posts}
@@ -245,16 +253,18 @@ export default function TagsPage() {
                         {canUpdate && (
                           <button
                             onClick={() => openEdit(tag)}
-                            className="px-3 py-1.5 text-xs font-medium text-gray-700 bg-white border border-gray-200 rounded-lg hover:border-amber-300 hover:text-amber-700 transition-colors"
+                            className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-gray-700 bg-white border border-gray-200 rounded-lg hover:border-[#EF9F27]/50 hover:text-[#B4610F] transition-colors"
                           >
+                            <Pencil size={12} />
                             Modifier
                           </button>
                         )}
                         {canDelete && (
                           <button
                             onClick={() => setDeleteId(tag.id)}
-                            className="px-3 py-1.5 text-xs font-medium text-red-600 bg-white border border-gray-200 rounded-lg hover:bg-red-50 hover:border-red-200 transition-colors"
+                            className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-red-600 bg-white border border-gray-200 rounded-lg hover:bg-red-50 hover:border-red-200 transition-colors"
                           >
+                            <Trash2 size={12} />
                             Supprimer
                           </button>
                         )}
@@ -289,7 +299,7 @@ export default function TagsPage() {
                   value={form.name}
                   onChange={e => handleNameChange(e.target.value)}
                   placeholder="Ex : Cybersécurité"
-                  className={`w-full px-4 py-2.5 text-sm border rounded-xl focus:outline-none focus:ring-2 focus:ring-amber-400 ${errors.name ? 'border-red-300 bg-red-50' : 'border-gray-200'}`}
+                  className={`w-full px-4 py-2.5 text-sm border rounded-xl focus:outline-none focus:ring-2 focus:ring-[#EF9F27]/40 ${errors.name ? 'border-red-300 bg-red-50' : 'border-gray-200'}`}
                   autoFocus
                 />
                 {errors.name && <p className="text-xs text-red-500 mt-1">{errors.name}</p>}
@@ -306,14 +316,15 @@ export default function TagsPage() {
                     value={form.slug}
                     onChange={e => { setSlugLocked(true); setForm(f => ({ ...f, slug: e.target.value })) }}
                     placeholder="cybersecurite"
-                    className={`flex-1 px-4 py-2.5 text-sm border rounded-xl font-mono focus:outline-none focus:ring-2 focus:ring-amber-400 ${errors.slug ? 'border-red-300 bg-red-50' : 'border-gray-200'}`}
+                    className={`flex-1 px-4 py-2.5 text-sm border rounded-xl font-mono focus:outline-none focus:ring-2 focus:ring-[#EF9F27]/40 ${errors.slug ? 'border-red-300 bg-red-50' : 'border-gray-200'}`}
                   />
                   <button
                     type="button"
                     onClick={() => { setSlugLocked(false); setForm(f => ({ ...f, slug: slugify(f.name) })) }}
                     className="px-3 py-2 text-xs text-gray-500 border border-gray-200 rounded-xl hover:bg-gray-50 transition-colors"
+                    title="Régénérer le slug"
                   >
-                    ↺
+                    <RotateCcw size={13} />
                   </button>
                 </div>
                 {errors.slug && <p className="text-xs text-red-500 mt-1">{errors.slug}</p>}
@@ -330,7 +341,7 @@ export default function TagsPage() {
                 <button
                   type="submit"
                   disabled={saving}
-                  className="flex-1 px-4 py-2.5 text-sm font-semibold text-white bg-amber-500 rounded-xl hover:bg-amber-600 transition-colors disabled:opacity-60"
+                  className="flex-1 px-4 py-2.5 text-sm font-semibold text-white bg-[#EF9F27] rounded-xl hover:bg-[#DB8E1F] transition-colors disabled:opacity-60"
                 >
                   {saving ? 'Enregistrement…' : modal === 'create' ? 'Créer' : 'Mettre à jour'}
                 </button>

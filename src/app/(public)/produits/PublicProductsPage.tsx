@@ -39,10 +39,23 @@ interface ProductsResponse {
   }
 }
 
+interface InitialPagination {
+  page: number
+  limit: number
+  total: number
+  totalPages: number
+}
+
 interface PublicProductsPageProps {
   router?: {
     push: (href: string) => void
   }
+  // Rendu serveur du jeu de résultats par défaut (page 1, aucun filtre) —
+  // affiché tel quel au premier paint (SEO + LCP) avant que l'effet client
+  // ne prenne le relais pour toute interaction (recherche, filtre, page).
+  initialProducts?: Product[]
+  initialCategories?: Category[]
+  initialPagination?: InitialPagination
 }
 
 type SortKey =
@@ -546,19 +559,29 @@ function ProductCard({
 
 // ─── Page ────────────────────────────────────────────────────────────────────
 
-export default function PublicProductsPage({ router }: PublicProductsPageProps) {
+export default function PublicProductsPage({
+  router,
+  initialProducts,
+  initialCategories,
+  initialPagination,
+}: PublicProductsPageProps) {
   const nextRouter = useRouter()
   const nav = router ?? nextRouter
   const { dark } = useTheme()
   const { t, i18n } = useTranslation()
   const locale = normalizeLocale(i18n.resolvedLanguage || i18n.language)
 
+  const hasInitialProducts = Boolean(initialProducts && initialProducts.length > 0)
+  const hasInitialCategories = Boolean(initialCategories && initialCategories.length > 0)
+
   const [mounted, setMounted] = useState(false)
-  const [products, setProducts] = useState<Product[]>([])
-  const [categories, setCategories] = useState<Category[]>([])
-  const [loading, setLoading] = useState(true)
-  const [catsLoading, setCatsLoading] = useState(true)
+  const [products, setProducts] = useState<Product[]>(initialProducts ?? [])
+  const [categories, setCategories] = useState<Category[]>(initialCategories ?? [])
+  const [loading, setLoading] = useState(!hasInitialProducts)
+  const [catsLoading, setCatsLoading] = useState(!hasInitialCategories)
   const [error, setError] = useState<string | null>(null)
+  const skipInitialProductsFetch = useRef(hasInitialProducts)
+  const skipInitialCatsFetch = useRef(hasInitialCategories)
 
   const [search, setSearch] = useState('')
   const [debSearch, setDebSearch] = useState('')
@@ -569,8 +592,8 @@ export default function PublicProductsPage({ router }: PublicProductsPageProps) 
   const [sort, setSort] = useState<SortKey>('date-desc')
 
   const [page, setPage] = useState(1)
-  const [totalPages, setTotalPages] = useState(1)
-  const [totalItems, setTotalItems] = useState(0)
+  const [totalPages, setTotalPages] = useState(initialPagination?.totalPages ?? 1)
+  const [totalItems, setTotalItems] = useState(initialPagination?.total ?? 0)
 
   const [filterOpen, setFilterOpen] = useState(false)
   const [sortOpen, setSortOpen] = useState(false)
@@ -748,10 +771,18 @@ export default function PublicProductsPage({ router }: PublicProductsPageProps) 
   )
 
   useEffect(() => {
+    if (skipInitialCatsFetch.current) {
+      skipInitialCatsFetch.current = false
+      return
+    }
     fetchCats()
   }, [fetchCats])
 
   useEffect(() => {
+    if (skipInitialProductsFetch.current) {
+      skipInitialProductsFetch.current = false
+      return
+    }
     fetchProducts(page, debSearch, selCat, sort, minPrice, maxPrice, imageMode)
   }, [page, debSearch, selCat, sort, minPrice, maxPrice, imageMode, fetchProducts])
 

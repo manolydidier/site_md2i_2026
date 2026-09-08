@@ -32,8 +32,21 @@ interface ArticlesResponse {
   pagination: { page?: number; limit?: number; total?: number; totalPages: number }
 }
 
+interface InitialPagination {
+  page: number
+  limit: number
+  total: number
+  totalPages: number
+}
+
 interface PublicArticlesPageProps {
   router?: { push: (href: string) => void }
+  // Rendu serveur du jeu de résultats par défaut (page 1, aucun filtre) —
+  // affiché tel quel au premier paint (SEO + LCP) avant que l'effet client
+  // ne prenne le relais pour toute interaction (recherche, filtre, page).
+  initialArticles?: Article[]
+  initialCategories?: Category[]
+  initialPagination?: InitialPagination
 }
 
 type SortKey = 'date-desc' | 'date-asc' | 'title-asc' | 'title-desc'
@@ -296,26 +309,36 @@ function ArticleCard({
 }
 
 /* ── Main Page ── */
-export default function PublicArticlesPage({ router }: PublicArticlesPageProps) {
+export default function PublicArticlesPage({
+  router,
+  initialArticles,
+  initialCategories,
+  initialPagination,
+}: PublicArticlesPageProps) {
   const nextRouter = useRouter()
   const nav = router ?? nextRouter
   const { dark } = useTheme()
   const { t, i18n } = useTranslation()
   const locale = normalizeLocale(i18n.resolvedLanguage || i18n.language)
 
+  const hasInitialArticles = Boolean(initialArticles && initialArticles.length > 0)
+  const hasInitialCategories = Boolean(initialCategories && initialCategories.length > 0)
+
   const [mounted, setMounted] = useState(false)
-  const [articles, setArticles] = useState<Article[]>([])
-  const [categories, setCategories] = useState<Category[]>([])
-  const [loading, setLoading] = useState(true)
-  const [catsLoading, setCatsLoading] = useState(true)
+  const [articles, setArticles] = useState<Article[]>(initialArticles ?? [])
+  const [categories, setCategories] = useState<Category[]>(initialCategories ?? [])
+  const [loading, setLoading] = useState(!hasInitialArticles)
+  const [catsLoading, setCatsLoading] = useState(!hasInitialCategories)
   const [error, setError] = useState<string | null>(null)
   const [search, setSearch] = useState('')
   const [debSearch, setDebSearch] = useState('')
   const [selCat, setSelCat] = useState('')
   const [sort, setSort] = useState<SortKey>('date-desc')
   const [page, setPage] = useState(1)
-  const [totalPages, setTotalPages] = useState(1)
-  const [totalItems, setTotalItems] = useState(0)
+  const [totalPages, setTotalPages] = useState(initialPagination?.totalPages ?? 1)
+  const [totalItems, setTotalItems] = useState(initialPagination?.total ?? 0)
+  const skipInitialArticlesFetch = useRef(hasInitialArticles)
+  const skipInitialCatsFetch = useRef(hasInitialCategories)
   const [filterOpen, setFilterOpen] = useState(false)
   const [sortOpen, setSortOpen] = useState(false)
 
@@ -410,10 +433,18 @@ export default function PublicArticlesPage({ router }: PublicArticlesPageProps) 
   }, [locale, t])
 
   useEffect(() => {
+    if (skipInitialCatsFetch.current) {
+      skipInitialCatsFetch.current = false
+      return
+    }
     fetchCats()
   }, [fetchCats])
 
   useEffect(() => {
+    if (skipInitialArticlesFetch.current) {
+      skipInitialArticlesFetch.current = false
+      return
+    }
     fetchArticles(page, debSearch, selCat, sort)
   }, [page, debSearch, selCat, sort, fetchArticles])
 

@@ -1,5 +1,8 @@
-import PublicArticlesPage from '../../components/Articles/PublicArticlesPage'
+import dynamic from 'next/dynamic'
 import { buildMetadata } from '../../seo'
+import { getInitialArticles } from '../../lib/public-articles'
+
+const PublicArticlesPage = dynamic(() => import('../../components/Articles/PublicArticlesPage'))
 
 export const metadata = buildMetadata({
   title: 'Articles et publications MD2I | MD2I',
@@ -16,6 +19,14 @@ export const metadata = buildMetadata({
   ],
 })
 
-export default function ArticlesPage() {
-  return <PublicArticlesPage />
+export default async function ArticlesPage() {
+  const initial = await getInitialArticles()
+
+  return (
+    <PublicArticlesPage
+      initialArticles={initial?.articles}
+      initialCategories={initial?.categories}
+      initialPagination={initial?.pagination}
+    />
+  )
 }

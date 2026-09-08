@@ -1,14 +1,18 @@
 import dynamic from 'next/dynamic'
-import PublicArticlesPage from '../components/Articles/PublicArticlesPage'
-import OrganisationSection from '../components/HomePage/organisation/OrganisationSection'
-import PublicProductsPage from './produits/PublicProductsPage'
-import TechListe from '../components/footer/TechListe'
 import { buildMetadata } from '../seo'
+import { getInitialArticles } from '../lib/public-articles'
+import { getInitialProducts } from '../lib/public-products'
 
-// Code-splitté (garde le rendu serveur — le contenu du premier slide reste
-// dans le HTML initial pour le SEO/no-JS) pour que le bundle three.js de la
-// scène 3D ne soit plus inliné dans le chunk principal de la page d'accueil.
+// Chaque section est code-splittée dans son propre chunk (garde le rendu
+// serveur par défaut — le contenu reste dans le HTML initial pour le
+// SEO/no-JS) plutôt que d'inliner ~4000 lignes de composants clients
+// (react-i18next + framer-motion + TechListe à lui seul fait plus de 2800
+// lignes) dans le bundle JS principal de la page d'accueil.
 const HeroSection = dynamic(() => import('../components/HomePage/herosection/HeroSection'))
+const PublicArticlesPage = dynamic(() => import('../components/Articles/PublicArticlesPage'))
+const OrganisationSection = dynamic(() => import('../components/HomePage/organisation/OrganisationSection'))
+const PublicProductsPage = dynamic(() => import('./produits/PublicProductsPage'))
+const TechListe = dynamic(() => import('../components/footer/TechListe'))
 
 export const metadata = buildMetadata({
   title: 'Logiciels SARA pour projets FED, multi-bailleurs et suivi-évaluation',
@@ -25,14 +29,27 @@ export const metadata = buildMetadata({
   ],
 })
 
-export default function Home() {
+export default async function Home() {
+  const [initialArticles, initialProducts] = await Promise.all([
+    getInitialArticles(),
+    getInitialProducts(),
+  ])
+
   return (
     <>
       <HeroSection />
       {/* <HomePage /> */}
-      <PublicArticlesPage/>
+      <PublicArticlesPage
+        initialArticles={initialArticles?.articles}
+        initialCategories={initialArticles?.categories}
+        initialPagination={initialArticles?.pagination}
+      />
       <OrganisationSection />
-      <PublicProductsPage />
+      <PublicProductsPage
+        initialProducts={initialProducts?.products}
+        initialCategories={initialProducts?.categories}
+        initialPagination={initialProducts?.pagination}
+      />
       <TechListe />
     </>
   )

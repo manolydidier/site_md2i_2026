@@ -1701,10 +1701,10 @@ export default function ProductsPage() {
                                   fontSize: 11.5,
                                   padding: '3px 9px',
                                   borderRadius: 20,
-                                  background: 'rgba(79,163,224,.11)',
-                                  color: '#4fa3e0',
+                                  background: 'rgba(239,159,39,.12)',
+                                  color: ORANGE_DARK,
                                   fontWeight: 600,
-                                  border: '1px solid rgba(79,163,224,.18)',
+                                  border: '1px solid rgba(239,159,39,.2)',
                                   whiteSpace: 'nowrap',
                                 }}
                               >

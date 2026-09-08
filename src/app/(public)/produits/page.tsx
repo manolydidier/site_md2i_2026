@@ -1,7 +1,10 @@
-import PublicProductsPage from './PublicProductsPage'
+import nextDynamic from 'next/dynamic'
 import { buildMetadata } from '../../seo'
+import { getInitialProducts } from '../../lib/public-products'
 
 export const dynamic = 'force-dynamic'
+
+const PublicProductsPage = nextDynamic(() => import('./PublicProductsPage'))
 
 export const metadata = buildMetadata({
   title: 'Produits SARA et logiciels de gestion de projets',
@@ -21,6 +24,14 @@ export const metadata = buildMetadata({
   ],
 })
 
-export default function Page() {
-  return <PublicProductsPage />
+export default async function Page() {
+  const initial = await getInitialProducts()
+
+  return (
+    <PublicProductsPage
+      initialProducts={initial?.products}
+      initialCategories={initial?.categories}
+      initialPagination={initial?.pagination}
+    />
+  )
 }

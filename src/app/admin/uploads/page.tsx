@@ -1,6 +1,7 @@
 'use client'
 
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
+import { HardDrive, RefreshCw, Search, Trash2 } from 'lucide-react'
 import { usePermissions } from '@/(permisionGuard)/context/PermissionsContext'
 import { useConfirm } from '@/app/admin/_components/ConfirmDialog'
 
@@ -38,7 +39,17 @@ export default function UploadsPage() {
   const [selected, setSelected] = useState<Set<string>>(new Set())
   const [error, setError] = useState('')
   const [message, setMessage] = useState('')
+  const [search, setSearch] = useState('')
+  const [typeFilter, setTypeFilter] = useState<'' | 'image' | 'file'>('')
   const { confirm, confirmDialog } = useConfirm()
+
+  const filteredFiles = useMemo(() => {
+    return files.filter((file) => {
+      if (typeFilter && file.type !== typeFilter) return false
+      if (search.trim() && !file.name.toLowerCase().includes(search.trim().toLowerCase())) return false
+      return true
+    })
+  }, [files, search, typeFilter])
 
   const fetchOrphans = useCallback(async () => {
     setLoading(true)
@@ -71,7 +82,18 @@ export default function UploadsPage() {
   }
 
   const toggleAll = () => {
-    setSelected((prev) => (prev.size === files.length ? new Set() : new Set(files.map((f) => f.id))))
+    const visibleIds = filteredFiles.map((f) => f.id)
+    const allVisibleSelected = visibleIds.length > 0 && visibleIds.every((id) => selected.has(id))
+
+    setSelected((prev) => {
+      const next = new Set(prev)
+      if (allVisibleSelected) {
+        visibleIds.forEach((id) => next.delete(id))
+      } else {
+        visibleIds.forEach((id) => next.add(id))
+      }
+      return next
+    })
   }
 
   async function handleDelete() {
@@ -120,7 +142,10 @@ export default function UploadsPage() {
       <div className="bg-white border-b border-gray-200 px-6 py-5">
         <div className="max-w-4xl mx-auto flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">Médiathèque — fichiers orphelins</h1>
+            <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
+              <HardDrive size={22} className="text-[#B4610F]" />
+              Médiathèque — fichiers orphelins
+            </h1>
             <p className="text-sm text-gray-500 mt-0.5">
               Fichiers uploadés (public/uploads) qui ne sont référencés par aucun article, produit,
               projet ou profil utilisateur, et vieux d&apos;au moins 24h.
@@ -129,8 +154,9 @@ export default function UploadsPage() {
           <button
             onClick={fetchOrphans}
             disabled={loading}
-            className="px-4 py-2 text-sm font-medium border border-gray-200 rounded-xl hover:bg-gray-50 disabled:opacity-50"
+            className="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-medium border border-gray-200 rounded-xl hover:bg-gray-50 hover:border-[#EF9F27]/50 disabled:opacity-50 transition-colors"
           >
+            <RefreshCw size={14} className={loading ? 'animate-spin' : ''} />
             Rafraîchir
           </button>
         </div>
@@ -155,29 +181,53 @@ export default function UploadsPage() {
             Aucun fichier orphelin détecté.
           </div>
         ) : (
+          <>
+            <div className="bg-white border border-gray-200 rounded-xl p-4 flex gap-3 flex-wrap">
+              <div className="relative flex-1 min-w-[220px]">
+                <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                <input
+                  type="search"
+                  placeholder="Rechercher un fichier…"
+                  value={search}
+                  onChange={e => setSearch(e.target.value)}
+                  className="w-full pl-9 pr-4 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#EF9F27]/40"
+                />
+              </div>
+              <select
+                value={typeFilter}
+                onChange={e => setTypeFilter(e.target.value as '' | 'image' | 'file')}
+                className="px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#EF9F27]/40"
+              >
+                <option value="">Tous les types</option>
+                <option value="image">Images</option>
+                <option value="file">Autres fichiers</option>
+              </select>
+            </div>
+
           <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
             <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200 bg-gray-50">
               <label className="flex items-center gap-2 text-sm text-gray-700">
                 <input
                   type="checkbox"
-                  checked={selected.size === files.length && files.length > 0}
+                  checked={filteredFiles.length > 0 && filteredFiles.every(f => selected.has(f.id))}
                   onChange={toggleAll}
                 />
-                {files.length} fichier(s) — {formatSize(totalSize)} au total
+                {filteredFiles.length} fichier(s){filteredFiles.length !== files.length ? ` sur ${files.length}` : ''} — {formatSize(totalSize)} au total
               </label>
               {canDelete && (
                 <button
                   onClick={handleDelete}
                   disabled={selected.size === 0 || deleting}
-                  className="px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-xl hover:bg-red-700 disabled:opacity-40"
+                  className="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-xl hover:bg-red-700 disabled:opacity-40"
                 >
+                  <Trash2 size={14} />
                   {deleting ? 'Suppression…' : `Supprimer (${selected.size})`}
                 </button>
               )}
             </div>
 
             <ul className="divide-y divide-gray-100">
-              {files.map((file) => (
+              {filteredFiles.map((file) => (
                 <li key={file.id} className="flex items-center gap-3 px-4 py-3">
                   <input
                     type="checkbox"
@@ -202,6 +252,7 @@ export default function UploadsPage() {
               ))}
             </ul>
           </div>
+          </>
         )}
       </div>
     </div>

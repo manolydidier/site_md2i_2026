@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from 'react'
 import Link from 'next/link'
+import { Plus, Search, Pencil, Trash2, FolderKanban } from 'lucide-react'
 import { usePermissions } from '@/(permisionGuard)/context/PermissionsContext'
 import { formatDate as formatDateShared } from '@/app/lib/format-date'
 
@@ -25,7 +26,7 @@ const STATUS_LABELS: Record<string, string> = {
 const STATUS_STYLES: Record<string, string> = {
   DRAFT: 'bg-gray-100 text-gray-600',
   PUBLISHED: 'bg-green-50 text-green-700 ring-1 ring-green-200',
-  ARCHIVED: 'bg-amber-50 text-amber-700 ring-1 ring-amber-200',
+  ARCHIVED: 'bg-[#F1E6D2] text-[#8A6A3A] ring-1 ring-[#E3D5B8]',
 }
 
 function formatDate(iso: string | null) {
@@ -97,15 +98,19 @@ export default function ProjectsPage() {
       <div className="bg-white border-b border-gray-200 px-6 py-5">
         <div className="max-w-5xl mx-auto flex items-center justify-between gap-4 flex-wrap">
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">Projets (Portfolio)</h1>
+            <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
+              <FolderKanban size={22} className="text-[#B4610F]" />
+              Projets (Portfolio)
+            </h1>
             <p className="text-sm text-gray-500 mt-0.5">{projects.length} projet{projects.length !== 1 ? 's' : ''}</p>
           </div>
           {canCreate && (
             <Link
               href="/admin/projects/new"
-              className="px-4 py-2 text-sm font-semibold text-white bg-amber-500 rounded-lg hover:bg-amber-600 transition-colors shadow-sm"
+              className="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-semibold text-white bg-[#EF9F27] rounded-lg hover:bg-[#DB8E1F] transition-colors shadow-sm"
             >
-              + Nouveau projet
+              <Plus size={15} />
+              Nouveau projet
             </Link>
           )}
         </div>
@@ -113,17 +118,20 @@ export default function ProjectsPage() {
 
       <div className="max-w-5xl mx-auto px-6 py-6 space-y-5">
         <div className="bg-white border border-gray-200 rounded-xl p-4 flex gap-3 flex-wrap">
-          <input
-            type="search"
-            placeholder="Rechercher un projet…"
-            value={search}
-            onChange={e => setSearch(e.target.value)}
-            className="flex-1 min-w-[220px] px-4 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-400"
-          />
+          <div className="relative flex-1 min-w-[220px]">
+            <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+            <input
+              type="search"
+              placeholder="Rechercher un projet…"
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              className="w-full pl-9 pr-4 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#EF9F27]/40"
+            />
+          </div>
           <select
             value={status}
             onChange={e => setStatus(e.target.value)}
-            className="px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-400"
+            className="px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#EF9F27]/40"
           >
             <option value="">Tous les statuts</option>
             <option value="DRAFT">Brouillon</option>
@@ -139,7 +147,7 @@ export default function ProjectsPage() {
             <div className="flex flex-col items-center justify-center h-48 gap-2">
               <p className="text-gray-400 text-sm">Aucun projet</p>
               {canCreate && (
-                <Link href="/admin/projects/new" className="text-amber-600 text-sm font-medium hover:underline">
+                <Link href="/admin/projects/new" className="text-[#B4610F] text-sm font-medium hover:underline">
                   Créer le premier projet →
                 </Link>
               )}
@@ -184,16 +192,18 @@ export default function ProjectsPage() {
                         {canUpdate && (
                           <Link
                             href={`/admin/projects/${project.id}`}
-                            className="px-3 py-1.5 text-xs font-medium text-gray-700 bg-white border border-gray-200 rounded-lg hover:border-amber-300 hover:text-amber-700 transition-colors"
+                            className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-gray-700 bg-white border border-gray-200 rounded-lg hover:border-[#EF9F27]/50 hover:text-[#B4610F] transition-colors"
                           >
+                            <Pencil size={12} />
                             Modifier
                           </Link>
                         )}
                         {canDelete && (
                           <button
                             onClick={() => setDeleteId(project.id)}
-                            className="px-3 py-1.5 text-xs font-medium text-red-600 bg-white border border-gray-200 rounded-lg hover:bg-red-50 hover:border-red-200 transition-colors"
+                            className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-red-600 bg-white border border-gray-200 rounded-lg hover:bg-red-50 hover:border-red-200 transition-colors"
                           >
+                            <Trash2 size={12} />
                             Supprimer
                           </button>
                         )}
